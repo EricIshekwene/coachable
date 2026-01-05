@@ -1,20 +1,81 @@
 import "./index.css";
 
-import { FaPlus } from "react-icons/fa";
+import { IoChevronDownOutline } from "react-icons/io5";
 import { LuMousePointer2 } from "react-icons/lu";
 function App() {
 
   return (
     <>
       <div className="w-full h-screen bg-BrandGreen">
-        <div className="w-100/1440 h-full bg-BrandBlack p-10">
-          <div className="flex items-center aspect-square w-full bg-BrandBlack2 border border-BrandGary rounded-md justify-center hover:bg-BrandBlack2/80 transition-all duration-300">
-            <LuMousePointer2 className="text-BrandOrange text-7xl" />
+        {/* Sidebar */}
+        <aside
+          className="
+    h-screen shrink-0 bg-BrandBlack
+    w-14 sm:w-16 md:w-18 lg:w-20
+    px-1 py-2
+    flex flex-col
+    gap-2
+  "
+        >
+          {/* 1) Square button only */}
+          <div className="w-full">
+            <button
+              className="
+        w-full aspect-square
+        rounded-md border border-BrandGary
+        bg-BrandBlack2 hover:bg-BrandBlack2/80
+        transition-all duration-300
+        flex items-center justify-center
+      "
+            >
+              <LuMousePointer2 className="text-BrandOrange text-xl sm:text-2xl md:text-3xl" />
+            </button>
           </div>
-        </div>
+
+          {/* 2) Square button + chevron on right */}
+          <div className="w-full flex items-center gap-1">
+            <button
+              className="
+        w-full aspect-square
+        rounded-md border border-BrandGary
+        bg-BrandBlack2 hover:bg-BrandBlack2/80
+        transition-all duration-300
+        flex items-center justify-center
+      "
+            >
+              <LuMousePointer2 className="text-BrandOrange text-xl sm:text-2xl md:text-3xl" />
+            </button>
+
+            {/* Chevron: no bg, no border, small */}
+            <IoChevronDownOutline className="shrink-0 text-BrandOrange text-[10px] sm:text-xs md:text-sm" />
+          </div>
+
+          {/* 3) Square button + chevron on right + label under */}
+          <div className="w-full flex flex-col items-center gap-1">
+            <div className="w-full flex items-center gap-1">
+              <button
+                className="
+          w-full aspect-square
+          rounded-md border border-BrandGary
+          bg-BrandBlack2 hover:bg-BrandBlack2/80
+          transition-all duration-300
+          flex items-center justify-center
+        "
+              >
+                <LuMousePointer2 className="text-BrandOrange text-xl sm:text-2xl md:text-3xl" />
+              </button>
+
+              <IoChevronDownOutline className="shrink-0 text-BrandOrange text-[10px] sm:text-xs md:text-sm" />
+            </div>
+
+            <span className="text-[10px] sm:text-xs text-BrandGary text-center leading-none">
+              Label
+            </span>
+          </div>
+        </aside>
+
       </div>
     </>
-  )
+  );
 }
-
-export default App
+export default App;
