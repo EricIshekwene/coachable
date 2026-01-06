@@ -37,8 +37,6 @@ export const ButtonWithChevron = ({ Icon, onHover, onClick }) => {
             >
                 {Icon}
             </button>
-
-            {/* Chevron: no bg, no border, small */}
             <IoChevronDownOutline className="shrink-0 text-BrandOrange text-[10px] sm:text-xs md:text-sm" />
         </div>
     )
