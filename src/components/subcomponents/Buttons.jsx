@@ -1,17 +1,17 @@
 import React from "react";
 import { IoChevronDownOutline } from "react-icons/io5";
 
-export const Button = ({ Icon, onHover, onClick }) => {
+export const Button = ({ Icon, onHover, onClick, isSelected }) => {
     return (
         <div className="w-full">
             <button
-                className="
+                className={`
              w-full aspect-square
              rounded-md border border-BrandGary
-             bg-BrandBlack2 hover:bg-BrandBlack2/80
              transition-all duration-300
              flex items-center justify-center
-           "
+             ${isSelected ? "bg-BrandOrange " : "bg-BrandBlack2 "}
+           `}
                 onMouseEnter={onHover}
                 onClick={onClick}
             >
@@ -21,17 +21,17 @@ export const Button = ({ Icon, onHover, onClick }) => {
     )
 }
 
-export const ButtonWithChevron = ({ Icon, onHover, onClick }) => {
+export const ButtonWithChevron = ({ Icon, onHover, onClick, isSelected }) => {
     return (
         <div className="w-full flex items-center gap-1">
             <button
-                className="
+                className={`
              w-full aspect-square
              rounded-md border border-BrandGary
-             bg-BrandBlack2 hover:bg-BrandBlack2/80
-             transition-all duration-300
+             transition-all duration-100
              flex items-center justify-center
-           "
+           ${isSelected ? "bg-BrandOrange " : "bg-BrandBlack2 "}
+           `}
                 onMouseEnter={onHover}
                 onClick={onClick}
             >
@@ -44,18 +44,18 @@ export const ButtonWithChevron = ({ Icon, onHover, onClick }) => {
 
 
 
-export const ButtonWithChevronAndLabel = ({ Icon, label, onHover, onClick }) => {
+export const ButtonWithChevronAndLabel = ({ Icon, label, onHover, onClick, isSelected }) => {
     return (
         <div className="w-full flex flex-col items-center gap-1">
             <div className="w-full flex items-center gap-1">
                 <button
-                    className="
+                    className={`
               w-full aspect-square
               rounded-md border border-BrandGary
-              bg-BrandBlack2 hover:bg-BrandBlack2/80
               transition-all duration-300
               flex items-center justify-center
-            "
+            ${isSelected ? "bg-BrandOrange " : "bg-BrandBlack2 "}
+            `}
                     onMouseEnter={onHover}
                     onClick={onClick}
                 >
