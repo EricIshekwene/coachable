@@ -1,7 +1,7 @@
 import { LuMousePointer2 } from "react-icons/lu";
 import { PiPenNib } from "react-icons/pi";
 import { SidebarChevronButton, Button } from "./subcomponents/Buttons";
-import { Popover, PopoverGrid } from "./subcomponents/Popovers";
+import { Popover, PopoverGrid, PopoverForm } from "./subcomponents/Popovers";
 import { PiEraserFill } from "react-icons/pi";
 import { BsPersonAdd } from "react-icons/bs";
 import playerIcon from "../assets/players/Ellipse 8.png";
@@ -9,7 +9,7 @@ import { TbCopyPlusFilled } from "react-icons/tb";
 import { BiUndo } from "react-icons/bi";
 import { BiRedo } from "react-icons/bi";
 import { BiReset } from "react-icons/bi";
-import { IoHandLeftOutline } from "react-icons/io5";
+import { IoHandLeftOutline, IoChevronDownOutline } from "react-icons/io5";
 import { useState, useEffect, useRef } from "react";
 import { FaArrowUpLong } from "react-icons/fa6";
 import { TbCircleDotted } from "react-icons/tb";
@@ -23,10 +23,30 @@ function Sidebar() {
     const [penToolType, setPenToolType] = useState("pen");
     const [eraserToolType, setEraserToolType] = useState("eraser");
     const [openPopover, setOpenPopover] = useState(null);
+    const [playerSearch, setPlayerSearch] = useState("");
+    const [showPlayerDropdown, setShowPlayerDropdown] = useState(false);
 
     const selectButtonRef = useRef(null);
     const penButtonRef = useRef(null);
     const eraserButtonRef = useRef(null);
+    const addPlayerButtonRef = useRef(null);
+    const playerDropdownRef = useRef(null);
+
+    // Fake player names
+    const players = [
+        "Tommy Kilbane", "Tristan Arndt", "Tommy Graham", "Trenton Bui", "Ty Johnson",
+        "Trey Burkhart", "Trey Lundy", "Trevor Jackson", "Trevor Simms", "Tyler Banks",
+        "Tyler Davis", "Tyler Gray", "Tyler Smith", "Tyler Wilson", "Zachary Breaux",
+        "Zachary Brown", "Zachary Chavez", "Zachary Davis", "Zachary Green", "Zachary Johnson",
+        "Zachary Lee", "Zachary Martin", "Zachary Martinez", "Zachary Miller", "Zachary Mitchell",
+        "Zachary Moore", "Zachary Nelson", "Zachary Phillips", "Zachary Robinson", "Zachary Rodriguez",
+        "Zachary Scott", "Zachary Smith", "Zachary Taylor", "Zachary Thompson", "Zachary Walker",
+        "Zachary Wilson", "Zachary Young"
+    ];
+
+    const filteredPlayers = players.filter(player =>
+        player.toLowerCase().includes(playerSearch.toLowerCase())
+    );
 
     const isSelectedTool = (tool) => selectedTool === tool;
 
@@ -59,6 +79,38 @@ function Sidebar() {
     useEffect(() => {
         console.log("Selected tool:", selectedTool);
     }, [selectedTool]);
+
+    // Close player dropdown when clicking outside or when popover closes
+    useEffect(() => {
+        if (!showPlayerDropdown) return;
+
+        const handleClickOutside = (e) => {
+            const input = e.target.closest('input[placeholder="Search player"]');
+            const button = e.target.closest('button');
+            const dropdown = playerDropdownRef.current;
+
+            if (
+                dropdown &&
+                !dropdown.contains(e.target) &&
+                !input &&
+                !button
+            ) {
+                setShowPlayerDropdown(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [showPlayerDropdown]);
+
+    // Close dropdown when popover closes
+    useEffect(() => {
+        if (openPopover !== "addPlayer") {
+            setShowPlayerDropdown(false);
+        }
+    }, [openPopover]);
 
     return (
         <aside
@@ -114,7 +166,7 @@ function Sidebar() {
                                     className={selectToolType === "select" ? selectedIconClass : iconClass}
                                 />
                             </button>
-                            <span className="text-[10px] text-BrandGary">Select (S)</span>
+                            <span className="text-[10px] text-BrandOrange">Select (S)</span>
                         </div>
                         <div className="flex flex-col items-center gap-1">
                             <button
@@ -131,7 +183,7 @@ function Sidebar() {
                                     className={selectToolType === "hand" ? selectedIconClass : iconClass}
                                 />
                             </button>
-                            <span className="text-[10px] text-BrandGary">Hand (H)</span>
+                            <span className="text-[10px] text-BrandOrange">Hand (H)</span>
                         </div>
                     </PopoverGrid>
                 </Popover>
@@ -170,34 +222,42 @@ function Sidebar() {
                     anchorRef={penButtonRef}
                 >
                     <PopoverGrid cols={2}>
-                        <button
-                            onClick={() => handlePenOption("pen")}
-                            className={`
-                                aspect-square rounded-md border border-BrandGary
-                                flex items-center justify-center
-                                transition-all duration-100
-                                ${penToolType === "pen" ? "bg-BrandOrange" : "bg-BrandBlack2 hover:bg-BrandBlack2/80"}
-                            `}
-                        >
-                            <PiPenNib
-                                className={penToolType === "pen" ? selectedIconClass : iconClass}
-                                style={{ transform: "rotate(90deg)" }}
-                            />
-                        </button>
-                        <button
-                            onClick={() => handlePenOption("arrow")}
-                            className={`
-                                aspect-square rounded-md border border-BrandGary
-                                flex items-center justify-center
-                                transition-all duration-100
-                                ${penToolType === "arrow" ? "bg-BrandOrange" : "bg-BrandBlack2 hover:bg-BrandBlack2/80"}
-                            `}
-                        >
-                            <FaArrowUpLong
-                                className={penToolType === "arrow" ? selectedIconClass : iconClass}
-                                style={{ transform: "rotate(45deg)" }}
-                            />
-                        </button>
+                        <div className="flex flex-col items-center gap-1">
+                            <button
+                                onClick={() => handlePenOption("pen")}
+                                className={`
+                                    rounded-md border border-BrandGary
+                                    flex items-center justify-center
+                                    p-2 aspect-square w-full
+                                    transition-all duration-100
+                                    ${penToolType === "pen" ? "bg-BrandOrange" : "bg-BrandBlack2 hover:bg-BrandBlack2/80"}
+                                `}
+                            >
+                                <PiPenNib
+                                    className={penToolType === "pen" ? selectedIconClass : iconClass}
+                                    style={{ transform: "rotate(90deg)" }}
+                                />
+                            </button>
+                            <span className="text-[10px] text-BrandOrange">Pen (P)</span>
+                        </div>
+                        <div className="flex flex-col items-center gap-1">
+                            <button
+                                onClick={() => handlePenOption("arrow")}
+                                className={`
+                                    rounded-md border border-BrandGary
+                                    flex items-center justify-center
+                                    p-2 aspect-square w-full
+                                    transition-all duration-100
+                                    ${penToolType === "arrow" ? "bg-BrandOrange" : "bg-BrandBlack2 hover:bg-BrandBlack2/80"}
+                                `}
+                            >
+                                <FaArrowUpLong
+                                    className={penToolType === "arrow" ? selectedIconClass : iconClass}
+                                    style={{ transform: "rotate(45deg)" }}
+                                />
+                            </button>
+                            <span className="text-[10px] text-BrandOrange">Arrow (A)</span>
+                        </div>
                     </PopoverGrid>
                 </Popover>
             </div>
@@ -225,32 +285,40 @@ function Sidebar() {
                     anchorRef={eraserButtonRef}
                 >
                     <PopoverGrid cols={2}>
-                        <button
-                            onClick={() => handleEraserOption("full")}
-                            className={`
-                                aspect-square rounded-md border border-BrandGary
-                                flex items-center justify-center
-                                transition-all duration-100
-                                ${eraserToolType === "full" ? "bg-BrandOrange" : "bg-BrandBlack2 hover:bg-BrandBlack2/80"}
-                            `}
-                        >
-                            <FaRegCircle
-                                className={eraserToolType === "full" ? selectedIconClass : iconClass}
-                            />
-                        </button>
-                        <button
-                            onClick={() => handleEraserOption("partial")}
-                            className={`
-                                aspect-square rounded-md border border-BrandGary
-                                flex items-center justify-center
-                                transition-all duration-100
-                                ${eraserToolType === "partial" ? "bg-BrandOrange" : "bg-BrandBlack2 hover:bg-BrandBlack2/80"}
-                            `}
-                        >
-                            <TbCircleDotted
-                                className={eraserToolType === "partial" ? selectedIconClass : iconClass}
-                            />
-                        </button>
+                        <div className="flex flex-col items-center gap-1">
+                            <button
+                                onClick={() => handleEraserOption("full")}
+                                className={`
+                                    rounded-md border border-BrandGary
+                                    flex items-center justify-center
+                                    p-2 aspect-square w-full
+                                    transition-all duration-100
+                                    ${eraserToolType === "full" ? "bg-BrandOrange" : "bg-BrandBlack2 hover:bg-BrandBlack2/80"}
+                                `}
+                            >
+                                <FaRegCircle
+                                    className={eraserToolType === "full" ? selectedIconClass : iconClass}
+                                />
+                            </button>
+                            <span className="text-[10px] text-BrandOrange">Full (F)</span>
+                        </div>
+                        <div className="flex flex-col items-center gap-1">
+                            <button
+                                onClick={() => handleEraserOption("partial")}
+                                className={`
+                                    rounded-md border border-BrandGary
+                                    flex items-center justify-center
+                                    p-2 aspect-square w-full
+                                    transition-all duration-100
+                                    ${eraserToolType === "partial" ? "bg-BrandOrange" : "bg-BrandBlack2 hover:bg-BrandBlack2/80"}
+                                `}
+                            >
+                                <TbCircleDotted
+                                    className={eraserToolType === "partial" ? selectedIconClass : iconClass}
+                                />
+                            </button>
+                            <span className="text-[10px] text-BrandOrange">Partial (O)</span>
+                        </div>
                     </PopoverGrid>
                 </Popover>
             </div>
@@ -258,16 +326,92 @@ function Sidebar() {
             <hr className="w-4/5 self-center border-BrandGary" />
 
             {/* Add Player Tool */}
-            <SidebarChevronButton
-                Icon={<BsPersonAdd className={isSelectedTool("addPlayer") ? selectedIconClass : iconClass} />}
-                label="Add Player"
-                onHover={() => { }}
-                isSelected={isSelectedTool("addPlayer")}
-                onClick={() => {
-                    setSelectedTool("addPlayer");
-                }}
-                onChevronClick={() => { }}
-            />
+            <div className="relative">
+                <SidebarChevronButton
+                    ref={addPlayerButtonRef}
+                    Icon={<BsPersonAdd className={isSelectedTool("addPlayer") ? selectedIconClass : iconClass} />}
+                    label="Add Player"
+                    onHover={() => { }}
+                    isSelected={isSelectedTool("addPlayer")}
+                    chevronActive={openPopover === "addPlayer"}
+                    onClick={() => {
+                        setSelectedTool("addPlayer");
+                    }}
+                    onChevronClick={() => togglePopover("addPlayer")}
+                />
+                <Popover
+                    isOpen={openPopover === "addPlayer"}
+                    onClose={closePopover}
+                    anchorRef={addPlayerButtonRef}
+                >
+                    <PopoverForm>
+                        <div className="flex flex-col gap-1.5 sm:gap-2">
+                            <div className="flex flex-col gap-0.5 sm:gap-1">
+                                <p className="text-BrandOrange text-xs sm:text-sm">Number:</p>
+                                <input
+                                    type="text"
+                                    className="w-full h-8 sm:h-9 bg-BrandBlack border-[0.5px] border-BrandGary text-BrandWhite rounded-md px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-0.5 sm:gap-1">
+                                <p className="text-BrandOrange text-xs sm:text-sm">Name:</p>
+                                <input
+                                    type="text"
+                                    className="w-full h-8 sm:h-9 bg-BrandBlack border-[0.5px] border-BrandGary text-BrandWhite rounded-md px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-0.5 sm:gap-1 relative">
+                                <p className="text-BrandOrange text-xs sm:text-sm">Assign To:</p>
+                                <div className="relative">
+                                    <div className="w-full h-8 sm:h-9 bg-BrandBlack border-[0.5px] border-BrandGary rounded-md flex items-center overflow-hidden">
+                                        <input
+                                            type="text"
+                                            className="flex-1 min-w-0 h-8 sm:h-9 bg-transparent border-r-[0.5px] border-BrandGary text-BrandWhite px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors rounded-l-md"
+                                            placeholder="Search player"
+                                            value={playerSearch}
+                                            onChange={(e) => setPlayerSearch(e.target.value)}
+                                            onFocus={() => setShowPlayerDropdown(true)}
+                                        />
+                                        <button
+                                            onClick={() => setShowPlayerDropdown(!showPlayerDropdown)}
+                                            className="h-8 sm:h-9 w-8 sm:w-9 flex items-center justify-center transition-colors rounded-r-md shrink-0"
+                                        >
+                                            <IoChevronDownOutline
+                                                className={`text-BrandOrange text-base sm:text-lg transition-transform ${showPlayerDropdown ? "rotate-180" : ""}`}
+                                            />
+                                        </button>
+                                    </div>
+                                    {showPlayerDropdown && (
+                                        <div
+                                            ref={playerDropdownRef}
+                                            className="absolute left-0 top-full w-full bg-BrandBlack border border-BrandGary rounded-md mt-1 max-h-40 overflow-y-auto z-10 shadow-lg"
+                                        >
+                                            {filteredPlayers.length > 0 ? (
+                                                filteredPlayers.map((player, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        onClick={() => {
+                                                            setPlayerSearch(player);
+                                                            setShowPlayerDropdown(false);
+                                                        }}
+                                                        className="px-2 py-1 text-BrandWhite hover:bg-BrandOrange hover:text-BrandBlack cursor-pointer transition-colors text-xs sm:text-sm truncate"
+                                                    >
+                                                        {player}
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="px-2 py-1 text-BrandGary text-xs">
+                                                    No players found
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </PopoverForm>
+                </Popover>
+            </div>
 
             <hr className="w-4/5 self-center border-BrandGary" />
 

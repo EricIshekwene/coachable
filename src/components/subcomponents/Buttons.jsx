@@ -21,7 +21,7 @@ export const SidebarChevronButton = forwardRef(({
             <button
                 className={`
                     w-full aspect-square
-                    rounded-md border border-BrandGary
+                    rounded-md border-[0.5px] border-BrandGary
                     transition-all duration-100
                     flex items-center justify-center
                     ${isSelected ? "bg-BrandOrange" : "bg-BrandBlack2"}
@@ -71,7 +71,7 @@ export const Button = ({ Icon, onHover, onClick, isSelected }) => {
             <button
                 className={`
              w-full aspect-square
-             rounded-md border border-BrandGary
+             rounded-md border-[0.5px] border-BrandGary
              transition-all duration-300
              flex items-center justify-center
              ${isSelected ? "bg-BrandOrange " : "bg-BrandBlack2 "}
@@ -91,7 +91,7 @@ export const ButtonWithLabel = ({ Icon, label, onHover, onClick, isSelected }) =
         <div className="w-full flex flex-col items-center gap-1">
             <button
                 className={`
-                    w-full aspect-square rounded-md border border-BrandGary 
+                    w-full aspect-square rounded-md border-[0.5px] border-BrandGary 
                     transition-all duration-300 flex items-center justify-center 
                     ${isSelected ? "bg-BrandOrange " : "bg-BrandBlack2 "}
                 `}
@@ -114,7 +114,7 @@ export const ButtonWithChevron = ({ Icon, onHover, onClick, isSelected }) => {
             <button
                 className={`
              w-full aspect-square
-             rounded-md border border-BrandGary
+             rounded-md border-[0.5px] border-BrandGary
              transition-all duration-100
              flex items-center justify-center
            ${isSelected ? "bg-BrandOrange " : "bg-BrandBlack2 "}
@@ -136,7 +136,7 @@ export const ButtonWithChevronAndLabel = ({ Icon, label, onHover, onClick, isSel
                 <button
                     className={`
               w-full aspect-square
-              rounded-md border border-BrandGary
+              rounded-md border-[0.5px] border-BrandGary
               transition-all duration-300
               flex items-center justify-center
             ${isSelected ? "bg-BrandOrange " : "bg-BrandBlack2 "}
