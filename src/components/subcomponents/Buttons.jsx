@@ -48,7 +48,7 @@ export const SidebarChevronButton = forwardRef(({
         return (
             <div ref={ref} className="w-full flex flex-col items-center gap-1 relative">
                 {buttonContent}
-                <span className="text-[10px] sm:text-xs text-BrandGary text-center leading-none">
+                <span className="text-[10px] sm:text-xs text-BrandGary text-center mt-1 leading-none">
                     {label}
                 </span>
             </div>

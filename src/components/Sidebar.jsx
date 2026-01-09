@@ -2,6 +2,7 @@ import { LuMousePointer2 } from "react-icons/lu";
 import { PiPenNib } from "react-icons/pi";
 import { SidebarChevronButton, Button } from "./subcomponents/Buttons";
 import { Popover, PopoverGrid, PopoverForm } from "./subcomponents/Popovers";
+import { ColorPickerPopover } from "./subcomponents/ColorPickerPopover";
 import { PiEraserFill } from "react-icons/pi";
 import { BsPersonAdd } from "react-icons/bs";
 import playerIcon from "../assets/players/Ellipse 8.png";
@@ -25,11 +26,13 @@ function Sidebar() {
     const [openPopover, setOpenPopover] = useState(null);
     const [playerSearch, setPlayerSearch] = useState("");
     const [showPlayerDropdown, setShowPlayerDropdown] = useState(false);
+    const [playerColor, setPlayerColor] = useState("#561ecb");
 
     const selectButtonRef = useRef(null);
     const penButtonRef = useRef(null);
     const eraserButtonRef = useRef(null);
     const addPlayerButtonRef = useRef(null);
+    const playerButtonRef = useRef(null);
     const playerDropdownRef = useRef(null);
 
     // Fake player names
@@ -79,6 +82,10 @@ function Sidebar() {
     useEffect(() => {
         console.log("Selected tool:", selectedTool);
     }, [selectedTool]);
+
+    useEffect(() => {
+        console.log("Player color:", playerColor);
+    }, [playerColor]);
 
     // Close player dropdown when clicking outside or when popover closes
     useEffect(() => {
@@ -416,22 +423,38 @@ function Sidebar() {
             <hr className="w-4/5 self-center border-BrandGary" />
 
             {/* Player Tool */}
-            <SidebarChevronButton
-                Icon={
-                    <img
-                        src={playerIcon}
-                        alt="playerIcon"
-                        className={isSelectedTool("player") ? selectedIconClass : iconClass}
+            <div className="relative">
+                <SidebarChevronButton
+                    ref={playerButtonRef}
+                    Icon={
+                        <img
+                            src={playerIcon}
+                            alt="playerIcon"
+                            className={isSelectedTool("player") ? selectedIconClass : iconClass}
+                        />
+                    }
+                    label="Last Player"
+                    onHover={() => { }}
+                    isSelected={isSelectedTool("player")}
+                    chevronActive={openPopover === "playerColor"}
+                    onClick={() => {
+                        setSelectedTool("player");
+                    }}
+                    onChevronClick={() => togglePopover("playerColor")}
+                />
+                <Popover
+                    isOpen={openPopover === "playerColor"}
+                    onClose={closePopover}
+                    anchorRef={playerButtonRef}
+                >
+                    <ColorPickerPopover
+                        color={playerColor}
+                        onChange={(color) => {
+                            setPlayerColor(color.hex);
+                        }}
                     />
-                }
-                label="Last Player"
-                onHover={() => { }}
-                isSelected={isSelectedTool("player")}
-                onClick={() => {
-                    setSelectedTool("player");
-                }}
-                onChevronClick={() => { }}
-            />
+                </Popover>
+            </div>
 
             <hr className="w-4/5 self-center border-BrandGary" />
 
@@ -448,7 +471,7 @@ function Sidebar() {
             <hr className="w-4/5 self-center border-BrandGary" />
 
             {/* Undo, Redo, Reset Tool */}
-            <div className="w-full flex flex-col items-center gap-1 sm:gap-2 md:gap-3 lg:gap-4 p-1 py-2 lg:py-4 lg:px-3">
+            <div className="w-full flex flex-col items-center gap-1 sm:gap-2 md:gap-3 lg:gap-4 p-1 py-2  lg:px-3">
                 <Button Icon={<BiUndo className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
                 <Button Icon={<BiRedo className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
                 <Button Icon={<BiReset className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
