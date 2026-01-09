@@ -3,6 +3,7 @@ import { PiPenNib } from "react-icons/pi";
 import { SidebarChevronButton, Button } from "./subcomponents/Buttons";
 import { Popover, PopoverGrid, PopoverForm } from "./subcomponents/Popovers";
 import { ColorPickerPopover } from "./subcomponents/ColorPickerPopover";
+import { PrefabsPopover } from "./subcomponents/PrefabsPopover";
 import { PiEraserFill } from "react-icons/pi";
 import { BsPersonAdd } from "react-icons/bs";
 import playerIcon from "../assets/players/Ellipse 8.png";
@@ -33,6 +34,7 @@ function Sidebar() {
     const eraserButtonRef = useRef(null);
     const addPlayerButtonRef = useRef(null);
     const playerButtonRef = useRef(null);
+    const prefabsButtonRef = useRef(null);
     const playerDropdownRef = useRef(null);
 
     // Fake player names
@@ -45,6 +47,91 @@ function Sidebar() {
         "Zachary Moore", "Zachary Nelson", "Zachary Phillips", "Zachary Robinson", "Zachary Rodriguez",
         "Zachary Scott", "Zachary Smith", "Zachary Taylor", "Zachary Thompson", "Zachary Walker",
         "Zachary Wilson", "Zachary Young"
+    ];
+
+    // Example prefabs data structure
+    const prefabs = [
+        {
+            id: "lineout1",
+            label: "Lineout 1",
+            mode: "offense",
+            icon: <TbCopyPlusFilled className={iconClass} />,
+            dropdowns: [
+                {
+                    label: "Number of Players",
+                    options: ["3", "4", "5", "6", "7"],
+                    value: "5",
+                    onChange: (value) => {
+                        console.log("Lineout players:", value);
+                    },
+                },
+            ],
+        },
+        {
+            id: "lineout2",
+            label: "Lineout 2",
+            mode: "offense",
+            icon: <TbCopyPlusFilled className={iconClass} />,
+            dropdowns: [
+                {
+                    label: "Number of Players",
+                    options: ["3", "4", "5", "6", "7"],
+                    value: "5",
+                    onChange: (value) => {
+                        console.log("Lineout players:", value);
+                    },
+                },
+            ],
+        },
+        {
+            id: "lineout",
+            label: "Lineout",
+            mode: "offense",
+            icon: <TbCopyPlusFilled className={iconClass} />,
+            dropdowns: [
+                {
+                    label: "Number of Players",
+                    options: ["3", "4", "5", "6", "7"],
+                    value: "5",
+                    onChange: (value) => {
+                        console.log("Lineout players:", value);
+                    },
+                },
+            ],
+        },
+        {
+            id: "scrum1",
+            label: "Scrum 1",
+            mode: "offense",
+            icon: <TbCopyPlusFilled className={iconClass} />,
+            dropdowns: [
+                {
+                    label: "Formation",
+                    options: ["Standard", "Wheel", "Quick"],
+                    value: "Standard",
+                    onChange: (value) => {
+                        console.log("Scrum formation:", value);
+                    },
+                },
+            ],
+        },
+        {
+            id: "ruck1",
+            label: "Ruck 1",
+            mode: "defense",
+            icon: <TbCopyPlusFilled className={iconClass} />,
+            dropdowns: [
+                {
+                    label: "Players",
+                    options: ["1", "2", "3", "4", "5", "6",],
+                    value: "2",
+                    onChange: (value) => {
+                        console.log("Ruck players:", value);
+                    },
+                },
+            ],
+        },
+        
     ];
 
     const filteredPlayers = players.filter(player =>
@@ -459,14 +546,31 @@ function Sidebar() {
             <hr className="w-4/5 self-center border-BrandGary" />
 
             {/* Prefabs Tool */}
-            <SidebarChevronButton
-                Icon={<TbCopyPlusFilled className={iconClass} />}
-                label="Prefabs"
-                onHover={() => { }}
-                isSelected={false}
-                onClick={() => { }}
-                onChevronClick={() => { }}
-            />
+            <div className="relative">
+                <SidebarChevronButton
+                    ref={prefabsButtonRef}
+                    Icon={<TbCopyPlusFilled className={iconClass} />}
+                    label="Prefabs"
+                    onHover={() => { }}
+                    isSelected={false}
+                    chevronActive={openPopover === "prefabs"}
+                    onClick={() => { }}
+                    onChevronClick={() => togglePopover("prefabs")}
+                />
+                <Popover
+                    isOpen={openPopover === "prefabs"}
+                    onClose={closePopover}
+                    anchorRef={prefabsButtonRef}
+                >
+                    <PrefabsPopover
+                        prefabs={prefabs}
+                        onPrefabSelect={(prefab) => {
+                            console.log("Selected prefab:", prefab);
+                            setSelectedTool("prefab");
+                        }}
+                    />
+                </Popover>
+            </div>
 
             <hr className="w-4/5 self-center border-BrandGary" />
 

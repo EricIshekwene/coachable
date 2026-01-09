@@ -9,10 +9,7 @@ function App() {
   return (
     <>
       <div className="w-full h-screen bg-BrandGreen flex flex-row">
-        <Sidebar />
-      
-          
-       
+        <Sidebar />       
       </div>
     </>
   );
