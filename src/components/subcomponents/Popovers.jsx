@@ -57,7 +57,7 @@ export const PopoverGrid = ({ cols = 2, children }) => {
     return (
         <div
             className={`
-                bg-BrandBlack2  ml-2 rounded-md p-2
+                bg-BrandBlack  ml-2 rounded-md p-2
                 grid ${gridCols[cols] || gridCols[2]} gap-2
                 min-w-[120px] shadow-lg
             `}

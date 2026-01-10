@@ -52,38 +52,6 @@ function Sidebar() {
     // Example prefabs data structure
     const prefabs = [
         {
-            id: "lineout1",
-            label: "Lineout 1",
-            mode: "offense",
-            icon: <TbCopyPlusFilled className={iconClass} />,
-            dropdowns: [
-                {
-                    label: "Number of Players",
-                    options: ["3", "4", "5", "6", "7"],
-                    value: "5",
-                    onChange: (value) => {
-                        console.log("Lineout players:", value);
-                    },
-                },
-            ],
-        },
-        {
-            id: "lineout2",
-            label: "Lineout 2",
-            mode: "offense",
-            icon: <TbCopyPlusFilled className={iconClass} />,
-            dropdowns: [
-                {
-                    label: "Number of Players",
-                    options: ["3", "4", "5", "6", "7"],
-                    value: "5",
-                    onChange: (value) => {
-                        console.log("Lineout players:", value);
-                    },
-                },
-            ],
-        },
-        {
             id: "lineout",
             label: "Lineout",
             mode: "offense",
@@ -100,15 +68,47 @@ function Sidebar() {
             ],
         },
         {
-            id: "scrum1",
-            label: "Scrum 1",
+            id: "scrum",
+            label: "Scrum",
             mode: "offense",
             icon: <TbCopyPlusFilled className={iconClass} />,
             dropdowns: [
                 {
+                    label: "Number of Players",
+                    options: ["3", "8"],
+                    value: "3",
+                    onChange: (value) => {
+                        console.log("Scrum players:", value);
+                    },
+                },
+            ],
+        },
+        {
+            id: "kickoff1",
+            label: "Kickoff",
+            mode: "offense",
+            icon: <TbCopyPlusFilled className={iconClass} />,
+            dropdowns: [
+                {
+                    label: "Area",
+                    options: ["Goal Line", "22", "50"],
+                    value: "5",
+                    onChange: (value) => {
+                        console.log("Lineout players:", value);
+                    },
+                },
+            ],
+        },
+        {
+            id: "scrum1",
+            label: "Scrum",
+            mode: "defense",
+            icon: <TbCopyPlusFilled className={iconClass} />,
+            dropdowns: [
+                {
                     label: "Formation",
-                    options: ["Standard", "Wheel", "Quick"],
-                    value: "Standard",
+                    options: ["3", "8"],
+                    value: "3",
                     onChange: (value) => {
                         console.log("Scrum formation:", value);
                     },
@@ -116,22 +116,37 @@ function Sidebar() {
             ],
         },
         {
-            id: "ruck1",
-            label: "Ruck 1",
+            id: "lineout2",
+            label: "Lineout",
             mode: "defense",
             icon: <TbCopyPlusFilled className={iconClass} />,
             dropdowns: [
                 {
                     label: "Players",
-                    options: ["1", "2", "3", "4", "5", "6",],
-                    value: "2",
+                    options: ["5", "6", "7", "8"],
+                    value: "4",
                     onChange: (value) => {
-                        console.log("Ruck players:", value);
+                        console.log("Lineout players:", value);
                     },
                 },
             ],
         },
-        
+        {
+            id: "kickoff2",
+            label: "Kickoff",
+            mode: "defense",
+            icon: <TbCopyPlusFilled className={iconClass} />,
+            dropdowns: [
+                {
+                    label: "Area",
+                    options: ["Goal Line", "22", "50"],
+                    value: "Goal Line",
+                    onChange: (value) => {
+                        console.log("Kickoff area:", value);
+                    },
+                },
+            ],
+        },
     ];
 
     const filteredPlayers = players.filter(player =>
@@ -514,10 +529,9 @@ function Sidebar() {
                 <SidebarChevronButton
                     ref={playerButtonRef}
                     Icon={
-                        <img
-                            src={playerIcon}
-                            alt="playerIcon"
-                            className={isSelectedTool("player") ? selectedIconClass : iconClass}
+                        <div
+                            className="h-6 w-6 rounded-full border border-BrandBlack"
+                            style={{ backgroundColor: playerColor }}
                         />
                     }
                     label="Last Player"

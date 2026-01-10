@@ -94,7 +94,7 @@ export const ColorPickerPopover = ({ color, onChange }) => {
           padding-top: 10px !important;
         }
       `}</style>
-
+      
             <SketchPicker
                 color={color}
                 onChange={onChange}
