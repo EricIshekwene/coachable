@@ -99,3 +99,24 @@ export const PopoverForm = ({ children }) => {
         </div>
     );
 };
+
+// Tooltip component for hover tooltips
+export const Tooltip = ({ children, text, isOpen }) => {
+    if (!isOpen) return null;
+
+    return (
+        <div
+            className="
+                absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50
+                bg-BrandBlack2 rounded-md px-2 py-1.5
+                text-BrandWhite text-xs font-DmSans
+                whitespace-nowrap shadow-lg
+                border border-BrandGray/30
+                pointer-events-none
+            "
+        >
+            {text}
+            {children}
+        </div>
+    );
+};

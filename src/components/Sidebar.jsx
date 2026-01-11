@@ -1,7 +1,7 @@
 import { LuMousePointer2 } from "react-icons/lu";
 import { PiPenNib } from "react-icons/pi";
 import { SidebarChevronButton, Button } from "./subcomponents/Buttons";
-import { Popover, PopoverGrid, PopoverForm } from "./subcomponents/Popovers";
+import { Popover, PopoverGrid, PopoverForm, Tooltip } from "./subcomponents/Popovers";
 import { ColorPickerPopover } from "./subcomponents/ColorPickerPopover";
 import { PrefabsPopover } from "./subcomponents/PrefabsPopover";
 import { PiEraserFill } from "react-icons/pi";
@@ -32,6 +32,7 @@ function Sidebar() {
     const [playerSearch, setPlayerSearch] = useState("");
     const [showPlayerDropdown, setShowPlayerDropdown] = useState(false);
     const [playerColor, setPlayerColor] = useState("#561ecb");
+    const [hoveredTooltip, setHoveredTooltip] = useState(null);
 
     const selectButtonRef = useRef(null);
     const penButtonRef = useRef(null);
@@ -236,7 +237,11 @@ function Sidebar() {
                    "
         >
             {/* Select Tool */}
-            <div className="relative">
+            <div
+                className="relative"
+                onMouseEnter={() => setHoveredTooltip("select")}
+                onMouseLeave={() => setHoveredTooltip(null)}
+            >
                 <SidebarChevronButton
                     ref={selectButtonRef}
                     Icon={
@@ -257,6 +262,10 @@ function Sidebar() {
                         setSelectedTool(selectToolType);
                     }}
                     onChevronClick={() => togglePopover("selectOptions")}
+                />
+                <Tooltip
+                    isOpen={hoveredTooltip === "select" && openPopover !== "selectOptions"}
+                    text={selectToolType === "hand" ? "Hand Tool (H)" : "Select Tool (S)"}
                 />
                 <Popover
                     isOpen={openPopover === "selectOptions"}
@@ -305,7 +314,11 @@ function Sidebar() {
             <hr className="w-4/5 self-center border-BrandGray" />
 
             {/* Pen Tool */}
-            <div className="relative">
+            <div
+                className="relative"
+                onMouseEnter={() => setHoveredTooltip("pen")}
+                onMouseLeave={() => setHoveredTooltip(null)}
+            >
                 <SidebarChevronButton
                     ref={penButtonRef}
                     Icon={
@@ -328,6 +341,10 @@ function Sidebar() {
                         setSelectedTool("pen");
                     }}
                     onChevronClick={() => togglePopover("penOptions")}
+                />
+                <Tooltip
+                    isOpen={hoveredTooltip === "pen" && openPopover !== "penOptions"}
+                    text={penToolType === "arrow" ? "Arrow Tool (A)" : "Pen Tool (P)"}
                 />
                 <Popover
                     isOpen={openPopover === "penOptions"}
@@ -378,7 +395,11 @@ function Sidebar() {
             <hr className="w-4/5 self-center border-BrandGray" />
 
             {/* Eraser Tool */}
-            <div className="relative">
+            <div
+                className="relative"
+                onMouseEnter={() => setHoveredTooltip("eraser")}
+                onMouseLeave={() => setHoveredTooltip(null)}
+            >
                 <SidebarChevronButton
                     ref={eraserButtonRef}
                     Icon={
@@ -391,6 +412,10 @@ function Sidebar() {
                         setSelectedTool("eraser");
                     }}
                     onChevronClick={() => togglePopover("eraserOptions")}
+                />
+                <Tooltip
+                    isOpen={hoveredTooltip === "eraser" && openPopover !== "eraserOptions"}
+                    text="Eraser Tool"
                 />
                 <Popover
                     isOpen={openPopover === "eraserOptions"}
@@ -439,7 +464,11 @@ function Sidebar() {
             <hr className="w-4/5 self-center border-BrandGray" />
 
             {/* Add Player Tool */}
-            <div className="relative">
+            <div
+                className="relative"
+                onMouseEnter={() => setHoveredTooltip("addPlayer")}
+                onMouseLeave={() => setHoveredTooltip(null)}
+            >
                 <SidebarChevronButton
                     ref={addPlayerButtonRef}
                     Icon={<BsPersonAdd className={isSelectedTool("addPlayer") ? selectedIconClass : iconClass} />}
@@ -451,6 +480,10 @@ function Sidebar() {
                         setSelectedTool("addPlayer");
                     }}
                     onChevronClick={() => togglePopover("addPlayer")}
+                />
+                <Tooltip
+                    isOpen={hoveredTooltip === "addPlayer" && openPopover !== "addPlayer"}
+                    text="Add Player"
                 />
                 <Popover
                     isOpen={openPopover === "addPlayer"}
@@ -529,7 +562,11 @@ function Sidebar() {
             <hr className="w-4/5 self-center border-BrandGray" />
 
             {/* Player Tool */}
-            <div className="relative">
+            <div
+                className="relative"
+                onMouseEnter={() => setHoveredTooltip("player")}
+                onMouseLeave={() => setHoveredTooltip(null)}
+            >
                 <SidebarChevronButton
                     ref={playerButtonRef}
                     Icon={
@@ -546,6 +583,10 @@ function Sidebar() {
                         setSelectedTool("player");
                     }}
                     onChevronClick={() => togglePopover("playerColor")}
+                />
+                <Tooltip
+                    isOpen={hoveredTooltip === "player" && openPopover !== "playerColor"}
+                    text="Last Player"
                 />
                 <Popover
                     isOpen={openPopover === "playerColor"}
@@ -564,7 +605,11 @@ function Sidebar() {
             <hr className="w-4/5 self-center border-BrandGray" />
 
             {/* Prefabs Tool */}
-            <div className="relative">
+            <div
+                className="relative"
+                onMouseEnter={() => setHoveredTooltip("prefabs")}
+                onMouseLeave={() => setHoveredTooltip(null)}
+            >
                 <SidebarChevronButton
                     ref={prefabsButtonRef}
                     Icon={<TbCopyPlusFilled className={iconClass} />}
@@ -574,6 +619,10 @@ function Sidebar() {
                     chevronActive={openPopover === "prefabs"}
                     onClick={() => { }}
                     onChevronClick={() => togglePopover("prefabs")}
+                />
+                <Tooltip
+                    isOpen={hoveredTooltip === "prefabs" && openPopover !== "prefabs"}
+                    text="Prefabs"
                 />
                 <Popover
                     isOpen={openPopover === "prefabs"}
@@ -595,9 +644,39 @@ function Sidebar() {
 
             {/* Undo, Redo, Reset Tool */}
             <div className="w-full flex flex-col items-center gap-1 sm:gap-2 md:gap-3 lg:gap-4 p-1 py-2  lg:px-3">
-                <Button Icon={<BiUndo className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
-                <Button Icon={<BiRedo className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
-                <Button Icon={<BiReset className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
+                <div
+                    className="relative w-full"
+                    onMouseEnter={() => setHoveredTooltip("undo")}
+                    onMouseLeave={() => setHoveredTooltip(null)}
+                >
+                    <Button Icon={<BiUndo className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
+                    <Tooltip
+                        isOpen={hoveredTooltip === "undo"}
+                        text="Undo"
+                    />
+                </div>
+                <div
+                    className="relative w-full"
+                    onMouseEnter={() => setHoveredTooltip("redo")}
+                    onMouseLeave={() => setHoveredTooltip(null)}
+                >
+                    <Button Icon={<BiRedo className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
+                    <Tooltip
+                        isOpen={hoveredTooltip === "redo"}
+                        text="Redo"
+                    />
+                </div>
+                <div
+                    className="relative w-full"
+                    onMouseEnter={() => setHoveredTooltip("reset")}
+                    onMouseLeave={() => setHoveredTooltip(null)}
+                >
+                    <Button Icon={<BiReset className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
+                    <Tooltip
+                        isOpen={hoveredTooltip === "reset"}
+                        text="Reset"
+                    />
+                </div>
             </div>
         </aside>
     );
