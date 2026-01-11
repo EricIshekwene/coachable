@@ -3,11 +3,27 @@
 @theme {
     --color-BrandBlack: #121212;
     --color-BrandBlack2: #2a2e34;
-    --color-BrandGary: #9AA0A6;
+    --color-BrandGray: #9AA0A6;
     --color-BrandWhite: #f5f7fa;
     --color-BrandOrange: #FF7A18;
     --color-BrandOrange2: #75492a;
     --color-BrandGreen: #4FA85D;
+}
+
+@font-face {
+    font-family: 'Manrope';
+    src: url('/src/assets/fonts/Manrope-Regular.ttf') format('truetype');
+
+}
+
+@font-face {
+    font-family: 'DmSans';
+    src: url('/src/assets/fonts/DmSans-Regular.ttf') format('truetype');
+}
+
+@theme {
+    --font-Manrope: Manrope, sans-serif;
+    --font-DmSans: DmSans, sans-serif;
 }
 
 /* Custom Scrollbar Styling */

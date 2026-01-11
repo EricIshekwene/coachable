@@ -268,7 +268,7 @@ function Sidebar() {
                             <button
                                 onClick={() => handleSelectOption("select")}
                                 className={`
-                                    rounded-md border border-BrandGary
+                                    rounded-md border border-BrandGray
                                     flex items-center justify-center
                                     p-2 aspect-square w-full
                                     transition-all duration-100
@@ -285,7 +285,7 @@ function Sidebar() {
                             <button
                                 onClick={() => handleSelectOption("hand")}
                                 className={`
-                                    rounded-md border border-BrandGary
+                                    rounded-md border border-BrandGray
                                     flex items-center justify-center
                                     p-2 aspect-square w-full
                                     transition-all duration-100
@@ -302,7 +302,7 @@ function Sidebar() {
                 </Popover>
             </div>
 
-            <hr className="w-4/5 self-center border-BrandGary" />
+            <hr className="w-4/5 self-center border-BrandGray" />
 
             {/* Pen Tool */}
             <div className="relative">
@@ -339,7 +339,7 @@ function Sidebar() {
                             <button
                                 onClick={() => handlePenOption("pen")}
                                 className={`
-                                    rounded-md border border-BrandGary
+                                    rounded-md border border-BrandGray
                                     flex items-center justify-center
                                     p-2 aspect-square w-full
                                     transition-all duration-100
@@ -357,7 +357,7 @@ function Sidebar() {
                             <button
                                 onClick={() => handlePenOption("arrow")}
                                 className={`
-                                    rounded-md border border-BrandGary
+                                    rounded-md border border-BrandGray
                                     flex items-center justify-center
                                     p-2 aspect-square w-full
                                     transition-all duration-100
@@ -375,7 +375,7 @@ function Sidebar() {
                 </Popover>
             </div>
 
-            <hr className="w-4/5 self-center border-BrandGary" />
+            <hr className="w-4/5 self-center border-BrandGray" />
 
             {/* Eraser Tool */}
             <div className="relative">
@@ -402,7 +402,7 @@ function Sidebar() {
                             <button
                                 onClick={() => handleEraserOption("full")}
                                 className={`
-                                    rounded-md border border-BrandGary
+                                    rounded-md border border-BrandGray
                                     flex items-center justify-center
                                     p-2 aspect-square w-full
                                     transition-all duration-100
@@ -419,7 +419,7 @@ function Sidebar() {
                             <button
                                 onClick={() => handleEraserOption("partial")}
                                 className={`
-                                    rounded-md border border-BrandGary
+                                    rounded-md border border-BrandGray
                                     flex items-center justify-center
                                     p-2 aspect-square w-full
                                     transition-all duration-100
@@ -436,7 +436,7 @@ function Sidebar() {
                 </Popover>
             </div>
 
-            <hr className="w-4/5 self-center border-BrandGary" />
+            <hr className="w-4/5 self-center border-BrandGray" />
 
             {/* Add Player Tool */}
             <div className="relative">
@@ -463,23 +463,23 @@ function Sidebar() {
                                 <p className="text-BrandOrange text-xs sm:text-sm">Number:</p>
                                 <input
                                     type="text"
-                                    className="w-full h-8 sm:h-9 bg-BrandBlack border-[0.5px] border-BrandGary text-BrandWhite rounded-md px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors"
+                                    className="w-full h-8 sm:h-9 bg-BrandBlack border-[0.5px] border-BrandGray text-BrandWhite rounded-md px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors"
                                 />
                             </div>
                             <div className="flex flex-col gap-0.5 sm:gap-1">
                                 <p className="text-BrandOrange text-xs sm:text-sm">Name:</p>
                                 <input
                                     type="text"
-                                    className="w-full h-8 sm:h-9 bg-BrandBlack border-[0.5px] border-BrandGary text-BrandWhite rounded-md px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors"
+                                    className="w-full h-8 sm:h-9 bg-BrandBlack border-[0.5px] border-BrandGray text-BrandWhite rounded-md px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors"
                                 />
                             </div>
                             <div className="flex flex-col gap-0.5 sm:gap-1 relative">
                                 <p className="text-BrandOrange text-xs sm:text-sm">Assign To:</p>
                                 <div className="relative">
-                                    <div className="w-full h-8 sm:h-9 bg-BrandBlack border-[0.5px] border-BrandGary rounded-md flex items-center overflow-hidden">
+                                    <div className="w-full h-8 sm:h-9 bg-BrandBlack border-[0.5px] border-BrandGray rounded-md flex items-center overflow-hidden">
                                         <input
                                             type="text"
-                                            className="flex-1 min-w-0 h-8 sm:h-9 bg-transparent border-r-[0.5px] border-BrandGary text-BrandWhite px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors rounded-l-md"
+                                            className="flex-1 min-w-0 h-8 sm:h-9 bg-transparent border-r-[0.5px] border-BrandGray text-BrandWhite px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors rounded-l-md"
                                             placeholder="Search player"
                                             value={playerSearch}
                                             onChange={(e) => setPlayerSearch(e.target.value)}
@@ -497,7 +497,7 @@ function Sidebar() {
                                     {showPlayerDropdown && (
                                         <div
                                             ref={playerDropdownRef}
-                                            className="absolute left-0 top-full w-full bg-BrandBlack border border-BrandGary rounded-md mt-1 max-h-40 overflow-y-auto z-10 shadow-lg"
+                                            className="absolute left-0 top-full w-full bg-BrandBlack border border-BrandGray rounded-md mt-1 max-h-40 overflow-y-auto z-10 shadow-lg"
                                         >
                                             {filteredPlayers.length > 0 ? (
                                                 filteredPlayers.map((player, idx) => (
@@ -513,7 +513,7 @@ function Sidebar() {
                                                     </div>
                                                 ))
                                             ) : (
-                                                <div className="px-2 py-1 text-BrandGary text-xs">
+                                                <div className="px-2 py-1 text-BrandGray text-xs">
                                                     No players found
                                                 </div>
                                             )}
@@ -526,7 +526,7 @@ function Sidebar() {
                 </Popover>
             </div>
 
-            <hr className="w-4/5 self-center border-BrandGary" />
+            <hr className="w-4/5 self-center border-BrandGray" />
 
             {/* Player Tool */}
             <div className="relative">
@@ -561,7 +561,7 @@ function Sidebar() {
                 </Popover>
             </div>
 
-            <hr className="w-4/5 self-center border-BrandGary" />
+            <hr className="w-4/5 self-center border-BrandGray" />
 
             {/* Prefabs Tool */}
             <div className="relative">
@@ -591,7 +591,7 @@ function Sidebar() {
                 </Popover>
             </div>
 
-            <hr className="w-4/5 self-center border-BrandGary" />
+            <hr className="w-4/5 self-center border-BrandGray" />
 
             {/* Undo, Redo, Reset Tool */}
             <div className="w-full flex flex-col items-center gap-1 sm:gap-2 md:gap-3 lg:gap-4 p-1 py-2  lg:px-3">

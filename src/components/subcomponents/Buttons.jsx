@@ -21,7 +21,7 @@ export const SidebarChevronButton = forwardRef(({
             <button
                 className={`
                     w-full aspect-square
-                    rounded-md border-[0.5px] border-BrandGary
+                    rounded-md border-[0.5px] border-BrandGray
                     transition-all duration-100
                     flex items-center justify-center
                     ${isSelected ? "bg-BrandOrange" : "bg-BrandBlack2"}
@@ -48,7 +48,7 @@ export const SidebarChevronButton = forwardRef(({
         return (
             <div ref={ref} className="w-full flex flex-col items-center gap-1 relative">
                 {buttonContent}
-                <span className="text-[10px] sm:text-xs text-BrandGary text-center mt-1 leading-none">
+                <span className="text-[10px] sm:text-xs text-BrandGray text-center mt-1 leading-none font-DmSans">
                     {label}
                 </span>
             </div>
@@ -71,7 +71,7 @@ export const Button = ({ Icon, onHover, onClick, isSelected }) => {
             <button
                 className={`
              w-full aspect-square
-             rounded-md border-[0.5px] border-BrandGary
+             rounded-md border-[0.5px] border-BrandGray
              transition-all duration-300
              flex items-center justify-center
              ${isSelected ? "bg-BrandOrange " : "bg-BrandBlack2 "}
@@ -91,7 +91,7 @@ export const ButtonWithLabel = ({ Icon, label, onHover, onClick, isSelected }) =
         <div className="w-full flex flex-col items-center gap-1">
             <button
                 className={`
-                    w-full aspect-square rounded-md border-[0.5px] border-BrandGary 
+                    w-full aspect-square rounded-md border-[0.5px] border-BrandGray 
                     transition-all duration-300 flex items-center justify-center 
                     ${isSelected ? "bg-BrandOrange " : "bg-BrandBlack2 "}
                 `}
@@ -100,7 +100,7 @@ export const ButtonWithLabel = ({ Icon, label, onHover, onClick, isSelected }) =
             >
                 {Icon}
             </button>
-            <span className="text-[10px] sm:text-xs text-BrandGary text-center leading-none">
+            <span className="text-[10px] sm:text-xs text-BrandGray text-center leading-none font-DmSans">
                 {label}
             </span>
         </div>
@@ -114,7 +114,7 @@ export const ButtonWithChevron = ({ Icon, onHover, onClick, isSelected }) => {
             <button
                 className={`
              w-full aspect-square
-             rounded-md border-[0.5px] border-BrandGary
+             rounded-md border-[0.5px] border-BrandGray
              transition-all duration-100
              flex items-center justify-center
            ${isSelected ? "bg-BrandOrange " : "bg-BrandBlack2 "}
@@ -136,7 +136,7 @@ export const ButtonWithChevronAndLabel = ({ Icon, label, onHover, onClick, isSel
                 <button
                     className={`
               w-full aspect-square
-              rounded-md border-[0.5px] border-BrandGary
+              rounded-md border-[0.5px] border-BrandGray
               transition-all duration-300
               flex items-center justify-center
             ${isSelected ? "bg-BrandOrange " : "bg-BrandBlack2 "}
@@ -150,7 +150,7 @@ export const ButtonWithChevronAndLabel = ({ Icon, label, onHover, onClick, isSel
                 <IoChevronDownOutline className="shrink-0 text-BrandOrange text-[10px] sm:text-xs md:text-sm" />
             </div>
 
-            <span className="text-[10px] sm:text-xs text-BrandGary text-center leading-none">
+            <span className="text-[10px] sm:text-xs text-BrandGray text-center leading-none font-DmSans">
                 {label}
             </span>
         </div>

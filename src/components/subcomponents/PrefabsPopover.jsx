@@ -22,13 +22,13 @@ const DropdownItem = ({ dropdown }) => {
         <div className="flex flex-col gap-0.5 sm:gap-1 relative" ref={dropdownItemRef}>
             <p className="text-BrandOrange text-xs sm:text-sm">{dropdown.label}:</p>
             <div className="relative">
-                <div className="w-full h-8 sm:h-9 bg-BrandBlack2 border-[0.5px] border-BrandGary rounded-md flex items-center overflow-hidden">
-                    <div className="flex-1 min-w-0 h-8 sm:h-9 bg-transparent border-r-[0.5px] border-BrandGary text-BrandWhite px-2 text-xs sm:text-sm flex items-center rounded-l-md">
+                <div className="w-full h-8 sm:h-9 bg-BrandBlack2 border-[0.5px] border-BrandGray rounded-md flex items-center overflow-hidden">
+                    <div className="flex-1 min-w-0 h-8 sm:h-9 bg-transparent border-r-[0.5px] border-BrandGray text-BrandWhite px-2 text-xs sm:text-sm flex items-center rounded-l-md">
                         {selectedValue}
                     </div>
                     <button
                         onClick={() => setIsOpen(!isOpen)}
-                        className="h-8 sm:h-9 w-8 sm:w-9 flex items-center justify-center border-l-[0.5px] border-BrandGary transition-colors rounded-r-md shrink-0 hover:bg-BrandBlack2"
+                        className="h-8 sm:h-9 w-8 sm:w-9 flex items-center justify-center border-l-[0.5px] border-BrandGray transition-colors rounded-r-md shrink-0 hover:bg-BrandBlack2"
                     >
                         <IoChevronDownOutline
                             className={`text-BrandOrange text-base sm:text-lg transition-transform ${isOpen ? "rotate-180" : ""}`}
@@ -36,7 +36,7 @@ const DropdownItem = ({ dropdown }) => {
                     </button>
                 </div>
                 {isOpen && (
-                    <div className="absolute left-0 top-full w-full bg-BrandBlack border border-BrandGary rounded-md mt-1 max-h-40 overflow-y-auto z-10 shadow-lg">
+                    <div className="absolute left-0 top-full w-full bg-BrandBlack border border-BrandGray rounded-md mt-1 max-h-40 overflow-y-auto z-10 shadow-lg">
                         {dropdown.options.length > 0 ? (
                             dropdown.options.map((option, optIdx) => (
                                 <div
@@ -54,7 +54,7 @@ const DropdownItem = ({ dropdown }) => {
                                 </div>
                             ))
                         ) : (
-                            <div className="px-2 py-1 text-BrandGary text-xs">
+                            <div className="px-2 py-1 text-BrandGray text-xs">
                                 No options available
                             </div>
                         )}
@@ -102,7 +102,7 @@ const PrefabItem = ({ prefab, onSelect, isOpen, onToggle, onClose }) => {
             <div
                 className="
           w-full flex items-center gap-2
-          rounded-md border-[0.5px] border-BrandGary
+          rounded-md border-[0.5px] border-BrandGray
           bg-BrandBlack2 hover:bg-BrandBlack2/80
           transition-all duration-100
           px-2 py-2
@@ -113,7 +113,7 @@ const PrefabItem = ({ prefab, onSelect, isOpen, onToggle, onClose }) => {
                     onClick={onSelect}
                     className="
             w-10 h-10 shrink-0
-            rounded-md border-[0.5px] border-BrandGary
+            rounded-md border-[0.5px] border-BrandGray
             bg-BrandOrange
             flex items-center justify-center
             hover:bg-BrandOrange/80
@@ -129,11 +129,11 @@ const PrefabItem = ({ prefab, onSelect, isOpen, onToggle, onClose }) => {
 
                 {/* Label */}
                 <div className="flex-1 min-w-0">
-                    <p className="text-BrandWhite text-xs sm:text-sm font-medium truncate">
+                    <p className="text-BrandWhite text-xs sm:text-sm font-medium truncate font-DmSans">
                         {prefab.label}
                     </p>
                     {prefab.subLabel && (
-                        <p className="text-BrandGary text-[10px] sm:text-xs truncate">
+                        <p className="text-BrandGray text-[10px] sm:text-xs truncate font-DmSans">
                             {prefab.subLabel}
                         </p>
                     )}
@@ -145,7 +145,7 @@ const PrefabItem = ({ prefab, onSelect, isOpen, onToggle, onClose }) => {
                     className={`
                                   w-8 h-8 shrink-0
                                   flex items-center justify-center rounded-md
-                                  border-[0.5px] border-BrandGary
+                                  border-[0.5px] border-BrandGray
                                   bg-BrandBlack
                                   transition-colors
                                   ${hasDropdowns ? "hover:bg-BrandBlack/80" : "opacity-40 cursor-not-allowed"}
@@ -214,12 +214,12 @@ export const PrefabsPopover = ({ prefabs = [], onPrefabSelect }) => {
         >
             {/* Toggle pill */}
             <div className="flex items-center justify-center">
-                <div className="flex bg-BrandBlack2 rounded-full p-1 border-[0.5px] border-BrandGary">
+                <div className="flex bg-BrandBlack2 rounded-full p-1 border-[0.5px] border-BrandGray font-DmSans">
                     <button
                         onClick={() => { setMode("offense"); setOpenPrefabId(null); }}
                         className={`
-              px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition-all
-              ${mode === "offense" ? "bg-BrandOrange text-BrandBlack" : "text-BrandGary hover:text-BrandWhite"}
+              px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition-all font-DmSans
+              ${mode === "offense" ? "bg-BrandOrange text-BrandBlack" : "text-BrandGray hover:text-BrandWhite"}
             `}
                     >
                         Offense
@@ -227,8 +227,8 @@ export const PrefabsPopover = ({ prefabs = [], onPrefabSelect }) => {
                     <button
                         onClick={() => { setMode("defense"); setOpenPrefabId(null); }}
                         className={`
-              px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition-all
-              ${mode === "defense" ? "bg-BrandOrange text-BrandBlack" : "text-BrandGary hover:text-BrandWhite"}
+              px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition-all font-DmSans
+              ${mode === "defense" ? "bg-BrandOrange text-BrandBlack" : "text-BrandGray hover:text-BrandWhite"}
             `}
                     >
                         Defense
@@ -243,7 +243,7 @@ export const PrefabsPopover = ({ prefabs = [], onPrefabSelect }) => {
                     placeholder="Search prefabs..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full h-8 sm:h-9 bg-BrandBlack border-[0.5px] border-BrandGary text-BrandWhite rounded-md px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors"
+                    className="w-full h-8 sm:h-9 bg-BrandBlack border-[0.5px] border-BrandGray text-BrandWhite rounded-md px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors font-DmSans"
                 />
             </div>
 
@@ -264,7 +264,7 @@ export const PrefabsPopover = ({ prefabs = [], onPrefabSelect }) => {
                         );
                     })
                 ) : (
-                    <div className="text-BrandGary text-xs text-center py-4">
+                    <div className="text-BrandGray text-xs text-center py-4">
                         {searchQuery ? "No prefabs found" : "No prefabs available"}
                     </div>
                 )}

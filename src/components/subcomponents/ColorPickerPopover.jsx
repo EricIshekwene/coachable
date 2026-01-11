@@ -102,6 +102,7 @@ export const ColorPickerPopover = ({ color, onChange }) => {
                 disableAlpha={true}
                 presetColors={presetColors}
                 width={220}
+                className="font-DmSans"
             />
         </div>
     );

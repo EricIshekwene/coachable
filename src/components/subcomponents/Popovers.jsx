@@ -60,6 +60,7 @@ export const PopoverGrid = ({ cols = 2, children }) => {
                 bg-BrandBlack  ml-2 rounded-md p-2
                 grid ${gridCols[cols] || gridCols[2]} gap-2
                 min-w-[120px] shadow-lg 
+                font-DmSans
             `}
         >
             {children}
@@ -74,7 +75,7 @@ export const PopoverList = ({ children }) => {
             className="
                 bg-BrandBlack2  ml-2 rounded-md p-2
                 flex flex-col gap-1 min-w-[150px] shadow-lg
-                
+                font-DmSans
             "
         >
             {children}
@@ -91,6 +92,7 @@ export const PopoverForm = ({ children }) => {
                 flex flex-col gap-1.5 sm:gap-2
                 w-[150px] sm:w-[150px] md:w-[150px] lg:w-[175px] xl:w-[200px]
                 shadow-lg
+                font-DmSans
             "
         >
             {children}
