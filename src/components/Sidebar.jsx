@@ -16,6 +16,10 @@ import { useState, useEffect, useRef } from "react";
 import { FaArrowUpLong } from "react-icons/fa6";
 import { TbCircleDotted } from "react-icons/tb";
 import { FaRegCircle } from "react-icons/fa";
+import rugbyScrum from "../assets/prefabIcons/Rugby Scrum.png";
+import rugbyLineout from "../assets/prefabIcons/Rugby Lineout.png";
+import rugbyKickoff from "../assets/prefabIcons/Rugby KickOff.png";
+
 
 function Sidebar() {
     const iconClass = "text-BrandOrange text-xl sm:text-2xl md:text-3xl";
@@ -55,7 +59,7 @@ function Sidebar() {
             id: "lineout",
             label: "Lineout",
             mode: "offense",
-            icon: <TbCopyPlusFilled className={iconClass} />,
+            icon: <img src={rugbyLineout} alt="Lineout" className={iconClass} />,
             dropdowns: [
                 {
                     label: "Number of Players",
@@ -71,7 +75,7 @@ function Sidebar() {
             id: "scrum",
             label: "Scrum",
             mode: "offense",
-            icon: <TbCopyPlusFilled className={iconClass} />,
+            icon: <img src={rugbyScrum} alt="Scrum" className={iconClass} />,
             dropdowns: [
                 {
                     label: "Number of Players",
@@ -87,7 +91,7 @@ function Sidebar() {
             id: "kickoff1",
             label: "Kickoff",
             mode: "offense",
-            icon: <TbCopyPlusFilled className={iconClass} />,
+            icon: <img src={rugbyKickoff} alt="Kickoff" className={iconClass} />,
             dropdowns: [
                 {
                     label: "Area",
@@ -103,7 +107,7 @@ function Sidebar() {
             id: "scrum1",
             label: "Scrum",
             mode: "defense",
-            icon: <TbCopyPlusFilled className={iconClass} />,
+            icon: <img src={rugbyLineout} alt="Lineout" className={iconClass} />,
             dropdowns: [
                 {
                     label: "Formation",
@@ -119,7 +123,7 @@ function Sidebar() {
             id: "lineout2",
             label: "Lineout",
             mode: "defense",
-            icon: <TbCopyPlusFilled className={iconClass} />,
+            icon: <img src={rugbyLineout} alt="Lineout" className={iconClass} />,
             dropdowns: [
                 {
                     label: "Players",
@@ -135,7 +139,7 @@ function Sidebar() {
             id: "kickoff2",
             label: "Kickoff",
             mode: "defense",
-            icon: <TbCopyPlusFilled className={iconClass} />,
+            icon: <img src={rugbyKickoff} alt="Kickoff" className={iconClass} />,
             dropdowns: [
                 {
                     label: "Area",
@@ -575,6 +579,7 @@ function Sidebar() {
                     isOpen={openPopover === "prefabs"}
                     onClose={closePopover}
                     anchorRef={prefabsButtonRef}
+                    topOffset="top-[-150px]"
                 >
                     <PrefabsPopover
                         prefabs={prefabs}

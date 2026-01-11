@@ -114,9 +114,9 @@ const PrefabItem = ({ prefab, onSelect, isOpen, onToggle, onClose }) => {
                     className="
             w-10 h-10 shrink-0
             rounded-md border-[0.5px] border-BrandGary
-            bg-BrandBlack
+            bg-BrandOrange
             flex items-center justify-center
-            hover:bg-BrandBlack/80
+            hover:bg-BrandOrange/80
             transition-colors
           "
                     title={prefab.label}

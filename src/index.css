@@ -9,3 +9,43 @@
     --color-BrandOrange2: #75492a;
     --color-BrandGreen: #4FA85D;
 }
+
+/* Custom Scrollbar Styling */
+/* Webkit browsers (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(18, 18, 18, 0.1);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #FF7A18 0%, #ff8d3d 100%);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #ff8d3d 0%, #FF7A18 100%);
+    background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:active {
+    background: #FF7A18;
+    background-clip: padding-box;
+}
+
+::-webkit-scrollbar-corner {
+    background: rgba(18, 18, 18, 0.1);
+}
+
+/* Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #FF7A18 rgba(18, 18, 18, 0.1);
+}

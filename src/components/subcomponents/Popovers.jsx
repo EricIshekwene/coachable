@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 
 // Generic Popover component
-export const Popover = ({ isOpen, onClose, children, anchorRef }) => {
+export const Popover = ({ isOpen, onClose, children, anchorRef, topOffset = "top-0" }) => {
     const popoverRef = useRef(null);
 
     useEffect(() => {
@@ -38,7 +38,7 @@ export const Popover = ({ isOpen, onClose, children, anchorRef }) => {
     return (
         <div
             ref={popoverRef}
-            className="absolute left-full ml-2 top-0 z-50"
+            className={`absolute left-full ml-2 ${topOffset} z-50`}
             onClick={(e) => e.stopPropagation()}
         >
             {children}
@@ -59,7 +59,7 @@ export const PopoverGrid = ({ cols = 2, children }) => {
             className={`
                 bg-BrandBlack  ml-2 rounded-md p-2
                 grid ${gridCols[cols] || gridCols[2]} gap-2
-                min-w-[120px] shadow-lg
+                min-w-[120px] shadow-lg 
             `}
         >
             {children}
@@ -74,6 +74,7 @@ export const PopoverList = ({ children }) => {
             className="
                 bg-BrandBlack2  ml-2 rounded-md p-2
                 flex flex-col gap-1 min-w-[150px] shadow-lg
+                
             "
         >
             {children}
