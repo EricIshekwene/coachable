@@ -1,6 +1,7 @@
 import React, { forwardRef } from "react";
 import { IoChevronDownOutline } from "react-icons/io5";
-
+import { FiEdit } from "react-icons/fi";
+import { MdDeleteOutline } from "react-icons/md";
 // Sidebar chevron button component
 export const SidebarChevronButton = forwardRef(({
     Icon,
@@ -160,13 +161,13 @@ export const ButtonWithChevronAndLabel = ({ Icon, label, onHover, onClick, isSel
 //panel button component
 export const PanelButton = ({ Icon, onHover, onClick, isSelected = false }) => {
     return (
-        <div className="w-20 h-10">
+     
             <button
                 className={`
-              
+             aspect-[5/3]
              rounded-md border-[0.5px] border-BrandGray
              transition-all duration-300
-             flex items-center justify-center
+             flex items-center justify-center p-1
              ${isSelected ? "bg-BrandOrange " : "bg-BrandBlack2 "}
            `}
                 onMouseEnter={onHover}
@@ -174,6 +175,31 @@ export const PanelButton = ({ Icon, onHover, onClick, isSelected = false }) => {
             >
                 {Icon}
             </button>
+        
+    );
+};
+
+export const PlayerButton = ({ onClick, isSelected = false,  }) => {
+    return (
+        <div className="w-full flex flex-row rounded sm bg-BrandBlack2 items-center justify-between px-1 py-1">
+            {/*Player icons*/}
+            <div className="w-4 h-4 rounded-full bg-red-500 border-[0.25px] border-BrandBlack">
+
+            </div>
+            {/*Player name*/}
+            <p className="text-BrandWhite text-md font-DmSans">
+                Player 1
+            </p>
+            {/*Icons*/}
+            <div className="flex flex-row justify-center items-center gap-1">
+                <button className="text-BrandOrange text-md " >
+                    <FiEdit />
+                </button>
+                <button className="text-BrandOrange text-md" >
+                    <MdDeleteOutline />
+                </button>
+            </div>
+            
         </div>
     );
 };
