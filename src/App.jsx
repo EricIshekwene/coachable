@@ -11,7 +11,7 @@ function App() {
       <div className="w-full h-screen bg-BrandGreen flex flex-row">
         <Sidebar />
         {/*Slate Time controller and keyframes*/}
-        <div className="aspect-[641/124] h-20 
+        <div className="aspect-[641/124] hidden h-20 
                         flex flex-col gap-1 
                         bg-BrandBlack
                         py-2 px-2
