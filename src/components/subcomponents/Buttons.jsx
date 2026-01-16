@@ -156,3 +156,24 @@ export const ButtonWithChevronAndLabel = ({ Icon, label, onHover, onClick, isSel
         </div>
     );
 };
+
+//panel button component
+export const PanelButton = ({ Icon, onHover, onClick, isSelected = false }) => {
+    return (
+        <div className="w-20 h-10">
+            <button
+                className={`
+              
+             rounded-md border-[0.5px] border-BrandGray
+             transition-all duration-300
+             flex items-center justify-center
+             ${isSelected ? "bg-BrandOrange " : "bg-BrandBlack2 "}
+           `}
+                onMouseEnter={onHover}
+                onClick={onClick}
+            >
+                {Icon}
+            </button>
+        </div>
+    );
+};
