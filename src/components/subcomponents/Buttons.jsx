@@ -161,25 +161,25 @@ export const ButtonWithChevronAndLabel = ({ Icon, label, onHover, onClick, isSel
 //panel button component
 export const PanelButton = ({ Icon, onHover, onClick, isSelected = false }) => {
     return (
-     
-            <button
-                className={`
-             aspect-[5/3]
+
+        <button
+            className={`
+             w-full aspect-[5/3]
              rounded-md border-[0.5px] border-BrandGray
              transition-all duration-300
              flex items-center justify-center p-1
              ${isSelected ? "bg-BrandOrange " : "bg-BrandBlack2 "}
            `}
-                onMouseEnter={onHover}
-                onClick={onClick}
-            >
-                {Icon}
-            </button>
-        
+            onMouseEnter={onHover}
+            onClick={onClick}
+        >
+            {Icon}
+        </button>
+
     );
 };
 
-export const PlayerButton = ({ onClick, isSelected = false,  }) => {
+export const PlayerButton = ({ onClick, isSelected = false, }) => {
     return (
         <div className="w-full flex flex-row rounded sm bg-BrandBlack2 items-center justify-between px-1 py-0.5 sm:py-1">
             {/*Player icons*/}
@@ -199,7 +199,7 @@ export const PlayerButton = ({ onClick, isSelected = false,  }) => {
                     <MdDeleteOutline />
                 </button>
             </div>
-            
+
         </div>
     );
 };

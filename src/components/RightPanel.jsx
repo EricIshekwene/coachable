@@ -14,6 +14,10 @@ export default function RightPanel() {
     const [playName, setPlayName] = useState("Twister");
     const [isEditing, setIsEditing] = useState(false);
     const inputRef = useRef(null);
+    const [hoveredTooltip, setHoveredTooltip] = useState(null);
+    const [zoomPercentage, setZoomPercentage] = useState(100);
+    const [isEditingZoom, setIsEditingZoom] = useState(false);
+    const zoomInputRef = useRef(null);
 
     // Focus input when editing mode is enabled
     useEffect(() => {
@@ -51,6 +55,61 @@ export default function RightPanel() {
             setIsEditing(false);
             // Reset to original value if needed
         }
+    };
+
+    // Focus zoom input when editing mode is enabled
+    useEffect(() => {
+        if (isEditingZoom && zoomInputRef.current) {
+            zoomInputRef.current.focus();
+            zoomInputRef.current.select();
+        }
+    }, [isEditingZoom]);
+
+    // Handle zoom percentage change (numbers only, validation on save)
+    const handleZoomChange = (e) => {
+        const value = e.target.value;
+        // Only allow numbers (or empty for editing)
+        if (value === '' || /^\d+$/.test(value)) {
+            if (value === '') {
+                setZoomPercentage(0); // Allow empty for editing
+            } else {
+                const numValue = parseInt(value);
+                setZoomPercentage(numValue); // Allow any number while typing
+            }
+        }
+    };
+
+    // Handle saving zoom percentage (validate and clamp to 30-100)
+    const handleSaveZoom = () => {
+        // Ensure value is within range when saving
+        if (zoomPercentage === 0 || zoomPercentage < 30) {
+            setZoomPercentage(30);
+        } else if (zoomPercentage > 100) {
+            setZoomPercentage(100);
+        }
+        setIsEditingZoom(false);
+    };
+
+    // Handle key press for zoom input (Enter to save, Escape to cancel)
+    const handleZoomKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            handleSaveZoom();
+        } else if (e.key === 'Escape') {
+            setIsEditingZoom(false);
+            setZoomPercentage(100); // Reset to default
+        }
+    };
+
+    // Handle zoom in (add 5, max 100)
+    const handleZoomIn = () => {
+        const newZoom = Math.min(zoomPercentage + 5, 100);
+        setZoomPercentage(newZoom);
+    };
+
+    // Handle zoom out (subtract 5, min 30)
+    const handleZoomOut = () => {
+        const newZoom = Math.max(zoomPercentage - 5, 30);
+        setZoomPercentage(newZoom);
     };
 
     return (
@@ -95,23 +154,146 @@ export default function RightPanel() {
 
             {/* Field Setting */}
 
-            <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-0.5 sm:gap-1">
+            <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center ">
                 <div className="text-BrandOrange text-xs sm:text-sm md:text-base font-DmSans">
                     Field Settings
                 </div>
-                <div className="grid grid-cols-3 gap-1.5 sm:gap-2 md:gap-3 mt-1 sm:mt-1.5 md:mt-2">
+                <div className="w-full  grid grid-cols-3 gap-1.5 sm:gap-2 md:gap-3 mt-1 sm:mt-1.5 md:mt-2">
 
-                    <PanelButton Icon={<FiRotateCcw className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
-                    <PanelButton Icon={<TbRotateDot className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
-                    <PanelButton Icon={<FiRotateCw className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
+                    {/* Rotate Counter-Clockwise */}
+                    <div
+                        className="relative"
+                        onMouseEnter={() => setHoveredTooltip("rotateCCW")}
+                        onMouseLeave={() => setHoveredTooltip(null)}
+                    >
+                        <PanelButton Icon={<FiRotateCcw className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
+                        {hoveredTooltip === "rotateCCW" && (
+                            <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 bg-BrandBlack2 rounded-md px-2 py-1.5 text-BrandWhite text-xs font-DmSans whitespace-nowrap shadow-lg border border-BrandGray/30 pointer-events-none">
+                                Rotate Left
+                            </div>
+                        )}
+                    </div>
 
-                    <PanelButton Icon={<MdOutlineZoomOut className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
-                    <p className="text-BrandWhite text-xs sm:text-sm md:text-base m-auto font-DmSans">100%</p>
-                    <PanelButton Icon={<MdOutlineZoomIn className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
+                    {/* Rotate (Center) */}
+                    <div
+                        className="relative"
+                        onMouseEnter={() => setHoveredTooltip("rotate")}
+                        onMouseLeave={() => setHoveredTooltip(null)}
+                    >
+                        <PanelButton Icon={<TbRotateDot className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
+                        {hoveredTooltip === "rotate" && (
+                            <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 bg-BrandBlack2 rounded-md px-2 py-1.5 text-BrandWhite text-xs font-DmSans whitespace-nowrap shadow-lg border border-BrandGray/30 pointer-events-none">
+                                Rotate
+                            </div>
+                        )}
+                    </div>
 
-                    <PanelButton Icon={<BiUndo className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
-                    <PanelButton Icon={<MdOutlineResetTv className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
-                    <PanelButton Icon={<BiRedo className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
+                    {/* Rotate Clockwise */}
+                    <div
+                        className="relative"
+                        onMouseEnter={() => setHoveredTooltip("rotateCW")}
+                        onMouseLeave={() => setHoveredTooltip(null)}
+                    >
+                        <PanelButton Icon={<FiRotateCw className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
+                        {hoveredTooltip === "rotateCW" && (
+                            <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 bg-BrandBlack2 rounded-md px-2 py-1.5 text-BrandWhite text-xs font-DmSans whitespace-nowrap shadow-lg border border-BrandGray/30 pointer-events-none">
+                                Rotate Right
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Zoom Out */}
+                    <div
+                        className="relative"
+                        onMouseEnter={() => setHoveredTooltip("zoomOut")}
+                        onMouseLeave={() => setHoveredTooltip(null)}
+                    >
+                        <PanelButton Icon={<MdOutlineZoomOut className={iconClass} />} onHover={() => { }} onClick={handleZoomOut} isSelected={false} />
+                        {hoveredTooltip === "zoomOut" && (
+                            <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 bg-BrandBlack2 rounded-md px-2 py-1.5 text-BrandWhite text-xs font-DmSans whitespace-nowrap shadow-lg border border-BrandGray/30 pointer-events-none">
+                                Zoom Out
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Zoom Percentage (Editable) */}
+                    <div className="flex items-center justify-center m-auto">
+                        {isEditingZoom ? (
+                            <input
+                                ref={zoomInputRef}
+                                type="text"
+                                value={zoomPercentage || ''}
+                                onChange={handleZoomChange}
+                                onBlur={handleSaveZoom}
+                                onKeyDown={handleZoomKeyDown}
+                                className="text-BrandWhite text-xs sm:text-sm md:text-base bg-transparent border-none outline-none focus:outline-none text-center font-DmSans w-10 sm:w-12"
+                                maxLength={3}
+                            />
+                        ) : (
+                            <p
+                                className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans cursor-pointer"
+                                onClick={() => setIsEditingZoom(true)}
+                            >
+                                {zoomPercentage}%
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Zoom In */}
+                    <div
+                        className="relative"
+                        onMouseEnter={() => setHoveredTooltip("zoomIn")}
+                        onMouseLeave={() => setHoveredTooltip(null)}
+                    >
+                        <PanelButton Icon={<MdOutlineZoomIn className={iconClass} />} onHover={() => { }} onClick={handleZoomIn} isSelected={false} />
+                        {hoveredTooltip === "zoomIn" && (
+                            <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 bg-BrandBlack2 rounded-md px-2 py-1.5 text-BrandWhite text-xs font-DmSans whitespace-nowrap shadow-lg border border-BrandGray/30 pointer-events-none">
+                                Zoom In
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Undo */}
+                    <div
+                        className="relative"
+                        onMouseEnter={() => setHoveredTooltip("undo")}
+                        onMouseLeave={() => setHoveredTooltip(null)}
+                    >
+                        <PanelButton Icon={<BiUndo className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
+                        {hoveredTooltip === "undo" && (
+                            <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 bg-BrandBlack2 rounded-md px-2 py-1.5 text-BrandWhite text-xs font-DmSans whitespace-nowrap shadow-lg border border-BrandGray/30 pointer-events-none">
+                                Undo
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Reset */}
+                    <div
+                        className="relative"
+                        onMouseEnter={() => setHoveredTooltip("reset")}
+                        onMouseLeave={() => setHoveredTooltip(null)}
+                    >
+                        <PanelButton Icon={<MdOutlineResetTv className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
+                        {hoveredTooltip === "reset" && (
+                            <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 bg-BrandBlack2 rounded-md px-2 py-1.5 text-BrandWhite text-xs font-DmSans whitespace-nowrap shadow-lg border border-BrandGray/30 pointer-events-none">
+                                Reset
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Redo */}
+                    <div
+                        className="relative"
+                        onMouseEnter={() => setHoveredTooltip("redo")}
+                        onMouseLeave={() => setHoveredTooltip(null)}
+                    >
+                        <PanelButton Icon={<BiRedo className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
+                        {hoveredTooltip === "redo" && (
+                            <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 bg-BrandBlack2 rounded-md px-2 py-1.5 text-BrandWhite text-xs font-DmSans whitespace-nowrap shadow-lg border border-BrandGray/30 pointer-events-none">
+                                Redo
+                            </div>
+                        )}
+                    </div>
 
                 </div>
 
@@ -119,7 +301,7 @@ export default function RightPanel() {
 
 
             {/*Players*/}
-            <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-0.5 sm:gap-1">
+            <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center ">
                 <div className="text-BrandOrange text-xs sm:text-sm md:text-base font-DmSans">
                     Players (0)
                 </div>
@@ -146,7 +328,7 @@ export default function RightPanel() {
             </div>
 
             {/* ALl players */}
-            <div className="flex flex-col border-b border-BrandGray2 pb-1.5 sm:pb-2 items-start justify-center gap-0.5 sm:gap-1">
+            <div className="flex flex-col border-b border-BrandGray2 pb-1.5 sm:pb-2 items-start justify-center gap-0.5 ">
                 <div className="text-BrandOrange text-xs sm:text-sm md:text-base font-DmSans">
                     All Players (0)
                 </div>
