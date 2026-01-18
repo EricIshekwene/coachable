@@ -12,6 +12,8 @@ import { IoMdDownload } from "react-icons/io";
 import { ImCheckboxUnchecked } from "react-icons/im";
 import { ImCheckboxChecked } from "react-icons/im";
 import { BsBookmarkPlus } from "react-icons/bs";
+import { Popover } from "./subcomponents/Popovers";
+import { ColorPickerPopover } from "./subcomponents/ColorPickerPopover";
 export default function RightPanel() {
     const iconClass = "text-BrandOrange text-sm sm:text-base md:text-lg lg:text-xl";
     const [playName, setPlayName] = useState("Twister");
@@ -24,6 +26,12 @@ export default function RightPanel() {
     const [showNumber, setShowNumber] = useState(false);
     const [showName, setShowName] = useState(false);
     const [playerSize, setPlayerSize] = useState(100);
+    const [playerColor, setPlayerColor] = useState("#ef4444");
+    const [colorPopoverOpen, setColorPopoverOpen] = useState(false);
+    const [isEditingHex, setIsEditingHex] = useState(false);
+    const [hexValue, setHexValue] = useState("#ef4444");
+    const colorEditButtonRef = useRef(null);
+    const hexInputRef = useRef(null);
 
     // Focus input when editing mode is enabled
     useEffect(() => {
@@ -117,6 +125,48 @@ export default function RightPanel() {
         const newZoom = Math.max(zoomPercentage - 5, 30);
         setZoomPercentage(newZoom);
     };
+
+    // Sync hexValue with playerColor when color changes from picker
+    useEffect(() => {
+        setHexValue(playerColor);
+    }, [playerColor]);
+
+    // Handle hex color input change
+    const handleHexChange = (e) => {
+        const value = e.target.value;
+        setHexValue(value);
+    };
+
+    // Handle hex color save (validate and apply)
+    const handleHexSave = () => {
+        // Validate hex color format
+        const hexRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+        if (hexRegex.test(hexValue)) {
+            setPlayerColor(hexValue);
+        } else {
+            // Reset to current color if invalid
+            setHexValue(playerColor);
+        }
+        setIsEditingHex(false);
+    };
+
+    // Handle hex input key press
+    const handleHexKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            handleHexSave();
+        } else if (e.key === 'Escape') {
+            setHexValue(playerColor);
+            setIsEditingHex(false);
+        }
+    };
+
+    // Focus hex input when editing
+    useEffect(() => {
+        if (isEditingHex && hexInputRef.current) {
+            hexInputRef.current.focus();
+            hexInputRef.current.select();
+        }
+    }, [isEditingHex]);
 
     return (
         <aside
@@ -357,23 +407,59 @@ export default function RightPanel() {
                     </div>
                 </div>
                 {/* color */}
-                <div className="flex flex-col w-full items-start justify-between gap-0.5 sm:gap-1">
+                <div className="flex flex-col w-full items-start justify-between gap-0.5 sm:gap-1 relative">
                     <p className="text-BrandOrange text-[10px] sm:text-xs md:text-sm font-DmSans">Color:</p>
                     <div className="w-full flex flex-row bg-BrandBlack2 border-[0.5px] border-BrandGray2 rounded-md items-center justify-between py-0.5 sm:py-1 px-1.5 sm:px-2 gap-1.5 sm:gap-2">
                         {/* Color circle */}
                         <div
-                            className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 aspect-square rounded-full bg-BrandRed border-[0.5px] border-BrandGray shrink-0"
-                            style={{ backgroundColor: 'var(--color-BrandRed, #ef4444)' }}
+                            className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 aspect-square rounded-full border-[0.5px] border-BrandGray shrink-0"
+                            style={{ backgroundColor: playerColor }}
                         ></div>
-                        {/* Hex color text */}
-                        <p className="text-BrandOrange text-[10px] sm:text-xs md:text-sm font-DmSans flex-1">
-                            #000000
-                        </p>
+                        {/* Hex color text - editable */}
+                        {isEditingHex ? (
+                            <input
+                                ref={hexInputRef}
+                                type="text"
+                                value={hexValue}
+                                onChange={handleHexChange}
+                                onBlur={handleHexSave}
+                                onKeyDown={handleHexKeyDown}
+                                className="text-BrandOrange text-[10px] sm:text-xs md:text-sm font-DmSans flex-1 bg-transparent border-none outline-none focus:outline-none"
+                                maxLength={7}
+                            />
+                        ) : (
+                            <p
+                                onClick={() => setIsEditingHex(true)}
+                                className="text-BrandOrange text-[10px] sm:text-xs md:text-sm font-DmSans flex-1 cursor-pointer"
+                            >
+                                {playerColor.toUpperCase()}
+                            </p>
+                        )}
                         {/* Edit button */}
-                        <button className="text-BrandOrange hover:text-BrandOrange/80 transition-colors shrink-0">
+                        <button
+                            ref={colorEditButtonRef}
+                            onClick={() => setColorPopoverOpen(!colorPopoverOpen)}
+                            className="text-BrandOrange hover:text-BrandOrange/80 transition-colors shrink-0"
+                        >
                             <FiEdit className="text-BrandOrange text-xs sm:text-sm" />
                         </button>
                     </div>
+                    {/* Color Picker Popover */}
+                    <Popover
+                        isOpen={colorPopoverOpen}
+                        onClose={() => setColorPopoverOpen(false)}
+                        anchorRef={colorEditButtonRef}
+                        position="left"
+                        topOffset="top-40 -translate-y-full -mt-2"
+                        marginRight={6}
+                    >
+                        <ColorPickerPopover
+                            color={playerColor}
+                            onChange={(color) => {
+                                setPlayerColor(color.hex);
+                            }}
+                        />
+                    </Popover>
                 </div>
 
                 {/* show number */}

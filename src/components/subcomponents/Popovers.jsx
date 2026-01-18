@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 
 // Generic Popover component
-export const Popover = ({ isOpen, onClose, children, anchorRef, topOffset = "top-0" }) => {
+export const Popover = ({ isOpen, onClose, children, anchorRef, topOffset = "top-0", position = "right", marginRight }) => {
     const popoverRef = useRef(null);
 
     useEffect(() => {
@@ -35,10 +35,27 @@ export const Popover = ({ isOpen, onClose, children, anchorRef, topOffset = "top
 
     if (!isOpen) return null;
 
+    // Map margin values to Tailwind classes
+    const marginMap = {
+        2: position === "left" ? "mr-2" : "ml-2",
+        4: position === "left" ? "mr-4" : "ml-4",
+        6: position === "left" ? "mr-6" : "ml-6",
+        8: position === "left" ? "mr-8" : "ml-8",
+        10: position === "left" ? "mr-10" : "ml-10",
+        12: position === "left" ? "mr-12" : "ml-12",
+    };
+
+    // Determine margin class based on position and custom marginRight prop
+    const marginClass = marginRight !== undefined
+        ? (marginMap[marginRight] || (position === "left" ? "mr-2" : "ml-2"))
+        : (position === "left" ? "mr-2" : "ml-2");
+
+    const positionClass = position === "left" ? "right-full" : "left-full";
+
     return (
         <div
             ref={popoverRef}
-            className={`absolute left-full ml-2 ${topOffset} z-50`}
+            className={`absolute ${positionClass} ${marginClass} ${topOffset} z-50`}
             onClick={(e) => e.stopPropagation()}
         >
             {children}
