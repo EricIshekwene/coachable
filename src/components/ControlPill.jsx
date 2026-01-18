@@ -3,19 +3,21 @@ import { IoTimeOutline, IoPlayOutline } from "react-icons/io5";
 import { IoPlaySkipForwardOutline, IoPlaySkipBackOutline } from "react-icons/io5";
 import { IoIosAddCircleOutline, IoIosRemoveCircleOutline } from "react-icons/io";
 import keyframeIcon from "../assets/keyframes/keyframe.png";
+import TimeSlider from './TimeSlider';
+import { FiMinusCircle, FiPlusCircle } from "react-icons/fi";
 export default function ControlPill({ keyframePositions }) {
   return (
     <>
       {/*Slate Time controller and keyframes*/}
-      <div className="aspect-[641/124] hidden h-16 sm:h-[72px] md:h-20 lg:h-24
-                        flex flex-col items-center justify-evenly gap-0.5 sm:gap-1 
+      <div className="aspect-[641/124] h-10 sm:h-[48px] md:h-16 lg:h-20
+                        flex flex-col items-center justify-between gap-0.5 sm:gap-1 
                         bg-BrandBlack
                          py-0.5 sm:py-1 px-2 sm:px-2.5 md:px-3
                         rounded-[16px] sm:rounded-[18px] md:rounded-[20px] 
                         border-[0.5px] border-BrandGray 
-                        absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                        absolute top-1/2 left-3/4 transform -translate-x-1/2 -translate-y-1/2">
         {/* time pill */}
-        <div className="h-29/124 w-full flex items-center px-1 bg-BrandBlack2 border-[0.25px] border-BrandGray rounded-full relative">
+        <div className="h-29/124 mt-0.5 sm:mt-1 md:mt-1 lg:mt-1 w-full flex items-center px-1 bg-BrandBlack2 border-[0.25px] border-BrandGray rounded-full relative">
           {/* The horizontal rule (line) inside the pill */}
           <hr className="absolute left-0 top-1/2 w-full  text-BrandOrange2 -translate-y-1/2" />
           {/* Keyframe icons scattered along the pill */}
@@ -42,46 +44,47 @@ export default function ControlPill({ keyframePositions }) {
           // Style left as needed to move the circle horizontally
           ></div>
         </div>
-        {/* time, push to right edge */}
 
-        <div className="h-18/124 bg-BrandBlack2 py-0.5 sm:py-1 font-DmSans px-1.5 sm:px-2 rounded-md text-[7px] sm:text-[8px] md:text-[9px] text-BrandGray flex items-center justify-center ml-auto">
-          30s
-        </div>
-
-        {/* time slide, play button and add keyframe button*/}
-        <div className="flex h-33/124 w-full items-center justify-between gap-0.5 sm:gap-1">
-          {/* time slide */}
-          <div className="h-4 sm:h-[18px] md:h-5 w-163/641 bg-BrandBlack2 flex flex-row rounded-lg items-center justify-center px-0.5 sm:px-1">
-            <IoTimeOutline className="text-BrandOrange text-[10px] sm:text-xs mr-0.5 sm:mr-1" />
-            <input
-              type="range"
+        {/* time slide with time display, play buttons and add keyframe button*/}
+        <div className="flex flex-1 w-full items-center justify-between gap-0.5 sm:gap-1">
+          {/* time slide with time display */}
+          <div className="h-3 sm:h-4 md:h-4 lg:h-5 w-200/641 bg-BrandBlack2 flex flex-row rounded-lg items-center justify-center px-1 sm:px-1.5 gap-1 sm:gap-1.5">
+            <IoTimeOutline className="text-BrandOrange text-[10px] sm:text-xs flex-shrink-0" />
+            <TimeSlider
               min={0}
               max={100}
               step={1}
               value={50}
-              className="time-slider accent-BrandOrange w-5 sm:w-6 md:w-7"
               onChange={() => { }}
+              pinSize="8px"
+              trackWidth="3px"
+              pinColor="#FF7A18"
+              trackColor="#9AA0A6"
+              inactiveTrackColor="#75492a"
+              className="flex-1"
             />
-
+            <div className=" sm:py-1 font-DmSans  rounded-md text-[7px] sm:text-[8px] md:text-[9px] text-BrandGray flex items-center justify-center ">
+              30s
+            </div>
           </div>
           {/* play, go back and forward button */}
           <div className="flex flex-row items-center gap-0.5 sm:gap-1 justify-between">
-            <div className="h-3.5 w-3.5 sm:h-4 sm:w-4 bg-BrandBlack2 flex items-center justify-center rounded-sm">
-              < IoPlaySkipBackOutline className="text-BrandOrange text-[10px] sm:text-xs" />
+            <div className="h-3 sm:h-4 md:h-4 lg:h-6 w-3 sm:w-4 md:w-4 lg:w-6 bg-BrandBlack2 flex items-center justify-center rounded-sm">
+              < IoPlaySkipBackOutline className="text-BrandOrange text-xs sm:text-sm md:text-base" />
             </div>
-            <div className="h-4 w-4 sm:h-[18px] sm:w-[18px] md:h-5 md:w-5 bg-BrandOrange flex items-center justify-center rounded-sm">
-              <IoPlayOutline className="text-BrandBlack text-xs sm:text-sm md:text-base" />
+            <div className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 bg-BrandOrange flex items-center justify-center rounded-sm">
+              <IoPlayOutline className="text-BrandBlack text-sm sm:text-base md:text-lg" />
             </div>
-            <div className="h-3.5 w-3.5 sm:h-4 sm:w-4 bg-BrandBlack2 flex items-center justify-center rounded-sm">
-              <IoPlaySkipForwardOutline className="text-BrandOrange text-[10px] sm:text-xs" />
+            <div className="h-3 sm:h-4 md:h-4 lg:h-6 w-3 sm:w-4 md:w-4 lg:w-6 bg-BrandBlack2 flex items-center justify-center rounded-sm">
+              <IoPlaySkipForwardOutline className="text-BrandOrange text-xs sm:text-sm md:text-base" />
             </div>
           </div>
 
           {/* add keyframe button */}
-          <div className="w-163/641 h-4 sm:h-[18px] md:h-5 bg-BrandOrange flex flex-row items-center justify-evenly rounded-md px-0.5 sm:px-1">
-            <IoIosAddCircleOutline className="text-BrandBlack text-[10px] sm:text-xs" />
-            <p className="text-BrandBlack text-[7px] sm:text-[8px] md:text-[9px] font-DmSans">Add Keyframe</p>
-            <IoIosRemoveCircleOutline className="text-BrandBlack text-[10px] sm:text-xs" />
+          <div className="w-200/641 h-3 sm:h-4 md:h-4 lg:h-6 bg-BrandOrange flex flex-row items-center justify-evenly rounded-md px-1 sm:px-1.5">
+            <FiPlusCircle className="text-BrandBlack text-xs " />
+            <p className="text-BrandBlack text-[8px] sm:text-[9px] md:text-[10px] font-DmSans">Add Keyframe</p>
+            <FiMinusCircle className="text-BrandBlack text-xs " />
           </div>
         </div>
       </div>
