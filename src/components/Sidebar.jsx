@@ -229,7 +229,7 @@ function Sidebar() {
     return (
         <aside
             className="
-                     h-screen  shrink-0 bg-BrandBlack
+                     h-screen hidden shrink-0 bg-BrandBlack
                      w-14 sm:w-16 md:w-18 lg:w-20
                      px-2 py-3 sm:py-4 md:py-5 lg:py-6
                      flex flex-col

@@ -9,6 +9,9 @@ import { TbRotateDot } from "react-icons/tb";
 import { IoSettingsOutline } from "react-icons/io5";
 import { CiBookmarkPlus } from "react-icons/ci";
 import { IoMdDownload } from "react-icons/io";
+import { ImCheckboxUnchecked } from "react-icons/im";
+import { ImCheckboxChecked } from "react-icons/im";
+import { BsBookmarkPlus } from "react-icons/bs";
 export default function RightPanel() {
     const iconClass = "text-BrandOrange text-sm sm:text-base md:text-lg lg:text-xl";
     const [playName, setPlayName] = useState("Twister");
@@ -18,6 +21,9 @@ export default function RightPanel() {
     const [zoomPercentage, setZoomPercentage] = useState(100);
     const [isEditingZoom, setIsEditingZoom] = useState(false);
     const zoomInputRef = useRef(null);
+    const [showNumber, setShowNumber] = useState(false);
+    const [showName, setShowName] = useState(false);
+    const [playerSize, setPlayerSize] = useState(100);
 
     // Focus input when editing mode is enabled
     useEffect(() => {
@@ -334,46 +340,76 @@ export default function RightPanel() {
                 </div>
                 {/* size */}
                 <div className="flex flex-row w-full items-center justify-between">
-                    <p className="text-BrandOrange text-[10px] sm:text-xs md:text-sm font-DmSans"> Size: 100%</p>
+                    <p className="text-BrandOrange text-[10px] sm:text-xs md:text-sm font-DmSans"> Size: {playerSize}%</p>
                     <div className="flex flex-row items-center justify-between bg-BrandBlack2 border-[0.5px] border-BrandGray2 aspect-[2/1] w-2/7 rounded-md">
-                        <button className="text-BrandOrange font-bold m-auto text-xs sm:text-sm md:text-base">
+                        <button
+                            onClick={() => setPlayerSize(playerSize + 5)}
+                            className="text-BrandOrange font-bold m-auto text-xs sm:text-sm md:text-base hover:text-BrandOrange/80 transition-colors"
+                        >
                             +
                         </button>
-                        <button className="text-BrandOrange font-bold m-auto text-xs sm:text-sm md:text-base">
+                        <button
+                            onClick={() => setPlayerSize(Math.max(5, playerSize - 5))}
+                            className="text-BrandOrange font-bold m-auto text-xs sm:text-sm md:text-base hover:text-BrandOrange/80 transition-colors"
+                        >
                             -
                         </button>
                     </div>
                 </div>
                 {/* color */}
-                <div className="flex flex-col w-full items-start justify-between">
+                <div className="flex flex-col w-full items-start justify-between gap-0.5 sm:gap-1">
                     <p className="text-BrandOrange text-[10px] sm:text-xs md:text-sm font-DmSans">Color:</p>
-                    <div className="w-full flex flex-row bg-BrandBlack2 border-[0.5px] border-BrandGray2 rounded-md items-center justify-between py-0.5 sm:py-1 px-1 sm:px-1.5">
-                        <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 aspect-square rounded-full bg-BrandRed"></div>
-                        <div className="w-full flex flex-row items-center justify-between">
-                            <p className="text-BrandOrange text-[10px] sm:text-xs md:text-sm font-DmSans"> #000000</p>
-                            <button className="text-BrandOrange font-bold m-auto">
-                                <FiEdit className="text-BrandOrange text-xs sm:text-sm" />
-                            </button>
-                        </div>
+                    <div className="w-full flex flex-row bg-BrandBlack2 border-[0.5px] border-BrandGray2 rounded-md items-center justify-between py-0.5 sm:py-1 px-1.5 sm:px-2 gap-1.5 sm:gap-2">
+                        {/* Color circle */}
+                        <div
+                            className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 aspect-square rounded-full bg-BrandRed border-[0.5px] border-BrandGray shrink-0"
+                            style={{ backgroundColor: 'var(--color-BrandRed, #ef4444)' }}
+                        ></div>
+                        {/* Hex color text */}
+                        <p className="text-BrandOrange text-[10px] sm:text-xs md:text-sm font-DmSans flex-1">
+                            #000000
+                        </p>
+                        {/* Edit button */}
+                        <button className="text-BrandOrange hover:text-BrandOrange/80 transition-colors shrink-0">
+                            <FiEdit className="text-BrandOrange text-xs sm:text-sm" />
+                        </button>
                     </div>
                 </div>
 
                 {/* show number */}
                 <div className="flex flex-row w-full items-center justify-between">
                     <p className="text-BrandOrange text-[10px] sm:text-xs md:text-sm font-DmSans"> Show Number:</p>
-                    <input type="checkbox" className="text-BrandOrange text-xs sm:text-sm font-DmSans w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4" />
+                    <button
+                        onClick={() => setShowNumber(!showNumber)}
+                        className="focus:outline-none cursor-pointer"
+                    >
+                        {showNumber ? (
+                            <ImCheckboxChecked className="text-BrandOrange w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4" />
+                        ) : (
+                            <ImCheckboxUnchecked className="text-BrandGray2 w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4" />
+                        )}
+                    </button>
                 </div>
 
                 {/* show name */}
                 <div className="flex flex-row w-full items-center justify-between">
                     <p className="text-BrandOrange text-[10px] sm:text-xs md:text-sm font-DmSans"> Show Name:</p>
-                    <input type="checkbox" className="text-BrandOrange text-xs sm:text-sm font-DmSans w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4" />
+                    <button
+                        onClick={() => setShowName(!showName)}
+                        className="focus:outline-none cursor-pointer"
+                    >
+                        {showName ? (
+                            <ImCheckboxChecked className="text-BrandOrange w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4" />
+                        ) : (
+                            <ImCheckboxUnchecked className="text-BrandGray2 w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4" />
+                        )}
+                    </button>
                 </div>
             </div>
             {/* Save to Playbook */}
             <div className="w-full flex flex-col justify-center items-center ">
                 <div className="w-full flex flex-row justify-evenly items-center bg-BrandOrange text-BrandBlack font-bold text-[10px] sm:text-xs md:text-sm font-DmSans rounded-md py-0.5 sm:py-1">
-                    <CiBookmarkPlus className="text-BrandBlack text-sm sm:text-base md:text-lg" />
+                    <BsBookmarkPlus className="text-BrandBlack text-sm sm:text-base md:text-lg" />
                     <p className="text-BrandBlack text-[10px] sm:text-xs md:text-sm font-DmSans">Save to Playbook</p>
                 </div>
             </div>
