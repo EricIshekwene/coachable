@@ -124,8 +124,16 @@ export default function ControlPill() {
   // Handle adding a keyframe at current time position
   const handleAddKeyframe = (e) => {
     e.stopPropagation(); // Prevent triggering pill click
-    // Check if keyframe already exists at this position (within 1% tolerance)
-    const existingKeyframe = keyframes.find(kf => Math.abs(kf - timePercent) < 1);
+
+    // Limit maximum keyframes to 10
+    if (keyframes.length >= 10) {
+      return;
+    }
+
+    // Check if keyframe already exists at this position (within 3% tolerance to prevent close keyframes)
+    const MIN_DISTANCE = 4; // Minimum distance between keyframes in percent
+    const existingKeyframe = keyframes.find(kf => Math.abs(kf - timePercent) < MIN_DISTANCE);
+
     if (!existingKeyframe) {
       setKeyframes([...keyframes, timePercent].sort((a, b) => a - b));
     }
@@ -153,18 +161,18 @@ export default function ControlPill() {
   return (
     <>
       {/*Slate Time controller and keyframes*/}
-      <div className="aspect-[641/124] h-[50px] sm:h-[60px] md:h-20 lg:h-25
-                        flex flex-col items-center justify-between gap-[2.5px] sm:gap-[5px] 
+      <div className="aspect-[641/124] h-[62.5px] sm:h-[75px] md:h-[100px] lg:h-[125px]
+                        flex flex-col items-center justify-between gap-[3.125px] sm:gap-[6.25px] 
                         bg-BrandBlack
-                         py-[2.5px] sm:py-[5px] px-[10px] sm:px-[12.5px] md:px-[15px]
-                        rounded-[20px] sm:rounded-[22.5px] md:rounded-[25px] 
-                        border-[0.5px] border-BrandGray 
+                         py-[3.125px] sm:py-[6.25px] px-[12.5px] sm:px-[15.625px] md:px-[18.75px]
+                        rounded-[25px] sm:rounded-[28.125px] md:rounded-[31.25px] 
+                        border-[0.625px] border-BrandGray 
                         absolute top-7/8 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
         {/* time pill */}
         <div
           ref={pillRef}
           onClick={handlePillClick}
-          className="h-29/124 mt-[2.5px] sm:mt-[5px] md:mt-[5px] lg:mt-[5px] w-full flex items-center px-[5px] bg-BrandBlack2 border-[0.25px] border-BrandGray rounded-full relative cursor-pointer"
+          className="h-29/124 mt-[3.125px] sm:mt-[6.25px] md:mt-[6.25px] lg:mt-[6.25px] w-full flex items-center px-[6.25px] bg-BrandBlack2 border-[0.3125px] border-BrandGray rounded-full relative cursor-pointer"
         >
           {/* The horizontal rule (line) inside the pill */}
           <hr className="absolute left-0 top-1/2 w-full  text-BrandOrange2 -translate-y-1/2" />
@@ -179,8 +187,8 @@ export default function ControlPill() {
                   left: `${visualPos}%`,
                   top: "50%",
                   transform: "translate(-50%, -50%)",
-                  width: "1px",
-                  height: "8px",
+                  width: "1.25px",
+                  height: "10px",
                   pointerEvents: "none",
                 }}
               />
@@ -195,14 +203,15 @@ export default function ControlPill() {
                 key={`kf-${kfTimePercent}-${idx}`}
                 src={isSelected ? SelectedKeyframeIcon : UnselectedKeyframeIcon}
                 alt="keyframe"
+                draggable={false}
                 onClick={(e) => handleKeyframeClick(e, kfTimePercent)}
                 className="absolute z-30 cursor-pointer"
                 style={{
                   left: `${visualPos}%`,
                   top: "50%",
                   transform: "translate(-50%, -50%)",
-                  width: "20px",
-                  height: "20px",
+                  width: "25px",
+                  height: "25px",
                   objectFit: "contain",
                   pointerEvents: "auto",
                 }}
@@ -212,16 +221,16 @@ export default function ControlPill() {
           {/* The circle positioned on top of the line */}
           <div
             onMouseDown={handleDragStart}
-            className="absolute z-10 top-1/2 left-[25%] transform -translate-x-1/2 -translate-y-1/2 h-2.5 w-2.5 sm:h-[12.5px] sm:w-[12.5px] bg-BrandOrange rounded-full cursor-grab active:cursor-grabbing"
+            className="absolute z-10 top-1/2 left-[25%] transform -translate-x-1/2 -translate-y-1/2 h-[3.125px] w-[3.125px] sm:h-[15.625px] sm:w-[15.625px] bg-BrandOrange rounded-full cursor-grab active:cursor-grabbing"
             style={{ left: `${3 + (timePercent / 100) * 94}%`, pointerEvents: 'auto' }}
           ></div>
         </div>
 
         {/* time slide with time display, play buttons andkeyframe button*/}
-        <div className="flex flex-1 w-full items-center justify-between gap-[2.5px] sm:gap-[5px]">
+        <div className="flex flex-1 w-full items-center justify-between gap-[3.125px] sm:gap-[6.25px]">
           {/* time slide with time display */}
-          <div className="h-[15px] sm:h-5 md:h-5 lg:h-[25px] w-200/641 bg-BrandBlack2 flex flex-row rounded-lg items-center justify-center px-[5px] sm:px-[7.5px] gap-[5px] sm:gap-[7.5px]">
-            <IoTimeOutline className="text-BrandOrange text-[12.5px] sm:text-sm flex-shrink-0" />
+          <div className="h-[16px] sm:h-[22px] md:h-[24px] lg:h-[32px] w-200/641 bg-BrandBlack2 flex flex-row rounded-xl items-center justify-center px-[6.25px] sm:px-[9.375px] gap-[6.25px] sm:gap-[9.375px]">
+            <IoTimeOutline className="text-BrandOrange text-[14px] sm:text-[16px] md:text-[18px] lg:text-[20px] flex-shrink-0" />
             <Slider
               min={0}
               max={100}
@@ -232,10 +241,10 @@ export default function ControlPill() {
 
               sx={{
                 color: '#FF7A18',
-                height: '3.75px',
+                height: '6.25px',
                 '& .MuiSlider-thumb': {
-                  width: '10px',
-                  height: '10px',
+                  width: '12.5px',
+                  height: '12.5px',
                   backgroundColor: '#FF7A18',
                   boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
                   '&:hover': {
@@ -248,17 +257,17 @@ export default function ControlPill() {
                 },
                 '& .MuiSlider-track': {
                   backgroundColor: '#FF7A18',
-                  height: '3.75px',
+                  height: '6.25px',
                   border: 'none',
                 },
                 '& .MuiSlider-rail': {
                   backgroundColor: '#75492a',
-                  height: '3.75px',
+                  height: '6.25px',
                   opacity: 1,
                 },
               }}
             />
-            <div className="sm:py-[5px] font-DmSans rounded-md text-[8.75px] sm:text-[10px] md:text-[11.25px] text-BrandGray flex items-center justify-center ">
+            <div className="sm:py-[6.25px] font-DmSans rounded-md text-[10.9375px] sm:text-[12.5px] md:text-[14.0625px] text-BrandGray flex items-center justify-center ">
               {(() => {
                 // Calculate actual duration based on speed multiplier
                 const speed = (0.25 + (speedMultiplier / 100) * 3.75) * 3;
@@ -268,18 +277,18 @@ export default function ControlPill() {
             </div>
           </div>
           {/* play, go back and forward button */}
-          <div className="flex flex-row items-center gap-[2.5px] sm:gap-[5px] justify-between">
-            <div className="h-[15px] sm:h-5 md:h-5 lg:h-[30px] w-[15px] sm:w-5 md:w-5 lg:w-[30px] bg-BrandBlack2 border-[0.5px] border-BrandGray flex items-center justify-center rounded-sm">
-              < IoPlaySkipBackOutline className="text-BrandOrange text-sm sm:text-base md:text-lg" />
+          <div className="flex flex-row items-center gap-[3.125px] sm:gap-[6.25px] justify-between">
+            <div className="h-[16px] sm:h-[22px] md:h-[24px] lg:h-[32px] w-[16px] sm:w-[22px] md:w-[24px] lg:w-[32px] bg-BrandBlack2 border-[0.625px] border-BrandGray flex items-center justify-center rounded-sm">
+              < IoPlaySkipBackOutline className="text-BrandOrange text-[17.5px] sm:text-[20px] md:text-[22.5px] lg:text-[25px]" />
             </div>
             <div
               onClick={() => setIsPlaying((p) => !p)}
-              className="h-[30px] w-[30px] sm:h-[35px] sm:w-[35px] md:h-10 md:w-10 bg-BrandOrange flex items-center justify-center rounded-sm cursor-pointer"
+              className="h-[37.5px] w-[37.5px] sm:h-[43.75px] sm:w-[43.75px] md:h-[50px] md:w-[50px] bg-BrandOrange flex items-center justify-center rounded-lg cursor-pointer"
             >
               {isPlaying ? (
                 <svg
-                  width="18"
-                  height="18"
+                  width="22.5"
+                  height="22.5"
                   viewBox="0 0 24 24"
                   fill="currentColor"
                   className="text-BrandBlack"
@@ -288,20 +297,20 @@ export default function ControlPill() {
                   <rect x="14" y="4" width="4" height="16" />
                 </svg>
               ) : (
-                <IoPlayOutline className="text-BrandBlack text-lg sm:text-lg md:text-xl lg:text-2xl" />
+                <IoPlayOutline className="text-BrandBlack text-[22.5px] sm:text-[22.5px] md:text-[25px] lg:text-[31.25px]" />
               )}
             </div>
-            <div className="h-[15px] sm:h-5 md:h-5 lg:h-[30px] w-[15px] sm:w-5 md:w-5 lg:w-[30px] bg-BrandBlack2 border-[0.5px] border-BrandGray flex items-center justify-center rounded-sm">
-              <IoPlaySkipForwardOutline className="text-BrandOrange text-sm sm:text-base md:text-lg" />
+            <div className="h-[16px] sm:h-[22px] md:h-[24px] lg:h-[32px] w-[16px] sm:w-[22px] md:w-[24px] lg:w-[32px] bg-BrandBlack2 border-[0.625px] border-BrandGray flex items-center justify-center rounded-sm">
+              <IoPlaySkipForwardOutline className="text-BrandOrange text-[17.5px] sm:text-[20px] md:text-[22.5px] lg:text-[25px]" />
             </div>
           </div>
 
           {/* add/delete keyframe button */}
           <div
             onClick={selectedKeyframe !== null ? handleDeleteKeyframe : handleAddKeyframe}
-            className="w-200/641 h-[15px] sm:h-5 md:h-5 lg:h-[30px] bg-BrandOrange flex flex-row items-center justify-center rounded-xl px-[5px] sm:px-[7.5px] cursor-pointer"
+            className="w-200/641 h-[16px] sm:h-[22px] md:h-[24px] lg:h-[32px] bg-BrandOrange flex flex-row items-center justify-center rounded-xl px-[6.25px] sm:px-[9.375px] cursor-pointer"
           >
-            <p className="text-BrandBlack text-[13px] sm:text-[13px] md:text-[14px] font-DmSans">
+            <p className="text-BrandBlack text-[16.25px] sm:text-[16.25px] md:text-[17.5px] font-DmSans">
               {selectedKeyframe !== null ? "Delete Keyframe" : "Add Keyframe"}
             </p>
           </div>
