@@ -176,6 +176,7 @@ export default function RightPanel() {
                      px-2 sm:px-2.5 md:px-3 py-2 sm:py-2.5 md:py-3
                      flex flex-col
                      gap-0.5 sm:gap-1 md:gap-1.5 lg:gap-2
+                     select-none
 
                    "
         >

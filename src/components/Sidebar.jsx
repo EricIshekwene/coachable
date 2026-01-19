@@ -234,6 +234,7 @@ function Sidebar() {
                      px-2 py-3 sm:py-4 md:py-5 lg:py-6
                      flex flex-col
                      gap-1 sm:gap-2 md:gap-3 lg:gap-4
+                     select-none
                    "
         >
             {/* Select Tool */}
