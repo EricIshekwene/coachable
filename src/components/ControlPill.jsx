@@ -5,6 +5,11 @@ import { IoIosAddCircleOutline, IoIosRemoveCircleOutline } from "react-icons/io"
 import SelectedKeyframeIcon from "../assets/keyframes/Selected Key Frame.png";
 import UnselectedKeyframeIcon from "../assets/keyframes/Unselected Key Frame.png";
 import { Slider } from '@mui/material';
+import { FaChevronDown, FaTimes } from "react-icons/fa";
+import { BiUndo } from "react-icons/bi";
+import { BiRedo } from "react-icons/bi";
+import { FaRegTrashCan } from "react-icons/fa6";
+import { FiSettings } from "react-icons/fi";
 export default function ControlPill() {
   const [timePercent, setTimePercent] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -17,6 +22,10 @@ export default function ControlPill() {
   const justFinishedDragging = useRef(false);
   const [keyframes, setKeyframes] = useState([]); // Array of timePercent values (0-100)
   const [selectedKeyframe, setSelectedKeyframe] = useState(null); // Selected keyframe timePercent or null
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false); // Dropdown menu state
+  const [autoplayEnabled, setAutoplayEnabled] = useState(true); // Autoplay state
+  const [actionHistory, setActionHistory] = useState([]); // Stack of actions for undo
+  const [redoHistory, setRedoHistory] = useState([]); // Stack of actions for redo
 
   // Duration for one full traversal from 0 -> 100 before looping
   const LOOP_SECONDS = 30;
@@ -40,7 +49,15 @@ export default function ControlPill() {
 
       setTimePercent((p) => {
         const next = p + (dt / LOOP_SECONDS) * 100 * speed;
-        return next >= 100 ? next - 100 : next; // loop back
+        // If autoplay is disabled, return to start (0) when reaching 100, but don't continue playing
+        if (next >= 100) {
+          if (!autoplayEnabled) {
+            setIsPlaying(false); // Stop playing when autoplay is off
+            return 0; // Return to start
+          }
+          return next - 100; // loop back when autoplay is on
+        }
+        return next;
       });
 
       rafId.current = requestAnimationFrame(tick);
@@ -53,7 +70,7 @@ export default function ControlPill() {
       rafId.current = null;
       lastTs.current = null;
     };
-  }, [isPlaying, speedMultiplier]);
+  }, [isPlaying, speedMultiplier, autoplayEnabled]);
 
   // Convert mouse position to timePercent (0-100) considering the 3%-97% visual range
   const getPercentFromMousePosition = (clientX) => {
@@ -135,7 +152,13 @@ export default function ControlPill() {
     const existingKeyframe = keyframes.find(kf => Math.abs(kf - timePercent) < MIN_DISTANCE);
 
     if (!existingKeyframe) {
-      setKeyframes([...keyframes, timePercent].sort((a, b) => a - b));
+      // Clear redo history when making new changes (new changes invalidate redo history)
+      setRedoHistory([]);
+      // Add keyframe
+      const newKeyframes = [...keyframes, timePercent].sort((a, b) => a - b);
+      setKeyframes(newKeyframes);
+      // Record the action for undo
+      setActionHistory([...actionHistory, { type: 'add', keyframe: timePercent }]);
     }
   };
 
@@ -153,21 +176,113 @@ export default function ControlPill() {
   const handleDeleteKeyframe = (e) => {
     e.stopPropagation(); // Prevent triggering pill click
     if (selectedKeyframe !== null) {
-      setKeyframes(keyframes.filter(kf => kf !== selectedKeyframe));
+      const deletedKeyframe = selectedKeyframe;
+      // Clear redo history when making new changes
+      setRedoHistory([]);
+      // Remove keyframe
+      setKeyframes(keyframes.filter(kf => kf !== deletedKeyframe));
       setSelectedKeyframe(null);
+      // Record the action for undo
+      setActionHistory([...actionHistory, { type: 'delete', keyframe: deletedKeyframe }]);
+    }
+  };
+
+  // Handle trash button - remove all keyframes
+  const handleTrash = (e) => {
+    e.stopPropagation();
+    if (keyframes.length > 0) {
+      // Clear redo history when making new changes
+      setRedoHistory([]);
+      // Record all deletions as a single clear action
+      const allKeyframes = [...keyframes];
+      setKeyframes([]);
+      setSelectedKeyframe(null);
+      // Record the clear action for undo (we'll handle it specially in undo)
+      setActionHistory([...actionHistory, { type: 'clear', keyframes: allKeyframes }]);
+    }
+  };
+
+  // Handle undo - reverse the last action
+  const handleUndo = (e) => {
+    e.stopPropagation();
+    if (actionHistory.length > 0) {
+      const lastAction = actionHistory[actionHistory.length - 1];
+      const newActionHistory = actionHistory.slice(0, -1);
+      
+      // Reverse the action
+      if (lastAction.type === 'add') {
+        // Undo add: remove the keyframe
+        const newKeyframes = keyframes.filter(kf => kf !== lastAction.keyframe);
+        setKeyframes(newKeyframes);
+        if (selectedKeyframe === lastAction.keyframe) {
+          setSelectedKeyframe(null);
+        }
+        // Add reversed action to redo history
+        setRedoHistory([...redoHistory, { type: 'delete', keyframe: lastAction.keyframe }]);
+      } else if (lastAction.type === 'delete') {
+        // Undo delete: add the keyframe back
+        const newKeyframes = [...keyframes, lastAction.keyframe].sort((a, b) => a - b);
+        setKeyframes(newKeyframes);
+        // Add reversed action to redo history
+        setRedoHistory([...redoHistory, { type: 'add', keyframe: lastAction.keyframe }]);
+      } else if (lastAction.type === 'clear') {
+        // Undo clear: restore all keyframes
+        // Store the restored state for redo (so redo will clear these restored keyframes)
+        setRedoHistory([...redoHistory, { type: 'clear', keyframes: lastAction.keyframes }]);
+        setKeyframes(lastAction.keyframes);
+      }
+      
+      setActionHistory(newActionHistory);
+    }
+  };
+
+  // Handle redo - re-apply the last undone action
+  const handleRedo = (e) => {
+    e.stopPropagation();
+    if (redoHistory.length > 0) {
+      const lastRedoAction = redoHistory[redoHistory.length - 1];
+      const newRedoHistory = redoHistory.slice(0, -1);
+      
+      // Re-apply the action
+      if (lastRedoAction.type === 'add') {
+        // Redo add: add the keyframe
+        const newKeyframes = [...keyframes, lastRedoAction.keyframe].sort((a, b) => a - b);
+        setKeyframes(newKeyframes);
+        // Add action back to undo history
+        setActionHistory([...actionHistory, { type: 'add', keyframe: lastRedoAction.keyframe }]);
+      } else if (lastRedoAction.type === 'delete') {
+        // Redo delete: remove the keyframe
+        const newKeyframes = keyframes.filter(kf => kf !== lastRedoAction.keyframe);
+        setKeyframes(newKeyframes);
+        if (selectedKeyframe === lastRedoAction.keyframe) {
+          setSelectedKeyframe(null);
+        }
+        // Add action back to undo history
+        setActionHistory([...actionHistory, { type: 'delete', keyframe: lastRedoAction.keyframe }]);
+      } else if (lastRedoAction.type === 'clear') {
+        // Redo clear: save current state, then clear
+        const currentKeyframes = [...keyframes];
+        setKeyframes([]);
+        setSelectedKeyframe(null);
+        // Add action back to undo history with the keyframes that were cleared
+        setActionHistory([...actionHistory, { type: 'clear', keyframes: currentKeyframes }]);
+      }
+      
+      setRedoHistory(newRedoHistory);
     }
   };
 
   return (
     <>
       {/*Slate Time controller and keyframes*/}
-      <div className="aspect-[641/124] h-[62.5px] sm:h-[75px] md:h-[100px] lg:h-[125px]
+      <div className={`aspect-[641/124] h-[62.5px] sm:h-[75px] md:h-[100px] lg:h-[125px]
                         flex flex-col items-center justify-between gap-[3.125px] sm:gap-[6.25px] 
                         bg-BrandBlack
                          py-[3.125px] sm:py-[6.25px] px-[12.5px] sm:px-[15.625px] md:px-[18.75px]
                         rounded-[25px] sm:rounded-[28.125px] md:rounded-[31.25px] 
-                        border-[0.625px] border-BrandGray 
-                        absolute top-7/8 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                        b
+                        absolute left-1/2 transform -translate-x-1/2 -translate-y-1/2 transition-all duration-300 ${isDropdownOpen ? 'top-[84%]' : 'top-[87%]'
+        }`}>
         {/* time pill */}
         <div
           ref={pillRef}
@@ -316,6 +431,68 @@ export default function ControlPill() {
           </div>
         </div>
       </div>
+      {/* dropdown menu button */}
+      {!isDropdownOpen && (
+        <div
+          onClick={() => setIsDropdownOpen(true)}
+          className="absolute top-[97.5%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-[25px] w-[25px] bg-BrandBlack rounded-full border-[0.625px] border-BrandGray flex items-center justify-center cursor-pointer hover:bg-BrandBlack2 transition-colors"
+        >
+          <FaChevronDown className="text-BrandOrange text-[12.5px] sm:text-[12.5px] md:text-[12.5px] font-DmSans" />
+        </div>
+      )}
+      {/* dropdown Options */}
+      {isDropdownOpen && (
+        <div className="absolute top-[96.5%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-[40px] bg-BrandBlack rounded-full border-[0.625px] border-BrandGray flex items-center gap-[12px] px-[12px]">
+          {/* Trash icon */}
+          <FaRegTrashCan 
+            onClick={handleTrash}
+            className="text-BrandOrange text-[12.5px] sm:text-[12.5px] md:text-[18px] font-DmSans cursor-pointer hover:opacity-80 transition-opacity" 
+          />
+
+          {/* Undo icon */}
+          <BiUndo 
+            onClick={handleUndo}
+            className={`text-BrandOrange text-[12.5px] sm:text-[12.5px] md:text-[18px] font-DmSans cursor-pointer hover:opacity-80 transition-opacity ${actionHistory.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+          />
+
+          {/* Redo icon */}
+          <BiRedo 
+            onClick={handleRedo}
+            className={`text-BrandOrange text-[12.5px] sm:text-[12.5px] md:text-[18px] font-DmSans cursor-pointer hover:opacity-80 transition-opacity ${redoHistory.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+          />
+
+          {/* Autoplay pill switch */}
+          <div className="flex items-center gap-[8px]">
+            <span className="text-BrandGray text-[10px] sm:text-[12px] md:text-[14px] font-DmSans whitespace-nowrap">Autoplay</span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const newAutoplayState = !autoplayEnabled;
+                setAutoplayEnabled(newAutoplayState);
+                // When autoplay is turned off, return to start
+                if (!newAutoplayState) {
+                  setTimePercent(0);
+                  setIsPlaying(false);
+                }
+              }}
+              className={`relative w-[40px] h-[20px] rounded-full transition-colors duration-200 cursor-pointer focus:outline-none ${autoplayEnabled ? 'bg-BrandOrange' : 'bg-BrandGray'
+                }`}
+              aria-label="Toggle autoplay"
+            >
+              <span
+                className={`absolute top-1/2 left-0 transform -translate-y-1/2 transition-transform duration-200 w-[16px] h-[16px] bg-BrandBlack rounded-full shadow-sm ${autoplayEnabled ? 'translate-x-[22px]' : 'translate-x-[4px]'
+                  }`}
+              />
+            </button>
+          </div>
+
+          {/* Close button (X) */}
+          <FaTimes
+            onClick={() => setIsDropdownOpen(false)}
+            className="text-BrandOrange text-[14px] sm:text-[14px] md:text-[18px] font-DmSans cursor-pointer hover:opacity-80 transition-opacity ml-[4px]"
+          />
+        </div>
+      )}
     </>
   )
 }
