@@ -14,7 +14,7 @@ import { ImCheckboxChecked } from "react-icons/im";
 import { BsBookmarkPlus } from "react-icons/bs";
 import { Popover } from "./subcomponents/Popovers";
 import { ColorPickerPopover } from "./subcomponents/ColorPickerPopover";
-export default function RightPanel() {
+export default function RightPanel({ onOpenAdvancedSettings }) {
     const iconClass = "text-BrandOrange text-sm sm:text-base md:text-lg lg:text-xl";
     const [playName, setPlayName] = useState("Twister");
     const [isEditing, setIsEditing] = useState(false);
@@ -171,12 +171,14 @@ export default function RightPanel() {
     return (
         <aside
             className="
-                     h-screen shrink-0 bg-BrandBlack
-                     w-28 sm:w-32 md:w-36 lg:w-40 xl:w-44
+                     h-screen shrink-0  bg-BrandBlack
+                     w-32 sm:w-36 md:w-40 lg:w-44 xl:w-48
                      px-2 sm:px-2.5 md:px-3 py-2 sm:py-2.5 md:py-3
                      flex flex-col
-                     gap-0.5 sm:gap-1 md:gap-1.5 lg:gap-2
+                     gap-0.5 sm:gap-0.5 md:gap-1 lg:gap-1.5
                      select-none
+                     overflow-y-auto hide-scroll
+                     flex flex-col justify-center
 
                    "
         >
@@ -362,12 +364,13 @@ export default function RightPanel() {
                 <div className="text-BrandOrange text-xs sm:text-sm md:text-base font-DmSans">
                     Players (0)
                 </div>
-                <div className="flex flex-col w-full items-start justify-start gap-0.5 sm:gap-1 mt-1 sm:mt-1.5 md:mt-2">
+                <div className="flex flex-col w-full items-start justify-start gap-0.5 sm:gap-1 mt-1 sm:mt-1.5 md:mt-2 max-h-[140px] overflow-y-auto">
 
                     <PlayerButton onClick={() => { }} isSelected={false} />
                     <PlayerButton onClick={() => { }} isSelected={false} />
                     <PlayerButton onClick={() => { }} isSelected={false} />
                     <PlayerButton onClick={() => { }} isSelected={false} />
+
 
                 </div>
 
@@ -376,12 +379,15 @@ export default function RightPanel() {
             </div>
             {/* Advanced Settings */}
             <div className="w-full py-1 sm:py-1.5 md:py-2 border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4">
-                <div className="w-full flex flex-row border-[0.5px] border-BrandGray2 justify-evenly bg-BrandBlack2 py-1.5 sm:py-2 px-2 sm:px-2.5 md:px-3 rounded-md items-center gap-0.5 sm:gap-1">
+                <button
+                    onClick={() => onOpenAdvancedSettings?.()}
+                    className="w-full flex flex-row border-[0.5px] border-BrandGray2 justify-evenly bg-BrandBlack2 py-1.5 sm:py-2 px-2 sm:px-2.5 md:px-3 rounded-md items-center gap-0.5 sm:gap-1 cursor-pointer hover:bg-BrandBlack transition-colors duration-200"
+                >
                     <IoSettingsOutline className="text-BrandWhite text-sm sm:text-base md:text-lg" />
                     <p className="text-BrandWhite text-[10px] sm:text-xs font-bold font-DmSans">
                         Advanced Settings
                     </p>
-                </div>
+                </button>
             </div>
 
             {/* ALl players */}

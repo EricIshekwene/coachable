@@ -232,7 +232,7 @@ function Sidebar() {
                      h-screen  shrink-0 bg-BrandBlack
                      w-14 sm:w-16 md:w-18 lg:w-20
                      px-2 py-3 sm:py-4 md:py-5 lg:py-6
-                     flex flex-col
+                     flex flex-col justify-center
                      gap-1 sm:gap-2 md:gap-3 lg:gap-4
                      select-none
                    "
@@ -650,7 +650,7 @@ function Sidebar() {
                     onMouseEnter={() => setHoveredTooltip("undo")}
                     onMouseLeave={() => setHoveredTooltip(null)}
                 >
-                    <Button Icon={<BiUndo className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
+                    <Button Icon={<BiUndo className={"text-BrandOrange text-xl sm:text-2xl md:text-3xl"} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
                     <Tooltip
                         isOpen={hoveredTooltip === "undo"}
                         text="Undo"
@@ -661,7 +661,7 @@ function Sidebar() {
                     onMouseEnter={() => setHoveredTooltip("redo")}
                     onMouseLeave={() => setHoveredTooltip(null)}
                 >
-                    <Button Icon={<BiRedo className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
+                    <Button Icon={<BiRedo className={"text-BrandOrange text-xl sm:text-2xl md:text-3xl"} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
                     <Tooltip
                         isOpen={hoveredTooltip === "redo"}
                         text="Redo"
@@ -672,7 +672,7 @@ function Sidebar() {
                     onMouseEnter={() => setHoveredTooltip("reset")}
                     onMouseLeave={() => setHoveredTooltip(null)}
                 >
-                    <Button Icon={<BiReset className={iconClass} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
+                    <Button Icon={<BiReset className={"text-BrandOrange text-xl sm:text-2xl md:text-3xl"} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
                     <Tooltip
                         isOpen={hoveredTooltip === "reset"}
                         text="Reset"

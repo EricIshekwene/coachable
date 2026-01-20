@@ -435,14 +435,14 @@ export default function ControlPill() {
       {!isDropdownOpen && (
         <div
           onClick={() => setIsDropdownOpen(true)}
-          className="absolute top-[97.5%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-[25px] w-[25px] bg-BrandBlack rounded-full border-[0.625px] border-BrandGray flex items-center justify-center cursor-pointer hover:bg-BrandBlack2 transition-colors"
+          className="absolute top-[97.5%] select-none left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-[25px] w-[25px] bg-BrandBlack rounded-full border-[0.625px] border-BrandGray flex items-center justify-center cursor-pointer hover:bg-BrandBlack2 transition-colors"
         >
           <FaChevronDown className="text-BrandOrange text-[12.5px] sm:text-[12.5px] md:text-[12.5px] font-DmSans" />
         </div>
       )}
       {/* dropdown Options */}
       {isDropdownOpen && (
-        <div className="absolute top-[96.5%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-[40px] bg-BrandBlack rounded-full border-[0.625px] border-BrandGray flex items-center gap-[12px] px-[12px]">
+        <div className="absolute top-[96.5%] left-1/2 select-none transform -translate-x-1/2 -translate-y-1/2 h-[40px] bg-BrandBlack rounded-full border-[0.625px] border-BrandGray flex items-center gap-[12px] px-[12px]">
           {/* Trash icon */}
           <FaRegTrashCan 
             onClick={handleTrash}
