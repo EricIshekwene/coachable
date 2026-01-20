@@ -208,7 +208,7 @@ export default function ControlPill() {
     if (actionHistory.length > 0) {
       const lastAction = actionHistory[actionHistory.length - 1];
       const newActionHistory = actionHistory.slice(0, -1);
-      
+
       // Reverse the action
       if (lastAction.type === 'add') {
         // Undo add: remove the keyframe
@@ -231,7 +231,7 @@ export default function ControlPill() {
         setRedoHistory([...redoHistory, { type: 'clear', keyframes: lastAction.keyframes }]);
         setKeyframes(lastAction.keyframes);
       }
-      
+
       setActionHistory(newActionHistory);
     }
   };
@@ -242,7 +242,7 @@ export default function ControlPill() {
     if (redoHistory.length > 0) {
       const lastRedoAction = redoHistory[redoHistory.length - 1];
       const newRedoHistory = redoHistory.slice(0, -1);
-      
+
       // Re-apply the action
       if (lastRedoAction.type === 'add') {
         // Redo add: add the keyframe
@@ -267,7 +267,7 @@ export default function ControlPill() {
         // Add action back to undo history with the keyframes that were cleared
         setActionHistory([...actionHistory, { type: 'clear', keyframes: currentKeyframes }]);
       }
-      
+
       setRedoHistory(newRedoHistory);
     }
   };
@@ -425,7 +425,7 @@ export default function ControlPill() {
             onClick={selectedKeyframe !== null ? handleDeleteKeyframe : handleAddKeyframe}
             className="w-200/641 h-[16px] sm:h-[22px] md:h-[24px] lg:h-[32px] bg-BrandOrange flex flex-row items-center justify-center rounded-xl px-[6.25px] sm:px-[9.375px] cursor-pointer"
           >
-            <p className="text-BrandBlack text-[16.25px] sm:text-[16.25px] md:text-[17.5px] font-DmSans">
+            <p className="text-BrandBlack text-[10px] sm:text-[12px] md:text-[15px]  lg:text-[17.l5px] font-DmSans">
               {selectedKeyframe !== null ? "Delete Keyframe" : "Add Keyframe"}
             </p>
           </div>
@@ -444,19 +444,19 @@ export default function ControlPill() {
       {isDropdownOpen && (
         <div className="absolute top-[96.5%] left-1/2 select-none transform -translate-x-1/2 -translate-y-1/2 h-[40px] bg-BrandBlack rounded-full border-[0.625px] border-BrandGray flex items-center gap-[12px] px-[12px]">
           {/* Trash icon */}
-          <FaRegTrashCan 
+          <FaRegTrashCan
             onClick={handleTrash}
-            className="text-BrandOrange text-[12.5px] sm:text-[12.5px] md:text-[18px] font-DmSans cursor-pointer hover:opacity-80 transition-opacity" 
+            className="text-BrandOrange text-[12.5px] sm:text-[12.5px] md:text-[18px] font-DmSans cursor-pointer hover:opacity-80 transition-opacity"
           />
 
           {/* Undo icon */}
-          <BiUndo 
+          <BiUndo
             onClick={handleUndo}
             className={`text-BrandOrange text-[12.5px] sm:text-[12.5px] md:text-[18px] font-DmSans cursor-pointer hover:opacity-80 transition-opacity ${actionHistory.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
           />
 
           {/* Redo icon */}
-          <BiRedo 
+          <BiRedo
             onClick={handleRedo}
             className={`text-BrandOrange text-[12.5px] sm:text-[12.5px] md:text-[18px] font-DmSans cursor-pointer hover:opacity-80 transition-opacity ${redoHistory.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
           />

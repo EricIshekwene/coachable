@@ -1,33 +1,50 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { FaChevronDown, FaTimes } from "react-icons/fa";
+import { FaCrown } from "react-icons/fa6";
 import { Slider } from '@mui/material';
-import { ColorPickerPopover } from "./subcomponents/ColorPickerPopover";
 
 export default function AdvancedSettings({ onClose }) {
     const [showMarkings, setShowMarkings] = useState(true);
     const [pitchSize, setPitchSize] = useState("Full Field");
-    const [pitchColor, setPitchColor] = useState("#7ED321");
+    const [pitchColor, setPitchColor] = useState("#6FAF7B"); // Stadium Grass
+    const [selectedPitchColorName, setSelectedPitchColorName] = useState("Stadium Grass");
     const [playerSize, setPlayerSize] = useState(50);
     const [showNumber, setShowNumber] = useState(true);
     const [showLabel, setShowLabel] = useState(true);
     const [videoQuality, setVideoQuality] = useState("1080p");
-    const [openColorPicker, setOpenColorPicker] = useState(false);
+    const [watermark, setWatermark] = useState(true);
+    const [includeMetadata, setIncludeMetadata] = useState(true);
+    const [openPitchColorDropdown, setOpenPitchColorDropdown] = useState(false);
     const [openPitchSizeDropdown, setOpenPitchSizeDropdown] = useState(false);
     const [openVideoQualityDropdown, setOpenVideoQualityDropdown] = useState(false);
-    const colorPickerRef = useRef(null);
+    const [playOnLoad, setPlayOnLoad] = useState(true);
+    const pitchColorRef = useRef(null);
     const pitchSizeRef = useRef(null);
     const videoQualityRef = useRef(null);
 
     const pitchSizeOptions = ["Full Field", "Half Pitch", "Goal", "Quarter Field"];
     const videoQualityOptions = ["360p", "480p", "720p", "1080p", "1440p", "2160p (4K)"];
 
-    // Close color picker when clicking outside
+    const pitchColorOptions = [
+        { name: "Fresh Turf Green", hex: "#E6F4EA" },
+        { name: "Practice Grass", hex: "#CDE7D3" },
+        { name: "Natural Grass", hex: "#9FCC9F" },
+        { name: "Stadium Grass", hex: "#6FAF7B" },
+        { name: "Pro Turf Green", hex: "#3E8E5B" },
+        { name: "Deep Field Green", hex: "#1F5F3F" },
+        { name: "Sand Beige", hex: "#EFE6D8" },
+        { name: "Clay Field", hex: "#D8C3A5" },
+        { name: "Chalk Line Blue", hex: "#AFC9E8" },
+        { name: "Tactical Blue", hex: "#4A78A8" },
+    ];
+
+    // Close pitch color dropdown when clicking outside
     useEffect(() => {
-        if (!openColorPicker) return;
+        if (!openPitchColorDropdown) return;
 
         const handleClickOutside = (e) => {
-            if (colorPickerRef.current && !colorPickerRef.current.contains(e.target)) {
-                setOpenColorPicker(false);
+            if (pitchColorRef.current && !pitchColorRef.current.contains(e.target)) {
+                setOpenPitchColorDropdown(false);
             }
         };
 
@@ -35,7 +52,7 @@ export default function AdvancedSettings({ onClose }) {
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [openColorPicker]);
+    }, [openPitchColorDropdown]);
 
     // Close pitch size dropdown when clicking outside
     useEffect(() => {
@@ -70,11 +87,11 @@ export default function AdvancedSettings({ onClose }) {
     }, [openVideoQualityDropdown]);
 
     return (
-        <div className="absolute right-0 top-0 h-screen z-40">
+        <div className="absolute right-0 top-0 h-screen z-40 flex flex-col">
             <aside
                 className="
-                     h-full shrink-0 bg-BrandBlack
-                     w-32 sm:w-36 md:w-40 lg:w-44 xl:w-48
+                     flex-1 shrink-0 bg-BrandBlack
+                     w-36 sm:w-40 md:w-48 lg:w-52 xl:w-56
                      px-2 sm:px-2.5 md:px-3 py-2 sm:py-2.5 md:py-3
                      flex flex-col
                      gap-0.5 sm:gap-0.5 md:gap-1 lg:gap-1.5
@@ -159,29 +176,47 @@ export default function AdvancedSettings({ onClose }) {
                     <div className="flex flex-col w-full items-start justify-start gap-1 sm:gap-1.5 relative">
                         <p className="text-BrandWhite text-xs sm:text-sm font-DmSans">Pitch Color</p>
                         <div
-                            ref={colorPickerRef}
-                            className="relative"
+                            ref={pitchColorRef}
+                            className="relative w-full"
                         >
                             <div
-                                onClick={() => setOpenColorPicker(!openColorPicker)}
+                                onClick={() => setOpenPitchColorDropdown(!openPitchColorDropdown)}
                                 className="bg-BrandBlack2 h-5 sm:h-6 w-full flex flex-row items-center justify-between px-2 rounded-md cursor-pointer"
                             >
                                 <div className="flex items-center gap-2">
                                     <div
-                                        className="w-3 h-3 sm:w-4 sm:h-4 rounded border border-BrandGray"
+                                        className="w-3 h-3 sm:w-4 sm:h-4 rounded border border-BrandGray shrink-0"
                                         style={{ backgroundColor: pitchColor }}
                                     />
-                                    <p className="text-BrandWhite text-xs sm:text-sm font-DmSans">{pitchColor}</p>
+                                    <p className="text-BrandWhite text-xs sm:text-sm font-DmSans truncate">{selectedPitchColorName}</p>
                                 </div>
+                                <FaChevronDown className={`text-BrandOrange text-xs transition-transform shrink-0 ${openPitchColorDropdown ? 'rotate-180' : ''}`} />
                             </div>
-                            {openColorPicker && (
-                                <div className="absolute left-full ml-2 top-0 z-50">
-                                    <ColorPickerPopover
-                                        color={pitchColor}
-                                        onChange={(color) => {
-                                            setPitchColor(color.hex);
-                                        }}
-                                    />
+                            {openPitchColorDropdown && (
+                                <div className="absolute left-0 top-full w-full bg-BrandBlack2 border border-BrandGray rounded-md mt-1 max-h-60 overflow-y-auto z-10 shadow-lg">
+                                    {pitchColorOptions.map((color, idx) => (
+                                        <div
+                                            key={idx}
+                                            onClick={() => {
+                                                setPitchColor(color.hex);
+                                                setSelectedPitchColorName(color.name);
+                                                setOpenPitchColorDropdown(false);
+                                            }}
+                                            className={`px-2 py-1.5 text-xs sm:text-sm font-DmSans cursor-pointer transition-colors flex items-center gap-2 ${pitchColor === color.hex
+                                                ? 'bg-BrandOrange text-BrandBlack'
+                                                : 'text-BrandWhite hover:bg-BrandBlack'
+                                                }`}
+                                        >
+                                            <div
+                                                className="w-3 h-3 sm:w-4 sm:h-4 rounded border border-BrandGray shrink-0"
+                                                style={{ backgroundColor: color.hex }}
+                                            />
+                                            <div className="flex flex-col flex-1 min-w-0">
+                                                <span className="truncate">{color.name}</span>
+                                                <span className={`text-[10px] ${pitchColor === color.hex ? 'text-BrandBlack/70' : 'text-BrandGray'}`}>{color.hex}</span>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>
@@ -190,9 +225,18 @@ export default function AdvancedSettings({ onClose }) {
                         <input
                             type="text"
                             value={pitchColor}
-                            onChange={(e) => setPitchColor(e.target.value)}
+                            onChange={(e) => {
+                                setPitchColor(e.target.value);
+                                // Check if the hex matches any predefined color
+                                const matchedColor = pitchColorOptions.find(c => c.hex.toLowerCase() === e.target.value.toLowerCase());
+                                if (matchedColor) {
+                                    setSelectedPitchColorName(matchedColor.name);
+                                } else {
+                                    setSelectedPitchColorName("Custom");
+                                }
+                            }}
                             className="w-full h-6 sm:h-7 bg-BrandBlack2 border-[0.5px] border-BrandGray text-BrandWhite rounded-md px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors"
-                            placeholder="#7ED321"
+                            placeholder="#6FAF7B"
                         />
                     </div>
                 </div>
@@ -206,7 +250,7 @@ export default function AdvancedSettings({ onClose }) {
                     {/* Default Player Size Slider */}
                     <div className="flex flex-col w-full items-start justify-start gap-1 sm:gap-1.5">
                         <p className="text-BrandWhite text-xs sm:text-sm font-DmSans">Default Player Size</p>
-                        <div className="w-full px-1">
+                        <div className="w-full px-1 flex flex-row gap-1">
                             <Slider
                                 min={0}
                                 max={100}
@@ -242,6 +286,9 @@ export default function AdvancedSettings({ onClose }) {
                                     },
                                 }}
                             />
+                            <div className="flex flex-row bg-BrandBlack2 h-5 sm:h-6 w-10 items-center justify-between p-1 ">
+                                <p className="text-BrandWhite text-xs sm:text-sm font-DmSans">30px</p>
+                            </div>
                         </div>
                     </div>
 
@@ -288,10 +335,10 @@ export default function AdvancedSettings({ onClose }) {
                     </div>
                 </div>
 
-                {/* Video Settings */}
+                {/* Export Video Settings */}
                 <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1 sm:gap-2">
                     <div className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans">
-                        Video Settings
+                        Export Video Settings
                     </div>
 
                     {/* Video Quality Dropdown */}
@@ -329,8 +376,86 @@ export default function AdvancedSettings({ onClose }) {
                             )}
                         </div>
                     </div>
+
+                    {/* Watermark Switch */}
+                    <div className="flex flex-col w-full items-start justify-start gap-1 sm:gap-1.5">
+                        <div className="flex items-center justify-between w-full gap-2">
+                            <p className="text-BrandWhite text-xs sm:text-sm font-DmSans">Watermark</p>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setWatermark(!watermark);
+                                }}
+                                className={`relative w-[32px] h-[16px] rounded-full transition-colors duration-200 cursor-pointer focus:outline-none ${watermark ? 'bg-BrandOrange' : 'bg-BrandGray'
+                                    }`}
+                                aria-label="Toggle watermark"
+                            >
+                                <FaCrown
+                                    className={`absolute top-1/2 left-0 transform -translate-y-1/2 transition-transform duration-200 text-BrandBlack ${watermark ? 'translate-x-[18px]' : 'translate-x-[3px]'
+                                        } text-[10px] sm:text-[12px]`}
+                                />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Include Metadata Switch */}
+                    <div className="flex flex-col w-full items-start justify-start gap-1 sm:gap-1.5">
+                        <div className="flex items-center justify-between w-full gap-2">
+                            <p className="text-BrandWhite text-xs sm:text-sm font-DmSans">Include Metadata</p>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIncludeMetadata(!includeMetadata);
+                                }}
+                                className={`relative w-[32px] h-[16px] rounded-full transition-colors duration-200 cursor-pointer focus:outline-none ${includeMetadata ? 'bg-BrandOrange' : 'bg-BrandGray'
+                                    }`}
+                                aria-label="Toggle include metadata"
+                            >
+                                <span
+                                    className={`absolute top-1/2 left-0 transform -translate-y-1/2 transition-transform duration-200 w-[12px] h-[12px] bg-BrandBlack rounded-full shadow-sm ${includeMetadata ? 'translate-x-[18px]' : 'translate-x-[3px]'
+                                        }`}
+                                />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/*animation settings*/}
+                <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1 sm:gap-2">
+                    <div className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans">
+                        Animation Settings
+                    </div>
+                    {/*Slider for animation speed*/}
+
+                    {/*Start on Load Switch*/}
+                    <div className="flex flex-col w-full items-start justify-start gap-1 sm:gap-1.5">
+                        <div className="flex items-center justify-between w-full gap-2">
+                            <p className="text-BrandWhite text-xs sm:text-sm font-DmSans">Start on Load</p>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setPlayOnLoad(!playOnLoad);
+                                }}
+                                className={`relative w-[32px] h-[16px] rounded-full transition-colors duration-200 cursor-pointer focus:outline-none ${playOnLoad ? 'bg-BrandOrange' : 'bg-BrandGray'
+                                    }`}
+                                aria-label="Toggle play on load"
+                            >
+                                <span
+                                    className={`absolute top-1/2 left-0 transform -translate-y-1/2 transition-transform duration-200 w-[12px] h-[12px] bg-BrandBlack rounded-full shadow-sm ${playOnLoad ? 'translate-x-[18px]' : 'translate-x-[3px]'
+                                        }`}
+                                />
+                            </button>
+                        </div>
+                    </div>
+
                 </div>
             </aside>
+            {/* Reset to Default - Fixed at bottom */}
+            <div className="w-36 sm:w-40 md:w-48 lg:w-52 xl:w-56 px-2 sm:px-2.5 md:px-3 py-2 sm:py-2.5 bg-BrandBlack border-t border-BrandGray2">
+                <button className="text-BrandBlack text-xs sm:text-sm md:text-base font-DmSans bg-BrandOrange h-5 sm:h-6 w-full flex flex-row items-center justify-center rounded-md cursor-pointer hover:bg-BrandOrange/90 transition-colors">
+                    Reset to Default
+                </button>
+            </div>
             {/* close menu */}
             <button
                 onClick={() => {
