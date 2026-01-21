@@ -8,6 +8,7 @@ import AdvancedSettings from "./components/AdvancedSettings";
 function App() {
   const [color, setColor] = useState("#561ecb");
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const [logControlPillState, setLogControlPillState] = useState(true);
 
   // ControlPill state tracking
   const [timePercent, setTimePercent] = useState(0);
@@ -20,6 +21,7 @@ function App() {
   // Log state every 10 seconds
   useEffect(() => {
     const logState = () => {
+      if (!logControlPillState) return;
       const state = {
         timePercent: timePercent.toFixed(2),
         keyframes: keyframes,

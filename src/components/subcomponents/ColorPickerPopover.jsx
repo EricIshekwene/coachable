@@ -2,19 +2,19 @@ import React from "react";
 import { SketchPicker } from "react-color";
 
 export const ColorPickerPopover = ({ color, onChange }) => {
-    const presetColors = ["#D0021B", "#F5A623", "#F8E71C", "#8B572A", "#7ED321", "#561ecb", "#F8E71C", "#8B572A"];
+  const presetColors = ["#0033FF", "#FF0000"];
 
-    return (
-        <div
-            className="
+  return (
+    <div
+      className="
         ml-2 rounded-md
         bg-BrandBlack
         p-3 sm:p-4
         w-[160px] sm:w-[180px] md:w-[200px] lg:w-[220px] xl:w-[240px]
         shadow-lg
       "
-        >
-            <style>{`
+    >
+      <style>{`
         /* ===== Root picker panel ===== */
         .sketch-picker {
           background: transparent !important;
@@ -94,16 +94,16 @@ export const ColorPickerPopover = ({ color, onChange }) => {
           padding-top: 10px !important;
         }
       `}</style>
-      
-            <SketchPicker
-                color={color}
-                onChange={onChange}
-                onChangeComplete={onChange}
-                disableAlpha={true}
-                presetColors={presetColors}
-                width={220}
-                className="font-DmSans"
-            />
-        </div>
-    );
+
+      <SketchPicker
+        color={color}
+        onChange={onChange}
+        onChangeComplete={onChange}
+        disableAlpha={true}
+        presetColors={presetColors}
+        width={220}
+        className="font-DmSans"
+      />
+    </div>
+  );
 };

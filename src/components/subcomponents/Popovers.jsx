@@ -90,7 +90,7 @@ export const PopoverList = ({ children }) => {
     return (
         <div
             className="
-                bg-BrandBlack2  ml-2 rounded-md p-2
+                bg-BrandBlack2 z-50 ml-2 rounded-md p-2
                 flex flex-col gap-1 min-w-[150px] shadow-lg
                 font-DmSans
             "
@@ -105,7 +105,7 @@ export const PopoverForm = ({ children }) => {
     return (
         <div
             className="
-                bg-BrandBlack2  ml-2 rounded-md p-3 sm:p-4
+                bg-BrandBlack2 z-50 ml-2 rounded-md p-3 sm:p-4
                 flex flex-col gap-1.5 sm:gap-2
                 w-[150px] sm:w-[150px] md:w-[150px] lg:w-[175px] xl:w-[200px]
                 shadow-lg
@@ -125,7 +125,7 @@ export const Tooltip = ({ children, text, isOpen }) => {
         <div
             className="
                 absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50
-                bg-BrandBlack2 rounded-md px-2 py-1.5
+                bg-BrandBlack2 z-50 rounded-md px-2 py-1.5
                 text-BrandWhite text-xs font-DmSans
                 whitespace-nowrap shadow-lg
                 border border-BrandGray/30

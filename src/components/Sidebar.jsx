@@ -31,7 +31,7 @@ function Sidebar() {
     const [openPopover, setOpenPopover] = useState(null);
     const [playerSearch, setPlayerSearch] = useState("");
     const [showPlayerDropdown, setShowPlayerDropdown] = useState(false);
-    const [playerColor, setPlayerColor] = useState("#561ecb");
+    const [playerColor, setPlayerColor] = useState("#FF0000");
     const [hoveredTooltip, setHoveredTooltip] = useState(null);
 
     const selectButtonRef = useRef(null);
@@ -576,7 +576,7 @@ function Sidebar() {
                             style={{ backgroundColor: playerColor }}
                         />
                     }
-                    label="Last Player"
+                    label="Color"
                     onHover={() => { }}
                     isSelected={isSelectedTool("player")}
                     chevronActive={openPopover === "playerColor"}
@@ -587,7 +587,7 @@ function Sidebar() {
                 />
                 <Tooltip
                     isOpen={hoveredTooltip === "player" && openPopover !== "playerColor"}
-                    text="Last Player"
+                    text="Player Color"
                 />
                 <Popover
                     isOpen={openPopover === "playerColor"}
