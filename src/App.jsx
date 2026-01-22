@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import ControlPill from "./components/ControlPill";
 import RightPanel from "./components/RightPanel";
 import AdvancedSettings from "./components/AdvancedSettings";
+import whiteBall from "./assets/objects/balls/white_ball.png";
+
 
 function App() {
   const [color, setColor] = useState("#561ecb");
@@ -56,8 +58,16 @@ function App() {
 
   return (
     <>
-      <div className="w-full h-screen bg-BrandGreen flex flex-row justify-between relative">
+      <div className="w-full h-screen bg-BrandBlack flex flex-row justify-between relative">
         <Sidebar />
+        <div className="flex-1 bg-BrandGreen flex items-center justify-center">
+          {/* Player */}
+          <div className="aspect-square w-[30px] bg-red-500 border-[2px] border-BrandBlack rounded-full">
+
+          </div>
+          {/*ball*/}
+          <img src={whiteBall} alt="white ball" className="w-[10px]" />
+        </div>
         <ControlPill
           onTimePercentChange={setTimePercent}
           onKeyframesChange={setKeyframes}
@@ -66,6 +76,7 @@ function App() {
           onSelectedKeyframeChange={setSelectedKeyframe}
           onAutoplayChange={setAutoplayEnabled}
         />
+
         <RightPanel onOpenAdvancedSettings={() => setShowAdvancedSettings(true)} />
         {showAdvancedSettings && (
           <AdvancedSettings onClose={() => setShowAdvancedSettings(false)} />

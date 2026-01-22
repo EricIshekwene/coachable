@@ -560,7 +560,7 @@ function Sidebar() {
                 </Popover>
             </div>
 
-            <hr className="w-4/5 self-center border-BrandGray" />
+       
 
             {/* Player Tool */}
             <div
