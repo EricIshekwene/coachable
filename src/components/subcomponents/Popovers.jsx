@@ -1,8 +1,10 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 // Generic Popover component
-export const Popover = ({ isOpen, onClose, children, anchorRef, topOffset = "top-0", position = "right", marginRight }) => {
+export const Popover = ({ isOpen, onClose, children, anchorRef, topOffset = "top-0", position = "right", marginRight, offsetY = 0, offsetX }) => {
     const popoverRef = useRef(null);
+    const [style, setStyle] = useState(null);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -33,34 +35,43 @@ export const Popover = ({ isOpen, onClose, children, anchorRef, topOffset = "top
         };
     }, [isOpen, onClose, anchorRef]);
 
+    useEffect(() => {
+        if (!isOpen) return undefined;
+
+        const updatePosition = () => {
+            if (!anchorRef?.current) return;
+            const rect = anchorRef.current.getBoundingClientRect();
+            const spacing = offsetX ?? (marginRight ? marginRight * 4 : 8);
+            const top = rect.top + rect.height / 2 + offsetY;
+            const left = position === "left" ? rect.left - spacing : rect.right + spacing;
+            const transform = position === "left" ? "translate(-100%, -50%)" : "translate(0, -50%)";
+            setStyle({ top, left, transform });
+        };
+
+        updatePosition();
+        window.addEventListener("resize", updatePosition);
+        window.addEventListener("scroll", updatePosition, true);
+
+        return () => {
+            window.removeEventListener("resize", updatePosition);
+            window.removeEventListener("scroll", updatePosition, true);
+        };
+    }, [isOpen, anchorRef, position, marginRight, offsetX, offsetY]);
+
     if (!isOpen) return null;
 
-    // Map margin values to Tailwind classes
-    const marginMap = {
-        2: position === "left" ? "mr-2" : "ml-2",
-        4: position === "left" ? "mr-4" : "ml-4",
-        6: position === "left" ? "mr-6" : "ml-6",
-        8: position === "left" ? "mr-8" : "ml-8",
-        10: position === "left" ? "mr-10" : "ml-10",
-        12: position === "left" ? "mr-12" : "ml-12",
-    };
-
-    // Determine margin class based on position and custom marginRight prop
-    const marginClass = marginRight !== undefined
-        ? (marginMap[marginRight] || (position === "left" ? "mr-2" : "ml-2"))
-        : (position === "left" ? "mr-2" : "ml-2");
-
-    const positionClass = position === "left" ? "right-full" : "left-full";
-
-    return (
+    const content = (
         <div
             ref={popoverRef}
-            className={`absolute ${positionClass} ${marginClass} ${topOffset} z-50`}
+            className={`fixed z-50 ${topOffset}`}
+            style={style}
             onClick={(e) => e.stopPropagation()}
         >
             {children}
         </div>
     );
+
+    return createPortal(content, document.body);
 };
 
 // Popover layout: Grid for option tiles

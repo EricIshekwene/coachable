@@ -179,23 +179,40 @@ export const PanelButton = ({ Icon, onHover, onClick, isSelected = false }) => {
     );
 };
 
-export const PlayerButton = ({ onClick, isSelected = false, }) => {
+export const PlayerButton = ({ name, color, isSelected = false, onClick, onEdit, onDelete }) => {
     return (
-        <div className="w-full flex flex-row rounded sm bg-BrandBlack2 items-center justify-between px-1 py-0.5 sm:py-1">
+        <div
+            onClick={onClick}
+            className={`w-full flex flex-row rounded sm items-center justify-between px-1 py-0.5 sm:py-1 cursor-pointer transition-colors ${isSelected ? "bg-BrandBlack" : "bg-BrandBlack2"}`}
+        >
             {/*Player icons*/}
-            <div className="w-3 h-3 sm:w-[14px] sm:h-[14px] md:w-4 md:h-4 rounded-full bg-red-500 border-[0.25px] border-BrandBlack">
-
-            </div>
+            <div
+                className="w-3 h-3 sm:w-[14px] sm:h-[14px] md:w-4 md:h-4 rounded-full border-[0.25px] border-BrandBlack"
+                style={{ backgroundColor: color }}
+            />
             {/*Player name*/}
-            <p className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans">
-                Player 1
+            <p className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans truncate">
+                {name}
             </p>
             {/*Icons*/}
             <div className="flex flex-row justify-center items-center gap-0.5 sm:gap-1">
-                <button className="text-BrandOrange text-xs sm:text-sm md:text-base" >
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit?.();
+                    }}
+                    className="text-BrandOrange text-xs sm:text-sm md:text-base"
+                >
                     <FiEdit />
                 </button>
-                <button className="text-BrandOrange text-xs sm:text-sm md:text-base" >
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete?.();
+                    }}
+                    className={`text-BrandOrange text-xs sm:text-sm md:text-base ${onDelete ? "" : "opacity-40 cursor-not-allowed"}`}
+                    disabled={!onDelete}
+                >
                     <MdDeleteOutline />
                 </button>
             </div>
