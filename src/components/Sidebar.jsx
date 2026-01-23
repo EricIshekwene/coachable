@@ -6,13 +6,13 @@ import { ColorPickerPopover } from "./subcomponents/ColorPickerPopover";
 import { PrefabsPopover } from "./subcomponents/PrefabsPopover";
 import { PiEraserFill } from "react-icons/pi";
 import { BsPersonAdd } from "react-icons/bs";
-import playerIcon from "../assets/players/Ellipse 8.png";
 import { TbCopyPlusFilled } from "react-icons/tb";
 import { BiUndo } from "react-icons/bi";
 import { BiRedo } from "react-icons/bi";
 import { BiReset } from "react-icons/bi";
 import { IoHandLeftOutline, IoChevronDownOutline } from "react-icons/io5";
 import { useState, useEffect, useRef } from "react";
+import { useSlate } from "./SlateContext";
 import { FaArrowUpLong } from "react-icons/fa6";
 import { TbCircleDotted } from "react-icons/tb";
 import { FaRegCircle } from "react-icons/fa";
@@ -31,7 +31,9 @@ function Sidebar() {
     const [openPopover, setOpenPopover] = useState(null);
     const [playerSearch, setPlayerSearch] = useState("");
     const [showPlayerDropdown, setShowPlayerDropdown] = useState(false);
-    const [playerColor, setPlayerColor] = useState("#561ecb");
+    const { state, dispatch } = useSlate();
+    const [playerNumber, setPlayerNumber] = useState("");
+    const [playerName, setPlayerName] = useState("");
     const [hoveredTooltip, setHoveredTooltip] = useState(null);
 
     const selectButtonRef = useRef(null);
@@ -190,9 +192,16 @@ function Sidebar() {
         console.log("Selected tool:", selectedTool);
     }, [selectedTool]);
 
-    useEffect(() => {
-        console.log("Player color:", playerColor);
-    }, [playerColor]);
+    const selectedPlayer = state.objects.find((obj) => obj.id === state.selectedId && obj.type === "player");
+    const playerColor = selectedPlayer?.color ?? state.defaultPlayerColor;
+
+    const handlePlayerColorChange = (color) => {
+        if (selectedPlayer) {
+            dispatch({ type: "UPDATE_OBJECT", id: selectedPlayer.id, value: { color }, record: true });
+        } else {
+            dispatch({ type: "SET_DEFAULT_PLAYER", value: { defaultPlayerColor: color } });
+        }
+    };
 
     // Close player dropdown when clicking outside or when popover closes
     useEffect(() => {
@@ -478,6 +487,14 @@ function Sidebar() {
                     isSelected={isSelectedTool("addPlayer")}
                     chevronActive={openPopover === "addPlayer"}
                     onClick={() => {
+                        const resolvedName = playerName || playerSearch || undefined;
+                        const resolvedNumber = playerNumber || undefined;
+                        dispatch({
+                            type: "ADD_PLAYER",
+                            label: resolvedName,
+                            number: resolvedNumber,
+                            color: playerColor,
+                        });
                         setSelectedTool("addPlayer");
                     }}
                     onChevronClick={() => togglePopover("addPlayer")}
@@ -497,6 +514,8 @@ function Sidebar() {
                                 <p className="text-BrandOrange text-xs sm:text-sm">Number:</p>
                                 <input
                                     type="text"
+                                    value={playerNumber}
+                                    onChange={(e) => setPlayerNumber(e.target.value)}
                                     className="w-full h-8 sm:h-9 bg-BrandBlack border-[0.5px] border-BrandGray text-BrandWhite rounded-md px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors"
                                 />
                             </div>
@@ -504,6 +523,8 @@ function Sidebar() {
                                 <p className="text-BrandOrange text-xs sm:text-sm">Name:</p>
                                 <input
                                     type="text"
+                                    value={playerName}
+                                    onChange={(e) => setPlayerName(e.target.value)}
                                     className="w-full h-8 sm:h-9 bg-BrandBlack border-[0.5px] border-BrandGray text-BrandWhite rounded-md px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors"
                                 />
                             </div>
@@ -597,7 +618,7 @@ function Sidebar() {
                     <ColorPickerPopover
                         color={playerColor}
                         onChange={(color) => {
-                            setPlayerColor(color.hex);
+                            handlePlayerColorChange(color.hex);
                         }}
                     />
                 </Popover>
@@ -650,7 +671,7 @@ function Sidebar() {
                     onMouseEnter={() => setHoveredTooltip("undo")}
                     onMouseLeave={() => setHoveredTooltip(null)}
                 >
-                    <Button Icon={<BiUndo className={"text-BrandOrange text-xl sm:text-2xl md:text-3xl"} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
+                    <Button Icon={<BiUndo className={"text-BrandOrange text-xl sm:text-2xl md:text-3xl"} />} onHover={() => { }} onClick={() => dispatch({ type: "UNDO" })} isSelected={false} />
                     <Tooltip
                         isOpen={hoveredTooltip === "undo"}
                         text="Undo"
@@ -661,7 +682,7 @@ function Sidebar() {
                     onMouseEnter={() => setHoveredTooltip("redo")}
                     onMouseLeave={() => setHoveredTooltip(null)}
                 >
-                    <Button Icon={<BiRedo className={"text-BrandOrange text-xl sm:text-2xl md:text-3xl"} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
+                    <Button Icon={<BiRedo className={"text-BrandOrange text-xl sm:text-2xl md:text-3xl"} />} onHover={() => { }} onClick={() => dispatch({ type: "REDO" })} isSelected={false} />
                     <Tooltip
                         isOpen={hoveredTooltip === "redo"}
                         text="Redo"
@@ -672,7 +693,7 @@ function Sidebar() {
                     onMouseEnter={() => setHoveredTooltip("reset")}
                     onMouseLeave={() => setHoveredTooltip(null)}
                 >
-                    <Button Icon={<BiReset className={"text-BrandOrange text-xl sm:text-2xl md:text-3xl"} />} onHover={() => { }} onClick={() => { }} isSelected={false} />
+                    <Button Icon={<BiReset className={"text-BrandOrange text-xl sm:text-2xl md:text-3xl"} />} onHover={() => { }} onClick={() => dispatch({ type: "RESET" })} isSelected={false} />
                     <Tooltip
                         isOpen={hoveredTooltip === "reset"}
                         text="Reset"
