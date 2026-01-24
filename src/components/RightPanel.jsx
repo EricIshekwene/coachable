@@ -178,7 +178,7 @@ export default function RightPanel({ onOpenAdvancedSettings }) {
                      gap-0.5 sm:gap-0.5 md:gap-1 lg:gap-1.5
                      select-none
                      overflow-y-visible
-                     flex flex-col justify-center
+                     flex flex-col justify-center z-50
 
                    "
         >

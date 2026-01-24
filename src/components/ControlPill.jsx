@@ -322,8 +322,8 @@ export default function ControlPill({
                         bg-BrandBlack
                          py-[3.125px] sm:py-[6.25px] px-[12.5px] sm:px-[15.625px] md:px-[18.75px]
                         rounded-[25px] sm:rounded-[28.125px] md:rounded-[31.25px] 
-                        select-none
-                        absolute left-1/2 transform -translate-x-1/2 -translate-y-1/2 transition-all duration-300 ${isDropdownOpen ? 'top-[84%]' : 'top-[87%]'
+                        select-none z-50
+                        absolute left-1/2 transform -translate-x-1/2 -translate-y-1/2 transition-all duration-300 ${isDropdownOpen ? 'top-[84%]' : 'top-[87%]   '
         }`}>
         {/* Time pill */}
         <TimePill
