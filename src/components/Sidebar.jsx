@@ -21,7 +21,7 @@ import rugbyLineout from "../assets/prefabIcons/Rugby Lineout.png";
 import rugbyKickoff from "../assets/prefabIcons/Rugby KickOff.png";
 
 
-function Sidebar() {
+function Sidebar({ onToolChange }) {
     const iconClass = "text-BrandOrange text-xl sm:text-2xl md:text-3xl";
     const selectedIconClass = "text-BrandBlack text-xl sm:text-2xl md:text-3xl";
     const [selectedTool, setSelectedTool] = useState("select");
@@ -188,7 +188,10 @@ function Sidebar() {
 
     useEffect(() => {
         console.log("Selected tool:", selectedTool);
-    }, [selectedTool]);
+        if (onToolChange && (selectedTool === "hand" || selectedTool === "select")) {
+            onToolChange(selectedTool);
+        }
+    }, [selectedTool, onToolChange]);
 
     useEffect(() => {
         console.log("Player color:", playerColor);
