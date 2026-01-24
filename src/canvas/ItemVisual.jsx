@@ -1,7 +1,7 @@
 import React from "react";
 import whiteBall from "../assets/objects/balls/white_ball.png";
 
-export default function ItemVisual({ item, allPlayersDisplay }) {
+export default function ItemVisual({ item, allPlayersDisplay, playerBaseSizePx }) {
   switch (item.type) {
     case "player":
       {
@@ -11,7 +11,7 @@ export default function ItemVisual({ item, allPlayersDisplay }) {
         const showName = allPlayersDisplay?.showName ?? false;
         const color = item.color || allPlayersDisplay?.color || "#ef4444";
 
-        const basePx = 30;
+        const basePx = Math.max(6, Number(playerBaseSizePx) || 30);
         const sizePx = Math.max(6, Math.round((basePx * sizePercent) / 100));
 
         const numberText = item.number ?? "";

@@ -13,9 +13,33 @@ function App() {
   const [logControlPillState, setLogControlPillState] = useState(false);
   const [canvasTool, setCanvasTool] = useState("hand");
 
+  const DEFAULT_ADVANCED_SETTINGS = {
+    pitch: {
+      showMarkings: true,
+      pitchSize: "Full Field",
+      pitchColor: "#4FA85D", // Stadium Grass
+    },
+    players: {
+      // This is the "base" player size in pixels at 100% in the Right Panel.
+      // (Right Panel sizePercent scales from this.)
+      baseSizePx: 30,
+    },
+    exportVideo: {
+      videoQuality: "1080p",
+      watermark: true,
+      includeMetadata: true,
+    },
+    animation: {
+      playOnLoad: true,
+      speedPercent: 50,
+    },
+  };
+
+  const [advancedSettings, setAdvancedSettings] = useState(DEFAULT_ADVANCED_SETTINGS);
+
   // RightPanel / Canvas shared state
   const [playName, setPlayName] = useState("Name");
-  const [camera, setCamera] = useState({ x: 0, y: 0, zoom: 1.1 });
+  const [camera, setCamera] = useState({ x: 0, y: 0, zoom: 1 });
   const [playersById, setPlayersById] = useState(() => ({
     "player-1": {
       id: "player-1",
@@ -26,6 +50,7 @@ function App() {
       assignment: "Left Wing",
       color: "#ef4444",
     },
+
   }));
   const [representedPlayerIds, setRepresentedPlayerIds] = useState(() => ["player-1"]);
   const [selectedPlayerId, setSelectedPlayerId] = useState(null);
@@ -48,15 +73,15 @@ function App() {
   const zoomOut = () => setZoomPercent(zoomPercent - 5);
 
   // Field actions (placeholder callbacks for now)
-  const onRotateLeft = () => {};
-  const onRotateCenter = () => {};
-  const onRotateRight = () => {};
-  const onUndo = () => {};
-  const onRedo = () => {};
-  const onReset = () => {};
+  const onRotateLeft = () => { };
+  const onRotateCenter = () => { };
+  const onRotateRight = () => { };
+  const onUndo = () => { };
+  const onRedo = () => { };
+  const onReset = () => { };
 
-  const onSaveToPlaybook = () => {};
-  const onDownload = () => {};
+  const onSaveToPlaybook = () => { };
+  const onDownload = () => { };
 
   const items = [
     ...Object.values(playersById).map((p) => ({
@@ -148,6 +173,7 @@ function App() {
             items={items}
             onItemChange={handleItemChange}
             allPlayersDisplay={allPlayersDisplay}
+            advancedSettings={advancedSettings}
           />
         </div>
         <ControlPill
@@ -184,7 +210,12 @@ function App() {
           onDownload={onDownload}
         />
         {showAdvancedSettings && (
-          <AdvancedSettings onClose={() => setShowAdvancedSettings(false)} />
+          <AdvancedSettings
+            value={advancedSettings}
+            onChange={setAdvancedSettings}
+            onReset={() => setAdvancedSettings(DEFAULT_ADVANCED_SETTINGS)}
+            onClose={() => setShowAdvancedSettings(false)}
+          />
         )}
       </div>
     </>

@@ -5,7 +5,17 @@ import RugbyField from "../assets/objects/Field Vectors/Rugby_Field.png";
 // - Pointer events disabled.
 // - Centered via CSS percentages, not pixels.
 // - max-w-none so it can exceed viewport and be clipped.
-export default function FieldLayer() {
+export default function FieldLayer({ showMarkings = true, pitchSize = "Full Field" }) {
+  if (!showMarkings) return null;
+
+  const scaleMap = {
+    "Full Field": 1,
+    "Half Pitch": 0.75,
+    "Quarter Field": 0.6,
+    Goal: 0.5,
+  };
+  const scale = scaleMap[pitchSize] ?? 1;
+
   return (
     <img
       src={RugbyField}
@@ -17,7 +27,8 @@ export default function FieldLayer() {
         position: "absolute",
         left: "55%",
         top: "50%",
-        transform: "translate(-50%, -50%)",
+        transform: `translate(-50%, -50%) scale(${scale})`,
+        transformOrigin: "center center",
       }}
     />
   );
