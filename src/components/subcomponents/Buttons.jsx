@@ -179,27 +179,69 @@ export const PanelButton = ({ Icon, onHover, onClick, isSelected = false }) => {
     );
 };
 
-export const PlayerButton = ({ onClick, isSelected = false, }) => {
+export const PlayerButton = ({
+    id,
+    color = "#ef4444",
+    number,
+    name,
+    assignment,
+    onClick,
+    onEdit,
+    onDelete,
+    isSelected = false,
+}) => {
+    const hasMeta = Boolean(name) || Boolean(assignment);
     return (
-        <div className="w-full flex flex-row rounded sm bg-BrandBlack2 items-center justify-between px-1 py-0.5 sm:py-1">
-            {/*Player icons*/}
-            <div className="w-3 h-3 sm:w-[14px] sm:h-[14px] md:w-4 md:h-4 rounded-full bg-red-500 border-[0.25px] border-BrandBlack">
+        <button
+            type="button"
+            onClick={() => onClick?.(id)}
+            className={`w-full flex flex-row rounded sm items-center justify-between px-1 py-0.5 sm:py-1 transition-colors
+                ${isSelected ? "bg-BrandBlack border border-BrandOrange" : "bg-BrandBlack2 border border-transparent"}
+                hover:bg-BrandBlack`}
+        >
+            {/* Color indicator */}
+            <div
+                className="w-3 h-3 sm:w-[14px] sm:h-[14px] md:w-4 md:h-4 rounded-full border-[0.25px] border-BrandBlack shrink-0"
+                style={{ backgroundColor: color }}
+            />
 
+            {/* Number + optional label/assignment */}
+            <div className="flex-1 min-w-0 flex flex-col items-center justify-center px-1">
+                <p className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans leading-none">
+                    {number ?? ""}
+                </p>
+                {hasMeta && (
+                    <p className="text-BrandGray text-[9px] sm:text-[10px] md:text-xs font-DmSans leading-none truncate w-full text-center">
+                        {[name, assignment].filter(Boolean).join(" • ")}
+                    </p>
+                )}
             </div>
-            {/*Player name*/}
-            <p className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans">
-                Player 1
-            </p>
-            {/*Icons*/}
-            <div className="flex flex-row justify-center items-center gap-0.5 sm:gap-1">
-                <button className="text-BrandOrange text-xs sm:text-sm md:text-base" >
+
+            {/* Actions */}
+            <div className="flex flex-row justify-center items-center gap-0.5 sm:gap-1 shrink-0">
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit?.(id);
+                    }}
+                    className="text-BrandOrange text-xs sm:text-sm md:text-base"
+                    aria-label="Edit player"
+                >
                     <FiEdit />
                 </button>
-                <button className="text-BrandOrange text-xs sm:text-sm md:text-base" >
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete?.(id);
+                    }}
+                    className="text-BrandOrange text-xs sm:text-sm md:text-base"
+                    aria-label="Delete player"
+                >
                     <MdDeleteOutline />
                 </button>
             </div>
-
-        </div>
+        </button>
     );
 };

@@ -193,6 +193,28 @@ function Sidebar({ onToolChange }) {
         }
     }, [selectedTool, onToolChange]);
 
+    // Keyboard shortcuts for tools: S = Select, H = Hand
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            // Don't steal shortcuts while typing in inputs/textareas
+            const tag = e.target.tagName;
+            if (tag === "INPUT" || tag === "TEXTAREA" || e.target.isContentEditable) return;
+
+            if (e.key === "s" || e.key === "S") {
+                setSelectToolType("select");
+                setSelectedTool("select");
+            } else if (e.key === "h" || e.key === "H") {
+                setSelectToolType("hand");
+                setSelectedTool("hand");
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+    }, []);
+
     useEffect(() => {
         console.log("Player color:", playerColor);
     }, [playerColor]);

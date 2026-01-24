@@ -87,7 +87,7 @@ export default function AdvancedSettings({ onClose }) {
     }, [openVideoQualityDropdown]);
 
     return (
-        <div className="absolute right-0 top-0 h-screen z-40 flex flex-col">
+        <div className="absolute right-0 top-0 h-screen z-50 flex flex-col">
             <aside
                 className="
                      flex-1 shrink-0 bg-BrandBlack

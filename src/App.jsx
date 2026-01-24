@@ -13,6 +13,75 @@ function App() {
   const [logControlPillState, setLogControlPillState] = useState(true);
   const [canvasTool, setCanvasTool] = useState("hand");
 
+  // RightPanel / Canvas shared state
+  const [playName, setPlayName] = useState("Name");
+  const [camera, setCamera] = useState({ x: 0, y: 0, zoom: 1.1 });
+  const [playersById, setPlayersById] = useState(() => ({
+    "player-1": {
+      id: "player-1",
+      x: 300,
+      y: 300,
+      number: 1,
+      name: "",
+      assignment: "",
+      color: "#ef4444",
+    },
+  }));
+  const [representedPlayerIds, setRepresentedPlayerIds] = useState(() => ["player-1"]);
+  const [selectedPlayerId, setSelectedPlayerId] = useState(null);
+  const [allPlayersDisplay, setAllPlayersDisplay] = useState(() => ({
+    sizePercent: 100,
+    color: "#ef4444",
+    showNumber: true,
+    showName: false,
+  }));
+  const [ball, setBall] = useState(() => ({ id: "ball-1", x: 300, y: 300 }));
+
+  const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
+  const zoomPercent = clamp(Math.round((camera.zoom || 1) * 100), 30, 100);
+
+  const setZoomPercent = (nextPercent) => {
+    const pct = clamp(Number(nextPercent) || 0, 30, 100);
+    setCamera((prev) => ({ ...prev, zoom: pct / 100 }));
+  };
+  const zoomIn = () => setZoomPercent(zoomPercent + 5);
+  const zoomOut = () => setZoomPercent(zoomPercent - 5);
+
+  // Field actions (placeholder callbacks for now)
+  const onRotateLeft = () => {};
+  const onRotateCenter = () => {};
+  const onRotateRight = () => {};
+  const onUndo = () => {};
+  const onRedo = () => {};
+  const onReset = () => {};
+
+  const onSaveToPlaybook = () => {};
+  const onDownload = () => {};
+
+  const items = [
+    ...Object.values(playersById).map((p) => ({
+      id: p.id,
+      type: "player",
+      x: p.x,
+      y: p.y,
+      number: p.number,
+      name: p.name,
+      assignment: p.assignment,
+      color: p.color || allPlayersDisplay.color,
+    })),
+    { id: ball.id, type: "ball", x: ball.x, y: ball.y },
+  ];
+
+  const handleItemChange = (id, next) => {
+    if (playersById[id]) {
+      setPlayersById((prev) => ({ ...prev, [id]: { ...prev[id], ...next } }));
+      return;
+    }
+    if (id === ball.id) {
+      setBall((prev) => ({ ...prev, ...next }));
+    }
+  };
+
   // ControlPill state tracking
   const [timePercent, setTimePercent] = useState(0);
   const [keyframes, setKeyframes] = useState([]);
@@ -72,7 +141,14 @@ function App() {
           }}
         />
         <div className="flex-1 flex">
-          <CanvasRoot tool={canvasTool} />
+          <CanvasRoot
+            tool={canvasTool}
+            camera={camera}
+            setCamera={setCamera}
+            items={items}
+            onItemChange={handleItemChange}
+            allPlayersDisplay={allPlayersDisplay}
+          />
         </div>
         <ControlPill
           onTimePercentChange={setTimePercent}
@@ -83,7 +159,30 @@ function App() {
           onAutoplayChange={setAutoplayEnabled}
         />
 
-        <RightPanel onOpenAdvancedSettings={() => setShowAdvancedSettings(true)} />
+        <RightPanel
+          playName={playName}
+          onPlayNameChange={setPlayName}
+          zoomPercent={zoomPercent}
+          onZoomIn={zoomIn}
+          onZoomOut={zoomOut}
+          onZoomPercentChange={setZoomPercent}
+          onRotateLeft={onRotateLeft}
+          onRotateCenter={onRotateCenter}
+          onRotateRight={onRotateRight}
+          onUndo={onUndo}
+          onRedo={onRedo}
+          onReset={onReset}
+          playersById={playersById}
+          representedPlayerIds={representedPlayerIds}
+          selectedPlayerId={selectedPlayerId}
+          onSelectPlayer={setSelectedPlayerId}
+          allPlayersDisplay={allPlayersDisplay}
+          onAllPlayersDisplayChange={setAllPlayersDisplay}
+          advancedSettingsOpen={showAdvancedSettings}
+          onOpenAdvancedSettings={() => setShowAdvancedSettings(true)}
+          onSaveToPlaybook={onSaveToPlaybook}
+          onDownload={onDownload}
+        />
         {showAdvancedSettings && (
           <AdvancedSettings onClose={() => setShowAdvancedSettings(false)} />
         )}

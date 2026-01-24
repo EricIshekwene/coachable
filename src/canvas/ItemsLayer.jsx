@@ -3,7 +3,7 @@ import DraggableItem from "./DraggableItem";
 import ItemVisual from "./ItemVisual";
 
 // ItemsLayer: Maps items to DraggableItem wrappers and renders visuals.
-export default function ItemsLayer({ items, tool, camera, onItemChange }) {
+export default function ItemsLayer({ items, tool, camera, onItemChange, allPlayersDisplay }) {
   return (
     <div className="absolute inset-0">
       {items.map((item) => (
@@ -15,7 +15,7 @@ export default function ItemsLayer({ items, tool, camera, onItemChange }) {
           draggable={item.draggable !== false}
           onChange={(id, next) => onItemChange?.(id, next)}
         >
-          <ItemVisual item={item} />
+          <ItemVisual item={item} allPlayersDisplay={allPlayersDisplay} />
         </DraggableItem>
       ))}
     </div>
