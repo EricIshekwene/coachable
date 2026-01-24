@@ -3,6 +3,7 @@ import { FiEdit } from "react-icons/fi";
 import { ImCheckboxChecked, ImCheckboxUnchecked } from "react-icons/im";
 import { Popover } from "../subcomponents/Popovers";
 import { ColorPickerPopover } from "../subcomponents/ColorPickerPopover";
+import { Slider } from "@mui/material";
 
 export default function AllPlayersSection({ value, onChange }) {
   const playerSize = value?.sizePercent ?? 100;
@@ -52,24 +53,47 @@ export default function AllPlayersSection({ value, onChange }) {
 
       <div className="flex flex-row w-full items-center justify-between">
         <p className="text-BrandOrange text-[10px] sm:text-xs md:text-sm font-DmSans"> Size: {playerSize}%</p>
-        <div className="flex flex-row items-center justify-between bg-BrandBlack2 border-[0.5px] border-BrandGray2 aspect-[2/1] w-2/7 rounded-md">
-          <button
-            type="button"
-            onClick={() => update({ sizePercent: playerSize + 5 })}
-            className="text-BrandOrange font-bold m-auto text-xs sm:text-sm md:text-base hover:text-BrandOrange/80 transition-colors"
-          >
-            +
-          </button>
-          <button
-            type="button"
-            onClick={() => update({ sizePercent: Math.max(5, playerSize - 5) })}
-            className="text-BrandOrange font-bold m-auto text-xs sm:text-sm md:text-base hover:text-BrandOrange/80 transition-colors"
-          >
-            -
-          </button>
-        </div>
       </div>
 
+      {/* Prevent slider thumb from causing horizontal overflow */}
+      <div className="w-full min-w-0 overflow-x-hidden overflow-y-hidden flex items-center justify-start px-2">
+        <Slider
+          min={5}
+          max={200}
+          step={5}
+          value={playerSize}
+          onChange={(_, newValue) => update({ sizePercent: Array.isArray(newValue) ? newValue[0] : newValue })}
+          sx={{
+            width: "100%",
+            color: "#FF7A18",
+            height: "6.25px",
+            "& .MuiSlider-thumb": {
+              width: "12.5px",
+              height: "12.5px",
+              backgroundColor: "#FF7A18",
+              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
+              "&:hover": {
+                boxShadow: "0 4px 8px rgba(0, 0, 0, 0.3)",
+              },
+              "&:focus, &:active, &.Mui-focusVisible": {
+                outline: "none",
+                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
+              },
+            },
+            "& .MuiSlider-track": {
+              backgroundColor: "#FF7A18",
+              height: "6.25px",
+              border: "none",
+            },
+            "& .MuiSlider-rail": {
+              backgroundColor: "#75492a",
+              height: "6.25px",
+              opacity: 1,
+            },
+          }}
+          aria-label="Player size percent"
+        />
+      </div>
       <div className="flex flex-col w-full items-start justify-between gap-0.5 sm:gap-1 relative">
         <p className="text-BrandOrange text-[10px] sm:text-xs md:text-sm font-DmSans">Color:</p>
         <div className="w-full flex flex-row bg-BrandBlack2 border-[0.5px] border-BrandGray2 rounded-md items-center justify-between py-0.5 sm:py-1 px-1.5 sm:px-2 gap-1.5 sm:gap-2">

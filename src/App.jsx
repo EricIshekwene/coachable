@@ -10,7 +10,7 @@ import CanvasRoot from "./canvas/CanvasRoot";
 function App() {
   const [color, setColor] = useState("#561ecb");
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
-  const [logControlPillState, setLogControlPillState] = useState(true);
+  const [logControlPillState, setLogControlPillState] = useState(false);
   const [canvasTool, setCanvasTool] = useState("hand");
 
   // RightPanel / Canvas shared state
@@ -22,8 +22,8 @@ function App() {
       x: 300,
       y: 300,
       number: 1,
-      name: "",
-      assignment: "",
+      name: "John",
+      assignment: "Left Wing",
       color: "#ef4444",
     },
   }));

@@ -18,7 +18,6 @@ export default function FieldSettingsSection({
   onReset,
 }) {
   const iconClass = "text-BrandOrange text-sm sm:text-base md:text-lg lg:text-xl";
-  const [hoveredTooltip, setHoveredTooltip] = useState(null);
 
   const [isEditingZoom, setIsEditingZoom] = useState(false);
   const [draftZoom, setDraftZoom] = useState(String(zoomPercent ?? 100));
@@ -63,44 +62,20 @@ export default function FieldSettingsSection({
       <div className="text-BrandOrange text-xs sm:text-sm md:text-base font-DmSans">Field Settings</div>
 
       <div className="w-full grid grid-cols-3 gap-1.5 sm:gap-2 md:gap-3 mt-1 sm:mt-1.5 md:mt-2">
-        <div
-          className="relative"
-          onMouseEnter={() => setHoveredTooltip("rotateCCW")}
-          onMouseLeave={() => setHoveredTooltip(null)}
-        >
+        <div>
           <PanelButton Icon={<FiRotateCcw className={iconClass} />} onClick={() => onRotateLeft?.()} isSelected={false} />
-          {hoveredTooltip === "rotateCCW" && (
-            <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 bg-BrandBlack2 rounded-md px-2 py-1.5 text-BrandWhite text-xs font-DmSans whitespace-nowrap shadow-lg border border-BrandGray/30 pointer-events-none">
-              Rotate Left
-            </div>
-          )}
         </div>
 
-        <div className="relative" onMouseEnter={() => setHoveredTooltip("rotate")} onMouseLeave={() => setHoveredTooltip(null)}>
+        <div>
           <PanelButton Icon={<TbRotateDot className={iconClass} />} onClick={() => onRotateCenter?.()} isSelected={false} />
-          {hoveredTooltip === "rotate" && (
-            <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 bg-BrandBlack2 rounded-md px-2 py-1.5 text-BrandWhite text-xs font-DmSans whitespace-nowrap shadow-lg border border-BrandGray/30 pointer-events-none">
-              Rotate
-            </div>
-          )}
         </div>
 
-        <div className="relative" onMouseEnter={() => setHoveredTooltip("rotateCW")} onMouseLeave={() => setHoveredTooltip(null)}>
+        <div>
           <PanelButton Icon={<FiRotateCw className={iconClass} />} onClick={() => onRotateRight?.()} isSelected={false} />
-          {hoveredTooltip === "rotateCW" && (
-            <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 bg-BrandBlack2 rounded-md px-2 py-1.5 text-BrandWhite text-xs font-DmSans whitespace-nowrap shadow-lg border border-BrandGray/30 pointer-events-none">
-              Rotate Right
-            </div>
-          )}
         </div>
 
-        <div className="relative" onMouseEnter={() => setHoveredTooltip("zoomOut")} onMouseLeave={() => setHoveredTooltip(null)}>
+        <div>
           <PanelButton Icon={<MdOutlineZoomOut className={iconClass} />} onClick={() => onZoomOut?.()} isSelected={false} />
-          {hoveredTooltip === "zoomOut" && (
-            <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 bg-BrandBlack2 rounded-md px-2 py-1.5 text-BrandWhite text-xs font-DmSans whitespace-nowrap shadow-lg border border-BrandGray/30 pointer-events-none">
-              Zoom Out
-            </div>
-          )}
         </div>
 
         <div className="flex items-center justify-center m-auto">
@@ -125,40 +100,20 @@ export default function FieldSettingsSection({
           )}
         </div>
 
-        <div className="relative" onMouseEnter={() => setHoveredTooltip("zoomIn")} onMouseLeave={() => setHoveredTooltip(null)}>
+        <div>
           <PanelButton Icon={<MdOutlineZoomIn className={iconClass} />} onClick={() => onZoomIn?.()} isSelected={false} />
-          {hoveredTooltip === "zoomIn" && (
-            <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 bg-BrandBlack2 rounded-md px-2 py-1.5 text-BrandWhite text-xs font-DmSans whitespace-nowrap shadow-lg border border-BrandGray/30 pointer-events-none">
-              Zoom In
-            </div>
-          )}
         </div>
 
-        <div className="relative" onMouseEnter={() => setHoveredTooltip("undo")} onMouseLeave={() => setHoveredTooltip(null)}>
+        <div>
           <PanelButton Icon={<BiUndo className={iconClass} />} onClick={() => onUndo?.()} isSelected={false} />
-          {hoveredTooltip === "undo" && (
-            <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 bg-BrandBlack2 rounded-md px-2 py-1.5 text-BrandWhite text-xs font-DmSans whitespace-nowrap shadow-lg border border-BrandGray/30 pointer-events-none">
-              Undo
-            </div>
-          )}
         </div>
 
-        <div className="relative" onMouseEnter={() => setHoveredTooltip("reset")} onMouseLeave={() => setHoveredTooltip(null)}>
+        <div>
           <PanelButton Icon={<MdOutlineResetTv className={iconClass} />} onClick={() => onReset?.()} isSelected={false} />
-          {hoveredTooltip === "reset" && (
-            <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 bg-BrandBlack2 rounded-md px-2 py-1.5 text-BrandWhite text-xs font-DmSans whitespace-nowrap shadow-lg border border-BrandGray/30 pointer-events-none">
-              Reset
-            </div>
-          )}
         </div>
 
-        <div className="relative" onMouseEnter={() => setHoveredTooltip("redo")} onMouseLeave={() => setHoveredTooltip(null)}>
+        <div>
           <PanelButton Icon={<BiRedo className={iconClass} />} onClick={() => onRedo?.()} isSelected={false} />
-          {hoveredTooltip === "redo" && (
-            <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 bg-BrandBlack2 rounded-md px-2 py-1.5 text-BrandWhite text-xs font-DmSans whitespace-nowrap shadow-lg border border-BrandGray/30 pointer-events-none">
-              Redo
-            </div>
-          )}
         </div>
       </div>
     </div>

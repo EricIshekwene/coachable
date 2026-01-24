@@ -45,38 +45,45 @@ export default function RightPanel({
         flex flex-col
         gap-0.5 sm:gap-0.5 md:gap-1 lg:gap-1.5
         select-none
-        overflow-y-visible
-        justify-center
+        overflow-hidden
         z-50
       "
     >
-      <PlayNameEditor value={playName} onChange={onPlayNameChange} maxLength={10} />
+      {/* Scrollable content area (everything except export actions) */}
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-0.5">
+        <div className="flex flex-col gap-0.5 sm:gap-0.5 md:gap-1 lg:gap-1.5">
+          <PlayNameEditor value={playName} onChange={onPlayNameChange} maxLength={10} />
 
-      <FieldSettingsSection
-        zoomPercent={zoomPercent}
-        onZoomIn={onZoomIn}
-        onZoomOut={onZoomOut}
-        onZoomPercentChange={onZoomPercentChange}
-        onRotateLeft={onRotateLeft}
-        onRotateCenter={onRotateCenter}
-        onRotateRight={onRotateRight}
-        onUndo={onUndo}
-        onRedo={onRedo}
-        onReset={onReset}
-      />
+          <FieldSettingsSection
+            zoomPercent={zoomPercent}
+            onZoomIn={onZoomIn}
+            onZoomOut={onZoomOut}
+            onZoomPercentChange={onZoomPercentChange}
+            onRotateLeft={onRotateLeft}
+            onRotateCenter={onRotateCenter}
+            onRotateRight={onRotateRight}
+            onUndo={onUndo}
+            onRedo={onRedo}
+            onReset={onReset}
+          />
 
-      <PlayersSection
-        playersById={playersById}
-        representedPlayerIds={representedPlayerIds}
-        selectedPlayerId={selectedPlayerId}
-        onSelectPlayer={onSelectPlayer}
-      />
+          <PlayersSection
+            playersById={playersById}
+            representedPlayerIds={representedPlayerIds}
+            selectedPlayerId={selectedPlayerId}
+            onSelectPlayer={onSelectPlayer}
+          />
 
-      <AdvancedSettingsButton isOpen={advancedSettingsOpen} onOpen={onOpenAdvancedSettings} />
+          <AdvancedSettingsButton isOpen={advancedSettingsOpen} onOpen={onOpenAdvancedSettings} />
 
-      <AllPlayersSection value={allPlayersDisplay} onChange={onAllPlayersDisplayChange} />
+          <AllPlayersSection value={allPlayersDisplay} onChange={onAllPlayersDisplayChange} />
+        </div>
+      </div>
 
-      <ExportActions onSaveToPlaybook={onSaveToPlaybook} onDownload={onDownload} />
+      {/* Fixed bottom area */}
+      <div className="shrink-0 pt-1.5 sm:pt-2 border">
+        <ExportActions onSaveToPlaybook={onSaveToPlaybook} onDownload={onDownload} />
+      </div>
     </aside>
   );
 }

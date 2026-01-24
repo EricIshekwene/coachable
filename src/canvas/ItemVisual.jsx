@@ -18,25 +18,25 @@ export default function ItemVisual({ item, allPlayersDisplay }) {
         const nameText = item.name ?? "";
 
         return (
-          <div
-            className="z-30 rounded-full border-[2px] border-BrandBlack flex items-center justify-center text-BrandBlack font-DmSans select-none"
-            style={{
-              pointerEvents: "none",
-              width: `${sizePx}px`,
-              height: `${sizePx}px`,
-              backgroundColor: color,
-              fontSize: `${Math.max(10, Math.round(sizePx * 0.45))}px`,
-              lineHeight: 1,
-            }}
-          >
-            <div className="flex flex-col items-center justify-center">
+          <div className="z-30 flex flex-col items-center select-none" style={{ pointerEvents: "none" }}>
+            <div
+              className="rounded-full border-[2px] border-BrandBlack flex items-center justify-center text-BrandBlack font-DmSans"
+              style={{
+                width: `${sizePx}px`,
+                height: `${sizePx}px`,
+                backgroundColor: color,
+                fontSize: `${Math.max(10, Math.round(sizePx * 0.45))}px`,
+                lineHeight: 1,
+              }}
+            >
               {showNumber && numberText !== "" && <span className="font-bold">{numberText}</span>}
-              {showName && nameText !== "" && (
-                <span style={{ fontSize: `${Math.max(8, Math.round(sizePx * 0.3))}px` }}>
-                  {nameText}
-                </span>
-              )}
             </div>
+
+            {showName && nameText !== "" && (
+              <div className="mt-1 text-BrandBlack font-DmSans font-semibold" style={{ fontSize: `${Math.max(9, Math.round(sizePx * 0.32))}px` }}>
+                {nameText}
+              </div>
+            )}
           </div>
         );
       }
