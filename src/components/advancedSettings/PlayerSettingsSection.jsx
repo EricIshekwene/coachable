@@ -15,7 +15,7 @@ export default function PlayerSettingsSection({ value = {}, onChange }) {
             {/* Default Player Size */}
             <div className="flex flex-col w-full items-start justify-start gap-1 sm:gap-1.5">
                 <p className="text-BrandWhite text-xs sm:text-sm font-DmSans">Default Player Size (px)</p>
-                <div className="w-full px-1 flex flex-row gap-1">
+                <div className="w-full px-1 flex flex-row gap-1 px-1 justify-between">
                     <Slider
                         min={10}
                         max={50}
@@ -51,14 +51,9 @@ export default function PlayerSettingsSection({ value = {}, onChange }) {
                             },
                         }}
                     />
-                    <input
-                        type="number"
-                        min={10}
-                        max={50}
-                        value={playerBaseSizePx}
-                        onChange={(e) => update({ baseSizePx: Number(e.target.value) || 0 })}
-                        className="bg-BrandBlack2 h-5 sm:h-6 w-14 px-2 text-BrandWhite text-xs sm:text-sm font-DmSans rounded-md border-[0.5px] border-BrandGray focus:outline-none focus:border-BrandOrange"
-                    />
+                    <div className="flex flex-row bg-BrandBlack2 h-5 sm:h-6 w-14 items-center justify-center px-2 rounded-md">
+                        <p className="text-BrandWhite text-xs sm:text-sm font-DmSans">{playerBaseSizePx}px</p>
+                    </div>
                 </div>
             </div>
         </div>

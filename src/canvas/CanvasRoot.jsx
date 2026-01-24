@@ -22,14 +22,13 @@ export default function CanvasRoot({
 
   const pitchColor = pitch.pitchColor ?? undefined;
   const showMarkings = pitch.showMarkings ?? true;
-  const pitchSize = pitch.pitchSize ?? "Full Field";
   const playerBaseSizePx = players.baseSizePx ?? 30;
 
   return (
     <BoardViewport ref={viewportRef} className="bg-BrandGreen" style={pitchColor ? { backgroundColor: pitchColor } : undefined}>
       <PanHandler tool={tool} camera={camera} setCamera={setCamera}>
         <WorldLayer camera={camera}>
-          <FieldLayer showMarkings={showMarkings} pitchSize={pitchSize} />
+          <FieldLayer showMarkings={showMarkings} />
           <ItemsLayer
             items={items}
             tool={tool}

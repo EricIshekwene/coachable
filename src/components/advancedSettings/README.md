@@ -49,7 +49,6 @@ The settings object has the following structure:
   },
   animation: {
     playOnLoad: boolean,         // Auto-play animation on load
-    speedPercent: number,       // Animation speed (0-100)
   },
 }
 ```
@@ -108,11 +107,10 @@ Controls for video export configuration (settings are stored but not yet impleme
 
 Controls for animation behavior (settings are stored but not yet fully implemented):
 
-- **Animation Speed**: Slider (0-100) + number input
 - **Start on Load**: Toggle switch to auto-play animation when loaded
 
 **Props:**
-- `value` (object): `{ playOnLoad, speedPercent }`
+- `value` (object): `{ playOnLoad }`
 - `onChange(nextValue)`: Updates the animation settings
 
 ## How settings affect the canvas
@@ -164,7 +162,7 @@ All sections use consistent toggle switch styling:
 
 ### Sliders
 
-Both `PlayerSettingsSection` and `AnimationSettingsSection` use MUI `Slider` with:
+`PlayerSettingsSection` uses MUI `Slider` with:
 - Consistent styling (orange theme matching ControlPill)
 - Number input alongside for direct value entry
 - Min/max validation
@@ -190,7 +188,6 @@ Default settings are defined in `src/App.jsx` as `DEFAULT_ADVANCED_SETTINGS`:
   },
   animation: {
     playOnLoad: true,
-    speedPercent: 50,
   },
 }
 ```

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import TimePill from './subcomponents/controlPill/TimePill';
-import SpeedSlider from './subcomponents/controlPill/SpeedSlider';
-import PlaybackControls from './subcomponents/controlPill/PlaybackControls';
-import KeyframeManager from './subcomponents/controlPill/KeyframeManager';
-import DropdownMenu from './subcomponents/controlPill/DropdownMenu';
+import TimePill from './TimePill';
+import SpeedSlider from './SpeedSlider';
+import PlaybackControls from './PlaybackControls';
+import KeyframeManager from './KeyframeManager';
+import DropdownMenu from './DropdownMenu';
 
 // Duration for one full traversal from 0 -> 100 before looping
 const LOOP_SECONDS = 30;

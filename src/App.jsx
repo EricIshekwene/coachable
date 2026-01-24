@@ -1,10 +1,11 @@
 import "./index.css";
 import Sidebar from "./components/Sidebar";
 import { useState, useEffect } from "react";
-import ControlPill from "./components/ControlPill";
+import ControlPill from "./components/controlPill/ControlPill";
 import RightPanel from "./components/RightPanel";
 import AdvancedSettings from "./components/AdvancedSettings";
 import CanvasRoot from "./canvas/CanvasRoot";
+import MessagePopup from "./components/messagePopup/MessagePopup";
 
 
 function App() {
@@ -31,11 +32,32 @@ function App() {
     },
     animation: {
       playOnLoad: true,
-      speedPercent: 50,
     },
   };
 
   const [advancedSettings, setAdvancedSettings] = useState(DEFAULT_ADVANCED_SETTINGS);
+
+  // Message popup state
+  const [messagePopup, setMessagePopup] = useState({
+    visible: false,
+    message: "",
+    subtitle: "",
+    type: "standard",
+  });
+
+  // Method to show message popup
+  const showMessage = (message, subtitle = "", type = "standard", duration = 3000) => {
+    setMessagePopup({
+      visible: true,
+      message,
+      subtitle,
+      type,
+    });
+  };
+
+  const hideMessage = () => {
+    setMessagePopup((prev) => ({ ...prev, visible: false }));
+  };
 
   // RightPanel / Canvas shared state
   const [playName, setPlayName] = useState("Name");
@@ -157,7 +179,33 @@ function App() {
       <div className="w-full h-screen bg-BrandBlack flex flex-row justify-between relative overflow-hidden">
 
 
+        {/* Message popup */}
+        <MessagePopup
+          message={messagePopup.message}
+          subtitle={messagePopup.subtitle}
+          visible={messagePopup.visible}
+          type={messagePopup.type}
+          onClose={hideMessage}
+        />
 
+        {/* Test button for MessagePopup */}
+        <button
+          onClick={() => {
+            const types = ["success", "error", "standard"];
+            const messages = [
+              { message: "Success!", subtitle: "Operation completed successfully", type: "success" },
+              { message: "Error", subtitle: "Something went wrong", type: "error" },
+              { message: "Info", subtitle: "This is a standard message", type: "standard" },
+            ];
+            const random = Math.floor(Math.random() * messages.length);
+            const selected = messages[random];
+            showMessage(selected.message, selected.subtitle, selected.type);
+          }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-BrandOrange text-BrandBlack px-4 py-2 rounded-md font-DmSans font-semibold hover:bg-BrandOrange/90 transition-colors"
+        >
+          Test Message Popup
+        </button>
+      
         <Sidebar
           onToolChange={(tool) => {
             if (tool === "hand" || tool === "select") {
