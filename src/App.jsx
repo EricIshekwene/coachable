@@ -85,10 +85,10 @@ function App() {
   const [ball, setBall] = useState(() => ({ id: "ball-1", x: 300, y: 300 }));
 
   const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
-  const zoomPercent = clamp(Math.round((camera.zoom || 1) * 100), 30, 100);
+  const zoomPercent = clamp(Math.round((camera.zoom || 1) * 100), 30, 300);
 
   const setZoomPercent = (nextPercent) => {
-    const pct = clamp(Number(nextPercent) || 0, 30, 100);
+    const pct = clamp(Number(nextPercent) || 0, 30, 300);
     setCamera((prev) => ({ ...prev, zoom: pct / 100 }));
   };
   const zoomIn = () => setZoomPercent(zoomPercent + 5);
@@ -201,7 +201,7 @@ function App() {
             const selected = messages[random];
             showMessage(selected.message, selected.subtitle, selected.type);
           }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-BrandOrange text-BrandBlack px-4 py-2 rounded-md font-DmSans font-semibold hover:bg-BrandOrange/90 transition-colors"
+          className="absolute hidden top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-BrandOrange text-BrandBlack px-4 py-2 rounded-md font-DmSans font-semibold hover:bg-BrandOrange/90 transition-colors"
         >
           Test Message Popup
         </button>

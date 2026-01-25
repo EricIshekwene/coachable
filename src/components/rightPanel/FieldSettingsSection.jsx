@@ -88,7 +88,7 @@ export default function FieldSettingsSection({
               onBlur={commitZoom}
               onKeyDown={handleZoomKeyDown}
               className="text-BrandWhite text-xs sm:text-sm md:text-base bg-transparent border-none outline-none focus:outline-none text-center font-DmSans w-10 sm:w-12"
-              maxLength={3}
+              maxLength={4}
             />
           ) : (
             <p
