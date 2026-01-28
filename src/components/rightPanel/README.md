@@ -1,10 +1,10 @@
-# Right Panel (`src/components/rightPanel/`)
+# Right Panel sections (`src/components/rightPanel/`)
 
-This folder contains the **Right Panel UI** (the right-side sidebar) and its sections.
+This folder contains the **section components** used by the Right Panel. The main Right Panel component lives in `src/components/RightPanel.jsx` and composes these sections.
 
 ## High-level behavior
 
-- **Fixed-width, full-height panel**: `RightPanel.jsx` renders an `<aside>` that is `h-screen` and uses flex column layout.
+- **Fixed-width, full-height panel**: `RightPanel.jsx` (in `src/components/`) renders an `<aside>` that is `h-screen` and uses flex column layout.
 - **Scrollable content + pinned footer**:
   - The **main content** (play name, field settings, players list, advanced settings, all-players controls) lives inside a **scroll container**.
   - The **export actions** (“Save to Playbook”, “Download”) live in a **non-scrolling footer** at the bottom.
@@ -14,7 +14,7 @@ This is implemented by splitting the panel into:
 - **Scrollable area**: `flex-1 min-h-0 overflow-y-auto overflow-x-hidden`
 - **Footer**: `shrink-0` (so it never gets pushed off-screen)
 
-You can see this in `RightPanel.jsx`.
+You can see this in `src/components/RightPanel.jsx`.
 
 ## Data flow (where state comes from)
 
