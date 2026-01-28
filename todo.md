@@ -3,7 +3,17 @@ Eric
         player row dleete player
         edit player modal
         color pop up 
+        select un select
     Sidebar breakdown
+
+    Control pill
+        slide keyframes?
+        changeadd keyframe styling
+
+Mouse and drag
+
+colors
+
 
 Dylan
 

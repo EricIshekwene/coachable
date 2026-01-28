@@ -212,6 +212,9 @@ function App() {
               setCanvasTool(tool);
             }
           }}
+          onUndo={onUndo}
+          onRedo={onRedo}
+          onReset={onReset}
         />
         <div className="flex-1 flex">
           <CanvasRoot
