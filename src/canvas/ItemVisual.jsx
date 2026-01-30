@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import whiteBall from "../assets/objects/balls/white_ball.png";
 
 export default function ItemVisual({ item, allPlayersDisplay, playerBaseSizePx }) {
+  const [ballImageError, setBallImageError] = useState(false);
   switch (item.type) {
     case "player":
       {
@@ -41,18 +42,42 @@ export default function ItemVisual({ item, allPlayersDisplay, playerBaseSizePx }
         );
       }
     case "ball":
-      return (
-        <img
-          src={whiteBall}
-          alt="white ball"
-          className="z-30 w-[14px]"
-          draggable={false}
-          onDragStart={(e) => e.preventDefault()}
-          style={{ pointerEvents: "none" }}
-        />
-      );
+      {
+        const ballSizePx = 28;
+        return (
+          <div
+            className="z-40 flex items-center justify-center select-none"
+            style={{
+              width: ballSizePx,
+              height: ballSizePx,
+              pointerEvents: "none",
+            }}
+          >
+            {ballImageError ? (
+              <div
+                className="rounded-full border-2 border-BrandBlack bg-BrandWhite"
+                style={{ width: ballSizePx, height: ballSizePx }}
+                title="ball"
+              />
+            ) : (
+              <img
+                src={whiteBall}
+                alt="ball"
+                draggable={false}
+                onDragStart={(e) => e.preventDefault()}
+                onError={() => setBallImageError(true)}
+                style={{
+                  width: ballSizePx,
+                  height: ballSizePx,
+                  objectFit: "contain",
+                  filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.5)) drop-shadow(0 0 1px rgba(0,0,0,0.8))",
+                }}
+              />
+            )}
+          </div>
+        );
+      }
     default:
       return null;
   }
 }
-

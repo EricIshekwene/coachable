@@ -82,7 +82,8 @@ function App() {
     showNumber: true,
     showName: false,
   }));
-  const [ball, setBall] = useState(() => ({ id: "ball-1", x: 0, y: 0 }));
+  // Default ball present on load; slightly offset so it isn't occluded by a centered player
+  const [ball, setBall] = useState(() => ({ id: "ball-1", x: 40, y: 0 }));
 
   const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
   const zoomPercent = clamp(Math.round((camera.zoom || 1) * 100), 30, 300);
