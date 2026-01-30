@@ -1,6 +1,6 @@
 import { PiPenNib } from "react-icons/pi";
 import { FaArrowUpLong } from "react-icons/fa6";
-import { SidebarChevronButton } from "../subcomponents/Buttons";
+import { SidebarChevronButton, WideSidebarRowButton } from "../subcomponents/Buttons";
 import { Popover, PopoverGrid, Tooltip } from "../subcomponents/Popovers";
 
 const iconClass = "text-BrandOrange text-xl sm:text-2xl md:text-3xl";
@@ -17,9 +17,23 @@ export default function PenToolSection({
     onPopoverToggle,
     onPopoverClose,
     onHoverTooltip,
+    wide = false,
 }) {
     const popoverKey = "penOptions";
     const isOpen = openPopover === popoverKey;
+    const label = penToolType === "arrow" ? "Arrow" : "Pen";
+    const IconNode = penToolType === "arrow" ? (
+        <FaArrowUpLong
+            className={isSelected ? selectedIconClass : iconClass}
+            style={{ transform: "rotate(45deg)" }}
+        />
+    ) : (
+        <PiPenNib
+            className={isSelected ? selectedIconClass : iconClass}
+            style={{ transform: "rotate(90deg)" }}
+        />
+    );
+    const ButtonComponent = wide ? WideSidebarRowButton : SidebarChevronButton;
 
     return (
         <div
@@ -27,21 +41,10 @@ export default function PenToolSection({
             onMouseEnter={() => onHoverTooltip?.("pen")}
             onMouseLeave={() => onHoverTooltip?.(null)}
         >
-            <SidebarChevronButton
+            <ButtonComponent
                 ref={anchorRef}
-                Icon={
-                    penToolType === "arrow" ? (
-                        <FaArrowUpLong
-                            className={isSelected ? selectedIconClass : iconClass}
-                            style={{ transform: "rotate(45deg)" }}
-                        />
-                    ) : (
-                        <PiPenNib
-                            className={isSelected ? selectedIconClass : iconClass}
-                            style={{ transform: "rotate(90deg)" }}
-                        />
-                    )
-                }
+                Icon={IconNode}
+                {...(wide && { label })}
                 onHover={() => {}}
                 isSelected={isSelected}
                 chevronActive={isOpen}

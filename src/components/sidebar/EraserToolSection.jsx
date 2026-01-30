@@ -1,7 +1,7 @@
 import { PiEraserFill } from "react-icons/pi";
 import { FaRegCircle } from "react-icons/fa";
 import { TbCircleDotted } from "react-icons/tb";
-import { SidebarChevronButton } from "../subcomponents/Buttons";
+import { SidebarChevronButton, WideSidebarRowButton } from "../subcomponents/Buttons";
 import { Popover, PopoverGrid, Tooltip } from "../subcomponents/Popovers";
 
 const iconClass = "text-BrandOrange text-xl sm:text-2xl md:text-3xl";
@@ -18,9 +18,11 @@ export default function EraserToolSection({
     onPopoverToggle,
     onPopoverClose,
     onHoverTooltip,
+    wide = false,
 }) {
     const popoverKey = "eraserOptions";
     const isOpen = openPopover === popoverKey;
+    const ButtonComponent = wide ? WideSidebarRowButton : SidebarChevronButton;
 
     return (
         <div
@@ -28,9 +30,10 @@ export default function EraserToolSection({
             onMouseEnter={() => onHoverTooltip?.("eraser")}
             onMouseLeave={() => onHoverTooltip?.(null)}
         >
-            <SidebarChevronButton
+            <ButtonComponent
                 ref={anchorRef}
                 Icon={<PiEraserFill className={isSelected ? selectedIconClass : iconClass} />}
+                {...(wide && { label: "Eraser" })}
                 onHover={() => {}}
                 isSelected={isSelected}
                 chevronActive={isOpen}

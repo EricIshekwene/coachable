@@ -65,6 +65,69 @@ export const SidebarChevronButton = forwardRef(({
 
 SidebarChevronButton.displayName = "SidebarChevronButton";
 
+// Wide sidebar row: icon + label in a row (same width as RightPanel)
+export const WideSidebarRowButton = forwardRef(({
+    Icon,
+    label,
+    onHover,
+    onClick,
+    onChevronClick,
+    isSelected,
+    chevronActive = false,
+}, ref) => {
+    const handleChevronClick = (e) => {
+        e.stopPropagation();
+        onChevronClick?.();
+    };
+
+    return (
+        <div
+            ref={ref}
+            className={`
+                w-full flex items-center gap-2.5 py-2 px-2 rounded-lg
+                transition-colors duration-200
+                ${isSelected ? "bg-BrandBlack2" : "hover:bg-BrandBlack2/70"}
+            `}
+        >
+            <button
+                className={`
+                    shrink-0 w-9 h-9 rounded-lg border flex items-center justify-center
+                    transition-all duration-200
+                    ${isSelected
+                        ? "bg-BrandOrange border-BrandOrange text-BrandBlack"
+                        : "border-BrandGray2 bg-BrandBlack2 hover:border-BrandGray hover:bg-BrandBlack2/90 text-BrandOrange"
+                    }
+                `}
+                onMouseEnter={onHover}
+                onClick={onClick}
+            >
+                {Icon}
+            </button>
+            <span
+                className={`
+                    flex-1 min-w-0 text-xs sm:text-sm font-DmSans truncate transition-colors duration-200
+                    ${isSelected ? "text-BrandWhite font-medium" : "text-BrandGray hover:text-BrandWhite"}
+                `}
+            >
+                {label}
+            </span>
+            {onChevronClick != null && (
+                <button
+                    onClick={handleChevronClick}
+                    className={`
+                        shrink-0 p-0.5 rounded transition-colors duration-200
+                        ${chevronActive ? "text-BrandOrange" : "text-BrandGray2 hover:text-BrandOrange"}
+                    `}
+                >
+                    <IoChevronDownOutline className="text-sm" />
+                </button>
+            )}
+        </div>
+    );
+});
+
+WideSidebarRowButton.displayName = "WideSidebarRowButton";
+
 // Original Button component (kept for backward compatibility)
 export const Button = ({ Icon, onHover, onClick, isSelected }) => {
     return (

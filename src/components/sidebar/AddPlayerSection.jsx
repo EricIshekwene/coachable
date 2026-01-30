@@ -1,6 +1,6 @@
 import { BsPersonAdd } from "react-icons/bs";
 import { IoChevronDownOutline } from "react-icons/io5";
-import { SidebarChevronButton } from "../subcomponents/Buttons";
+import { SidebarChevronButton, WideSidebarRowButton } from "../subcomponents/Buttons";
 import { Popover, PopoverForm, Tooltip } from "../subcomponents/Popovers";
 
 const iconClass = "text-BrandOrange text-xl sm:text-2xl md:text-3xl";
@@ -22,9 +22,11 @@ export default function AddPlayerSection({
     onPlayerAssign,
     onShowPlayerDropdownChange,
     onHoverTooltip,
+    wide = false,
 }) {
     const popoverKey = "addPlayer";
     const isOpen = openPopover === popoverKey;
+    const ButtonComponent = wide ? WideSidebarRowButton : SidebarChevronButton;
 
     return (
         <div
@@ -32,7 +34,7 @@ export default function AddPlayerSection({
             onMouseEnter={() => onHoverTooltip?.("addPlayer")}
             onMouseLeave={() => onHoverTooltip?.(null)}
         >
-            <SidebarChevronButton
+            <ButtonComponent
                 ref={anchorRef}
                 Icon={<BsPersonAdd className={isSelected ? selectedIconClass : iconClass} />}
                 label="Add Player"

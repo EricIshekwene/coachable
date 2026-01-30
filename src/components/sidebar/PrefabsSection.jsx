@@ -1,5 +1,5 @@
 import { TbCopyPlusFilled } from "react-icons/tb";
-import { SidebarChevronButton } from "../subcomponents/Buttons";
+import { SidebarChevronButton, WideSidebarRowButton } from "../subcomponents/Buttons";
 import { Popover, Tooltip } from "../subcomponents/Popovers";
 import { PrefabsPopover } from "../subcomponents/PrefabsPopover";
 
@@ -14,9 +14,11 @@ export default function PrefabsSection({
     onPopoverClose,
     onPrefabSelect,
     onHoverTooltip,
+    wide = false,
 }) {
     const popoverKey = "prefabs";
     const isOpen = openPopover === popoverKey;
+    const ButtonComponent = wide ? WideSidebarRowButton : SidebarChevronButton;
 
     const handlePrefabSelect = (prefab) => {
         onPrefabSelect?.(prefab);
@@ -29,7 +31,7 @@ export default function PrefabsSection({
             onMouseEnter={() => onHoverTooltip?.("prefabs")}
             onMouseLeave={() => onHoverTooltip?.(null)}
         >
-            <SidebarChevronButton
+            <ButtonComponent
                 ref={anchorRef}
                 Icon={<TbCopyPlusFilled className={iconClass} />}
                 label="Prefabs"

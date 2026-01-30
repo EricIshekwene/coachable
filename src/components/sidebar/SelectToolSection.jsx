@@ -1,6 +1,6 @@
 import { LuMousePointer2 } from "react-icons/lu";
 import { IoHandLeftOutline } from "react-icons/io5";
-import { SidebarChevronButton } from "../subcomponents/Buttons";
+import { SidebarChevronButton, WideSidebarRowButton } from "../subcomponents/Buttons";
 import { Popover, PopoverGrid, Tooltip } from "../subcomponents/Popovers";
 
 const iconClass = "text-BrandOrange text-xl sm:text-2xl md:text-3xl";
@@ -17,9 +17,18 @@ export default function SelectToolSection({
     onPopoverToggle,
     onPopoverClose,
     onHoverTooltip,
+    wide = false,
 }) {
     const popoverKey = "selectOptions";
     const isOpen = openPopover === popoverKey;
+    const label = selectToolType === "hand" ? "Hand" : "Select";
+    const IconNode = selectToolType === "hand" ? (
+        <IoHandLeftOutline className={isSelected ? selectedIconClass : iconClass} />
+    ) : (
+        <LuMousePointer2 className={isSelected ? selectedIconClass : iconClass} />
+    );
+
+    const ButtonComponent = wide ? WideSidebarRowButton : SidebarChevronButton;
 
     return (
         <div
@@ -27,15 +36,10 @@ export default function SelectToolSection({
             onMouseEnter={() => onHoverTooltip?.("select")}
             onMouseLeave={() => onHoverTooltip?.(null)}
         >
-            <SidebarChevronButton
+            <ButtonComponent
                 ref={anchorRef}
-                Icon={
-                    selectToolType === "hand" ? (
-                        <IoHandLeftOutline className={isSelected ? selectedIconClass : iconClass} />
-                    ) : (
-                        <LuMousePointer2 className={isSelected ? selectedIconClass : iconClass} />
-                    )
-                }
+                Icon={IconNode}
+                {...(wide && { label })}
                 onHover={() => {}}
                 isSelected={isSelected}
                 chevronActive={isOpen}

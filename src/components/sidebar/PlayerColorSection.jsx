@@ -1,4 +1,4 @@
-import { SidebarChevronButton } from "../subcomponents/Buttons";
+import { SidebarChevronButton, WideSidebarRowButton } from "../subcomponents/Buttons";
 import { Popover, PopoverGrid, Tooltip } from "../subcomponents/Popovers";
 
 const PLAYER_COLORS = { red: "#FF0000", blue: "#0033FF" };
@@ -14,9 +14,11 @@ export default function PlayerColorSection({
     onPopoverToggle,
     onPopoverClose,
     onHoverTooltip,
+    wide = false,
 }) {
     const popoverKey = "playerColor";
     const isOpen = openPopover === popoverKey;
+    const ButtonComponent = wide ? WideSidebarRowButton : SidebarChevronButton;
 
     return (
         <div
@@ -24,7 +26,7 @@ export default function PlayerColorSection({
             onMouseEnter={() => onHoverTooltip?.("player")}
             onMouseLeave={() => onHoverTooltip?.(null)}
         >
-            <SidebarChevronButton
+            <ButtonComponent
                 ref={anchorRef}
                 Icon={
                     <div
@@ -32,7 +34,7 @@ export default function PlayerColorSection({
                         style={{ backgroundColor: playerColor }}
                     />
                 }
-                label="Color"
+                label="Player Color"
                 onHover={() => {}}
                 isSelected={isSelected}
                 chevronActive={isOpen}

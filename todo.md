@@ -10,6 +10,8 @@ Eric
         slide keyframes?
         changeadd keyframe styling
 
+    Tool pop up
+
 Mouse and drag
 
 colors

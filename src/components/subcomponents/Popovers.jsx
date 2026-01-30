@@ -1,8 +1,20 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
-// Generic Popover component
+const GAP_PX = 8;
+
+// Parse topOffset string like "top-0" or "top-[-150px]" to pixels
+function parseTopOffset(topOffset) {
+    if (typeof topOffset === "number") return topOffset;
+    if (typeof topOffset !== "string") return 0;
+    const match = topOffset.match(/-?\d+/);
+    return match ? parseInt(match[0], 10) : 0;
+}
+
+// Generic Popover component – renders in a portal so it's never clipped by overflow-hidden
 export const Popover = ({ isOpen, onClose, children, anchorRef, topOffset = "top-0", position = "right", marginRight }) => {
     const popoverRef = useRef(null);
+    const [style, setStyle] = useState({ left: 0, top: 0, opacity: 0 });
 
     useEffect(() => {
         if (!isOpen) return;
@@ -33,34 +45,70 @@ export const Popover = ({ isOpen, onClose, children, anchorRef, topOffset = "top
         };
     }, [isOpen, onClose, anchorRef]);
 
-    if (!isOpen) return null;
+    const updatePosition = () => {
+        if (!anchorRef?.current || !popoverRef.current) return;
+        const anchorRect = anchorRef.current.getBoundingClientRect();
+        const popoverRect = popoverRef.current.getBoundingClientRect();
+        const topOffsetPx = parseTopOffset(topOffset);
+        const margin = marginRight !== undefined ? marginRight * 4 : GAP_PX;
 
-    // Map margin values to Tailwind classes
-    const marginMap = {
-        2: position === "left" ? "mr-2" : "ml-2",
-        4: position === "left" ? "mr-4" : "ml-4",
-        6: position === "left" ? "mr-6" : "ml-6",
-        8: position === "left" ? "mr-8" : "ml-8",
-        10: position === "left" ? "mr-10" : "ml-10",
-        12: position === "left" ? "mr-12" : "ml-12",
+        let left;
+        let top = anchorRect.top + topOffsetPx;
+
+        if (position === "left") {
+            left = anchorRect.left - popoverRect.width - margin;
+        } else {
+            left = anchorRect.right + margin;
+        }
+
+        // Keep on screen
+        const padding = 8;
+        if (left + popoverRect.width > window.innerWidth - padding) {
+            left = window.innerWidth - popoverRect.width - padding;
+        }
+        if (left < padding) {
+            left = padding;
+        }
+        if (top + popoverRect.height > window.innerHeight - padding) {
+            top = window.innerHeight - popoverRect.height - padding;
+        }
+        if (top < padding) {
+            top = padding;
+        }
+
+        setStyle({ left, top, opacity: 1 });
     };
 
-    // Determine margin class based on position and custom marginRight prop
-    const marginClass = marginRight !== undefined
-        ? (marginMap[marginRight] || (position === "left" ? "mr-2" : "ml-2"))
-        : (position === "left" ? "mr-2" : "ml-2");
+    useLayoutEffect(() => {
+        if (!isOpen) return;
+        updatePosition();
+    }, [isOpen, anchorRef, topOffset, position, marginRight]);
 
-    const positionClass = position === "left" ? "right-full" : "left-full";
+    // Re-measure when window resizes or anchor moves
+    useEffect(() => {
+        if (!isOpen) return;
+        const raf = requestAnimationFrame(updatePosition);
+        window.addEventListener("resize", updatePosition);
+        return () => {
+            cancelAnimationFrame(raf);
+            window.removeEventListener("resize", updatePosition);
+        };
+    }, [isOpen]);
 
-    return (
+    if (!isOpen) return null;
+
+    const popoverContent = (
         <div
             ref={popoverRef}
-            className={`absolute ${positionClass} ${marginClass} ${topOffset} z-50`}
+            className="fixed z-[100] shadow-lg"
+            style={style}
             onClick={(e) => e.stopPropagation()}
         >
             {children}
         </div>
     );
+
+    return createPortal(popoverContent, document.body);
 };
 
 // Popover layout: Grid for option tiles

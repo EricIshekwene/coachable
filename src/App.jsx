@@ -1,5 +1,5 @@
 import "./index.css";
-import Sidebar from "./components/Sidebar";
+import WideSidebar from "./components/WideSidebar";
 import { useState, useEffect } from "react";
 import ControlPill from "./components/controlPill/ControlPill";
 import RightPanel from "./components/RightPanel";
@@ -206,7 +206,7 @@ function App() {
           Test Message Popup
         </button>
       
-        <Sidebar
+        <WideSidebar
           onToolChange={(tool) => {
             if (tool === "hand" || tool === "select") {
               setCanvasTool(tool);
