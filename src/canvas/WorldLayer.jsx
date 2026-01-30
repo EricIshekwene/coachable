@@ -10,7 +10,7 @@ export default function WorldLayer({ camera, children }) {
       className="absolute inset-0"
       style={{
         transform,
-        transformOrigin: "0 0",
+        transformOrigin: "50% 50%",
         willChange: "transform",
       }}
     >
@@ -18,4 +18,3 @@ export default function WorldLayer({ camera, children }) {
     </div>
   );
 }
-

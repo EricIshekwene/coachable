@@ -6,19 +6,24 @@ import ItemVisual from "./ItemVisual";
 export default function ItemsLayer({ items, tool, camera, onItemChange, allPlayersDisplay, playerBaseSizePx }) {
   return (
     <div className="absolute inset-0">
-      {items.map((item) => (
-        <DraggableItem
-          key={item.id}
-          item={item}
-          tool={tool}
-          camera={camera}
-          draggable={item.draggable !== false}
-          onChange={(id, next) => onItemChange?.(id, next)}
-        >
-          <ItemVisual item={item} allPlayersDisplay={allPlayersDisplay} playerBaseSizePx={playerBaseSizePx} />
-        </DraggableItem>
-      ))}
+      {/* Center-origin container so world coords (0,0) are screen center */}
+      <div
+        className="absolute"
+        style={{ left: "50%", top: "50%", transform: "translate(-50%, -50%)" }}
+      >
+        {items.map((item) => (
+          <DraggableItem
+            key={item.id}
+            item={item}
+            tool={tool}
+            camera={camera}
+            draggable={item.draggable !== false}
+            onChange={(id, next) => onItemChange?.(id, next)}
+          >
+            <ItemVisual item={item} allPlayersDisplay={allPlayersDisplay} playerBaseSizePx={playerBaseSizePx} />
+          </DraggableItem>
+        ))}
+      </div>
     </div>
   );
 }
-

@@ -65,8 +65,8 @@ function App() {
   const [playersById, setPlayersById] = useState(() => ({
     "player-1": {
       id: "player-1",
-      x: 300,
-      y: 300,
+      x: 0,
+      y: 0,
       number: 1,
       name: "John",
       assignment: "Left Wing",
@@ -82,7 +82,7 @@ function App() {
     showNumber: true,
     showName: false,
   }));
-  const [ball, setBall] = useState(() => ({ id: "ball-1", x: 300, y: 300 }));
+  const [ball, setBall] = useState(() => ({ id: "ball-1", x: 0, y: 0 }));
 
   const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
   const zoomPercent = clamp(Math.round((camera.zoom || 1) * 100), 30, 300);

@@ -17,7 +17,7 @@ export default function FieldLayer({ showMarkings = true }) {
       onDragStart={(e) => e.preventDefault()}
       style={{
         position: "absolute",
-        left: "55%",
+        left: "50%",
         top: "50%",
         transform: "translate(-50%, -50%)",
       }}

@@ -110,11 +110,13 @@ Everything outside this component is invisible.
 **Behavior**
 - Wraps all world content.
 - Applies:
-transform: translate(camera.x, camera.y) scale(camera.zoom)
+  - `transform: translate(camera.x, camera.y) scale(camera.zoom)`
+  - `transform-origin: 50% 50%` (zoom around center)
 
 
 **Result**
 - Field and all items move together during pan and zoom.
+- Zooming focuses on the visual center (no left/top drift).
 
 ---
 
@@ -167,6 +169,7 @@ The field can extend beyond the viewport and will be clipped.
 - Renders all draggable items.
 
 **Behavior**
+- Wraps items in a center-origin container so world coordinates are measured from the visual center.
 - Maps `items` array → `DraggableItem`.
 - Delegates appearance to `ItemVisual`.
 
@@ -192,13 +195,19 @@ Keeps rendering logic separate from interaction logic.
 
 ## Default Positioning Rules
 
-- The field is **always centered** by CSS, not JavaScript.
-- Initial camera state:
-{ x: 0, y: 0, zoom: 1 }
+- The field is always centered by CSS (50%/50% with translate).
+- The camera defaults to `{ x: 0, y: 0, zoom: 1 }`.
+- World coordinates are centered: `{ x: 0, y: 0 }` is the middle of the viewport/field.
+- Items placed at `{ x: 0, y: 0 }` appear at midfield; positive `x` is right, positive `y` is down.
+- Avoid hardcoded top-left–based pixel assumptions like `{ x: 300, y: 300 }` unless intentional.
 
-- Items placed near `{ x: 0, y: 0 }` appear near midfield.
+### Zoom Behavior
+- `WorldLayer` uses `transform-origin: 50% 50%` so zoom pivots around the center.
+- To zoom toward the pointer, compute camera deltas against pointer-to-center vector (not yet implemented here).
 
-Avoid hardcoded pixel values like `{ x: 300, y: 300 }`.
+### Adding New Items (Players/Ball)
+- Create items in world coordinates relative to center. Example: `{ x: 0, y: 0 }` spawns at the visual center.
+- If you want to spawn at the current screen center regardless of panning, you can use the current camera to compute a world position from a screen point and set the item `{ x, y }` accordingly.
 
 ---
 
@@ -242,6 +251,10 @@ Use this list when something moves incorrectly, drags unexpectedly, or disappear
   - `transform: translate(-50%, -50%)`
 - Ensure there is **no field position stored in React state**.
 - Verify the camera default is `{ x: 0, y: 0, zoom: 1 }`.
+
+### 1b. Zoom drifts left/top
+- Confirm `WorldLayer` style includes `transform-origin: 50% 50%`.
+- If zoom is pointer-centered, ensure camera adjusts during wheel (not included by default).
 
 ---
 
