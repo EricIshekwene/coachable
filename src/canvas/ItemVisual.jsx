@@ -43,7 +43,7 @@ export default function ItemVisual({ item, allPlayersDisplay, playerBaseSizePx }
       }
     case "ball":
       {
-        const ballSizePx = 28;
+        const ballSizePx = 22;
         return (
           <div
             className="z-40 flex items-center justify-center select-none"
@@ -70,7 +70,7 @@ export default function ItemVisual({ item, allPlayersDisplay, playerBaseSizePx }
                   width: ballSizePx,
                   height: ballSizePx,
                   objectFit: "contain",
-                  filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.5)) drop-shadow(0 0 1px rgba(0,0,0,0.8))",
+                  filter: "drop-shadow(0 1px 1.5px rgba(0,0,0,0.2)) drop-shadow(0 0 0.5px rgba(0,0,0,0.4))",
                 }}
               />
             )}
