@@ -6,6 +6,7 @@ import RightPanel from "./components/RightPanel";
 import AdvancedSettings from "./components/AdvancedSettings";
 import CanvasRoot from "./canvas/CanvasRoot";
 import MessagePopup from "./components/messagePopup/MessagePopup";
+import PlayerEditPanel from "./components/rightPanel/PlayerEditPanel";
 
 
 function App() {
@@ -62,7 +63,8 @@ function App() {
   // RightPanel / Canvas shared state
   const [playName, setPlayName] = useState("Name");
   const [camera, setCamera] = useState({ x: 0, y: 0, zoom: 1 });
-  const [playersById, setPlayersById] = useState(() => ({
+  const DEFAULT_PLAYER_COLOR = "#ef4444";
+  const INITIAL_PLAYERS_BY_ID = {
     "player-1": {
       id: "player-1",
       x: 0,
@@ -70,15 +72,32 @@ function App() {
       number: 1,
       name: "John",
       assignment: "Left Wing",
-      color: "#ef4444",
+      color: DEFAULT_PLAYER_COLOR,
     },
-
-  }));
+  };
+  const [playersById, setPlayersById] = useState(() => INITIAL_PLAYERS_BY_ID);
   const [representedPlayerIds, setRepresentedPlayerIds] = useState(() => ["player-1"]);
   const [selectedPlayerId, setSelectedPlayerId] = useState(null);
+  const [currentPlayerColor, setCurrentPlayerColor] = useState(DEFAULT_PLAYER_COLOR);
+  const [playerNumberByColor, setPlayerNumberByColor] = useState(() => {
+    const byColor = {};
+    Object.values(INITIAL_PLAYERS_BY_ID).forEach((player) => {
+      const color = player.color || DEFAULT_PLAYER_COLOR;
+      const num = Number(player.number);
+      if (!Number.isNaN(num)) {
+        byColor[color] = Math.max(byColor[color] || 0, num);
+      }
+    });
+    return byColor;
+  });
+  const [playerEditor, setPlayerEditor] = useState({
+    open: false,
+    id: null,
+    draft: { number: "", name: "", assignment: "" },
+  });
   const [allPlayersDisplay, setAllPlayersDisplay] = useState(() => ({
     sizePercent: 100,
-    color: "#ef4444",
+    color: DEFAULT_PLAYER_COLOR,
     showNumber: true,
     showName: false,
   }));
@@ -87,6 +106,32 @@ function App() {
 
   const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
   const zoomPercent = clamp(Math.round((camera.zoom || 1) * 100), 30, 300);
+
+  const normalizeNumber = (value) => {
+    const trimmed = String(value ?? "").trim();
+    if (trimmed === "") return "";
+    const asNumber = Number(trimmed);
+    return Number.isNaN(asNumber) ? trimmed : asNumber;
+  };
+
+  const getNextPlayerId = (byId) => {
+    let maxId = 0;
+    Object.keys(byId || {}).forEach((id) => {
+      const match = id.match(/player-(\d+)/);
+      if (match) {
+        const n = Number(match[1]);
+        if (!Number.isNaN(n)) maxId = Math.max(maxId, n);
+      }
+    });
+    return `player-${maxId + 1}`;
+  };
+
+  const getRandomNearbyPosition = (base) => {
+    const jitter = 30;
+    const dx = (Math.random() * 2 - 1) * jitter;
+    const dy = (Math.random() * 2 - 1) * jitter;
+    return { x: (base?.x ?? 0) + dx, y: (base?.y ?? 0) + dy };
+  };
 
   const setZoomPercent = (nextPercent) => {
     const pct = clamp(Number(nextPercent) || 0, 30, 300);
@@ -105,6 +150,129 @@ function App() {
 
   const onSaveToPlaybook = () => { };
   const onDownload = () => { };
+
+  const handlePlayerColorChange = (hex) => {
+    setCurrentPlayerColor(hex);
+  };
+
+  const resolveNextNumber = (colorKey, providedNumber) => {
+    const trimmed = String(providedNumber ?? "").trim();
+    if (trimmed !== "") {
+      const normalized = normalizeNumber(trimmed);
+      const numeric = Number(normalized);
+      if (!Number.isNaN(numeric)) {
+        setPlayerNumberByColor((prev) => {
+          const last = prev[colorKey] ?? 0;
+          return { ...prev, [colorKey]: Math.max(last, numeric) };
+        });
+      }
+      return normalized;
+    }
+    const last = playerNumberByColor[colorKey] ?? 0;
+    const next = last + 1;
+    setPlayerNumberByColor((prev) => ({ ...prev, [colorKey]: Math.max(prev[colorKey] ?? 0, next) }));
+    return next;
+  };
+
+  const handleAddPlayer = ({ number, name, assignment, color, position }) => {
+    const nextName = String(name ?? "").trim();
+    const nextAssignment = String(assignment ?? "").trim();
+    const colorKey = color || currentPlayerColor || allPlayersDisplay.color || DEFAULT_PLAYER_COLOR;
+    const hasInput = String(number ?? "").trim() !== "" || nextName !== "" || nextAssignment !== "";
+    const nextNumber = resolveNextNumber(colorKey, number);
+    if (!hasInput && String(nextNumber ?? "").trim() === "") {
+      return;
+    }
+
+    const lastId = representedPlayerIds?.[representedPlayerIds.length - 1];
+    const lastPlayer = lastId ? playersById?.[lastId] : null;
+    const basePosition = position ?? getRandomNearbyPosition(lastPlayer || { x: 0, y: 0 });
+    const newId = getNextPlayerId(playersById);
+
+    setPlayersById((prev) => ({
+      ...prev,
+      [newId]: {
+        id: newId,
+        x: basePosition.x,
+        y: basePosition.y,
+        number: nextNumber,
+        name: nextName,
+        assignment: nextAssignment,
+        color: colorKey,
+      },
+    }));
+    setRepresentedPlayerIds((prev) => [...prev, newId]);
+    setSelectedPlayerId(newId);
+  };
+
+  const handleCanvasAddPlayer = ({ x, y }) => {
+    const colorKey = currentPlayerColor || allPlayersDisplay.color || DEFAULT_PLAYER_COLOR;
+    handleAddPlayer({
+      color: colorKey,
+      position: { x, y },
+    });
+  };
+
+  const handleEditPlayer = (id) => {
+    const player = playersById?.[id];
+    if (!player) return;
+    setPlayerEditor({
+      open: true,
+      id,
+      draft: {
+        number: player.number ?? "",
+        name: player.name ?? "",
+        assignment: player.assignment ?? "",
+      },
+    });
+  };
+
+  const handleEditDraftChange = (patch) => {
+    setPlayerEditor((prev) => ({
+      ...prev,
+      draft: { ...prev.draft, ...patch },
+    }));
+  };
+
+  const handleCloseEditPlayer = () => {
+    setPlayerEditor({ open: false, id: null, draft: { number: "", name: "", assignment: "" } });
+  };
+
+  const handleSaveEditPlayer = () => {
+    const editId = playerEditor.id;
+    if (!editId) {
+      handleCloseEditPlayer();
+      return;
+    }
+    setPlayersById((prev) => {
+      const existing = prev?.[editId];
+      if (!existing) return prev;
+      return {
+        ...prev,
+        [editId]: {
+          ...existing,
+          number: normalizeNumber(playerEditor.draft.number),
+          name: String(playerEditor.draft.name ?? "").trim(),
+          assignment: String(playerEditor.draft.assignment ?? "").trim(),
+        },
+      };
+    });
+    handleCloseEditPlayer();
+  };
+
+  const handleDeletePlayer = (id) => {
+    setPlayersById((prev) => {
+      if (!prev?.[id]) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setRepresentedPlayerIds((prev) => prev.filter((playerId) => playerId !== id));
+    setSelectedPlayerId((prev) => (prev === id ? null : prev));
+    if (playerEditor.open && playerEditor.id === id) {
+      handleCloseEditPlayer();
+    }
+  };
 
   const items = [
     ...Object.values(playersById).map((p) => ({
@@ -209,13 +377,15 @@ function App() {
       
         <WideSidebar
           onToolChange={(tool) => {
-            if (tool === "hand" || tool === "select") {
+            if (tool === "hand" || tool === "select" || tool === "addPlayer" || tool === "color") {
               setCanvasTool(tool);
             }
           }}
           onUndo={onUndo}
           onRedo={onRedo}
           onReset={onReset}
+          onAddPlayer={handleAddPlayer}
+          onPlayerColorChange={handlePlayerColorChange}
         />
         <div className="flex-1 flex">
           <CanvasRoot
@@ -224,6 +394,7 @@ function App() {
             setCamera={setCamera}
             items={items}
             onItemChange={handleItemChange}
+            onCanvasAddPlayer={handleCanvasAddPlayer}
             allPlayersDisplay={allPlayersDisplay}
             advancedSettings={advancedSettings}
           />
@@ -254,12 +425,22 @@ function App() {
           representedPlayerIds={representedPlayerIds}
           selectedPlayerId={selectedPlayerId}
           onSelectPlayer={setSelectedPlayerId}
+          onEditPlayer={handleEditPlayer}
+          onDeletePlayer={handleDeletePlayer}
           allPlayersDisplay={allPlayersDisplay}
           onAllPlayersDisplayChange={setAllPlayersDisplay}
           advancedSettingsOpen={showAdvancedSettings}
           onOpenAdvancedSettings={() => setShowAdvancedSettings(true)}
           onSaveToPlaybook={onSaveToPlaybook}
           onDownload={onDownload}
+        />
+        <PlayerEditPanel
+          isOpen={playerEditor.open}
+          player={playerEditor.id ? playersById[playerEditor.id] : null}
+          draft={playerEditor.draft}
+          onChange={handleEditDraftChange}
+          onClose={handleCloseEditPlayer}
+          onSave={handleSaveEditPlayer}
         />
         {showAdvancedSettings && (
           <AdvancedSettings

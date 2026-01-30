@@ -82,6 +82,7 @@ export default function SidebarRoot({
     onReset,
     onPrefabSelect,
     onAddPlayer,
+    onPlayerColorChange,
     players: playersProp,
     prefabs: prefabsProp,
 }) {
@@ -90,6 +91,8 @@ export default function SidebarRoot({
     const [penToolType, setPenToolType] = useState("pen");
     const [eraserToolType, setEraserToolType] = useState("eraser");
     const [openPopover, setOpenPopover] = useState(null);
+    const [playerNumber, setPlayerNumber] = useState("");
+    const [playerName, setPlayerName] = useState("");
     const [playerSearch, setPlayerSearch] = useState("");
     const [showPlayerDropdown, setShowPlayerDropdown] = useState(false);
     const [playerColor, setPlayerColor] = useState(PLAYER_COLORS.red);
@@ -145,11 +148,30 @@ export default function SidebarRoot({
         setPlayerSearch(name);
         setShowPlayerDropdown(false);
     };
+    const handleAddPlayer = (data) => {
+        const next = {
+            number: data?.number ?? playerNumber,
+            name: data?.name ?? playerName,
+            assignment: data?.assignment ?? playerSearch,
+            color: playerColor,
+        };
+        const hasValue =
+            String(next.number ?? "").trim() !== "" ||
+            String(next.name ?? "").trim() !== "" ||
+            String(next.assignment ?? "").trim() !== "";
+        if (!hasValue) return;
+        onAddPlayer?.(next);
+        setPlayerNumber("");
+        setPlayerName("");
+        setPlayerSearch("");
+        setShowPlayerDropdown(false);
+    };
+    const handleQuickAddPlayer = () => {
+        onAddPlayer?.({ color: playerColor });
+    };
 
     useEffect(() => {
-        if (onToolChange && (selectedTool === "hand" || selectedTool === "select")) {
-            onToolChange(selectedTool);
-        }
+        onToolChange?.(selectedTool);
     }, [selectedTool, onToolChange]);
 
     useEffect(() => {
@@ -245,6 +267,8 @@ export default function SidebarRoot({
                 isSelected={selectedTool === "addPlayer"}
                 openPopover={openPopover}
                 hoveredTooltip={hoveredTooltip}
+                numberValue={playerNumber}
+                nameValue={playerName}
                 playerSearch={playerSearch}
                 showPlayerDropdown={showPlayerDropdown}
                 filteredPlayers={filteredPlayers}
@@ -253,24 +277,29 @@ export default function SidebarRoot({
                 onToolSelect={() => setSelectedTool("addPlayer")}
                 onPopoverToggle={togglePopover}
                 onPopoverClose={closePopover}
+                onNumberChange={setPlayerNumber}
+                onNameChange={setPlayerName}
                 onPlayerSearchChange={setPlayerSearch}
                 onPlayerAssign={handlePlayerAssign}
                 onShowPlayerDropdownChange={setShowPlayerDropdown}
                 onHoverTooltip={setHoveredTooltip}
+                onAddPlayer={handleAddPlayer}
+                onQuickAdd={handleQuickAddPlayer}
             />
             {hr}
 
             <PlayerColorSection
                 playerColor={playerColor}
-                isSelected={selectedTool === "player"}
+                isSelected={selectedTool === "color"}
                 openPopover={openPopover}
                 hoveredTooltip={hoveredTooltip}
                 anchorRef={playerButtonRef}
-                onToolSelect={() => setSelectedTool("player")}
+                onToolSelect={() => setSelectedTool("color")}
                 onPlayerColorChange={handlePlayerColorChange}
                 onPopoverToggle={togglePopover}
                 onPopoverClose={closePopover}
                 onHoverTooltip={setHoveredTooltip}
+                onQuickAdd={handleQuickAddPlayer}
             />
             {hr}
 

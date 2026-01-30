@@ -10,6 +10,8 @@ export default function AddPlayerSection({
     isSelected,
     openPopover,
     hoveredTooltip,
+    numberValue,
+    nameValue,
     playerSearch,
     showPlayerDropdown,
     filteredPlayers,
@@ -18,15 +20,31 @@ export default function AddPlayerSection({
     onToolSelect,
     onPopoverToggle,
     onPopoverClose,
+    onNumberChange,
+    onNameChange,
     onPlayerSearchChange,
     onPlayerAssign,
     onShowPlayerDropdownChange,
     onHoverTooltip,
+    onAddPlayer,
+    onQuickAdd,
     wide = false,
 }) {
     const popoverKey = "addPlayer";
     const isOpen = openPopover === popoverKey;
     const ButtonComponent = wide ? WideSidebarRowButton : SidebarChevronButton;
+    const handleSubmit = () => {
+        onAddPlayer?.({
+            number: numberValue,
+            name: nameValue,
+            assignment: playerSearch,
+        });
+    };
+    const handleKeyDown = (e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        handleSubmit();
+    };
 
     return (
         <div
@@ -41,7 +59,8 @@ export default function AddPlayerSection({
                 onHover={() => {}}
                 isSelected={isSelected}
                 chevronActive={isOpen}
-                onClick={() => onToolSelect?.("addPlayer")}
+                onClick={() => onQuickAdd?.()}
+                onRowClick={() => onToolSelect?.("addPlayer")}
                 onChevronClick={() => onPopoverToggle?.(popoverKey)}
             />
             <Tooltip isOpen={hoveredTooltip === "addPlayer" && !isOpen} text="Add Player" />
@@ -53,6 +72,9 @@ export default function AddPlayerSection({
                             <input
                                 type="text"
                                 className="w-full h-8 sm:h-9 bg-BrandBlack border-[0.5px] border-BrandGray text-BrandWhite rounded-md px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors"
+                                value={numberValue ?? ""}
+                                onChange={(e) => onNumberChange?.(e.target.value)}
+                                onKeyDown={handleKeyDown}
                             />
                         </div>
                         <div className="flex flex-col gap-0.5 sm:gap-1">
@@ -60,6 +82,9 @@ export default function AddPlayerSection({
                             <input
                                 type="text"
                                 className="w-full h-8 sm:h-9 bg-BrandBlack border-[0.5px] border-BrandGray text-BrandWhite rounded-md px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors"
+                                value={nameValue ?? ""}
+                                onChange={(e) => onNameChange?.(e.target.value)}
+                                onKeyDown={handleKeyDown}
                             />
                         </div>
                         <div className="flex flex-col gap-0.5 sm:gap-1 relative">
@@ -73,6 +98,7 @@ export default function AddPlayerSection({
                                         value={playerSearch}
                                         onChange={(e) => onPlayerSearchChange?.(e.target.value)}
                                         onFocus={() => onShowPlayerDropdownChange?.(true)}
+                                        onKeyDown={handleKeyDown}
                                     />
                                     <button
                                         onClick={() => onShowPlayerDropdownChange?.(!showPlayerDropdown)}
@@ -108,6 +134,13 @@ export default function AddPlayerSection({
                                 )}
                             </div>
                         </div>
+                        <button
+                            type="button"
+                            onClick={handleSubmit}
+                            className="w-full h-8 sm:h-9 bg-BrandOrange text-BrandBlack rounded-md text-xs sm:text-sm font-DmSans font-semibold hover:bg-BrandOrange/90 transition-colors mt-1"
+                        >
+                            Add Player
+                        </button>
                     </div>
                 </PopoverForm>
             </Popover>

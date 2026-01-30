@@ -12,6 +12,7 @@ export default function CanvasRoot({
   setCamera,
   items,
   onItemChange,
+  onCanvasAddPlayer,
   allPlayersDisplay,
   advancedSettings,
 }) {
@@ -26,7 +27,7 @@ export default function CanvasRoot({
 
   return (
     <BoardViewport ref={viewportRef} className="bg-BrandGreen" style={pitchColor ? { backgroundColor: pitchColor } : undefined}>
-      <PanHandler tool={tool} camera={camera} setCamera={setCamera}>
+      <PanHandler tool={tool} camera={camera} setCamera={setCamera} onCanvasAddPlayer={onCanvasAddPlayer}>
         <WorldLayer camera={camera}>
           <FieldLayer showMarkings={showMarkings} />
           <ItemsLayer
@@ -42,4 +43,3 @@ export default function CanvasRoot({
     </BoardViewport>
   );
 }
-

@@ -1,7 +1,7 @@
 import { SidebarChevronButton, WideSidebarRowButton } from "../subcomponents/Buttons";
 import { Popover, PopoverGrid, Tooltip } from "../subcomponents/Popovers";
 
-const PLAYER_COLORS = { red: "#FF0000", blue: "#0033FF" };
+const PLAYER_COLORS = { red: "#ef4444", blue: "#0033FF" };
 
 export default function PlayerColorSection({
     playerColor,
@@ -14,6 +14,7 @@ export default function PlayerColorSection({
     onPopoverToggle,
     onPopoverClose,
     onHoverTooltip,
+    onQuickAdd,
     wide = false,
 }) {
     const popoverKey = "playerColor";
@@ -34,14 +35,15 @@ export default function PlayerColorSection({
                         style={{ backgroundColor: playerColor }}
                     />
                 }
-                label="Player Color"
+                label="Color"
                 onHover={() => {}}
                 isSelected={isSelected}
                 chevronActive={isOpen}
-                onClick={() => onToolSelect?.("player")}
+                onClick={() => onQuickAdd?.()}
+                onRowClick={() => onToolSelect?.("color")}
                 onChevronClick={() => onPopoverToggle?.(popoverKey)}
             />
-            <Tooltip isOpen={hoveredTooltip === "player" && !isOpen} text="Player Color" />
+            <Tooltip isOpen={hoveredTooltip === "player" && !isOpen} text="Color" />
             <Popover isOpen={isOpen} onClose={onPopoverClose} anchorRef={anchorRef}>
                 <PopoverGrid cols={2}>
                     <div className="flex flex-col items-center gap-1">

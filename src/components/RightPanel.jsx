@@ -26,6 +26,8 @@ export default function RightPanel({
   representedPlayerIds,
   selectedPlayerId,
   onSelectPlayer,
+  onEditPlayer,
+  onDeletePlayer,
 
   allPlayersDisplay,
   onAllPlayersDisplayChange,
@@ -72,6 +74,8 @@ export default function RightPanel({
             representedPlayerIds={representedPlayerIds}
             selectedPlayerId={selectedPlayerId}
             onSelectPlayer={onSelectPlayer}
+            onEditPlayer={onEditPlayer}
+            onDeletePlayer={onDeletePlayer}
           />
 
           <AdvancedSettingsButton isOpen={advancedSettingsOpen} onOpen={onOpenAdvancedSettings} />

@@ -8,6 +8,7 @@ export const SidebarChevronButton = forwardRef(({
     label,
     onHover,
     onClick,
+    onRowClick,
     onChevronClick,
     isSelected,
     chevronActive = false,
@@ -28,7 +29,10 @@ export const SidebarChevronButton = forwardRef(({
                     ${isSelected ? "bg-BrandOrange" : "bg-BrandBlack2"}
                 `}
                 onMouseEnter={onHover}
-                onClick={onClick}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onClick?.();
+                }}
             >
                 {Icon}
             </button>
@@ -47,7 +51,11 @@ export const SidebarChevronButton = forwardRef(({
 
     if (label) {
         return (
-            <div ref={ref} className="w-full flex flex-col items-center gap-1 relative">
+            <div
+                ref={ref}
+                className="w-full flex flex-col items-center gap-1 relative"
+                onClick={() => onRowClick?.()}
+            >
                 {buttonContent}
                 <span className="text-[10px] sm:text-xs text-BrandGray text-center mt-1 leading-none font-DmSans">
                     {label}
@@ -57,7 +65,7 @@ export const SidebarChevronButton = forwardRef(({
     }
 
     return (
-        <div ref={ref} className="w-full relative">
+        <div ref={ref} className="w-full relative" onClick={() => onRowClick?.()}>
             {buttonContent}
         </div>
     );
@@ -71,6 +79,7 @@ export const WideSidebarRowButton = forwardRef(({
     label,
     onHover,
     onClick,
+    onRowClick,
     onChevronClick,
     isSelected,
     chevronActive = false,
@@ -88,6 +97,7 @@ export const WideSidebarRowButton = forwardRef(({
                 transition-colors duration-200
                 ${isSelected ? "bg-BrandBlack2" : "hover:bg-BrandBlack2/70"}
             `}
+            onClick={() => onRowClick?.()}
         >
             <button
                 className={`
@@ -99,7 +109,10 @@ export const WideSidebarRowButton = forwardRef(({
                     }
                 `}
                 onMouseEnter={onHover}
-                onClick={onClick}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onClick?.();
+                }}
             >
                 {Icon}
             </button>

@@ -47,9 +47,8 @@ export default function PlayNameEditor({ value, onChange, maxLength = 10 }) {
         </div>
       )}
       <FiEdit
-        className={`text-xs sm:text-sm cursor-pointer transition-colors ${
-          (value || "").length > maxLength ? "text-BrandGray cursor-not-allowed" : "text-BrandWhite hover:text-BrandOrange"
-        }`}
+        className={`text-xs sm:text-sm cursor-pointer transition-colors ${(value || "").length > maxLength ? "text-BrandGray cursor-not-allowed" : "text-BrandWhite hover:text-BrandOrange"
+          }`}
         onClick={handleEnableEdit}
       />
     </div>

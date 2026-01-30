@@ -6,6 +6,8 @@ export default function PlayersSection({
   representedPlayerIds,
   selectedPlayerId,
   onSelectPlayer,
+  onEditPlayer,
+  onDeletePlayer,
 }) {
   const ids = representedPlayerIds || [];
   const count = ids.length;
@@ -24,6 +26,8 @@ export default function PlayersSection({
               player={player}
               isSelected={selectedPlayerId === id}
               onClick={() => onSelectPlayer?.(id)}
+              onEdit={onEditPlayer}
+              onDelete={onDeletePlayer}
             />
           );
         })}
@@ -31,4 +35,3 @@ export default function PlayersSection({
     </div>
   );
 }
-
