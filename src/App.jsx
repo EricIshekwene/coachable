@@ -79,17 +79,6 @@ function App() {
   const [representedPlayerIds, setRepresentedPlayerIds] = useState(() => ["player-1"]);
   const [selectedPlayerId, setSelectedPlayerId] = useState(null);
   const [currentPlayerColor, setCurrentPlayerColor] = useState(DEFAULT_PLAYER_COLOR);
-  const [playerNumberByColor, setPlayerNumberByColor] = useState(() => {
-    const byColor = {};
-    Object.values(INITIAL_PLAYERS_BY_ID).forEach((player) => {
-      const color = player.color || DEFAULT_PLAYER_COLOR;
-      const num = Number(player.number);
-      if (!Number.isNaN(num)) {
-        byColor[color] = Math.max(byColor[color] || 0, num);
-      }
-    });
-    return byColor;
-  });
   const [playerEditor, setPlayerEditor] = useState({
     open: false,
     id: null,
@@ -213,23 +202,20 @@ function App() {
     setCurrentPlayerColor(hex);
   };
 
-  const resolveNextNumber = (colorKey, providedNumber) => {
+  const resolveNextNumber = (providedNumber) => {
     const trimmed = String(providedNumber ?? "").trim();
     if (trimmed !== "") {
       const normalized = normalizeNumber(trimmed);
-      const numeric = Number(normalized);
-      if (!Number.isNaN(numeric)) {
-        setPlayerNumberByColor((prev) => {
-          const last = prev[colorKey] ?? 0;
-          return { ...prev, [colorKey]: Math.max(last, numeric) };
-        });
-      }
       return normalized;
     }
-    const last = playerNumberByColor[colorKey] ?? 0;
-    const next = last + 1;
-    setPlayerNumberByColor((prev) => ({ ...prev, [colorKey]: Math.max(prev[colorKey] ?? 0, next) }));
-    return next;
+    if (!representedPlayerIds?.length) return 1;
+    for (let i = representedPlayerIds.length - 1; i >= 0; i -= 1) {
+      const player = playersById?.[representedPlayerIds[i]];
+      if (!player) continue;
+      const numeric = Number(player.number);
+      if (!Number.isNaN(numeric)) return numeric + 1;
+    }
+    return 1;
   };
 
   const handleAddPlayer = ({ number, name, assignment, color, position }) => {
@@ -238,7 +224,7 @@ function App() {
     const nextAssignment = String(assignment ?? "").trim();
     const colorKey = color || currentPlayerColor || allPlayersDisplay.color || DEFAULT_PLAYER_COLOR;
     const hasInput = String(number ?? "").trim() !== "" || nextName !== "" || nextAssignment !== "";
-    const nextNumber = resolveNextNumber(colorKey, number);
+    const nextNumber = resolveNextNumber(number);
     if (!hasInput && String(nextNumber ?? "").trim() === "") {
       return;
     }

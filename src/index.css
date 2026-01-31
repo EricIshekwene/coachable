@@ -30,8 +30,8 @@
 /* Custom Scrollbar Styling */
 /* Webkit browsers (Chrome, Safari, Edge) */
 ::-webkit-scrollbar {
-    width: 2px;
-    height: 2px;
+    width: 1px;
+    height: 1px;
 }
 
 ::-webkit-scrollbar-track {
@@ -42,8 +42,8 @@
 ::-webkit-scrollbar-thumb {
     background: linear-gradient(180deg, #FF7A18 0%, #ff8d3d 100%);
     border-radius: 10px;
-    border: 2px solid transparent;
-    background-clip: padding-box;
+    border: 0;
+    background-clip: border-box;
     transition: background 0.2s ease;
 }
 
@@ -78,4 +78,16 @@ input[type="number"] {
 * {
     scrollbar-width: thin;
     scrollbar-color: #FF7A18 rgba(18, 18, 18, 0.1);
+}
+
+/* Utility: hide scrollbars but keep scroll behavior */
+.hide-scroll {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge Legacy */
+}
+
+.hide-scroll::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none; /* Chrome/Safari/Edge */
 }
