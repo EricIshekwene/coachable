@@ -472,6 +472,16 @@ function App() {
     };
   }, [timePercent, keyframes, speedMultiplier, isPlaying, selectedKeyframe, autoplayEnabled]);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key !== "Escape") return;
+      setSelectedPlayerIds([]);
+      setSelectedItemIds([]);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   return (
     <>
 
@@ -530,6 +540,11 @@ function App() {
             selectedPlayerIds={selectedPlayerIds}
             selectedItemIds={selectedItemIds}
             onSelectItem={handleSelectItem}
+            onMarqueeSelect={(ids) => {
+              const nextIds = (ids || []).filter((id) => playersById?.[id] || id === ball.id);
+              setSelectedItemIds(nextIds);
+              setSelectedPlayerIds(nextIds.filter((id) => playersById?.[id]));
+            }}
             allPlayersDisplay={allPlayersDisplay}
             advancedSettings={advancedSettings}
           />

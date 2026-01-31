@@ -15,6 +15,7 @@ export default function CanvasRoot({
   onItemDragStart,
   onItemDragEnd,
   onCanvasAddPlayer,
+  onMarqueeSelect,
   selectedPlayerIds,
   selectedItemIds,
   onSelectItem,
@@ -32,7 +33,14 @@ export default function CanvasRoot({
 
   return (
     <BoardViewport ref={viewportRef} className="bg-BrandGreen" style={pitchColor ? { backgroundColor: pitchColor } : undefined}>
-      <PanHandler tool={tool} camera={camera} setCamera={setCamera} onCanvasAddPlayer={onCanvasAddPlayer}>
+      <PanHandler
+        tool={tool}
+        camera={camera}
+        setCamera={setCamera}
+        onCanvasAddPlayer={onCanvasAddPlayer}
+        items={items}
+        onMarqueeSelect={onMarqueeSelect}
+      >
         <WorldLayer camera={camera}>
           <FieldLayer showMarkings={showMarkings} />
           <ItemsLayer
