@@ -6,7 +6,7 @@ This folder contains the **Advanced Settings panel** and its section components.
 
 - **Fixed-width, full-height panel**: `AdvancedSettings.jsx` renders an absolute positioned panel that is `h-screen` and uses flex column layout.
 - **Scrollable content + pinned footer**:
-  - The **main content** (pitch settings, player settings, export video settings, animation settings) lives inside a **scroll container**.
+- The **main content** (pitch settings, player settings, export video settings, animation settings, save prefab button) lives inside a **scroll container**.
   - The **Reset to Default** button lives in a **non-scrolling footer** at the bottom.
 - **Close button**: A close button is positioned to the left of the panel.
 
@@ -112,6 +112,11 @@ Controls for animation behavior (settings are stored but not yet fully implement
 **Props:**
 - `value` (object): `{ playOnLoad }`
 - `onChange(nextValue)`: Updates the animation settings
+
+### `SavePrefabButton.jsx`
+
+- Presentational button: “Save Current Frame as Prefab”.
+- Lives in the Advanced Settings scroll area and is intentionally not wired yet.
 
 ## How settings affect the canvas
 

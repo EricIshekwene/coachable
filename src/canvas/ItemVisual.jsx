@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import whiteBall from "../assets/objects/balls/white_ball.png";
 
-export default function ItemVisual({ item, allPlayersDisplay, playerBaseSizePx }) {
+export default function ItemVisual({ item, allPlayersDisplay, playerBaseSizePx, isSelected = false }) {
   const [ballImageError, setBallImageError] = useState(false);
   switch (item.type) {
     case "player":
@@ -28,6 +28,7 @@ export default function ItemVisual({ item, allPlayersDisplay, playerBaseSizePx }
                 backgroundColor: color,
                 fontSize: `${Math.max(10, Math.round(sizePx * 0.45))}px`,
                 lineHeight: 1,
+                boxShadow: isSelected ? "0 0 0 2px #FF7A18" : "none",
               }}
             >
               {showNumber && numberText !== "" && <span className="font-bold">{numberText}</span>}
@@ -51,6 +52,8 @@ export default function ItemVisual({ item, allPlayersDisplay, playerBaseSizePx }
               width: ballSizePx,
               height: ballSizePx,
               pointerEvents: "none",
+              boxShadow: isSelected ? "0 0 0 2px #FF7A18" : "none",
+              borderRadius: "9999px",
             }}
           >
             {ballImageError ? (

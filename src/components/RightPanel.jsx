@@ -24,7 +24,7 @@ export default function RightPanel({
 
   playersById,
   representedPlayerIds,
-  selectedPlayerId,
+  selectedPlayerIds,
   onSelectPlayer,
   onEditPlayer,
   onDeletePlayer,
@@ -52,7 +52,7 @@ export default function RightPanel({
       "
     >
       {/* Scrollable content area (everything except export actions) */}
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-0.5">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-0.5 hide-scroll">
         <div className="flex flex-col gap-0.5 sm:gap-0.5 md:gap-1 lg:gap-1.5">
           <PlayNameEditor value={playName} onChange={onPlayNameChange} maxLength={10} />
 
@@ -72,7 +72,7 @@ export default function RightPanel({
           <PlayersSection
             playersById={playersById}
             representedPlayerIds={representedPlayerIds}
-            selectedPlayerId={selectedPlayerId}
+            selectedPlayerIds={selectedPlayerIds}
             onSelectPlayer={onSelectPlayer}
             onEditPlayer={onEditPlayer}
             onDeletePlayer={onDeletePlayer}

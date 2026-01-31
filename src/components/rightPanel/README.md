@@ -6,7 +6,7 @@ This folder contains the **section components** used by the Right Panel. The mai
 
 - **Fixed-width, full-height panel**: `RightPanel.jsx` (in `src/components/`) renders an `<aside>` that is `h-screen` and uses flex column layout.
 - **Scrollable content + pinned footer**:
-  - The **main content** (play name, field settings, players list, advanced settings, all-players controls) lives inside a **scroll container**.
+- The **main content** (play name, field settings, players list, advanced settings, all-players controls) lives inside a **scroll container**.
   - The **export actions** (“Save to Playbook”, “Download”) live in a **non-scrolling footer** at the bottom.
 
 This is implemented by splitting the panel into:
@@ -32,8 +32,8 @@ You can see this in `src/components/RightPanel.jsx`.
 - **Players list / selection**
   - `playersById` (map of player objects)
   - `representedPlayerIds` (array of ids shown in list)
-  - `selectedPlayerId`
-  - `onSelectPlayer(id)`
+  - `selectedPlayerIds` (array of selected ids)
+  - `onSelectPlayer(id, { toggle })`
 - **All players display**
   - `allPlayersDisplay` (object: `sizePercent`, `color`, `showNumber`, `showName`)
   - `onAllPlayersDisplayChange(nextObject)`
@@ -92,4 +92,3 @@ Controls that apply to **all players** (defaults / display preferences):
   - Without `min-h-0`, the scroll container may not shrink and the footer can get pushed off-screen.
 - **Horizontal scroll prevention**:
   - The scroll container uses `overflow-x-hidden` so controls like sliders don’t create sideways scrolling.
-

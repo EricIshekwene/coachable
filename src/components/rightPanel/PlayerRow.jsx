@@ -10,7 +10,7 @@ export default function PlayerRow({ player, isSelected = false, onClick, onEdit,
     <div
       role="button"
       tabIndex={0}
-      onClick={() => onClick?.(player.id)}
+      onClick={() => onClick?.(player.id, { toggle: true })}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") onClick?.(player.id);
       }}
@@ -81,4 +81,3 @@ export default function PlayerRow({ player, isSelected = false, onClick, onEdit,
     </div>
   );
 }
-

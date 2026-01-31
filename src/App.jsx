@@ -77,7 +77,8 @@ function App() {
   };
   const [playersById, setPlayersById] = useState(() => INITIAL_PLAYERS_BY_ID);
   const [representedPlayerIds, setRepresentedPlayerIds] = useState(() => ["player-1"]);
-  const [selectedPlayerId, setSelectedPlayerId] = useState(null);
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState([]);
+  const [selectedItemIds, setSelectedItemIds] = useState([]);
   const [currentPlayerColor, setCurrentPlayerColor] = useState(DEFAULT_PLAYER_COLOR);
   const [playerEditor, setPlayerEditor] = useState({
     open: false,
@@ -149,10 +150,12 @@ function App() {
     setPlayersById(snapshot.playersById || {});
     setRepresentedPlayerIds(snapshot.representedPlayerIds || []);
     setBall(snapshot.ball || INITIAL_BALL);
-    setSelectedPlayerId((prev) => {
-      if (!prev) return prev;
-      return snapshot.playersById?.[prev] ? prev : null;
-    });
+    setSelectedPlayerIds((prev) =>
+      (prev || []).filter((playerId) => snapshot.playersById?.[playerId])
+    );
+    setSelectedItemIds((prev) =>
+      (prev || []).filter((itemId) => snapshot.playersById?.[itemId] || itemId === snapshot.ball?.id)
+    );
     isRestoringRef.current = false;
   };
 
@@ -189,7 +192,8 @@ function App() {
     setPlayersById(INITIAL_PLAYERS_BY_ID);
     setRepresentedPlayerIds(["player-1"]);
     setBall(INITIAL_BALL);
-    setSelectedPlayerId(null);
+    setSelectedPlayerIds([]);
+    setSelectedItemIds([]);
     setHistoryPast([]);
     setHistoryFuture([]);
     isRestoringRef.current = false;
@@ -247,7 +251,8 @@ function App() {
       },
     }));
     setRepresentedPlayerIds((prev) => [...prev, newId]);
-    setSelectedPlayerId(newId);
+    setSelectedPlayerIds([newId]);
+    setSelectedItemIds([newId]);
   };
 
   const handleCanvasAddPlayer = ({ x, y }) => {
@@ -315,15 +320,67 @@ function App() {
       return next;
     });
     setRepresentedPlayerIds((prev) => prev.filter((playerId) => playerId !== id));
-    setSelectedPlayerId((prev) => (prev === id ? null : prev));
+    setSelectedPlayerIds((prev) => (prev || []).filter((playerId) => playerId !== id));
+    setSelectedItemIds((prev) => (prev || []).filter((itemId) => itemId !== id));
     if (playerEditor.open && playerEditor.id === id) {
       handleCloseEditPlayer();
     }
   };
 
   const handleDeleteSelected = () => {
-    if (!selectedPlayerId) return;
-    handleDeletePlayer(selectedPlayerId);
+    if (!selectedPlayerIds?.length) return;
+    pushHistory();
+    setPlayersById((prev) => {
+      const next = { ...prev };
+      selectedPlayerIds.forEach((id) => {
+        if (next[id]) delete next[id];
+      });
+      return next;
+    });
+    setRepresentedPlayerIds((prev) => prev.filter((playerId) => !selectedPlayerIds.includes(playerId)));
+    setSelectedPlayerIds([]);
+    setSelectedItemIds((prev) => (prev || []).filter((itemId) => !selectedPlayerIds.includes(itemId)));
+    if (playerEditor.open && selectedPlayerIds.includes(playerEditor.id)) {
+      handleCloseEditPlayer();
+    }
+  };
+
+  const handleSelectPlayer = (id, { toggle = true } = {}) => {
+    handleSelectItem(id, "player", { toggle });
+  };
+
+  const handleSelectItem = (id, type, { toggle = true } = {}) => {
+    if (!id) return;
+    setSelectedItemIds((prev) => {
+      const next = prev ? [...prev] : [];
+      const index = next.indexOf(id);
+      if (toggle) {
+        if (index >= 0) {
+          next.splice(index, 1);
+          return next;
+        }
+        next.push(id);
+        return next;
+      }
+      if (index >= 0 && next.length === 1) return next;
+      return [id];
+    });
+    if (type === "player") {
+      setSelectedPlayerIds((prev) => {
+        const next = prev ? [...prev] : [];
+        const index = next.indexOf(id);
+        if (toggle) {
+          if (index >= 0) {
+            next.splice(index, 1);
+            return next;
+          }
+          next.push(id);
+          return next;
+        }
+        if (index >= 0 && next.length === 1) return next;
+        return [id];
+      });
+    }
   };
 
   const handleItemDragStart = () => {
@@ -344,8 +401,25 @@ function App() {
     { id: ball.id, type: "ball", x: ball.x, y: ball.y },
   ];
 
-  const handleItemChange = (id, next) => {
+  const handleItemChange = (id, next, meta) => {
     if (playersById[id]) {
+      if (meta?.delta && selectedPlayerIds?.includes(id) && selectedPlayerIds.length > 1) {
+        const { x: dx = 0, y: dy = 0 } = meta.delta || {};
+        setPlayersById((prev) => {
+          const updated = { ...prev };
+          selectedPlayerIds.forEach((playerId) => {
+            const existing = updated[playerId];
+            if (!existing) return;
+            updated[playerId] = {
+              ...existing,
+              x: (existing.x ?? 0) + dx,
+              y: (existing.y ?? 0) + dy,
+            };
+          });
+          return updated;
+        });
+        return;
+      }
       setPlayersById((prev) => ({ ...prev, [id]: { ...prev[id], ...next } }));
       return;
     }
@@ -453,6 +527,9 @@ function App() {
             onItemChange={handleItemChange}
             onItemDragStart={handleItemDragStart}
             onCanvasAddPlayer={handleCanvasAddPlayer}
+            selectedPlayerIds={selectedPlayerIds}
+            selectedItemIds={selectedItemIds}
+            onSelectItem={handleSelectItem}
             allPlayersDisplay={allPlayersDisplay}
             advancedSettings={advancedSettings}
           />
@@ -481,8 +558,8 @@ function App() {
           onReset={onReset}
           playersById={playersById}
           representedPlayerIds={representedPlayerIds}
-          selectedPlayerId={selectedPlayerId}
-          onSelectPlayer={setSelectedPlayerId}
+          selectedPlayerIds={selectedPlayerIds}
+          onSelectPlayer={handleSelectPlayer}
           onEditPlayer={handleEditPlayer}
           onDeletePlayer={handleDeletePlayer}
           allPlayersDisplay={allPlayersDisplay}

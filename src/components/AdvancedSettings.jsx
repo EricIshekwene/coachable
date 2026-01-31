@@ -4,6 +4,7 @@ import PitchSettingsSection from "./advancedSettings/PitchSettingsSection";
 import PlayerSettingsSection from "./advancedSettings/PlayerSettingsSection";
 import ExportVideoSettingsSection from "./advancedSettings/ExportVideoSettingsSection";
 import AnimationSettingsSection from "./advancedSettings/AnimationSettingsSection";
+import SavePrefabButton from "./rightPanel/SavePrefabButton";
 
 export default function AdvancedSettings({ value, onChange, onReset, onClose }) {
     const settings = value ?? {};
@@ -45,6 +46,7 @@ export default function AdvancedSettings({ value, onChange, onReset, onClose }) 
                 <PlayerSettingsSection value={players} onChange={updatePlayers} />
                 <ExportVideoSettingsSection value={exportVideo} onChange={updateExportVideo} />
                 <AnimationSettingsSection value={animation} onChange={updateAnimation} />
+                <SavePrefabButton />
             </aside>
             {/* Reset to Default - Fixed at bottom */}
             <div className="w-36 sm:w-40 md:w-48 lg:w-52 xl:w-56 px-2 sm:px-2.5 md:px-3 py-2 sm:py-2.5 bg-BrandBlack border-t border-BrandGray2">

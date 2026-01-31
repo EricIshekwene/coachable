@@ -15,6 +15,9 @@ export default function CanvasRoot({
   onItemDragStart,
   onItemDragEnd,
   onCanvasAddPlayer,
+  selectedPlayerIds,
+  selectedItemIds,
+  onSelectItem,
   allPlayersDisplay,
   advancedSettings,
 }) {
@@ -39,6 +42,9 @@ export default function CanvasRoot({
             onItemChange={onItemChange}
             onItemDragStart={onItemDragStart}
             onItemDragEnd={onItemDragEnd}
+            selectedPlayerIds={selectedPlayerIds}
+            selectedItemIds={selectedItemIds}
+            onSelectItem={onSelectItem}
             allPlayersDisplay={allPlayersDisplay}
             playerBaseSizePx={playerBaseSizePx}
           />

@@ -12,12 +12,15 @@ export default function DraggableItem({
   onChange,
   onDragStart,
   onDragEnd,
+  onSelect,
   children,
 }) {
   const draggingRef = useRef(false);
   const pointerIdRef = useRef(null);
   const lastScreenPtRef = useRef({ x: 0, y: 0 });
+  const startScreenPtRef = useRef({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const DRAG_THRESHOLD_PX = 3;
 
   const onPointerDown = (e) => {
     // Prevent PanHandler from engaging
@@ -26,9 +29,9 @@ export default function DraggableItem({
 
     draggingRef.current = true;
     pointerIdRef.current = e.pointerId;
-    setIsDragging(true);
+    setIsDragging(false);
     lastScreenPtRef.current = { x: e.clientX, y: e.clientY };
-    onDragStart?.(item.id);
+    startScreenPtRef.current = { x: e.clientX, y: e.clientY };
     e.currentTarget.setPointerCapture?.(e.pointerId);
   };
 
@@ -39,11 +42,22 @@ export default function DraggableItem({
     const dyScreen = e.clientY - lastScreenPtRef.current.y;
     lastScreenPtRef.current = { x: e.clientX, y: e.clientY };
 
+    if (!isDragging) {
+      const totalDx = e.clientX - startScreenPtRef.current.x;
+      const totalDy = e.clientY - startScreenPtRef.current.y;
+      if (Math.hypot(totalDx, totalDy) >= DRAG_THRESHOLD_PX) {
+        setIsDragging(true);
+        onDragStart?.(item.id);
+      } else {
+        return;
+      }
+    }
+
     const scale = camera.zoom || 1;
     const dxWorld = dxScreen / scale;
     const dyWorld = dyScreen / scale;
 
-    onChange?.(item.id, { x: item.x + dxWorld, y: item.y + dyWorld });
+    onChange?.(item.id, { x: item.x + dxWorld, y: item.y + dyWorld }, { delta: { x: dxWorld, y: dyWorld } });
   };
 
   const endDrag = (e) => {
@@ -51,8 +65,12 @@ export default function DraggableItem({
     if (pointerIdRef.current !== e.pointerId) return;
     draggingRef.current = false;
     pointerIdRef.current = null;
-    setIsDragging(false);
-    onDragEnd?.(item.id);
+    if (isDragging) {
+      setIsDragging(false);
+      onDragEnd?.(item.id);
+    } else {
+      onSelect?.(item.id, { toggle: true });
+    }
     try {
       e.currentTarget.releasePointerCapture?.(e.pointerId);
     } catch {}

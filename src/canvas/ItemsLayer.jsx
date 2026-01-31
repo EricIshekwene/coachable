@@ -10,6 +10,9 @@ export default function ItemsLayer({
   onItemChange,
   onItemDragStart,
   onItemDragEnd,
+  selectedPlayerIds,
+  selectedItemIds,
+  onSelectItem,
   allPlayersDisplay,
   playerBaseSizePx,
 }) {
@@ -27,11 +30,21 @@ export default function ItemsLayer({
             tool={tool}
             camera={camera}
             draggable={item.draggable !== false}
-            onChange={(id, next) => onItemChange?.(id, next)}
+            onChange={(id, next, meta) => onItemChange?.(id, next, meta)}
             onDragStart={onItemDragStart}
             onDragEnd={onItemDragEnd}
+            onSelect={(id, meta) => onSelectItem?.(id, item.type, meta)}
           >
-            <ItemVisual item={item} allPlayersDisplay={allPlayersDisplay} playerBaseSizePx={playerBaseSizePx} />
+            <ItemVisual
+              item={item}
+              allPlayersDisplay={allPlayersDisplay}
+              playerBaseSizePx={playerBaseSizePx}
+              isSelected={
+                item.type === "player"
+                  ? selectedPlayerIds?.includes(item.id)
+                  : selectedItemIds?.includes(item.id)
+              }
+            />
           </DraggableItem>
         ))}
       </div>

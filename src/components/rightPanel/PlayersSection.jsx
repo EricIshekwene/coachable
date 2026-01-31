@@ -4,7 +4,7 @@ import PlayerRow from "./PlayerRow";
 export default function PlayersSection({
   playersById,
   representedPlayerIds,
-  selectedPlayerId,
+  selectedPlayerIds,
   onSelectPlayer,
   onEditPlayer,
   onDeletePlayer,
@@ -24,8 +24,8 @@ export default function PlayersSection({
             <PlayerRow
               key={id}
               player={player}
-              isSelected={selectedPlayerId === id}
-              onClick={() => onSelectPlayer?.(id)}
+              isSelected={selectedPlayerIds?.includes(id)}
+              onClick={(meta) => onSelectPlayer?.(id, meta)}
               onEdit={onEditPlayer}
               onDelete={onDeletePlayer}
             />
