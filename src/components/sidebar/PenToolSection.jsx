@@ -49,11 +49,12 @@ export default function PenToolSection({
                 isSelected={isSelected}
                 chevronActive={isOpen}
                 onClick={() => onToolSelect?.("pen")}
+                onRowClick={() => onToolSelect?.("pen")}
                 onChevronClick={() => onPopoverToggle?.(popoverKey)}
             />
             <Tooltip
                 isOpen={hoveredTooltip === "pen" && !isOpen}
-                text={penToolType === "arrow" ? "Arrow Tool (A)" : "Pen Tool (P)"}
+                text={penToolType === "arrow" ? "Arrow Tool (Q)" : "Pen Tool (P)"}
             />
             <Popover isOpen={isOpen} onClose={onPopoverClose} anchorRef={anchorRef}>
                 <PopoverGrid cols={2}>
@@ -91,7 +92,7 @@ export default function PenToolSection({
                                 style={{ transform: "rotate(45deg)" }}
                             />
                         </button>
-                        <span className="text-[10px] text-BrandOrange">Arrow (A)</span>
+                        <span className="text-[10px] text-BrandOrange">Arrow (Q)</span>
                     </div>
                 </PopoverGrid>
             </Popover>

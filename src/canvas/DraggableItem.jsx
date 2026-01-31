@@ -10,6 +10,8 @@ export default function DraggableItem({
   camera,
   draggable = true,
   onChange,
+  onDragStart,
+  onDragEnd,
   children,
 }) {
   const draggingRef = useRef(false);
@@ -26,6 +28,7 @@ export default function DraggableItem({
     pointerIdRef.current = e.pointerId;
     setIsDragging(true);
     lastScreenPtRef.current = { x: e.clientX, y: e.clientY };
+    onDragStart?.(item.id);
     e.currentTarget.setPointerCapture?.(e.pointerId);
   };
 
@@ -49,6 +52,7 @@ export default function DraggableItem({
     draggingRef.current = false;
     pointerIdRef.current = null;
     setIsDragging(false);
+    onDragEnd?.(item.id);
     try {
       e.currentTarget.releasePointerCapture?.(e.pointerId);
     } catch {}
@@ -72,4 +76,3 @@ export default function DraggableItem({
     </div>
   );
 }
-

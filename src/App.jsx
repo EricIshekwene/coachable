@@ -1,6 +1,6 @@
 import "./index.css";
 import WideSidebar from "./components/WideSidebar";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import ControlPill from "./components/controlPill/ControlPill";
 import RightPanel from "./components/RightPanel";
 import AdvancedSettings from "./components/AdvancedSettings";
@@ -102,7 +102,11 @@ function App() {
     showName: false,
   }));
   // Default ball present on load; slightly offset so it isn't occluded by a centered player
-  const [ball, setBall] = useState(() => ({ id: "ball-1", x: 40, y: 0 }));
+  const INITIAL_BALL = { id: "ball-1", x: 40, y: 0 };
+  const [ball, setBall] = useState(() => INITIAL_BALL);
+  const [historyPast, setHistoryPast] = useState([]);
+  const [historyFuture, setHistoryFuture] = useState([]);
+  const isRestoringRef = useRef(false);
 
   const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
   const zoomPercent = clamp(Math.round((camera.zoom || 1) * 100), 30, 300);
@@ -144,9 +148,63 @@ function App() {
   const onRotateLeft = () => { };
   const onRotateCenter = () => { };
   const onRotateRight = () => { };
-  const onUndo = () => { };
-  const onRedo = () => { };
-  const onReset = () => { };
+  const snapshotSlate = () => ({
+    playersById: { ...playersById },
+    representedPlayerIds: [...representedPlayerIds],
+    ball: { ...ball },
+  });
+
+  const applySlate = (snapshot) => {
+    if (!snapshot) return;
+    isRestoringRef.current = true;
+    setPlayersById(snapshot.playersById || {});
+    setRepresentedPlayerIds(snapshot.representedPlayerIds || []);
+    setBall(snapshot.ball || INITIAL_BALL);
+    setSelectedPlayerId((prev) => {
+      if (!prev) return prev;
+      return snapshot.playersById?.[prev] ? prev : null;
+    });
+    isRestoringRef.current = false;
+  };
+
+  const pushHistory = () => {
+    if (isRestoringRef.current) return;
+    setHistoryPast((prev) => [...prev, snapshotSlate()]);
+    setHistoryFuture([]);
+  };
+
+  const onUndo = () => {
+    setHistoryPast((prev) => {
+      if (prev.length === 0) return prev;
+      const nextPast = prev.slice(0, -1);
+      const previous = prev[prev.length - 1];
+      setHistoryFuture((future) => [...future, snapshotSlate()]);
+      applySlate(previous);
+      return nextPast;
+    });
+  };
+
+  const onRedo = () => {
+    setHistoryFuture((prev) => {
+      if (prev.length === 0) return prev;
+      const nextFuture = prev.slice(0, -1);
+      const next = prev[prev.length - 1];
+      setHistoryPast((past) => [...past, snapshotSlate()]);
+      applySlate(next);
+      return nextFuture;
+    });
+  };
+
+  const onReset = () => {
+    isRestoringRef.current = true;
+    setPlayersById(INITIAL_PLAYERS_BY_ID);
+    setRepresentedPlayerIds(["player-1"]);
+    setBall(INITIAL_BALL);
+    setSelectedPlayerId(null);
+    setHistoryPast([]);
+    setHistoryFuture([]);
+    isRestoringRef.current = false;
+  };
 
   const onSaveToPlaybook = () => { };
   const onDownload = () => { };
@@ -175,6 +233,7 @@ function App() {
   };
 
   const handleAddPlayer = ({ number, name, assignment, color, position }) => {
+    pushHistory();
     const nextName = String(name ?? "").trim();
     const nextAssignment = String(assignment ?? "").trim();
     const colorKey = color || currentPlayerColor || allPlayersDisplay.color || DEFAULT_PLAYER_COLOR;
@@ -244,6 +303,7 @@ function App() {
       handleCloseEditPlayer();
       return;
     }
+    pushHistory();
     setPlayersById((prev) => {
       const existing = prev?.[editId];
       if (!existing) return prev;
@@ -261,6 +321,7 @@ function App() {
   };
 
   const handleDeletePlayer = (id) => {
+    pushHistory();
     setPlayersById((prev) => {
       if (!prev?.[id]) return prev;
       const next = { ...prev };
@@ -272,6 +333,15 @@ function App() {
     if (playerEditor.open && playerEditor.id === id) {
       handleCloseEditPlayer();
     }
+  };
+
+  const handleDeleteSelected = () => {
+    if (!selectedPlayerId) return;
+    handleDeletePlayer(selectedPlayerId);
+  };
+
+  const handleItemDragStart = () => {
+    pushHistory();
   };
 
   const items = [
@@ -386,6 +456,7 @@ function App() {
           onReset={onReset}
           onAddPlayer={handleAddPlayer}
           onPlayerColorChange={handlePlayerColorChange}
+          onDeleteSelected={handleDeleteSelected}
         />
         <div className="flex-1 flex">
           <CanvasRoot
@@ -394,6 +465,7 @@ function App() {
             setCamera={setCamera}
             items={items}
             onItemChange={handleItemChange}
+            onItemDragStart={handleItemDragStart}
             onCanvasAddPlayer={handleCanvasAddPlayer}
             allPlayersDisplay={allPlayersDisplay}
             advancedSettings={advancedSettings}

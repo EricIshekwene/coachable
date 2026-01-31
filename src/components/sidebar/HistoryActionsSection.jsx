@@ -26,6 +26,7 @@ export default function HistoryActionsSection({ onUndo, onRedo, onReset, hovered
                             label={label}
                             onHover={() => {}}
                             onClick={() => onClick?.()}
+                            onRowClick={() => onClick?.()}
                             isSelected={false}
                         />
                         <Tooltip isOpen={hoveredTooltip === key} text={label} />

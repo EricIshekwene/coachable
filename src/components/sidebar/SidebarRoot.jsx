@@ -80,9 +80,9 @@ export default function SidebarRoot({
     onUndo,
     onRedo,
     onReset,
+    onDeleteSelected,
     onPrefabSelect,
     onAddPlayer,
-    onPlayerColorChange,
     players: playersProp,
     prefabs: prefabsProp,
 }) {
@@ -178,17 +178,56 @@ export default function SidebarRoot({
         const handleKeyDown = (e) => {
             const tag = e.target.tagName;
             if (tag === "INPUT" || tag === "TEXTAREA" || e.target.isContentEditable) return;
-            if (e.key === "s" || e.key === "S") {
+            if (e.ctrlKey || e.metaKey) {
+                const key = e.key.toLowerCase();
+                if (key === "z") {
+                    e.preventDefault();
+                    onUndo?.();
+                    return;
+                }
+                if (key === "y") {
+                    e.preventDefault();
+                    onRedo?.();
+                    return;
+                }
+                if (key === "d") {
+                    e.preventDefault();
+                    onDeleteSelected?.();
+                    return;
+                }
+            }
+            const key = e.key.toLowerCase();
+            if (key === "s") {
                 setSelectToolType("select");
                 setSelectedTool("select");
-            } else if (e.key === "h" || e.key === "H") {
+                closePopover();
+            } else if (key === "h") {
                 setSelectToolType("hand");
                 setSelectedTool("hand");
+                closePopover();
+            } else if (key === "p") {
+                handlePenSubTool("pen");
+            } else if (key === "q") {
+                handlePenSubTool("arrow");
+            } else if (key === "e") {
+                setSelectedTool("eraser");
+                closePopover();
+            } else if (key === "f") {
+                handleEraserSubTool("full");
+            } else if (key === "o") {
+                handleEraserSubTool("partial");
+            } else if (key === "a") {
+                setSelectedTool("addPlayer");
+                closePopover();
+            } else if (key === "c") {
+                const nextColor = playerColor === PLAYER_COLORS.red ? PLAYER_COLORS.blue : PLAYER_COLORS.red;
+                handlePlayerColorChange(nextColor);
+                setSelectedTool("color");
             }
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, []);
+    }, [closePopover, handleEraserSubTool, handlePenSubTool, handlePlayerColorChange, onDeleteSelected, onRedo, onUndo, playerColor]);
 
     useEffect(() => {
         if (!showPlayerDropdown) return;

@@ -12,6 +12,8 @@ export default function CanvasRoot({
   setCamera,
   items,
   onItemChange,
+  onItemDragStart,
+  onItemDragEnd,
   onCanvasAddPlayer,
   allPlayersDisplay,
   advancedSettings,
@@ -35,6 +37,8 @@ export default function CanvasRoot({
             tool={tool}
             camera={camera}
             onItemChange={onItemChange}
+            onItemDragStart={onItemDragStart}
+            onItemDragEnd={onItemDragEnd}
             allPlayersDisplay={allPlayersDisplay}
             playerBaseSizePx={playerBaseSizePx}
           />

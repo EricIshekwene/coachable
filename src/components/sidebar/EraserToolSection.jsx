@@ -38,9 +38,10 @@ export default function EraserToolSection({
                 isSelected={isSelected}
                 chevronActive={isOpen}
                 onClick={() => onToolSelect?.("eraser")}
+                onRowClick={() => onToolSelect?.("eraser")}
                 onChevronClick={() => onPopoverToggle?.(popoverKey)}
             />
-            <Tooltip isOpen={hoveredTooltip === "eraser" && !isOpen} text="Eraser Tool" />
+            <Tooltip isOpen={hoveredTooltip === "eraser" && !isOpen} text="Eraser Tool (E)" />
             <Popover isOpen={isOpen} onClose={onPopoverClose} anchorRef={anchorRef}>
                 <PopoverGrid cols={2}>
                     <div className="flex flex-col items-center gap-1">

@@ -43,7 +43,7 @@ export default function PlayerColorSection({
                 onRowClick={() => onToolSelect?.("color")}
                 onChevronClick={() => onPopoverToggle?.(popoverKey)}
             />
-            <Tooltip isOpen={hoveredTooltip === "player" && !isOpen} text="Color" />
+            <Tooltip isOpen={hoveredTooltip === "player" && !isOpen} text="Switch Color (C)" />
             <Popover isOpen={isOpen} onClose={onPopoverClose} anchorRef={anchorRef}>
                 <PopoverGrid cols={2}>
                     <div className="flex flex-col items-center gap-1">

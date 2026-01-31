@@ -39,6 +39,7 @@ export default function PrefabsSection({
                 isSelected={false}
                 chevronActive={isOpen}
                 onClick={() => {}}
+                onRowClick={() => onPopoverToggle?.(popoverKey)}
                 onChevronClick={() => onPopoverToggle?.(popoverKey)}
             />
             <Tooltip isOpen={hoveredTooltip === "prefabs" && !isOpen} text="Prefabs" />

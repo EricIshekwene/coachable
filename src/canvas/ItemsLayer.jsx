@@ -3,7 +3,16 @@ import DraggableItem from "./DraggableItem";
 import ItemVisual from "./ItemVisual";
 
 // ItemsLayer: Maps items to DraggableItem wrappers and renders visuals.
-export default function ItemsLayer({ items, tool, camera, onItemChange, allPlayersDisplay, playerBaseSizePx }) {
+export default function ItemsLayer({
+  items,
+  tool,
+  camera,
+  onItemChange,
+  onItemDragStart,
+  onItemDragEnd,
+  allPlayersDisplay,
+  playerBaseSizePx,
+}) {
   return (
     <div className="absolute inset-0">
       {/* Center-origin container so world coords (0,0) are screen center */}
@@ -19,6 +28,8 @@ export default function ItemsLayer({ items, tool, camera, onItemChange, allPlaye
             camera={camera}
             draggable={item.draggable !== false}
             onChange={(id, next) => onItemChange?.(id, next)}
+            onDragStart={onItemDragStart}
+            onDragEnd={onItemDragEnd}
           >
             <ItemVisual item={item} allPlayersDisplay={allPlayersDisplay} playerBaseSizePx={playerBaseSizePx} />
           </DraggableItem>

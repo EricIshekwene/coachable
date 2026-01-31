@@ -9,6 +9,7 @@ export default function Sidebar({
     onUndo,
     onRedo,
     onReset,
+    onDeleteSelected,
     onPrefabSelect,
     onAddPlayer,
     players,
@@ -24,6 +25,7 @@ export default function Sidebar({
             onUndo={onUndo}
             onRedo={onRedo}
             onReset={onReset}
+            onDeleteSelected={onDeleteSelected}
             onPrefabSelect={onPrefabSelect}
             onAddPlayer={onAddPlayer}
             players={players}

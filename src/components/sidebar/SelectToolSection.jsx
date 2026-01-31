@@ -44,6 +44,7 @@ export default function SelectToolSection({
                 isSelected={isSelected}
                 chevronActive={isOpen}
                 onClick={() => onToolSelect?.(selectToolType)}
+                onRowClick={() => onToolSelect?.(selectToolType)}
                 onChevronClick={() => onPopoverToggle?.(popoverKey)}
             />
             <Tooltip

@@ -63,7 +63,7 @@ export default function AddPlayerSection({
                 onRowClick={() => onToolSelect?.("addPlayer")}
                 onChevronClick={() => onPopoverToggle?.(popoverKey)}
             />
-            <Tooltip isOpen={hoveredTooltip === "addPlayer" && !isOpen} text="Add Player" />
+            <Tooltip isOpen={hoveredTooltip === "addPlayer" && !isOpen} text="Add Player (A)" />
             <Popover isOpen={isOpen} onClose={onPopoverClose} anchorRef={anchorRef}>
                 <PopoverForm>
                     <div className="flex flex-col gap-1.5 sm:gap-2">
