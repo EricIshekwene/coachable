@@ -24,6 +24,8 @@ export default function ControlPill({
   externalTimePercent,
   externalIsPlaying,
   externalSpeed,
+  // Optional: external signal to add a keyframe at current time
+  addKeyframeSignal,
 }) {
   // Core state
   const [timePercent, setTimePercent] = useState(externalTimePercent ?? 0);
@@ -42,6 +44,7 @@ export default function ControlPill({
   // Refs for animation
   const rafId = useRef(null);
   const lastTs = useRef(null);
+  const lastKeyframeSignal = useRef(addKeyframeSignal);
 
   // Sync with external props if provided
   useEffect(() => {
@@ -171,9 +174,7 @@ export default function ControlPill({
   };
 
   // Handle adding a keyframe at current time position
-  const handleAddKeyframe = (e) => {
-    e.stopPropagation(); // Prevent triggering pill click
-
+  const addKeyframeAtTime = (timePercentValue) => {
     // Limit maximum keyframes to 10
     if (keyframes.length >= 10) {
       return;
@@ -181,17 +182,24 @@ export default function ControlPill({
 
     // Check if keyframe already exists at this position (within 4% tolerance)
     const MIN_DISTANCE = 4; // Minimum distance between keyframes in percent
-    const existingKeyframe = keyframes.find(kf => Math.abs(kf - timePercent) < MIN_DISTANCE);
+    const existingKeyframe = keyframes.find(
+      (kf) => Math.abs(kf - timePercentValue) < MIN_DISTANCE
+    );
 
     if (!existingKeyframe) {
       // Clear redo history when making new changes
       setRedoHistory([]);
       // Add keyframe
-      const newKeyframes = [...keyframes, timePercent].sort((a, b) => a - b);
+      const newKeyframes = [...keyframes, timePercentValue].sort((a, b) => a - b);
       setKeyframes(newKeyframes);
       // Record the action for undo
-      setActionHistory([...actionHistory, { type: 'add', keyframe: timePercent }]);
+      setActionHistory([...actionHistory, { type: "add", keyframe: timePercentValue }]);
     }
+  };
+
+  const handleAddKeyframe = (e) => {
+    e.stopPropagation(); // Prevent triggering pill click
+    addKeyframeAtTime(timePercent);
   };
 
   // Handle clicking on a keyframe
@@ -313,6 +321,14 @@ export default function ControlPill({
       setIsPlaying(false);
     }
   };
+
+  // Add a keyframe when the parent signals an action occurred on the slate
+  useEffect(() => {
+    if (addKeyframeSignal === undefined) return;
+    if (addKeyframeSignal === lastKeyframeSignal.current) return;
+    lastKeyframeSignal.current = addKeyframeSignal;
+    addKeyframeAtTime(timePercent);
+  }, [addKeyframeSignal, timePercent, keyframes, actionHistory, redoHistory]);
 
   return (
     <>

@@ -161,11 +161,13 @@ function App() {
 
   const pushHistory = () => {
     if (isRestoringRef.current) return;
+    setKeyframeSignal((prev) => prev + 1);
     setHistoryPast((prev) => [...prev, snapshotSlate()]);
     setHistoryFuture([]);
   };
 
   const onUndo = () => {
+    setKeyframeSignal((prev) => prev + 1);
     setHistoryPast((prev) => {
       if (prev.length === 0) return prev;
       const nextPast = prev.slice(0, -1);
@@ -177,6 +179,7 @@ function App() {
   };
 
   const onRedo = () => {
+    setKeyframeSignal((prev) => prev + 1);
     setHistoryFuture((prev) => {
       if (prev.length === 0) return prev;
       const nextFuture = prev.slice(0, -1);
@@ -188,6 +191,7 @@ function App() {
   };
 
   const onReset = () => {
+    setKeyframeSignal((prev) => prev + 1);
     isRestoringRef.current = true;
     setPlayersById(INITIAL_PLAYERS_BY_ID);
     setRepresentedPlayerIds(["player-1"]);
@@ -456,6 +460,7 @@ function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedKeyframe, setSelectedKeyframe] = useState(null);
   const [autoplayEnabled, setAutoplayEnabled] = useState(true);
+  const [keyframeSignal, setKeyframeSignal] = useState(0);
 
   // Log state every 10 seconds
   useEffect(() => {
@@ -577,6 +582,7 @@ function App() {
           onPlayStateChange={setIsPlaying}
           onSelectedKeyframeChange={setSelectedKeyframe}
           onAutoplayChange={setAutoplayEnabled}
+          addKeyframeSignal={keyframeSignal}
         />
 
         <RightPanel
