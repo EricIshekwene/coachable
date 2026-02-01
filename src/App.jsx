@@ -574,17 +574,91 @@ function App() {
     }));
   }, [playersById, representedPlayerIds, ball]);
 
-  useEffect(() => {
-    const keyframeAtTime = findNearestKeyframeAtTime(timePercent, keyframes);
-    if (keyframeAtTime === null || keyframeAtTime === undefined) {
-      lastAppliedKeyframeRef.current = null;
-      return;
+  const lerp = (from, to, t) => from + (to - from) * t;
+
+  const buildInterpolatedSlate = (timeValue) => {
+    const availableKeyframes = (keyframes || [])
+      .filter((kf) => keyframeSnapshots[kf])
+      .sort((a, b) => a - b);
+
+    if (availableKeyframes.length === 0) return null;
+
+    if (timeValue <= availableKeyframes[0]) {
+      return keyframeSnapshots[availableKeyframes[0]];
     }
-    if (lastAppliedKeyframeRef.current === keyframeAtTime) return;
-    const snapshot = keyframeSnapshots[keyframeAtTime];
-    if (!snapshot) return;
-    lastAppliedKeyframeRef.current = keyframeAtTime;
-    applySlate(snapshot);
+    if (timeValue >= availableKeyframes[availableKeyframes.length - 1]) {
+      return keyframeSnapshots[availableKeyframes[availableKeyframes.length - 1]];
+    }
+
+    let prevKeyframe = availableKeyframes[0];
+    let nextKeyframe = availableKeyframes[availableKeyframes.length - 1];
+    for (let i = 0; i < availableKeyframes.length - 1; i += 1) {
+      const current = availableKeyframes[i];
+      const next = availableKeyframes[i + 1];
+      if (timeValue >= current && timeValue <= next) {
+        prevKeyframe = current;
+        nextKeyframe = next;
+        break;
+      }
+    }
+
+    if (prevKeyframe === nextKeyframe) {
+      return keyframeSnapshots[prevKeyframe];
+    }
+
+    const prevSnapshot = keyframeSnapshots[prevKeyframe];
+    const nextSnapshot = keyframeSnapshots[nextKeyframe];
+    if (!prevSnapshot || !nextSnapshot) return null;
+
+    const t = (timeValue - prevKeyframe) / (nextKeyframe - prevKeyframe);
+    const prevPlayers = prevSnapshot.playersById || {};
+    const nextPlayers = nextSnapshot.playersById || {};
+    const allPlayerIds = new Set([
+      ...Object.keys(prevPlayers),
+      ...Object.keys(nextPlayers),
+    ]);
+
+    const interpolatedPlayers = {};
+    allPlayerIds.forEach((id) => {
+      const prevPlayer = prevPlayers[id];
+      const nextPlayer = nextPlayers[id];
+      if (prevPlayer && nextPlayer) {
+        interpolatedPlayers[id] = {
+          ...prevPlayer,
+          ...nextPlayer,
+          x: lerp(prevPlayer.x ?? 0, nextPlayer.x ?? 0, t),
+          y: lerp(prevPlayer.y ?? 0, nextPlayer.y ?? 0, t),
+        };
+        return;
+      }
+      interpolatedPlayers[id] = { ...(prevPlayer || nextPlayer) };
+    });
+
+    const prevBall = prevSnapshot.ball || INITIAL_BALL;
+    const nextBall = nextSnapshot.ball || INITIAL_BALL;
+    const interpolatedBall = {
+      ...prevBall,
+      ...nextBall,
+      x: lerp(prevBall.x ?? 0, nextBall.x ?? 0, t),
+      y: lerp(prevBall.y ?? 0, nextBall.y ?? 0, t),
+    };
+
+    const represented =
+      t <= 0.5
+        ? [...(prevSnapshot.representedPlayerIds || [])]
+        : [...(nextSnapshot.representedPlayerIds || [])];
+
+    return {
+      playersById: interpolatedPlayers,
+      representedPlayerIds: represented,
+      ball: interpolatedBall,
+    };
+  };
+
+  useEffect(() => {
+    const interpolatedSlate = buildInterpolatedSlate(timePercent);
+    if (!interpolatedSlate) return;
+    applySlate(interpolatedSlate);
   }, [timePercent, keyframes, keyframeSnapshots]);
 
   return (
