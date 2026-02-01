@@ -139,6 +139,7 @@ export default function ControlPill({
 
   // Handle time change
   const handleTimeChange = (newPercent) => {
+    setSelectedKeyframe(null);
     setTimePercent(newPercent);
   };
 
@@ -209,6 +210,7 @@ export default function ControlPill({
       setSelectedKeyframe(null); // Deselect if already selected
     } else {
       setSelectedKeyframe(timePercentValue); // Select this keyframe
+      setTimePercent(timePercentValue);
     }
   };
 

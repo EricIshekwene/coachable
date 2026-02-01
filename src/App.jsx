@@ -8,6 +8,7 @@ import CanvasRoot from "./canvas/CanvasRoot";
 import MessagePopup from "./components/messagePopup/MessagePopup";
 import PlayerEditPanel from "./components/rightPanel/PlayerEditPanel";
 
+const KEYFRAME_TOLERANCE = 4;
 
 function App() {
   const [color, setColor] = useState("#561ecb");
@@ -97,6 +98,8 @@ function App() {
   const [historyPast, setHistoryPast] = useState([]);
   const [historyFuture, setHistoryFuture] = useState([]);
   const isRestoringRef = useRef(false);
+  const pendingKeyframeUpdateRef = useRef(false);
+  const pendingKeyframeTimeRef = useRef(null);
 
   const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
   const zoomPercent = clamp(Math.round((camera.zoom || 1) * 100), 30, 300);
@@ -162,12 +165,12 @@ function App() {
   const pushHistory = () => {
     if (isRestoringRef.current) return;
     setKeyframeSignal((prev) => prev + 1);
+    markKeyframeSnapshotPending();
     setHistoryPast((prev) => [...prev, snapshotSlate()]);
     setHistoryFuture([]);
   };
 
   const onUndo = () => {
-    setKeyframeSignal((prev) => prev + 1);
     setHistoryPast((prev) => {
       if (prev.length === 0) return prev;
       const nextPast = prev.slice(0, -1);
@@ -179,7 +182,6 @@ function App() {
   };
 
   const onRedo = () => {
-    setKeyframeSignal((prev) => prev + 1);
     setHistoryFuture((prev) => {
       if (prev.length === 0) return prev;
       const nextFuture = prev.slice(0, -1);
@@ -191,7 +193,6 @@ function App() {
   };
 
   const onReset = () => {
-    setKeyframeSignal((prev) => prev + 1);
     isRestoringRef.current = true;
     setPlayersById(INITIAL_PLAYERS_BY_ID);
     setRepresentedPlayerIds(["player-1"]);
@@ -406,6 +407,7 @@ function App() {
   ];
 
   const handleItemChange = (id, next, meta) => {
+    markKeyframeSnapshotPending();
     if (playersById[id]) {
       if (meta?.delta && selectedItemIds?.includes(id) && selectedItemIds.length > 1) {
         const { x: dx = 0, y: dy = 0 } = meta.delta || {};
@@ -461,6 +463,37 @@ function App() {
   const [selectedKeyframe, setSelectedKeyframe] = useState(null);
   const [autoplayEnabled, setAutoplayEnabled] = useState(true);
   const [keyframeSignal, setKeyframeSignal] = useState(0);
+  const [keyframeSnapshots, setKeyframeSnapshots] = useState(() => ({}));
+  const prevKeyframesRef = useRef([]);
+  const lastAppliedKeyframeRef = useRef(null);
+
+  const snapshotSlateState = () => ({
+    playersById: Object.fromEntries(
+      Object.entries(playersById || {}).map(([id, player]) => [id, { ...player }])
+    ),
+    representedPlayerIds: [...(representedPlayerIds || [])],
+    ball: { ...(ball || INITIAL_BALL) },
+  });
+
+  const findNearestKeyframeAtTime = (timeValue, frames) => {
+    let nearest = null;
+    let nearestDistance = Infinity;
+    (frames || []).forEach((kf) => {
+      const distance = Math.abs(kf - timeValue);
+      if (distance < KEYFRAME_TOLERANCE && distance < nearestDistance) {
+        nearest = kf;
+        nearestDistance = distance;
+      }
+    });
+    return nearest;
+  };
+
+  const markKeyframeSnapshotPending = () => {
+    const keyframeAtTime = findNearestKeyframeAtTime(timePercent, keyframes);
+    if (!keyframeAtTime) return;
+    pendingKeyframeUpdateRef.current = true;
+    pendingKeyframeTimeRef.current = keyframeAtTime;
+  };
 
   // Log state every 10 seconds
   useEffect(() => {
@@ -507,6 +540,52 @@ function App() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  useEffect(() => {
+    const prevKeyframes = prevKeyframesRef.current || [];
+    const added = keyframes.filter((kf) => !prevKeyframes.includes(kf));
+    const removed = prevKeyframes.filter((kf) => !keyframes.includes(kf));
+
+    if (added.length || removed.length) {
+      setKeyframeSnapshots((prev) => {
+        const next = { ...prev };
+        added.forEach((kf) => {
+          next[kf] = snapshotSlateState();
+        });
+        removed.forEach((kf) => {
+          delete next[kf];
+        });
+        return next;
+      });
+    }
+
+    prevKeyframesRef.current = keyframes;
+  }, [keyframes]);
+
+  useEffect(() => {
+    if (!pendingKeyframeUpdateRef.current) return;
+    const keyframeAtTime = pendingKeyframeTimeRef.current;
+    if (keyframeAtTime === null || keyframeAtTime === undefined) return;
+    pendingKeyframeUpdateRef.current = false;
+    pendingKeyframeTimeRef.current = null;
+    setKeyframeSnapshots((prev) => ({
+      ...prev,
+      [keyframeAtTime]: snapshotSlateState(),
+    }));
+  }, [playersById, representedPlayerIds, ball]);
+
+  useEffect(() => {
+    const keyframeAtTime = findNearestKeyframeAtTime(timePercent, keyframes);
+    if (keyframeAtTime === null || keyframeAtTime === undefined) {
+      lastAppliedKeyframeRef.current = null;
+      return;
+    }
+    if (lastAppliedKeyframeRef.current === keyframeAtTime) return;
+    const snapshot = keyframeSnapshots[keyframeAtTime];
+    if (!snapshot) return;
+    lastAppliedKeyframeRef.current = keyframeAtTime;
+    applySlate(snapshot);
+  }, [timePercent, keyframes, keyframeSnapshots]);
 
   return (
     <>
