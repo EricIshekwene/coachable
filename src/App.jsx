@@ -5,7 +5,7 @@ import ControlPill from "./components/controlPill/ControlPill";
 import RightPanel from "./components/RightPanel";
 import AdvancedSettings from "./components/AdvancedSettings";
 import CanvasRoot from "./canvas/CanvasRoot";
-import MessagePopup from "./components/messagePopup/MessagePopup";
+import MessagePopup from "./components/MessagePopup/MessagePopup";
 import PlayerEditPanel from "./components/rightPanel/PlayerEditPanel";
 
 const KEYFRAME_TOLERANCE = 4;
