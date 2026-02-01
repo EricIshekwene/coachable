@@ -403,14 +403,14 @@ function App() {
 
   const handleItemChange = (id, next, meta) => {
     if (playersById[id]) {
-      if (meta?.delta && selectedPlayerIds?.includes(id) && selectedPlayerIds.length > 1) {
+      if (meta?.delta && selectedItemIds?.includes(id) && selectedItemIds.length > 1) {
         const { x: dx = 0, y: dy = 0 } = meta.delta || {};
         setPlayersById((prev) => {
           const updated = { ...prev };
-          selectedPlayerIds.forEach((playerId) => {
-            const existing = updated[playerId];
+          selectedItemIds.forEach((itemId) => {
+            const existing = updated[itemId];
             if (!existing) return;
-            updated[playerId] = {
+            updated[itemId] = {
               ...existing,
               x: (existing.x ?? 0) + dx,
               y: (existing.y ?? 0) + dy,
@@ -418,12 +418,33 @@ function App() {
           });
           return updated;
         });
+        if (selectedItemIds.includes(ball.id)) {
+          setBall((prev) => ({ ...prev, x: (prev.x ?? 0) + dx, y: (prev.y ?? 0) + dy }));
+        }
         return;
       }
       setPlayersById((prev) => ({ ...prev, [id]: { ...prev[id], ...next } }));
       return;
     }
     if (id === ball.id) {
+      if (meta?.delta && selectedItemIds?.includes(id) && selectedItemIds.length > 1) {
+        const { x: dx = 0, y: dy = 0 } = meta.delta || {};
+        setPlayersById((prev) => {
+          const updated = { ...prev };
+          selectedItemIds.forEach((itemId) => {
+            const existing = updated[itemId];
+            if (!existing) return;
+            updated[itemId] = {
+              ...existing,
+              x: (existing.x ?? 0) + dx,
+              y: (existing.y ?? 0) + dy,
+            };
+          });
+          return updated;
+        });
+        setBall((prev) => ({ ...prev, x: (prev.x ?? 0) + dx, y: (prev.y ?? 0) + dy }));
+        return;
+      }
       setBall((prev) => ({ ...prev, ...next }));
     }
   };

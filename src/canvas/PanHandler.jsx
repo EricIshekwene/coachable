@@ -17,6 +17,7 @@ export default function PanHandler({
   const lastPtRef = useRef({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const selectingRef = useRef(false);
+  const marqueeActiveRef = useRef(false);
   const marqueeStartRef = useRef({ x: 0, y: 0 });
   const marqueeEndRef = useRef({ x: 0, y: 0 });
   const [marquee, setMarquee] = useState(null);
@@ -40,13 +41,13 @@ export default function PanHandler({
     if (tool === "select") {
       if (e.button !== 0) return;
       selectingRef.current = true;
+      marqueeActiveRef.current = false;
       pointerIdRef.current = e.pointerId;
       const rect = e.currentTarget.getBoundingClientRect();
       const sx = e.clientX - rect.left;
       const sy = e.clientY - rect.top;
       marqueeStartRef.current = { x: sx, y: sy };
       marqueeEndRef.current = { x: sx, y: sy };
-      setMarquee({ x: sx, y: sy, w: 0, h: 0 });
       e.currentTarget.setPointerCapture?.(e.pointerId);
       return;
     }
@@ -65,6 +66,12 @@ export default function PanHandler({
       const sx = e.clientX - rect.left;
       const sy = e.clientY - rect.top;
       marqueeEndRef.current = { x: sx, y: sy };
+      const totalDx = sx - marqueeStartRef.current.x;
+      const totalDy = sy - marqueeStartRef.current.y;
+      if (!marqueeActiveRef.current) {
+        if (Math.hypot(totalDx, totalDy) < DRAG_THRESHOLD_PX) return;
+        marqueeActiveRef.current = true;
+      }
       const x1 = Math.min(marqueeStartRef.current.x, sx);
       const y1 = Math.min(marqueeStartRef.current.y, sy);
       const x2 = Math.max(marqueeStartRef.current.x, sx);
@@ -87,11 +94,11 @@ export default function PanHandler({
       const start = marqueeStartRef.current;
       const end = marqueeEndRef.current;
       selectingRef.current = false;
+      const wasMarquee = marqueeActiveRef.current;
+      marqueeActiveRef.current = false;
       pointerIdRef.current = null;
       setMarquee(null);
-      const dx = end.x - start.x;
-      const dy = end.y - start.y;
-      if (Math.hypot(dx, dy) >= DRAG_THRESHOLD_PX) {
+      if (wasMarquee) {
         const rect = e.currentTarget.getBoundingClientRect();
         const cx = rect.width / 2;
         const cy = rect.height / 2;
@@ -110,6 +117,8 @@ export default function PanHandler({
           }
         });
         onMarqueeSelect?.(selectedIds);
+      } else {
+        onMarqueeSelect?.([]);
       }
       try {
         e.currentTarget.releasePointerCapture?.(e.pointerId);
