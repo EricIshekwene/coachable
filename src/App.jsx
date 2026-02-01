@@ -35,9 +35,25 @@ function App() {
     animation: {
       playOnLoad: true,
     },
+    logging: {
+      slate: false,
+      controlPill: false,
+      canvas: false,
+      sidebar: false,
+    },
   };
 
   const [advancedSettings, setAdvancedSettings] = useState(DEFAULT_ADVANCED_SETTINGS);
+  const logging = advancedSettings?.logging ?? {};
+  const logEvent = (scope, action, payload) => {
+    if (!logging?.[scope]) return;
+    const stamp = new Date().toISOString();
+    if (payload !== undefined) {
+      console.log(`[${stamp}] ${scope}: ${action}`, payload);
+      return;
+    }
+    console.log(`[${stamp}] ${scope}: ${action}`);
+  };
 
   // Message popup state
   const [messagePopup, setMessagePopup] = useState({
@@ -100,6 +116,7 @@ function App() {
   const isRestoringRef = useRef(false);
   const pendingKeyframeUpdateRef = useRef(false);
   const pendingKeyframeTimeRef = useRef(null);
+  const isItemDraggingRef = useRef(false);
 
   const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
   const zoomPercent = clamp(Math.round((camera.zoom || 1) * 100), 30, 300);
@@ -171,6 +188,7 @@ function App() {
   };
 
   const onUndo = () => {
+    logEvent("slate", "undo");
     setHistoryPast((prev) => {
       if (prev.length === 0) return prev;
       const nextPast = prev.slice(0, -1);
@@ -182,6 +200,7 @@ function App() {
   };
 
   const onRedo = () => {
+    logEvent("slate", "redo");
     setHistoryFuture((prev) => {
       if (prev.length === 0) return prev;
       const nextFuture = prev.slice(0, -1);
@@ -193,6 +212,7 @@ function App() {
   };
 
   const onReset = () => {
+    logEvent("slate", "reset");
     isRestoringRef.current = true;
     setPlayersById(INITIAL_PLAYERS_BY_ID);
     setRepresentedPlayerIds(["player-1"]);
@@ -243,25 +263,51 @@ function App() {
     const basePosition = position ?? getRandomNearbyPosition(lastPlayer || { x: 0, y: 0 });
     const newId = getNextPlayerId(playersById);
 
+    const newPlayer = {
+      id: newId,
+      x: basePosition.x,
+      y: basePosition.y,
+      number: nextNumber,
+      name: nextName,
+      assignment: nextAssignment,
+      color: colorKey,
+    };
+
     setPlayersById((prev) => ({
       ...prev,
-      [newId]: {
-        id: newId,
-        x: basePosition.x,
-        y: basePosition.y,
-        number: nextNumber,
-        name: nextName,
-        assignment: nextAssignment,
-        color: colorKey,
-      },
+      [newId]: newPlayer,
     }));
     setRepresentedPlayerIds((prev) => [...prev, newId]);
     setSelectedPlayerIds([newId]);
     setSelectedItemIds([newId]);
+    logEvent("slate", "addPlayer", { id: newId, player: newPlayer });
+
+    // Ensure the new player exists in all keyframe snapshots for consistent counts.
+    setKeyframeSnapshots((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((kf) => {
+        const snapshot = next[kf];
+        const existingPlayers = snapshot?.playersById ?? {};
+        const existingRep = snapshot?.representedPlayerIds ?? [];
+        if (existingPlayers[newId]) return;
+        next[kf] = {
+          ...snapshot,
+          playersById: {
+            ...existingPlayers,
+            [newId]: { ...newPlayer },
+          },
+          representedPlayerIds: existingRep.includes(newId)
+            ? existingRep
+            : [...existingRep, newId],
+        };
+      });
+      return next;
+    });
   };
 
   const handleCanvasAddPlayer = ({ x, y }) => {
     const colorKey = currentPlayerColor || allPlayersDisplay.color || DEFAULT_PLAYER_COLOR;
+    logEvent("slate", "canvasAddPlayer", { x, y, color: colorKey });
     handleAddPlayer({
       color: colorKey,
       position: { x, y },
@@ -271,6 +317,7 @@ function App() {
   const handleEditPlayer = (id) => {
     const player = playersById?.[id];
     if (!player) return;
+    logEvent("slate", "editPlayerOpen", { id });
     setPlayerEditor({
       open: true,
       id,
@@ -300,6 +347,7 @@ function App() {
       return;
     }
     pushHistory();
+    logEvent("slate", "editPlayerSave", { id: editId, draft: playerEditor.draft });
     setPlayersById((prev) => {
       const existing = prev?.[editId];
       if (!existing) return prev;
@@ -318,6 +366,7 @@ function App() {
 
   const handleDeletePlayer = (id) => {
     pushHistory();
+    logEvent("slate", "deletePlayer", { id });
     setPlayersById((prev) => {
       if (!prev?.[id]) return prev;
       const next = { ...prev };
@@ -335,6 +384,7 @@ function App() {
   const handleDeleteSelected = () => {
     if (!selectedPlayerIds?.length) return;
     pushHistory();
+    logEvent("slate", "deleteSelected", { ids: selectedPlayerIds });
     setPlayersById((prev) => {
       const next = { ...prev };
       selectedPlayerIds.forEach((id) => {
@@ -388,8 +438,22 @@ function App() {
     }
   };
 
-  const handleItemDragStart = () => {
+  const handleItemDragStart = (id) => {
     pushHistory();
+    isItemDraggingRef.current = true;
+    logEvent("slate", "dragStart", { id });
+  };
+
+  const handleItemDragEnd = (id) => {
+    isItemDraggingRef.current = false;
+    logEvent("slate", "dragEnd", { id });
+    const targetKeyframe = findEditTargetKeyframe(timePercent, latestKeyframesRef.current);
+    if (targetKeyframe !== null && targetKeyframe !== undefined) {
+      setKeyframeSnapshots((prev) => ({
+        ...prev,
+        [targetKeyframe]: snapshotSlateState(),
+      }));
+    }
   };
 
   const items = [
@@ -408,6 +472,9 @@ function App() {
 
   const handleItemChange = (id, next, meta) => {
     markKeyframeSnapshotPending();
+    if (meta?.delta) {
+      logEvent("slate", "itemMove", { id, delta: meta.delta });
+    }
     if (playersById[id]) {
       if (meta?.delta && selectedItemIds?.includes(id) && selectedItemIds.length > 1) {
         const { x: dx = 0, y: dy = 0 } = meta.delta || {};
@@ -465,6 +532,9 @@ function App() {
   const [keyframeSignal, setKeyframeSignal] = useState(0);
   const [keyframeSnapshots, setKeyframeSnapshots] = useState(() => ({}));
   const prevKeyframesRef = useRef([]);
+  const latestKeyframesRef = useRef([]);
+  const latestKeyframeSnapshotsRef = useRef({});
+  const pendingKeyframeSnapshotsRef = useRef(new Set());
   const lastAppliedKeyframeRef = useRef(null);
 
   const snapshotSlateState = () => ({
@@ -488,8 +558,19 @@ function App() {
     return nearest;
   };
 
+  const findEditTargetKeyframe = (timeValue, frames) => {
+    const sorted = [...(frames || [])].sort((a, b) => a - b);
+    if (sorted.length === 0) return null;
+    const nearest = findNearestKeyframeAtTime(timeValue, sorted);
+    if (nearest !== null && nearest !== undefined) return nearest;
+    if (sorted.length === 1) return sorted[0];
+    if (timeValue >= sorted[sorted.length - 1]) return sorted[sorted.length - 1];
+    if (timeValue <= sorted[0]) return sorted[0];
+    return null;
+  };
+
   const markKeyframeSnapshotPending = () => {
-    const keyframeAtTime = findNearestKeyframeAtTime(timePercent, keyframes);
+    const keyframeAtTime = findEditTargetKeyframe(timePercent, keyframes);
     if (!keyframeAtTime) return;
     pendingKeyframeUpdateRef.current = true;
     pendingKeyframeTimeRef.current = keyframeAtTime;
@@ -532,6 +613,11 @@ function App() {
   }, [timePercent, keyframes, speedMultiplier, isPlaying, selectedKeyframe, autoplayEnabled]);
 
   useEffect(() => {
+    if (!logging?.controlPill) return;
+    logEvent("controlPill", "keyframesChange", { keyframes });
+  }, [keyframes, logging?.controlPill]);
+
+  useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key !== "Escape") return;
       setSelectedPlayerIds([]);
@@ -542,16 +628,14 @@ function App() {
   }, []);
 
   useEffect(() => {
+    latestKeyframesRef.current = keyframes;
     const prevKeyframes = prevKeyframesRef.current || [];
     const added = keyframes.filter((kf) => !prevKeyframes.includes(kf));
     const removed = prevKeyframes.filter((kf) => !keyframes.includes(kf));
 
-    if (added.length || removed.length) {
+    if (removed.length) {
       setKeyframeSnapshots((prev) => {
         const next = { ...prev };
-        added.forEach((kf) => {
-          next[kf] = snapshotSlateState();
-        });
         removed.forEach((kf) => {
           delete next[kf];
         });
@@ -559,8 +643,48 @@ function App() {
       });
     }
 
+    if (added.length) {
+      added.forEach((kf) => pendingKeyframeSnapshotsRef.current.add(kf));
+    }
+
     prevKeyframesRef.current = keyframes;
   }, [keyframes]);
+
+  useEffect(() => {
+    latestKeyframeSnapshotsRef.current = keyframeSnapshots;
+  }, [keyframeSnapshots]);
+
+  useEffect(() => {
+    if (pendingKeyframeSnapshotsRef.current.size === 0) return;
+    const pending = Array.from(pendingKeyframeSnapshotsRef.current);
+    pendingKeyframeSnapshotsRef.current.clear();
+    setKeyframeSnapshots((prev) => {
+      const next = { ...prev };
+      pending.forEach((kf) => {
+        next[kf] = snapshotSlateState();
+      });
+      return next;
+    });
+  }, [playersById, representedPlayerIds, ball, keyframes]);
+
+  useEffect(() => {
+    const frames = latestKeyframesRef.current;
+    if (!frames || frames.length === 0) return;
+    const nearest = findNearestKeyframeAtTime(timePercent, frames);
+    const shouldSeedSingle = frames.length === 1;
+    const target =
+      nearest !== null && nearest !== undefined
+        ? nearest
+        : shouldSeedSingle
+          ? frames[0]
+          : null;
+    if (target === null || target === undefined) return;
+    if (latestKeyframeSnapshotsRef.current[target]) return;
+    setKeyframeSnapshots((prev) => ({
+      ...prev,
+      [target]: snapshotSlateState(),
+    }));
+  }, [timePercent]);
 
   useEffect(() => {
     if (!pendingKeyframeUpdateRef.current) return;
@@ -576,18 +700,18 @@ function App() {
 
   const lerp = (from, to, t) => from + (to - from) * t;
 
-  const buildInterpolatedSlate = (timeValue) => {
-    const availableKeyframes = (keyframes || [])
-      .filter((kf) => keyframeSnapshots[kf])
+  const buildInterpolatedSlate = (timeValue, frames, snapshots) => {
+    const availableKeyframes = (frames || [])
+      .filter((kf) => snapshots[kf])
       .sort((a, b) => a - b);
 
     if (availableKeyframes.length === 0) return null;
 
     if (timeValue <= availableKeyframes[0]) {
-      return keyframeSnapshots[availableKeyframes[0]];
+      return snapshots[availableKeyframes[0]];
     }
     if (timeValue >= availableKeyframes[availableKeyframes.length - 1]) {
-      return keyframeSnapshots[availableKeyframes[availableKeyframes.length - 1]];
+      return snapshots[availableKeyframes[availableKeyframes.length - 1]];
     }
 
     let prevKeyframe = availableKeyframes[0];
@@ -603,11 +727,11 @@ function App() {
     }
 
     if (prevKeyframe === nextKeyframe) {
-      return keyframeSnapshots[prevKeyframe];
+      return snapshots[prevKeyframe];
     }
 
-    const prevSnapshot = keyframeSnapshots[prevKeyframe];
-    const nextSnapshot = keyframeSnapshots[nextKeyframe];
+    const prevSnapshot = snapshots[prevKeyframe];
+    const nextSnapshot = snapshots[nextKeyframe];
     if (!prevSnapshot || !nextSnapshot) return null;
 
     const t = (timeValue - prevKeyframe) / (nextKeyframe - prevKeyframe);
@@ -656,10 +780,15 @@ function App() {
   };
 
   useEffect(() => {
-    const interpolatedSlate = buildInterpolatedSlate(timePercent);
+    if (isItemDraggingRef.current) return;
+    const interpolatedSlate = buildInterpolatedSlate(
+      timePercent,
+      latestKeyframesRef.current,
+      latestKeyframeSnapshotsRef.current
+    );
     if (!interpolatedSlate) return;
     applySlate(interpolatedSlate);
-  }, [timePercent, keyframes, keyframeSnapshots]);
+  }, [timePercent]);
 
   return (
     <>
@@ -715,6 +844,7 @@ function App() {
             items={items}
             onItemChange={handleItemChange}
             onItemDragStart={handleItemDragStart}
+            onItemDragEnd={handleItemDragEnd}
             onCanvasAddPlayer={handleCanvasAddPlayer}
             selectedPlayerIds={selectedPlayerIds}
             selectedItemIds={selectedItemIds}
@@ -736,6 +866,7 @@ function App() {
           onSelectedKeyframeChange={setSelectedKeyframe}
           onAutoplayChange={setAutoplayEnabled}
           addKeyframeSignal={keyframeSignal}
+          onKeyframeAddAttempt={(payload) => logEvent("controlPill", "keyframeAddAttempt", payload)}
         />
 
         <RightPanel

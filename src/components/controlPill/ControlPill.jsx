@@ -20,6 +20,7 @@ export default function ControlPill({
   onPlayStateChange,
   onSelectedKeyframeChange,
   onAutoplayChange,
+  onKeyframeAddAttempt,
   // Optional: External control
   externalTimePercent,
   externalIsPlaying,
@@ -74,6 +75,25 @@ export default function ControlPill({
   useEffect(() => {
     onKeyframesChange?.(keyframes);
   }, [keyframes, onKeyframesChange]);
+
+  // Normalize duplicate keyframes (exact duplicates) caused by rapid adds
+  useEffect(() => {
+    if (keyframes.length <= 1) return;
+    const seen = new Set();
+    const unique = [];
+    let hasDup = false;
+    keyframes.forEach((kf) => {
+      if (seen.has(kf)) {
+        hasDup = true;
+        return;
+      }
+      seen.add(kf);
+      unique.push(kf);
+    });
+    if (hasDup) {
+      setKeyframes(unique);
+    }
+  }, [keyframes]);
 
   // Notify parent of speed changes
   useEffect(() => {
@@ -176,26 +196,45 @@ export default function ControlPill({
 
   // Handle adding a keyframe at current time position
   const addKeyframeAtTime = (timePercentValue) => {
-    // Limit maximum keyframes to 10
-    if (keyframes.length >= 10) {
-      return;
-    }
-
-    // Check if keyframe already exists at this position (within 4% tolerance)
     const MIN_DISTANCE = 4; // Minimum distance between keyframes in percent
-    const existingKeyframe = keyframes.find(
-      (kf) => Math.abs(kf - timePercentValue) < MIN_DISTANCE
-    );
+    let didAdd = false;
+    let reason = "added";
+    let nextKeyframes = null;
 
-    if (!existingKeyframe) {
-      // Clear redo history when making new changes
+    setKeyframes((prev) => {
+      if (prev.length >= 10) {
+        reason = "max";
+        nextKeyframes = prev;
+        return prev;
+      }
+
+      const existingKeyframe = prev.find(
+        (kf) => Math.abs(kf - timePercentValue) < MIN_DISTANCE
+      );
+      if (existingKeyframe !== undefined) {
+        reason = "too-close";
+        nextKeyframes = prev;
+        return prev;
+      }
+
+      didAdd = true;
+      const updated = [...prev, timePercentValue].sort((a, b) => a - b);
+      nextKeyframes = updated;
+      return updated;
+    });
+
+    if (didAdd) {
       setRedoHistory([]);
-      // Add keyframe
-      const newKeyframes = [...keyframes, timePercentValue].sort((a, b) => a - b);
-      setKeyframes(newKeyframes);
-      // Record the action for undo
-      setActionHistory([...actionHistory, { type: "add", keyframe: timePercentValue }]);
+      setActionHistory((prev) => [...prev, { type: "add", keyframe: timePercentValue }]);
     }
+
+    onKeyframeAddAttempt?.({
+      added: didAdd,
+      reason,
+      timePercent: timePercentValue,
+      keyframes: nextKeyframes ? [...nextKeyframes] : [...keyframes],
+      ...(reason === "too-close" ? { minDistance: MIN_DISTANCE } : {}),
+    });
   };
 
   const handleAddKeyframe = (e) => {

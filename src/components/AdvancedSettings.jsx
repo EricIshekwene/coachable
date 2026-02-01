@@ -4,6 +4,7 @@ import PitchSettingsSection from "./advancedSettings/PitchSettingsSection";
 import PlayerSettingsSection from "./advancedSettings/PlayerSettingsSection";
 import ExportVideoSettingsSection from "./advancedSettings/ExportVideoSettingsSection";
 import AnimationSettingsSection from "./advancedSettings/AnimationSettingsSection";
+import LoggerSettingsSection from "./advancedSettings/LoggerSettingsSection";
 import SavePrefabButton from "./rightPanel/SavePrefabButton";
 
 export default function AdvancedSettings({ value, onChange, onReset, onClose }) {
@@ -12,12 +13,14 @@ export default function AdvancedSettings({ value, onChange, onReset, onClose }) 
     const players = settings.players ?? {};
     const exportVideo = settings.exportVideo ?? {};
     const animation = settings.animation ?? {};
+    const logging = settings.logging ?? {};
 
     const update = (patch) => onChange?.({ ...settings, ...patch });
     const updatePitch = (patch) => update({ pitch: { ...pitch, ...patch } });
     const updatePlayers = (patch) => update({ players: { ...players, ...patch } });
     const updateExportVideo = (patch) => update({ exportVideo: { ...exportVideo, ...patch } });
     const updateAnimation = (patch) => update({ animation: { ...animation, ...patch } });
+    const updateLogging = (patch) => update({ logging: { ...logging, ...patch } });
 
     return (
         <div className="absolute right-0 top-0 h-screen z-50 flex flex-col">
@@ -46,6 +49,7 @@ export default function AdvancedSettings({ value, onChange, onReset, onClose }) 
                 <PlayerSettingsSection value={players} onChange={updatePlayers} />
                 <ExportVideoSettingsSection value={exportVideo} onChange={updateExportVideo} />
                 <AnimationSettingsSection value={animation} onChange={updateAnimation} />
+                <LoggerSettingsSection value={logging} onChange={updateLogging} />
                 <SavePrefabButton />
             </aside>
             {/* Reset to Default - Fixed at bottom */}
