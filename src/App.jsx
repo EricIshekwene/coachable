@@ -301,6 +301,20 @@ function App() {
     setCurrentPlayerColor(hex);
   };
 
+  const handleSelectedPlayersColorChange = (hex, ids) => {
+    const targetIds = Array.isArray(ids) && ids.length ? ids : selectedPlayerIds;
+    if (!targetIds?.length) return;
+    pushHistory();
+    setPlayersById((prev) => {
+      const next = { ...prev };
+      targetIds.forEach((id) => {
+        if (!next[id]) return;
+        next[id] = { ...next[id], color: hex };
+      });
+      return next;
+    });
+  };
+
   const resolveNextNumber = (providedNumber) => {
     const trimmed = String(providedNumber ?? "").trim();
     if (trimmed !== "") {
@@ -585,6 +599,9 @@ function App() {
     })),
     { id: ball.id, type: "ball", x: ball.x, y: ball.y },
   ];
+  const selectedPlayers = (selectedPlayerIds || [])
+    .map((id) => playersById?.[id])
+    .filter(Boolean);
 
   const handleItemChange = (id, next, meta) => {
     markKeyframeSnapshotPending();
@@ -986,27 +1003,29 @@ function App() {
           onKeyframeAddAttempt={(payload) => logEvent("controlPill", "keyframeAddAttempt", payload)}
         />
 
-          <RightPanel
-            playName={playName}
-            onPlayNameChange={setPlayName}
-            zoomPercent={zoomPercent}
-            onZoomIn={zoomIn}
-            onZoomOut={zoomOut}
-            onZoomPercentChange={setZoomPercent}
-            onRotateLeft={onRotateLeft}
-            onRotateCenter={onRotateCenter}
-            onRotateRight={onRotateRight}
-            onFieldUndo={onFieldUndo}
-            onFieldRedo={onFieldRedo}
-            onReset={onReset}
+        <RightPanel
+          playName={playName}
+          onPlayNameChange={setPlayName}
+          zoomPercent={zoomPercent}
+          onZoomIn={zoomIn}
+          onZoomOut={zoomOut}
+          onZoomPercentChange={setZoomPercent}
+          onRotateLeft={onRotateLeft}
+          onRotateCenter={onRotateCenter}
+          onRotateRight={onRotateRight}
+          onFieldUndo={onFieldUndo}
+          onFieldRedo={onFieldRedo}
+          onReset={onReset}
           playersById={playersById}
           representedPlayerIds={representedPlayerIds}
           selectedPlayerIds={selectedPlayerIds}
+          selectedPlayers={selectedPlayers}
           onSelectPlayer={handleSelectPlayer}
           onEditPlayer={handleEditPlayer}
           onDeletePlayer={handleDeletePlayer}
           allPlayersDisplay={allPlayersDisplay}
           onAllPlayersDisplayChange={setAllPlayersDisplay}
+          onSelectedPlayersColorChange={handleSelectedPlayersColorChange}
           advancedSettingsOpen={showAdvancedSettings}
           onOpenAdvancedSettings={() => setShowAdvancedSettings(true)}
           onSaveToPlaybook={onSaveToPlaybook}

@@ -241,10 +241,12 @@ export const PanelButton = ({ Icon, onHover, onClick, isSelected = false }) => {
         <button
             className={`
              w-full aspect-[5/3]
-             rounded-md border-[0.5px] border-BrandGray
-             transition-all duration-300
+             rounded-lg border border-BrandGray2
+             transition-all duration-200
              flex items-center justify-center p-1
-             ${isSelected ? "bg-BrandOrange " : "bg-BrandBlack2 "}
+             ${isSelected
+                    ? "bg-BrandOrange border-BrandOrange text-BrandBlack"
+                    : "bg-BrandBlack2 hover:bg-BrandBlack2/90 hover:border-BrandGray text-BrandOrange"}
            `}
             onMouseEnter={onHover}
             onClick={onClick}

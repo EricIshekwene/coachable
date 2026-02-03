@@ -4,6 +4,7 @@ import FieldSettingsSection from "./rightPanel/FieldSettingsSection";
 import PlayersSection from "./rightPanel/PlayersSection";
 import AdvancedSettingsButton from "./rightPanel/AdvancedSettingsButton";
 import AllPlayersSection from "./rightPanel/AllPlayersSection";
+import SelectedPlayersSection from "./rightPanel/SelectedPlayersSection";
 import ExportActions from "./rightPanel/ExportActions";
 
 export default function RightPanel({
@@ -25,12 +26,14 @@ export default function RightPanel({
   playersById,
   representedPlayerIds,
   selectedPlayerIds,
+  selectedPlayers,
   onSelectPlayer,
   onEditPlayer,
   onDeletePlayer,
 
   allPlayersDisplay,
   onAllPlayersDisplayChange,
+  onSelectedPlayersColorChange,
 
   advancedSettingsOpen,
   onOpenAdvancedSettings,
@@ -78,9 +81,19 @@ export default function RightPanel({
             onDeletePlayer={onDeletePlayer}
           />
 
-          <AdvancedSettingsButton isOpen={advancedSettingsOpen} onOpen={onOpenAdvancedSettings} />
+          {selectedPlayerIds?.length > 0 ? (
+            <SelectedPlayersSection
+              selectedPlayerIds={selectedPlayerIds}
+              selectedPlayers={selectedPlayers}
+              allPlayersDisplay={allPlayersDisplay}
+              onAllPlayersDisplayChange={onAllPlayersDisplayChange}
+              onSelectedPlayersColorChange={onSelectedPlayersColorChange}
+            />
+          ) : (
+            <AllPlayersSection value={allPlayersDisplay} onChange={onAllPlayersDisplayChange} />
+          )}
 
-          <AllPlayersSection value={allPlayersDisplay} onChange={onAllPlayersDisplayChange} />
+          <AdvancedSettingsButton isOpen={advancedSettingsOpen} onOpen={onOpenAdvancedSettings} />
         </div>
       </div>
 

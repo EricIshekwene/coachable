@@ -1,7 +1,7 @@
 import { SidebarChevronButton, WideSidebarRowButton } from "../subcomponents/Buttons";
 import { Popover, PopoverGrid, Tooltip } from "../subcomponents/Popovers";
 
-const PLAYER_COLORS = { red: "#ef4444", blue: "#0033FF" };
+const PLAYER_COLORS = { red: "#ef4444", blue: "#3b82f6" };
 
 export default function PlayerColorSection({
     playerColor,

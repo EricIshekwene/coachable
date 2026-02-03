@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import PlayerRow from "./PlayerRow";
 
 export default function PlayersSection({
@@ -11,6 +11,22 @@ export default function PlayersSection({
 }) {
   const ids = representedPlayerIds || [];
   const count = ids.length;
+  const rowRefs = useRef(new Map());
+
+  useEffect(() => {
+    const targetId = selectedPlayerIds?.[0];
+    if (!targetId) return;
+    if (!ids.includes(targetId)) return;
+
+    const node = rowRefs.current.get(targetId);
+    if (!node) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      node.scrollIntoView({ block: "nearest" });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [selectedPlayerIds, ids]);
 
   return (
     <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center ">
@@ -21,14 +37,22 @@ export default function PlayersSection({
           const player = playersById?.[id];
           if (!player) return null;
           return (
-            <PlayerRow
+            <div
               key={id}
-              player={player}
-              isSelected={selectedPlayerIds?.includes(id)}
-              onClick={(meta) => onSelectPlayer?.(id, meta)}
-              onEdit={onEditPlayer}
-              onDelete={onDeletePlayer}
-            />
+              ref={(node) => {
+                if (node) rowRefs.current.set(id, node);
+                else rowRefs.current.delete(id);
+              }}
+              className="w-full"
+            >
+              <PlayerRow
+                player={player}
+                isSelected={selectedPlayerIds?.includes(id)}
+                onClick={(meta) => onSelectPlayer?.(id, meta)}
+                onEdit={onEditPlayer}
+                onDelete={onDeletePlayer}
+              />
+            </div>
           );
         })}
       </div>
