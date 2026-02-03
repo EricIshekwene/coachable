@@ -67,7 +67,7 @@ export default function SelectedPlayersSection({
                   ${isActive ? "border-BrandOrange bg-BrandBlack" : "border-BrandGray2 bg-BrandBlack2 hover:bg-BrandBlack2/90"}`}
               >
                 <span
-                  className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full border border-BrandGray"
+                  className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full"
                   style={{ backgroundColor: option.value }}
                 />
                 <span className={`text-[10px] sm:text-xs font-DmSans ${isActive ? "text-BrandWhite" : "text-BrandGray"}`}>
