@@ -5,7 +5,7 @@ import RugbyField from "../assets/objects/Field Vectors/Rugby_Field.png";
 // - Pointer events disabled.
 // - Centered via CSS percentages, not pixels.
 // - max-w-none so it can exceed viewport and be clipped.
-export default function FieldLayer({ showMarkings = true }) {
+export default function FieldLayer({ showMarkings = true, rotationDeg = 0 }) {
   if (!showMarkings) return null;
 
   return (
@@ -19,7 +19,7 @@ export default function FieldLayer({ showMarkings = true }) {
         position: "absolute",
         left: "50%",
         top: "50%",
-        transform: "translate(-50%, -50%)",
+        transform: `translate(-50%, -50%) rotate(${rotationDeg}deg)`,
       }}
     />
   );

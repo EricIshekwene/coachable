@@ -11,6 +11,8 @@ export default function CanvasRoot({
   camera,
   setCamera,
   items,
+  fieldRotation = 0,
+  onPanStart,
   onItemChange,
   onItemDragStart,
   onItemDragEnd,
@@ -40,9 +42,10 @@ export default function CanvasRoot({
         onCanvasAddPlayer={onCanvasAddPlayer}
         items={items}
         onMarqueeSelect={onMarqueeSelect}
+        onPanStart={onPanStart}
       >
         <WorldLayer camera={camera}>
-          <FieldLayer showMarkings={showMarkings} />
+          <FieldLayer showMarkings={showMarkings} rotationDeg={fieldRotation} />
           <ItemsLayer
             items={items}
             tool={tool}

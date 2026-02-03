@@ -25,6 +25,7 @@ export default function ControlPill({
   externalTimePercent,
   externalIsPlaying,
   externalSpeed,
+  externalSelectedKeyframe,
   // Optional: external signal to add a keyframe at current time
   addKeyframeSignal,
 }) {
@@ -50,21 +51,35 @@ export default function ControlPill({
   // Sync with external props if provided
   useEffect(() => {
     if (externalTimePercent !== undefined) {
-      setTimePercent(externalTimePercent);
+      setTimePercent((prev) =>
+        Object.is(prev, externalTimePercent) ? prev : externalTimePercent
+      );
     }
   }, [externalTimePercent]);
 
   useEffect(() => {
     if (externalIsPlaying !== undefined) {
-      setIsPlaying(externalIsPlaying);
+      setIsPlaying((prev) =>
+        Object.is(prev, externalIsPlaying) ? prev : externalIsPlaying
+      );
     }
   }, [externalIsPlaying]);
 
   useEffect(() => {
     if (externalSpeed !== undefined) {
-      setSpeedMultiplier(externalSpeed);
+      setSpeedMultiplier((prev) =>
+        Object.is(prev, externalSpeed) ? prev : externalSpeed
+      );
     }
   }, [externalSpeed]);
+
+  useEffect(() => {
+    if (externalSelectedKeyframe !== undefined) {
+      setSelectedKeyframe((prev) =>
+        Object.is(prev, externalSelectedKeyframe) ? prev : externalSelectedKeyframe
+      );
+    }
+  }, [externalSelectedKeyframe]);
 
   // Notify parent of timePercent changes
   useEffect(() => {
@@ -165,14 +180,47 @@ export default function ControlPill({
     setIsPlaying((p) => !p);
   };
 
-  // Handle skip back (placeholder - implement logic as needed)
-  const handleSkipBack = () => {
-    // TODO: Implement skip back logic
+  const jumpToTime = (nextTime) => {
+    setTimePercent(nextTime);
+    if (keyframes.includes(nextTime)) {
+      setSelectedKeyframe(nextTime);
+      return;
+    }
+    setSelectedKeyframe(null);
   };
 
-  // Handle skip forward (placeholder - implement logic as needed)
+  const getSortedKeyframes = () => [...keyframes].sort((a, b) => a - b);
+
+  // Handle skip back (previous keyframe or start)
+  const handleSkipBack = () => {
+    const sorted = getSortedKeyframes();
+    if (sorted.length === 0) {
+      jumpToTime(0);
+      return;
+    }
+    const EPS = 0.001;
+    const previous = [...sorted].reverse().find((kf) => kf < timePercent - EPS);
+    if (previous !== undefined) {
+      jumpToTime(previous);
+      return;
+    }
+    jumpToTime(0);
+  };
+
+  // Handle skip forward (next keyframe or end)
   const handleSkipForward = () => {
-    // TODO: Implement skip forward logic
+    const sorted = getSortedKeyframes();
+    if (sorted.length === 0) {
+      jumpToTime(100);
+      return;
+    }
+    const EPS = 0.001;
+    const next = sorted.find((kf) => kf > timePercent + EPS);
+    if (next !== undefined) {
+      jumpToTime(next);
+      return;
+    }
+    jumpToTime(100);
   };
 
   // Handle adding a keyframe at current time position

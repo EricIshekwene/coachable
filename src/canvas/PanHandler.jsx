@@ -10,6 +10,7 @@ export default function PanHandler({
   onCanvasAddPlayer,
   items = [],
   onMarqueeSelect,
+  onPanStart,
   children,
 }) {
   const draggingRef = useRef(false);
@@ -24,8 +25,9 @@ export default function PanHandler({
   const DRAG_THRESHOLD_PX = 4;
 
   const onPointerDown = (e) => {
+    const isMiddleMouse = e.button === 1;
     const isAddTool = tool === "addPlayer" || tool === "color";
-    if (isAddTool) {
+    if (isAddTool && !isMiddleMouse) {
       if (e.button !== 0) return;
       const rect = e.currentTarget.getBoundingClientRect();
       const sx = e.clientX - rect.left;
@@ -38,7 +40,7 @@ export default function PanHandler({
       onCanvasAddPlayer?.({ x: worldX, y: worldY, source: tool });
       return;
     }
-    if (tool === "select") {
+    if (tool === "select" && !isMiddleMouse) {
       if (e.button !== 0) return;
       selectingRef.current = true;
       marqueeActiveRef.current = false;
@@ -51,12 +53,16 @@ export default function PanHandler({
       e.currentTarget.setPointerCapture?.(e.pointerId);
       return;
     }
-    if (tool !== "hand") return;
+    if (!isMiddleMouse && tool !== "hand") return;
     draggingRef.current = true;
     pointerIdRef.current = e.pointerId;
     lastPtRef.current = { x: e.clientX, y: e.clientY };
     setIsPanning(true);
     e.currentTarget.setPointerCapture?.(e.pointerId);
+    onPanStart?.();
+    if (isMiddleMouse) {
+      e.preventDefault();
+    }
   };
 
   const onPointerMove = (e) => {
@@ -148,9 +154,11 @@ export default function PanHandler({
             ? isPanning
               ? "grabbing"
               : "grab"
-            : tool === "addPlayer" || tool === "color"
-              ? "copy"
-              : "default",
+            : tool === "select" && isPanning
+              ? "grabbing"
+              : tool === "addPlayer" || tool === "color"
+                ? "copy"
+                : "default",
       }}
     >
       {children}

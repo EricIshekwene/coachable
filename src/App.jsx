@@ -1,6 +1,6 @@
 import "./index.css";
 import WideSidebar from "./components/WideSidebar";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import ControlPill from "./components/controlPill/ControlPill";
 import RightPanel from "./components/RightPanel";
 import AdvancedSettings from "./components/AdvancedSettings";
@@ -80,6 +80,7 @@ function App() {
   // RightPanel / Canvas shared state
   const [playName, setPlayName] = useState("Name");
   const [camera, setCamera] = useState({ x: 0, y: 0, zoom: 1 });
+  const [fieldRotation, setFieldRotation] = useState(0);
   const DEFAULT_PLAYER_COLOR = "#ef4444";
   const INITIAL_PLAYERS_BY_ID = {
     "player-1": {
@@ -114,6 +115,9 @@ function App() {
   const [historyPast, setHistoryPast] = useState([]);
   const [historyFuture, setHistoryFuture] = useState([]);
   const isRestoringRef = useRef(false);
+  const [fieldHistoryPast, setFieldHistoryPast] = useState([]);
+  const [fieldHistoryFuture, setFieldHistoryFuture] = useState([]);
+  const isFieldRestoringRef = useRef(false);
   const pendingKeyframeUpdateRef = useRef(false);
   const pendingKeyframeTimeRef = useRef(null);
   const isItemDraggingRef = useRef(false);
@@ -149,15 +153,30 @@ function App() {
 
   const setZoomPercent = (nextPercent) => {
     const pct = clamp(Number(nextPercent) || 0, 30, 300);
-    setCamera((prev) => ({ ...prev, zoom: pct / 100 }));
+    const nextZoom = pct / 100;
+    if (Math.abs((camera.zoom || 1) - nextZoom) < 0.0001) return;
+    pushFieldHistory();
+    setCamera((prev) => ({ ...prev, zoom: nextZoom }));
   };
   const zoomIn = () => setZoomPercent(zoomPercent + 5);
   const zoomOut = () => setZoomPercent(zoomPercent - 5);
 
   // Field actions (placeholder callbacks for now)
-  const onRotateLeft = () => { };
-  const onRotateCenter = () => { };
-  const onRotateRight = () => { };
+  const onRotateLeft = () => {
+    if (fieldRotation === -90) return;
+    pushFieldHistory();
+    setFieldRotation(-90);
+  };
+  const onRotateCenter = () => {
+    if (fieldRotation === 180) return;
+    pushFieldHistory();
+    setFieldRotation(180);
+  };
+  const onRotateRight = () => {
+    if (fieldRotation === 90) return;
+    pushFieldHistory();
+    setFieldRotation(90);
+  };
   const snapshotSlate = () => ({
     playersById: { ...playersById },
     representedPlayerIds: [...representedPlayerIds],
@@ -179,6 +198,25 @@ function App() {
     isRestoringRef.current = false;
   };
 
+  const snapshotField = () => ({
+    camera: { ...camera },
+    fieldRotation,
+  });
+
+  const applyField = (snapshot) => {
+    if (!snapshot) return;
+    isFieldRestoringRef.current = true;
+    setCamera(snapshot.camera || { x: 0, y: 0, zoom: 1 });
+    setFieldRotation(snapshot.fieldRotation ?? 0);
+    isFieldRestoringRef.current = false;
+  };
+
+  const pushFieldHistory = () => {
+    if (isFieldRestoringRef.current) return;
+    setFieldHistoryPast((prev) => [...prev, snapshotField()]);
+    setFieldHistoryFuture([]);
+  };
+
   const pushHistory = () => {
     if (isRestoringRef.current) return;
     setKeyframeSignal((prev) => prev + 1);
@@ -196,6 +234,28 @@ function App() {
       setHistoryFuture((future) => [...future, snapshotSlate()]);
       applySlate(previous);
       return nextPast;
+    });
+  };
+
+  const onFieldUndo = () => {
+    setFieldHistoryPast((prev) => {
+      if (prev.length === 0) return prev;
+      const nextPast = prev.slice(0, -1);
+      const previous = prev[prev.length - 1];
+      setFieldHistoryFuture((future) => [...future, snapshotField()]);
+      applyField(previous);
+      return nextPast;
+    });
+  };
+
+  const onFieldRedo = () => {
+    setFieldHistoryFuture((prev) => {
+      if (prev.length === 0) return prev;
+      const nextFuture = prev.slice(0, -1);
+      const next = prev[prev.length - 1];
+      setFieldHistoryPast((past) => [...past, snapshotField()]);
+      applyField(next);
+      return nextFuture;
     });
   };
 
@@ -221,11 +281,21 @@ function App() {
     setSelectedItemIds([]);
     setHistoryPast([]);
     setHistoryFuture([]);
+    setCamera({ x: 0, y: 0, zoom: 1 });
+    setFieldRotation(0);
+    setFieldHistoryPast([]);
+    setFieldHistoryFuture([]);
     isRestoringRef.current = false;
   };
 
   const onSaveToPlaybook = () => { };
   const onDownload = () => { };
+
+  const handleToolChange = useCallback((tool) => {
+    if (tool === "hand" || tool === "select" || tool === "addPlayer" || tool === "color") {
+      setCanvasTool((prev) => (prev === tool ? prev : tool));
+    }
+  }, []);
 
   const handlePlayerColorChange = (hex) => {
     setCurrentPlayerColor(hex);
@@ -376,6 +446,25 @@ function App() {
     setRepresentedPlayerIds((prev) => prev.filter((playerId) => playerId !== id));
     setSelectedPlayerIds((prev) => (prev || []).filter((playerId) => playerId !== id));
     setSelectedItemIds((prev) => (prev || []).filter((itemId) => itemId !== id));
+    setKeyframeSnapshots((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((kf) => {
+        const snapshot = next[kf];
+        if (!snapshot?.playersById?.[id] && !(snapshot?.representedPlayerIds || []).includes(id)) {
+          return;
+        }
+        const nextPlayers = { ...(snapshot.playersById || {}) };
+        delete nextPlayers[id];
+        next[kf] = {
+          ...snapshot,
+          playersById: nextPlayers,
+          representedPlayerIds: (snapshot.representedPlayerIds || []).filter(
+            (playerId) => playerId !== id
+          ),
+        };
+      });
+      return next;
+    });
     if (playerEditor.open && playerEditor.id === id) {
       handleCloseEditPlayer();
     }
@@ -395,6 +484,33 @@ function App() {
     setRepresentedPlayerIds((prev) => prev.filter((playerId) => !selectedPlayerIds.includes(playerId)));
     setSelectedPlayerIds([]);
     setSelectedItemIds((prev) => (prev || []).filter((itemId) => !selectedPlayerIds.includes(itemId)));
+    setKeyframeSnapshots((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((kf) => {
+        const snapshot = next[kf];
+        if (!snapshot) return;
+        let changed = false;
+        const nextPlayers = { ...(snapshot.playersById || {}) };
+        selectedPlayerIds.forEach((id) => {
+          if (nextPlayers[id]) {
+            delete nextPlayers[id];
+            changed = true;
+          }
+        });
+        const nextRepresented = (snapshot.representedPlayerIds || []).filter((playerId) => {
+          const shouldKeep = !selectedPlayerIds.includes(playerId);
+          if (!shouldKeep) changed = true;
+          return shouldKeep;
+        });
+        if (!changed) return;
+        next[kf] = {
+          ...snapshot,
+          playersById: nextPlayers,
+          representedPlayerIds: nextRepresented,
+        };
+      });
+      return next;
+    });
     if (playerEditor.open && selectedPlayerIds.includes(playerEditor.id)) {
       handleCloseEditPlayer();
     }
@@ -622,6 +738,8 @@ function App() {
       if (e.key !== "Escape") return;
       setSelectedPlayerIds([]);
       setSelectedItemIds([]);
+      setSelectedKeyframe(null);
+      setCanvasTool("select");
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -824,11 +942,7 @@ function App() {
         </button>
       
         <WideSidebar
-          onToolChange={(tool) => {
-            if (tool === "hand" || tool === "select" || tool === "addPlayer" || tool === "color") {
-              setCanvasTool(tool);
-            }
-          }}
+          onToolChange={handleToolChange}
           onUndo={onUndo}
           onRedo={onRedo}
           onReset={onReset}
@@ -842,6 +956,8 @@ function App() {
             camera={camera}
             setCamera={setCamera}
             items={items}
+            fieldRotation={fieldRotation}
+            onPanStart={pushFieldHistory}
             onItemChange={handleItemChange}
             onItemDragStart={handleItemDragStart}
             onItemDragEnd={handleItemDragEnd}
@@ -865,23 +981,24 @@ function App() {
           onPlayStateChange={setIsPlaying}
           onSelectedKeyframeChange={setSelectedKeyframe}
           onAutoplayChange={setAutoplayEnabled}
+          externalSelectedKeyframe={selectedKeyframe}
           addKeyframeSignal={keyframeSignal}
           onKeyframeAddAttempt={(payload) => logEvent("controlPill", "keyframeAddAttempt", payload)}
         />
 
-        <RightPanel
-          playName={playName}
-          onPlayNameChange={setPlayName}
-          zoomPercent={zoomPercent}
-          onZoomIn={zoomIn}
-          onZoomOut={zoomOut}
-          onZoomPercentChange={setZoomPercent}
-          onRotateLeft={onRotateLeft}
-          onRotateCenter={onRotateCenter}
-          onRotateRight={onRotateRight}
-          onUndo={onUndo}
-          onRedo={onRedo}
-          onReset={onReset}
+          <RightPanel
+            playName={playName}
+            onPlayNameChange={setPlayName}
+            zoomPercent={zoomPercent}
+            onZoomIn={zoomIn}
+            onZoomOut={zoomOut}
+            onZoomPercentChange={setZoomPercent}
+            onRotateLeft={onRotateLeft}
+            onRotateCenter={onRotateCenter}
+            onRotateRight={onRotateRight}
+            onFieldUndo={onFieldUndo}
+            onFieldRedo={onFieldRedo}
+            onReset={onReset}
           playersById={playersById}
           representedPlayerIds={representedPlayerIds}
           selectedPlayerIds={selectedPlayerIds}

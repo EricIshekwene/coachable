@@ -18,8 +18,8 @@ export default function RightPanel({
   onRotateLeft,
   onRotateCenter,
   onRotateRight,
-  onUndo,
-  onRedo,
+  onFieldUndo,
+  onFieldRedo,
   onReset,
 
   playersById,
@@ -64,8 +64,8 @@ export default function RightPanel({
             onRotateLeft={onRotateLeft}
             onRotateCenter={onRotateCenter}
             onRotateRight={onRotateRight}
-            onUndo={onUndo}
-            onRedo={onRedo}
+            onUndo={onFieldUndo}
+            onRedo={onFieldRedo}
             onReset={onReset}
           />
 
