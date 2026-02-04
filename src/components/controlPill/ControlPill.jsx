@@ -5,8 +5,8 @@ import PlaybackControls from './PlaybackControls';
 import KeyframeManager from './KeyframeManager';
 import DropdownMenu from './DropdownMenu';
 
-// Duration for one full traversal from 0 -> 100 before looping
-const LOOP_SECONDS = 30;
+const MAX_KEYFRAMES = 30;
+const MIN_KEYFRAME_DISTANCE = 2;
 
 /**
  * ControlPill - Main timeline control component
@@ -26,15 +26,13 @@ export default function ControlPill({
   externalIsPlaying,
   externalSpeed,
   externalSelectedKeyframe,
+  externalAutoplayEnabled,
   // Optional: external signal to add a keyframe at current time
   addKeyframeSignal,
+  onRequestAddKeyframe,
 }) {
   // Core state
-  const [timePercent, setTimePercent] = useState(externalTimePercent ?? 0);
-  const [isPlaying, setIsPlaying] = useState(externalIsPlaying ?? false);
-  const [speedMultiplier, setSpeedMultiplier] = useState(externalSpeed ?? 50);
   const [keyframes, setKeyframes] = useState([]);
-  const [selectedKeyframe, setSelectedKeyframe] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [autoplayEnabled, setAutoplayEnabled] = useState(true);
@@ -43,126 +41,36 @@ export default function ControlPill({
   const [actionHistory, setActionHistory] = useState([]);
   const [redoHistory, setRedoHistory] = useState([]);
 
-  // Refs for animation
-  const rafId = useRef(null);
-  const lastTs = useRef(null);
+  const timePercent = externalTimePercent ?? 0;
+  const isPlaying = externalIsPlaying ?? false;
+  const speedMultiplier = externalSpeed ?? 50;
+  const selectedKeyframe = externalSelectedKeyframe ?? null;
+  const isAutoplayEnabled = externalAutoplayEnabled ?? autoplayEnabled;
+
   const lastKeyframeSignal = useRef(addKeyframeSignal);
-
-  // Sync with external props if provided
-  useEffect(() => {
-    if (externalTimePercent !== undefined) {
-      setTimePercent((prev) =>
-        Object.is(prev, externalTimePercent) ? prev : externalTimePercent
-      );
-    }
-  }, [externalTimePercent]);
+  const latestTimePercentRef = useRef(externalTimePercent ?? 0);
 
   useEffect(() => {
-    if (externalIsPlaying !== undefined) {
-      setIsPlaying((prev) =>
-        Object.is(prev, externalIsPlaying) ? prev : externalIsPlaying
-      );
-    }
-  }, [externalIsPlaying]);
-
-  useEffect(() => {
-    if (externalSpeed !== undefined) {
-      setSpeedMultiplier((prev) =>
-        Object.is(prev, externalSpeed) ? prev : externalSpeed
-      );
-    }
-  }, [externalSpeed]);
-
-  useEffect(() => {
-    if (externalSelectedKeyframe !== undefined) {
-      setSelectedKeyframe((prev) =>
-        Object.is(prev, externalSelectedKeyframe) ? prev : externalSelectedKeyframe
-      );
-    }
-  }, [externalSelectedKeyframe]);
-
-  // Notify parent of timePercent changes
-  useEffect(() => {
-    onTimePercentChange?.(timePercent);
-  }, [timePercent, onTimePercentChange]);
+    latestTimePercentRef.current = externalTimePercent ?? timePercent;
+  }, [externalTimePercent, timePercent]);
 
   // Notify parent of keyframes changes
   useEffect(() => {
     onKeyframesChange?.(keyframes);
   }, [keyframes, onKeyframesChange]);
 
-  // Notify parent of speed changes
-  useEffect(() => {
-    onSpeedChange?.(speedMultiplier);
-  }, [speedMultiplier, onSpeedChange]);
-
-  // Notify parent of play state changes
-  useEffect(() => {
-    onPlayStateChange?.(isPlaying);
-  }, [isPlaying, onPlayStateChange]);
-
-  // Notify parent of selected keyframe changes
-  useEffect(() => {
-    onSelectedKeyframeChange?.(selectedKeyframe);
-  }, [selectedKeyframe, onSelectedKeyframeChange]);
-
-  // Notify parent of autoplay changes
-  useEffect(() => {
-    onAutoplayChange?.(autoplayEnabled);
-  }, [autoplayEnabled, onAutoplayChange]);
-
-  // Animation loop that updates timePercent based on speed multiplier
-  useEffect(() => {
-    if (!isPlaying) {
-      if (rafId.current) cancelAnimationFrame(rafId.current);
-      rafId.current = null;
-      lastTs.current = null;
-      return;
-    }
-
-    const tick = (ts) => {
-      if (lastTs.current == null) lastTs.current = ts;
-      const dt = (ts - lastTs.current) / 1000; // seconds since last frame
-      lastTs.current = ts;
-
-      // Speed calculation: 0 = 0.25x (slow), 75 = ~3x (default), 100 = 4x (fast)
-      const speed = (0.25 + (speedMultiplier / 100) * 3.75) * 3;
-
-      setTimePercent((p) => {
-        const next = p + (dt / LOOP_SECONDS) * 100 * speed;
-        // If autoplay is disabled, return to start (0) when reaching 100, but don't continue playing
-        if (next >= 100) {
-          if (!autoplayEnabled) {
-            setIsPlaying(false); // Stop playing when autoplay is off
-            return 0; // Return to start
-          }
-          return next - 100; // loop back when autoplay is on
-        }
-        return next;
-      });
-
-      rafId.current = requestAnimationFrame(tick);
-    };
-
-    rafId.current = requestAnimationFrame(tick);
-
-    return () => {
-      if (rafId.current) cancelAnimationFrame(rafId.current);
-      rafId.current = null;
-      lastTs.current = null;
-    };
-  }, [isPlaying, speedMultiplier, autoplayEnabled]);
 
   // Handle time change
   const handleTimeChange = (newPercent) => {
-    setSelectedKeyframe(null);
-    setTimePercent(newPercent);
+    onSelectedKeyframeChange?.(null);
+    onPlayStateChange?.(false);
+    onTimePercentChange?.(newPercent);
   };
 
   // Handle drag start
   const handleDragStart = () => {
     setIsDragging(true);
-    setIsPlaying(false); // Pause when dragging
+    onPlayStateChange?.(false); // Pause when dragging
   };
 
   // Handle drag end
@@ -172,21 +80,25 @@ export default function ControlPill({
 
   // Handle speed change
   const handleSpeedChange = (newSpeed) => {
-    setSpeedMultiplier(newSpeed);
+    onSpeedChange?.(newSpeed);
   };
 
   // Handle play toggle
   const handlePlayToggle = () => {
-    setIsPlaying((p) => !p);
+    if (!isPlaying && timePercent >= 100) {
+      onTimePercentChange?.(0);
+    }
+    onPlayStateChange?.(!isPlaying);
   };
 
   const jumpToTime = (nextTime) => {
-    setTimePercent(nextTime);
     if (keyframes.includes(nextTime)) {
-      setSelectedKeyframe(nextTime);
+      onSelectedKeyframeChange?.(nextTime);
+      onTimePercentChange?.(nextTime);
       return;
     }
-    setSelectedKeyframe(null);
+    onSelectedKeyframeChange?.(null);
+    onTimePercentChange?.(nextTime);
   };
 
   const getSortedKeyframes = () => [...keyframes].sort((a, b) => a - b);
@@ -225,21 +137,21 @@ export default function ControlPill({
 
   // Handle adding a keyframe at current time position
   const addKeyframeAtTime = (timePercentValue) => {
-    // Limit maximum keyframes to 10
-    if (keyframes.length >= 10) {
+    // Limit maximum keyframes
+    if (keyframes.length >= MAX_KEYFRAMES) {
       onKeyframeAddAttempt?.({
         added: false,
         reason: "max",
         timePercent: timePercentValue,
         keyframes: [...keyframes],
+        maxKeyframes: MAX_KEYFRAMES,
       });
       return;
     }
 
-    // Check if keyframe already exists at this position (within 4% tolerance)
-    const MIN_DISTANCE = 4; // Minimum distance between keyframes in percent
+    // Check if keyframe already exists at this position (within tolerance)
     const existingKeyframe = keyframes.find(
-      (kf) => Math.abs(kf - timePercentValue) < MIN_DISTANCE
+      (kf) => Math.abs(kf - timePercentValue) < MIN_KEYFRAME_DISTANCE
     );
 
     if (!existingKeyframe) {
@@ -258,28 +170,36 @@ export default function ControlPill({
       });
       return;
     }
+    onSelectedKeyframeChange?.(existingKeyframe);
+    onTimePercentChange?.(existingKeyframe);
     onKeyframeAddAttempt?.({
       added: false,
       reason: "too-close",
       timePercent: timePercentValue,
       keyframes: [...keyframes],
-      minDistance: MIN_DISTANCE,
+      minDistance: MIN_KEYFRAME_DISTANCE,
+      selectedKeyframe: existingKeyframe,
     });
   };
 
   const handleAddKeyframe = (e) => {
     e.stopPropagation(); // Prevent triggering pill click
-    addKeyframeAtTime(timePercent);
+    if (onRequestAddKeyframe) {
+      onRequestAddKeyframe();
+      return;
+    }
+    const currentTime = externalTimePercent ?? timePercent;
+    addKeyframeAtTime(currentTime);
   };
 
   // Handle clicking on a keyframe
   const handleKeyframeClick = (e, timePercentValue) => {
     e.stopPropagation(); // Prevent triggering pill click
     if (selectedKeyframe === timePercentValue) {
-      setSelectedKeyframe(null); // Deselect if already selected
+      onSelectedKeyframeChange?.(null); // Deselect if already selected
     } else {
-      setSelectedKeyframe(timePercentValue); // Select this keyframe
-      setTimePercent(timePercentValue);
+      onSelectedKeyframeChange?.(timePercentValue); // Select this keyframe
+      onTimePercentChange?.(timePercentValue);
     }
   };
 
@@ -292,7 +212,7 @@ export default function ControlPill({
       setRedoHistory([]);
       // Remove keyframe
       setKeyframes(keyframes.filter(kf => kf !== deletedKeyframe));
-      setSelectedKeyframe(null);
+      onSelectedKeyframeChange?.(null);
       // Record the action for undo
       setActionHistory([...actionHistory, { type: 'delete', keyframe: deletedKeyframe }]);
     }
@@ -307,7 +227,7 @@ export default function ControlPill({
       // Record all deletions as a single clear action
       const allKeyframes = [...keyframes];
       setKeyframes([]);
-      setSelectedKeyframe(null);
+      onSelectedKeyframeChange?.(null);
       // Record the clear action for undo
       setActionHistory([...actionHistory, { type: 'clear', keyframes: allKeyframes }]);
     }
@@ -326,7 +246,7 @@ export default function ControlPill({
         const newKeyframes = keyframes.filter(kf => kf !== lastAction.keyframe);
         setKeyframes(newKeyframes);
         if (selectedKeyframe === lastAction.keyframe) {
-          setSelectedKeyframe(null);
+          onSelectedKeyframeChange?.(null);
         }
         // Add reversed action to redo history
         setRedoHistory([...redoHistory, { type: 'delete', keyframe: lastAction.keyframe }]);
@@ -365,7 +285,7 @@ export default function ControlPill({
         const newKeyframes = keyframes.filter(kf => kf !== lastRedoAction.keyframe);
         setKeyframes(newKeyframes);
         if (selectedKeyframe === lastRedoAction.keyframe) {
-          setSelectedKeyframe(null);
+          onSelectedKeyframeChange?.(null);
         }
         // Add action back to undo history
         setActionHistory([...actionHistory, { type: 'delete', keyframe: lastRedoAction.keyframe }]);
@@ -373,7 +293,7 @@ export default function ControlPill({
         // Redo clear: save current state, then clear
         const currentKeyframes = [...keyframes];
         setKeyframes([]);
-        setSelectedKeyframe(null);
+        onSelectedKeyframeChange?.(null);
         // Add action back to undo history with the keyframes that were cleared
         setActionHistory([...actionHistory, { type: 'clear', keyframes: currentKeyframes }]);
       }
@@ -384,22 +304,25 @@ export default function ControlPill({
 
   // Handle autoplay toggle
   const handleAutoplayToggle = () => {
-    const newAutoplayState = !autoplayEnabled;
-    setAutoplayEnabled(newAutoplayState);
+    const newAutoplayState = !isAutoplayEnabled;
+    if (externalAutoplayEnabled === undefined) {
+      setAutoplayEnabled(newAutoplayState);
+    }
+    onAutoplayChange?.(newAutoplayState);
     // When autoplay is turned off, return to start
     if (!newAutoplayState) {
-      setTimePercent(0);
-      setIsPlaying(false);
+      onTimePercentChange?.(0);
+      onPlayStateChange?.(false);
     }
   };
 
-  // Add a keyframe when the parent signals an action occurred on the slate
+  // Add a keyframe when the parent explicitly requests it
   useEffect(() => {
     if (addKeyframeSignal === undefined) return;
     if (addKeyframeSignal === lastKeyframeSignal.current) return;
     lastKeyframeSignal.current = addKeyframeSignal;
-    addKeyframeAtTime(timePercent);
-  }, [addKeyframeSignal, timePercent, keyframes, actionHistory, redoHistory]);
+    addKeyframeAtTime(latestTimePercentRef.current);
+  }, [addKeyframeSignal]);
 
   return (
     <>
@@ -456,7 +379,7 @@ export default function ControlPill({
         onTrash={handleTrash}
         onUndo={handleUndo}
         onRedo={handleRedo}
-        autoplayEnabled={autoplayEnabled}
+        autoplayEnabled={isAutoplayEnabled}
         onAutoplayToggle={handleAutoplayToggle}
         canUndo={actionHistory.length > 0}
         canRedo={redoHistory.length > 0}

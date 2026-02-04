@@ -9,6 +9,7 @@ import MessagePopup from "./components/MessagePopup/MessagePopup";
 import PlayerEditPanel from "./components/rightPanel/PlayerEditPanel";
 
 const KEYFRAME_TOLERANCE = 4;
+const LOOP_SECONDS = 30;
 
 function App() {
   const [color, setColor] = useState("#561ecb");
@@ -64,18 +65,21 @@ function App() {
   });
 
   // Method to show message popup
-  const showMessage = (message, subtitle = "", type = "standard", duration = 3000) => {
-    setMessagePopup({
-      visible: true,
-      message,
-      subtitle,
-      type,
-    });
-  };
+  const showMessage = useCallback(
+    (message, subtitle = "", type = "standard", duration = 3000) => {
+      setMessagePopup({
+        visible: true,
+        message,
+        subtitle,
+        type,
+      });
+    },
+    []
+  );
 
-  const hideMessage = () => {
+  const hideMessage = useCallback(() => {
     setMessagePopup((prev) => ({ ...prev, visible: false }));
-  };
+  }, []);
 
   // RightPanel / Canvas shared state
   const [playName, setPlayName] = useState("Name");
@@ -219,7 +223,6 @@ function App() {
 
   const pushHistory = () => {
     if (isRestoringRef.current) return;
-    setKeyframeSignal((prev) => prev + 1);
     markKeyframeSnapshotPending();
     setHistoryPast((prev) => [...prev, snapshotSlate()]);
     setHistoryFuture([]);
@@ -664,6 +667,9 @@ function App() {
   const [autoplayEnabled, setAutoplayEnabled] = useState(true);
   const [keyframeSignal, setKeyframeSignal] = useState(0);
   const [keyframeSnapshots, setKeyframeSnapshots] = useState(() => ({}));
+  const playRafId = useRef(null);
+  const playLastTsRef = useRef(null);
+  const isPlayingRef = useRef(false);
   const prevKeyframesRef = useRef([]);
   const latestKeyframesRef = useRef([]);
   const latestKeyframeSnapshotsRef = useRef({});
@@ -708,6 +714,96 @@ function App() {
     pendingKeyframeUpdateRef.current = true;
     pendingKeyframeTimeRef.current = keyframeAtTime;
   };
+
+  const handleTimePercentChange = (next) => {
+    const clamped = clamp(Number(next) || 0, 0, 100);
+    setTimePercent((prev) => (Object.is(prev, clamped) ? prev : clamped));
+    if (isPlayingRef.current) {
+      setIsPlaying(false);
+    }
+  };
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  useEffect(() => {
+    if (!isPlaying) {
+      if (playRafId.current) cancelAnimationFrame(playRafId.current);
+      playRafId.current = null;
+      playLastTsRef.current = null;
+      return;
+    }
+
+    const tick = (ts) => {
+      if (!isPlayingRef.current) return;
+      if (playLastTsRef.current == null) playLastTsRef.current = ts;
+      const dt = (ts - playLastTsRef.current) / 1000;
+      playLastTsRef.current = ts;
+
+      const speed = (0.25 + (speedMultiplier / 100) * 3.75) * 3;
+      const delta = (dt / LOOP_SECONDS) * 100 * speed;
+      let shouldStop = false;
+
+      setTimePercent((prev) => {
+        let next = prev + delta;
+        if (next >= 100) {
+          if (autoplayEnabled) {
+            next = next % 100;
+          } else {
+            next = 100;
+            shouldStop = true;
+          }
+        }
+        if (next <= 0) next = 0;
+        return next;
+      });
+
+      if (shouldStop) {
+        isPlayingRef.current = false;
+        setIsPlaying(false);
+        return;
+      }
+
+      playRafId.current = requestAnimationFrame(tick);
+    };
+
+    playRafId.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (playRafId.current) cancelAnimationFrame(playRafId.current);
+      playRafId.current = null;
+      playLastTsRef.current = null;
+    };
+  }, [isPlaying, speedMultiplier, autoplayEnabled]);
+
+  const requestAddKeyframe = useCallback(() => {
+    setKeyframeSignal((prev) => prev + 1);
+  }, []);
+
+  const handleKeyframeAddAttempt = useCallback(
+    (payload) => {
+      logEvent("controlPill", "keyframeAddAttempt", payload);
+      if (payload?.added) return;
+      if (payload?.reason === "max") {
+        showMessage(
+          "Keyframe limit reached",
+          `Max ${payload.maxKeyframes ?? 30} keyframes`,
+          "error"
+        );
+        return;
+      }
+      if (payload?.reason === "too-close") {
+        showMessage(
+          "Keyframe already nearby",
+          "Selected the existing keyframe instead",
+          "standard",
+          2000
+        );
+      }
+    },
+    [logEvent, showMessage]
+  );
 
   // Log state every 10 seconds
   useEffect(() => {
@@ -992,15 +1088,20 @@ function App() {
           />
         </div>
         <ControlPill
-          onTimePercentChange={setTimePercent}
+          onTimePercentChange={handleTimePercentChange}
           onKeyframesChange={setKeyframes}
           onSpeedChange={setSpeedMultiplier}
           onPlayStateChange={setIsPlaying}
           onSelectedKeyframeChange={setSelectedKeyframe}
           onAutoplayChange={setAutoplayEnabled}
+          externalTimePercent={timePercent}
+          externalIsPlaying={isPlaying}
+          externalSpeed={speedMultiplier}
           externalSelectedKeyframe={selectedKeyframe}
+          externalAutoplayEnabled={autoplayEnabled}
           addKeyframeSignal={keyframeSignal}
-          onKeyframeAddAttempt={(payload) => logEvent("controlPill", "keyframeAddAttempt", payload)}
+          onRequestAddKeyframe={requestAddKeyframe}
+          onKeyframeAddAttempt={handleKeyframeAddAttempt}
         />
 
         <RightPanel
