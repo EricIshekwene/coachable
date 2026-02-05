@@ -4,10 +4,11 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import ControlPill from "./components/controlPill/ControlPill";
 import RightPanel from "./components/RightPanel";
 import AdvancedSettings from "./components/AdvancedSettings";
-import CanvasRoot from "./canvas/CanvasRoot";
+import KonvaCanvasRoot from "./canvas/KonvaCanvasRoot";
 import MessagePopup from "./components/MessagePopup/MessagePopup";
 import PlayerEditPanel from "./components/rightPanel/PlayerEditPanel";
 import { buildPlayExportV1, downloadPlayExport } from "./utils/exportPlay";
+
 import {
   IMPORT_FILE_SIZE_LIMIT_BYTES,
   addKeyframeFromData,
@@ -35,6 +36,9 @@ function App() {
       // This is the "base" player size in pixels at 100% in the Right Panel.
       // (Right Panel sizePercent scales from this.)
       baseSizePx: 30,
+    },
+    ball: {
+      sizePercent: 100,
     },
     exportVideo: {
       videoQuality: "1080p",
@@ -1229,7 +1233,7 @@ function App() {
           onDeleteSelected={handleDeleteSelected}
         />
         <div className="flex-1 flex">
-          <CanvasRoot
+          <KonvaCanvasRoot
             tool={canvasTool}
             camera={camera}
             setCamera={setCamera}

@@ -1,8 +1,6 @@
-import React, { useState } from "react";
-import whiteBall from "../assets/objects/balls/white_ball.png";
+import React from "react";
 
 export default function ItemVisual({ item, allPlayersDisplay, playerBaseSizePx, isSelected = false }) {
-  const [ballImageError, setBallImageError] = useState(false);
   switch (item.type) {
     case "player":
       {
@@ -43,43 +41,7 @@ export default function ItemVisual({ item, allPlayersDisplay, playerBaseSizePx, 
         );
       }
     case "ball":
-      {
-        const ballSizePx = 22;
-        return (
-          <div
-            className="z-40 flex items-center justify-center select-none"
-            style={{
-              width: ballSizePx,
-              height: ballSizePx,
-              pointerEvents: "none",
-              boxShadow: isSelected ? "0 0 0 2px #FF7A18" : "none",
-              borderRadius: "9999px",
-            }}
-          >
-            {ballImageError ? (
-              <div
-                className="rounded-full border-2 border-BrandBlack bg-BrandWhite"
-                style={{ width: ballSizePx, height: ballSizePx }}
-                title="ball"
-              />
-            ) : (
-              <img
-                src={whiteBall}
-                alt="ball"
-                draggable={false}
-                onDragStart={(e) => e.preventDefault()}
-                onError={() => setBallImageError(true)}
-                style={{
-                  width: ballSizePx,
-                  height: ballSizePx,
-                  objectFit: "contain",
-                  filter: "drop-shadow(0 1px 1.5px rgba(0,0,0,0.2)) drop-shadow(0 0 0.5px rgba(0,0,0,0.4))",
-                }}
-              />
-            )}
-          </div>
-        );
-      }
+      return null;
     default:
       return null;
   }

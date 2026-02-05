@@ -2,6 +2,7 @@ import React from 'react';
 import { FaTimes } from "react-icons/fa";
 import PitchSettingsSection from "./advancedSettings/PitchSettingsSection";
 import PlayerSettingsSection from "./advancedSettings/PlayerSettingsSection";
+import BallSettingsSection from "./advancedSettings/BallSettingsSection";
 import ExportVideoSettingsSection from "./advancedSettings/ExportVideoSettingsSection";
 import AnimationSettingsSection from "./advancedSettings/AnimationSettingsSection";
 import LoggerSettingsSection from "./advancedSettings/LoggerSettingsSection";
@@ -11,6 +12,7 @@ export default function AdvancedSettings({ value, onChange, onReset, onClose }) 
     const settings = value ?? {};
     const pitch = settings.pitch ?? {};
     const players = settings.players ?? {};
+    const ball = settings.ball ?? {};
     const exportVideo = settings.exportVideo ?? {};
     const animation = settings.animation ?? {};
     const logging = settings.logging ?? {};
@@ -18,6 +20,7 @@ export default function AdvancedSettings({ value, onChange, onReset, onClose }) 
     const update = (patch) => onChange?.({ ...settings, ...patch });
     const updatePitch = (patch) => update({ pitch: { ...pitch, ...patch } });
     const updatePlayers = (patch) => update({ players: { ...players, ...patch } });
+    const updateBall = (patch) => update({ ball: { ...ball, ...patch } });
     const updateExportVideo = (patch) => update({ exportVideo: { ...exportVideo, ...patch } });
     const updateAnimation = (patch) => update({ animation: { ...animation, ...patch } });
     const updateLogging = (patch) => update({ logging: { ...logging, ...patch } });
@@ -47,6 +50,7 @@ export default function AdvancedSettings({ value, onChange, onReset, onClose }) 
 
                 <PitchSettingsSection value={pitch} onChange={updatePitch} />
                 <PlayerSettingsSection value={players} onChange={updatePlayers} />
+                <BallSettingsSection value={ball} onChange={updateBall} />
                 <ExportVideoSettingsSection value={exportVideo} onChange={updateExportVideo} />
                 <AnimationSettingsSection value={animation} onChange={updateAnimation} />
                 <LoggerSettingsSection value={logging} onChange={updateLogging} />
