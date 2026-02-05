@@ -8,6 +8,13 @@ import CanvasRoot from "./canvas/CanvasRoot";
 import MessagePopup from "./components/MessagePopup/MessagePopup";
 import PlayerEditPanel from "./components/rightPanel/PlayerEditPanel";
 import { buildPlayExportV1, downloadPlayExport } from "./utils/exportPlay";
+import {
+  IMPORT_FILE_SIZE_LIMIT_BYTES,
+  addKeyframeFromData,
+  addPlayerFromData,
+  resolveSnapshotForKeyframe,
+  validatePlayExportV1,
+} from "./utils/importPlay";
 
 const KEYFRAME_TOLERANCE = 4;
 const LOOP_SECONDS = 30;
@@ -126,6 +133,7 @@ function App() {
   const pendingKeyframeUpdateRef = useRef(false);
   const pendingKeyframeTimeRef = useRef(null);
   const isItemDraggingRef = useRef(false);
+  const importInputRef = useRef(null);
 
   const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
   const zoomPercent = clamp(Math.round((camera.zoom || 1) * 100), 30, 300);
@@ -309,8 +317,8 @@ function App() {
       keyframes,
       keyframeSnapshots,
       playback: {
-        loopSeconds: LOOP_SECONDS,
-        keyframeTolerance: KEYFRAME_TOLERANCE,
+        loopSeconds,
+        keyframeTolerance,
         speedMultiplier,
         autoplayEnabled,
       },
@@ -694,6 +702,8 @@ function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedKeyframe, setSelectedKeyframe] = useState(null);
   const [autoplayEnabled, setAutoplayEnabled] = useState(true);
+  const [loopSeconds, setLoopSeconds] = useState(LOOP_SECONDS);
+  const [keyframeTolerance, setKeyframeTolerance] = useState(KEYFRAME_TOLERANCE);
   const [keyframeSignal, setKeyframeSignal] = useState(0);
   const [keyframeSnapshots, setKeyframeSnapshots] = useState(() => ({}));
   const playRafId = useRef(null);
@@ -704,6 +714,132 @@ function App() {
   const latestKeyframeSnapshotsRef = useRef({});
   const pendingKeyframeSnapshotsRef = useRef(new Set());
   const lastAppliedKeyframeRef = useRef(null);
+
+  const loadPlayFromExport = useCallback(
+    (exportObj) => {
+      const { ok, error, play } = validatePlayExportV1(exportObj);
+      if (!ok) {
+        showMessage("Import failed", error, "error");
+        return false;
+      }
+
+      let nextPlayers = {};
+      let nextRepresented = [];
+      Object.values(play.entities.playersById || {}).forEach((player) => {
+        const result = addPlayerFromData(nextPlayers, nextRepresented, player, { preserveId: true });
+        nextPlayers = result.playersById;
+        nextRepresented = result.representedPlayerIds;
+      });
+
+      const incomingRepresented = Array.isArray(play.entities.representedPlayerIds)
+        ? play.entities.representedPlayerIds
+        : [];
+      const representedSet = new Set([...nextRepresented, ...incomingRepresented]);
+      nextRepresented = Array.from(representedSet);
+
+      let nextKeyframes = [];
+      let nextSnapshots = {};
+      (play.timeline.keyframes || []).forEach((kf) => {
+        const resolved = resolveSnapshotForKeyframe(kf, play.timeline.keyframeSnapshots || {});
+        if (!resolved?.snapshot) return;
+        const normalizedSnapshot = {
+          playersById: { ...(resolved.snapshot.playersById || {}) },
+          representedPlayerIds: [...(resolved.snapshot.representedPlayerIds || [])],
+          ball: resolved.snapshot.ball ?? null,
+        };
+        const result = addKeyframeFromData(nextKeyframes, nextSnapshots, kf, normalizedSnapshot);
+        nextKeyframes = result.keyframes;
+        nextSnapshots = result.keyframeSnapshots;
+      });
+
+      const nextBall = play.entities.ball ?? INITIAL_BALL;
+      const nextCamera = play.canvas?.camera ?? { x: 0, y: 0, zoom: 1 };
+      const nextFieldRotation = play.canvas?.fieldRotation ?? 0;
+      const nextSettings = play.settings?.advancedSettings ?? DEFAULT_ADVANCED_SETTINGS;
+      const nextAllPlayersDisplay = play.settings?.allPlayersDisplay ?? allPlayersDisplay;
+      const nextCurrentPlayerColor = play.settings?.currentPlayerColor ?? currentPlayerColor;
+      const playback = play.timeline?.playback ?? {};
+
+      isRestoringRef.current = true;
+      isFieldRestoringRef.current = true;
+      pendingKeyframeUpdateRef.current = false;
+      pendingKeyframeTimeRef.current = null;
+      pendingKeyframeSnapshotsRef.current = new Set();
+      prevKeyframesRef.current = [];
+      latestKeyframesRef.current = [];
+      latestKeyframeSnapshotsRef.current = {};
+      lastAppliedKeyframeRef.current = null;
+
+      setPlayName(play.name);
+      setAdvancedSettings(nextSettings);
+      setAllPlayersDisplay(nextAllPlayersDisplay);
+      setCurrentPlayerColor(nextCurrentPlayerColor);
+      setPlayersById(nextPlayers);
+      setRepresentedPlayerIds(nextRepresented);
+      setBall(nextBall);
+      setCamera(nextCamera);
+      setFieldRotation(nextFieldRotation);
+      setSelectedPlayerIds([]);
+      setSelectedItemIds([]);
+      setHistoryPast([]);
+      setHistoryFuture([]);
+      setFieldHistoryPast([]);
+      setFieldHistoryFuture([]);
+      setKeyframes(nextKeyframes);
+      setKeyframeSnapshots(nextSnapshots);
+      setSpeedMultiplier(
+        typeof playback.speedMultiplier === "number" ? playback.speedMultiplier : speedMultiplier
+      );
+      setAutoplayEnabled(
+        typeof playback.autoplayEnabled === "boolean" ? playback.autoplayEnabled : autoplayEnabled
+      );
+      setLoopSeconds(
+        typeof playback.loopSeconds === "number" && playback.loopSeconds > 0
+          ? playback.loopSeconds
+          : LOOP_SECONDS
+      );
+      setKeyframeTolerance(
+        typeof playback.keyframeTolerance === "number" && playback.keyframeTolerance > 0
+          ? playback.keyframeTolerance
+          : KEYFRAME_TOLERANCE
+      );
+      setTimePercent(0);
+      setIsPlaying(false);
+      setSelectedKeyframe(null);
+      setPlayerEditor({ open: false, id: null, draft: { number: "", name: "", assignment: "" } });
+      isRestoringRef.current = false;
+      isFieldRestoringRef.current = false;
+      return true;
+    },
+    [
+      allPlayersDisplay,
+      autoplayEnabled,
+      currentPlayerColor,
+      speedMultiplier,
+      showMessage,
+    ]
+  );
+
+  const handleImportClick = () => {
+    importInputRef.current?.click();
+  };
+
+  const handleImportFileChange = async (event) => {
+    const file = event.target?.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (file.size > IMPORT_FILE_SIZE_LIMIT_BYTES) {
+      showMessage("Import failed", "File too large (max 5 MB).", "error");
+      return;
+    }
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      loadPlayFromExport(parsed);
+    } catch (err) {
+      showMessage("Import failed", "Could not read or parse JSON.", "error");
+    }
+  };
 
   const snapshotSlateState = () => ({
     playersById: Object.fromEntries(
@@ -718,7 +854,7 @@ function App() {
     let nearestDistance = Infinity;
     (frames || []).forEach((kf) => {
       const distance = Math.abs(kf - timeValue);
-      if (distance < KEYFRAME_TOLERANCE && distance < nearestDistance) {
+      if (distance < keyframeTolerance && distance < nearestDistance) {
         nearest = kf;
         nearestDistance = distance;
       }
@@ -771,7 +907,7 @@ function App() {
       playLastTsRef.current = ts;
 
       const speed = (0.25 + (speedMultiplier / 100) * 3.75) * 3;
-      const delta = (dt / LOOP_SECONDS) * 100 * speed;
+      const delta = (dt / loopSeconds) * 100 * speed;
       let shouldStop = false;
 
       setTimePercent((prev) => {
@@ -804,7 +940,7 @@ function App() {
       playRafId.current = null;
       playLastTsRef.current = null;
     };
-  }, [isPlaying, speedMultiplier, autoplayEnabled]);
+  }, [isPlaying, speedMultiplier, autoplayEnabled, loopSeconds]);
 
   const requestAddKeyframe = useCallback(() => {
     setKeyframeSignal((prev) => prev + 1);
@@ -1160,6 +1296,14 @@ function App() {
           onOpenAdvancedSettings={() => setShowAdvancedSettings(true)}
           onSaveToPlaybook={onSaveToPlaybook}
           onDownload={onDownload}
+          onImport={handleImportClick}
+        />
+        <input
+          ref={importInputRef}
+          type="file"
+          accept=".json,application/json"
+          className="hidden"
+          onChange={handleImportFileChange}
         />
         <PlayerEditPanel
           isOpen={playerEditor.open}

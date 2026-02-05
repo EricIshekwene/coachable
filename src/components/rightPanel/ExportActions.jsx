@@ -1,6 +1,7 @@
 import React from "react";
 import { BsBookmarkPlus } from "react-icons/bs";
 import { IoMdDownload } from "react-icons/io";
+import { FiUpload } from "react-icons/fi";
 
 const actionButtonClass = `
   w-full flex flex-row items-center justify-center gap-2
@@ -14,7 +15,7 @@ const actionButtonClass = `
   focus:outline-none focus-visible:ring-2 focus-visible:ring-BrandOrange focus-visible:ring-offset-2 focus-visible:ring-offset-BrandBlack
 `;
 
-export default function ExportActions({ onSaveToPlaybook, onDownload }) {
+export default function ExportActions({ onSaveToPlaybook, onDownload, onImport }) {
   return (
     <div className="w-full flex flex-col gap-2">
       <button
@@ -34,7 +35,15 @@ export default function ExportActions({ onSaveToPlaybook, onDownload }) {
         <IoMdDownload className="text-BrandBlack shrink-0 text-base sm:text-lg md:text-xl" aria-hidden />
         <span>Download</span>
       </button>
+
+      <button
+        type="button"
+        onClick={() => onImport?.()}
+        className={actionButtonClass}
+      >
+        <FiUpload className="text-BrandBlack shrink-0 text-base sm:text-lg md:text-xl" aria-hidden />
+        <span>Import</span>
+      </button>
     </div>
   );
 }
-

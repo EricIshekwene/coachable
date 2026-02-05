@@ -40,6 +40,7 @@ export default function RightPanel({
 
   onSaveToPlaybook,
   onDownload,
+  onImport,
 }) {
   return (
     <aside
@@ -99,7 +100,11 @@ export default function RightPanel({
 
       {/* Fixed bottom area */}
       <div className="shrink-0 pt-1.5 sm:pt-2 border">
-        <ExportActions onSaveToPlaybook={onSaveToPlaybook} onDownload={onDownload} />
+        <ExportActions
+          onSaveToPlaybook={onSaveToPlaybook}
+          onDownload={onDownload}
+          onImport={onImport}
+        />
       </div>
     </aside>
   );
