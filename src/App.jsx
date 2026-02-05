@@ -7,6 +7,7 @@ import AdvancedSettings from "./components/AdvancedSettings";
 import CanvasRoot from "./canvas/CanvasRoot";
 import MessagePopup from "./components/MessagePopup/MessagePopup";
 import PlayerEditPanel from "./components/rightPanel/PlayerEditPanel";
+import { buildPlayExportV1, downloadPlayExport } from "./utils/exportPlay";
 
 const KEYFRAME_TOLERANCE = 4;
 const LOOP_SECONDS = 30;
@@ -292,7 +293,35 @@ function App() {
   };
 
   const onSaveToPlaybook = () => { };
-  const onDownload = () => { };
+  const onDownload = () => {
+    const appVersion = import.meta?.env?.VITE_APP_VERSION ?? null;
+    const exportPayload = buildPlayExportV1({
+      playName,
+      appVersion,
+      advancedSettings,
+      allPlayersDisplay,
+      currentPlayerColor,
+      camera,
+      fieldRotation,
+      playersById,
+      representedPlayerIds,
+      ball,
+      keyframes,
+      keyframeSnapshots,
+      playback: {
+        loopSeconds: LOOP_SECONDS,
+        keyframeTolerance: KEYFRAME_TOLERANCE,
+        speedMultiplier,
+        autoplayEnabled,
+      },
+      coordinateSystem: {
+        origin: "center",
+        units: "px",
+        notes: "World coordinates are centered; +x right, +y down.",
+      },
+    });
+    downloadPlayExport(exportPayload, playName);
+  };
 
   const handleToolChange = useCallback((tool) => {
     if (tool === "hand" || tool === "select" || tool === "addPlayer" || tool === "color") {
