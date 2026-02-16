@@ -574,16 +574,21 @@ function App() {
     }
   };
 
-  const handleSelectPlayer = (id, { toggle = true } = {}) => {
-    handleSelectItem(id, "player", { toggle });
+  const handleSelectPlayer = (id, { mode = "toggle" } = {}) => {
+    handleSelectItem(id, "player", { mode });
   };
 
-  const handleSelectItem = (id, type, { toggle = true } = {}) => {
+  const handleSelectItem = (id, type, { mode = "toggle" } = {}) => {
+    if (mode === "clear") {
+      setSelectedItemIds([]);
+      setSelectedPlayerIds([]);
+      return;
+    }
     if (!id) return;
     setSelectedItemIds((prev) => {
       const next = prev ? [...prev] : [];
       const index = next.indexOf(id);
-      if (toggle) {
+      if (mode === "toggle") {
         if (index >= 0) {
           next.splice(index, 1);
           return next;
@@ -591,14 +596,13 @@ function App() {
         next.push(id);
         return next;
       }
-      if (index >= 0 && next.length === 1) return next;
       return [id];
     });
     if (type === "player") {
       setSelectedPlayerIds((prev) => {
         const next = prev ? [...prev] : [];
         const index = next.indexOf(id);
-        if (toggle) {
+        if (mode === "toggle") {
           if (index >= 0) {
             next.splice(index, 1);
             return next;
@@ -606,7 +610,6 @@ function App() {
           next.push(id);
           return next;
         }
-        if (index >= 0 && next.length === 1) return next;
         return [id];
       });
     }
@@ -1247,8 +1250,15 @@ function App() {
             selectedPlayerIds={selectedPlayerIds}
             selectedItemIds={selectedItemIds}
             onSelectItem={handleSelectItem}
-            onMarqueeSelect={(ids) => {
+            onMarqueeSelect={(ids, { mode = "replace" } = {}) => {
               const nextIds = (ids || []).filter((id) => playersById?.[id] || id === ball.id);
+              if (mode === "add") {
+                setSelectedItemIds((prev) => Array.from(new Set([...(prev || []), ...nextIds])));
+                setSelectedPlayerIds((prev) =>
+                  Array.from(new Set([...(prev || []), ...nextIds.filter((id) => playersById?.[id])]))
+                );
+                return;
+              }
               setSelectedItemIds(nextIds);
               setSelectedPlayerIds(nextIds.filter((id) => playersById?.[id]));
             }}

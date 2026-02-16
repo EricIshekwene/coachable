@@ -38,6 +38,7 @@ const useImage = (src) => {
 };
 
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
+const isModifierPressed = (evt) => Boolean(evt?.shiftKey || evt?.ctrlKey || evt?.metaKey);
 
 export default function KonvaCanvasRoot({
   tool = "hand",
@@ -170,12 +171,9 @@ export default function KonvaCanvasRoot({
         active: true,
         start: world,
         end: world,
-        shiftKey: evt?.shiftKey ?? false,
+        shiftKey: isModifierPressed(evt),
       };
       setMarquee({ x: world.x, y: world.y, width: 0, height: 0 });
-      if (!evt?.shiftKey) {
-        onMarqueeSelect?.([]);
-      }
       return;
     }
 
@@ -222,7 +220,7 @@ export default function KonvaCanvasRoot({
     if (marqueeRef.current.active) {
       const start = marqueeRef.current.start;
       const end = marqueeRef.current.end;
-      const shiftKey = marqueeRef.current.shiftKey;
+      const modifierKey = marqueeRef.current.shiftKey;
       marqueeRef.current.active = false;
       setMarquee(null);
 
@@ -233,6 +231,9 @@ export default function KonvaCanvasRoot({
 
       const DRAG_THRESHOLD = 3;
       if (Math.abs(x2 - x1) < DRAG_THRESHOLD && Math.abs(y2 - y1) < DRAG_THRESHOLD) {
+        if (tool === "select" && !modifierKey) {
+          onSelectItem?.(null, null, { mode: "clear" });
+        }
         return;
       }
 
@@ -260,12 +261,7 @@ export default function KonvaCanvasRoot({
         })
         .map((item) => item.id);
 
-      if (shiftKey && selectedItemIds?.length) {
-        const merged = Array.from(new Set([...(selectedItemIds || []), ...selected]));
-        onMarqueeSelect?.(merged);
-      } else {
-        onMarqueeSelect?.(selected);
-      }
+      onMarqueeSelect?.(selected, { mode: modifierKey ? "add" : "replace" });
       return;
     }
     if (!panRef.current.active) return;
@@ -303,7 +299,9 @@ export default function KonvaCanvasRoot({
 
   const handleItemClick = (item) => (e) => {
     if (draggingIdsRef.current.has(item.id)) return;
-    onSelectItem?.(item.id, item.type, { toggle: true });
+    const modifierKey = isModifierPressed(e?.evt);
+    const mode = modifierKey ? "toggle" : "replace";
+    onSelectItem?.(item.id, item.type, { mode });
     e.cancelBubble = true;
   };
 
@@ -349,6 +347,8 @@ export default function KonvaCanvasRoot({
           <Layer>
             <Group x={worldOrigin.x} y={worldOrigin.y} scaleX={worldOrigin.scale} scaleY={worldOrigin.scale}>
               {fieldImage.image && (
+                // Rotation model: rotate only the field image so world coordinates stay axis-aligned.
+                // This keeps dragging, marquee selection, and timeline/keyframes intuitive and unrotated.
                 <KonvaImage
                   image={fieldImage.image}
                   x={0}
