@@ -29,6 +29,8 @@ export default function ControlPill({
   externalAutoplayEnabled,
   // Optional: external signal to add a keyframe at current time
   addKeyframeSignal,
+  // Optional: external signal to reset timeline/keyframes
+  resetSignal,
   onRequestAddKeyframe,
 }) {
   // Core state
@@ -48,6 +50,7 @@ export default function ControlPill({
   const isAutoplayEnabled = externalAutoplayEnabled ?? autoplayEnabled;
 
   const lastKeyframeSignal = useRef(addKeyframeSignal);
+  const lastResetSignal = useRef(resetSignal);
   const latestTimePercentRef = useRef(externalTimePercent ?? 0);
 
   useEffect(() => {
@@ -323,6 +326,19 @@ export default function ControlPill({
     lastKeyframeSignal.current = addKeyframeSignal;
     addKeyframeAtTime(latestTimePercentRef.current);
   }, [addKeyframeSignal]);
+
+  // Reset timeline state when parent emits a reset signal.
+  useEffect(() => {
+    if (resetSignal === undefined) return;
+    if (resetSignal === lastResetSignal.current) return;
+    lastResetSignal.current = resetSignal;
+    setKeyframes([]);
+    setActionHistory([]);
+    setRedoHistory([]);
+    onSelectedKeyframeChange?.(null);
+    onPlayStateChange?.(false);
+    onTimePercentChange?.(0);
+  }, [resetSignal, onSelectedKeyframeChange, onPlayStateChange, onTimePercentChange]);
 
   return (
     <>

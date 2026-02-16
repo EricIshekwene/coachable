@@ -301,6 +301,19 @@ function App() {
     setFieldRotation(0);
     setFieldHistoryPast([]);
     setFieldHistoryFuture([]);
+    setTimePercent(0);
+    setIsPlaying(false);
+    setSelectedKeyframe(null);
+    setKeyframes([]);
+    setKeyframeSnapshots({});
+    pendingKeyframeUpdateRef.current = false;
+    pendingKeyframeTimeRef.current = null;
+    pendingKeyframeSnapshotsRef.current = new Set();
+    prevKeyframesRef.current = [];
+    latestKeyframesRef.current = [];
+    latestKeyframeSnapshotsRef.current = {};
+    lastAppliedKeyframeRef.current = null;
+    setTimelineResetSignal((prev) => prev + 1);
     isRestoringRef.current = false;
   };
 
@@ -712,6 +725,7 @@ function App() {
   const [loopSeconds, setLoopSeconds] = useState(LOOP_SECONDS);
   const [keyframeTolerance, setKeyframeTolerance] = useState(KEYFRAME_TOLERANCE);
   const [keyframeSignal, setKeyframeSignal] = useState(0);
+  const [timelineResetSignal, setTimelineResetSignal] = useState(0);
   const [keyframeSnapshots, setKeyframeSnapshots] = useState(() => ({}));
   const playRafId = useRef(null);
   const playLastTsRef = useRef(null);
@@ -1279,6 +1293,7 @@ function App() {
           externalSelectedKeyframe={selectedKeyframe}
           externalAutoplayEnabled={autoplayEnabled}
           addKeyframeSignal={keyframeSignal}
+          resetSignal={timelineResetSignal}
           onRequestAddKeyframe={requestAddKeyframe}
           onKeyframeAddAttempt={handleKeyframeAddAttempt}
         />

@@ -39,6 +39,10 @@ const useImage = (src) => {
 
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
 const isModifierPressed = (evt) => Boolean(evt?.shiftKey || evt?.ctrlKey || evt?.metaKey);
+const ZOOM_MIN = 0.2;
+const ZOOM_MAX = 4;
+const ZOOM_STEP = 0.1;
+const WHEEL_PAN_FACTOR = 1;
 
 export default function KonvaCanvasRoot({
   tool = "hand",
@@ -135,14 +139,55 @@ export default function KonvaCanvasRoot({
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key !== "Escape") return;
-      if (!marqueeRef.current.active) return;
-      marqueeRef.current.active = false;
-      setMarquee(null);
+      if (e.key === "Escape") {
+        if (!marqueeRef.current.active) return;
+        marqueeRef.current.active = false;
+        setMarquee(null);
+        return;
+      }
+
+      const isZoomModifier = e.ctrlKey || e.metaKey;
+      if (!isZoomModifier) return;
+
+      const isZoomIn = e.key === "+" || e.key === "=" || e.code === "NumpadAdd";
+      const isZoomOut = e.key === "-" || e.key === "_" || e.code === "NumpadSubtract";
+      if (!isZoomIn && !isZoomOut) return;
+
+      e.preventDefault();
+      const direction = isZoomIn ? 1 : -1;
+      setCamera((prev) => {
+        const currentZoom = prev?.zoom || 1;
+        const nextZoom = clamp(currentZoom + direction * ZOOM_STEP, ZOOM_MIN, ZOOM_MAX);
+        if (nextZoom === currentZoom) return prev;
+        return { ...prev, zoom: nextZoom };
+      });
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [setCamera]);
+
+  const handleStageWheel = (e) => {
+    const evt = e.evt;
+    if (!evt) return;
+    evt.preventDefault();
+
+    const isZoomModifier = evt.ctrlKey || evt.metaKey;
+    if (isZoomModifier) {
+      const direction = evt.deltaY < 0 ? 1 : -1;
+      setCamera((prev) => {
+        const currentZoom = prev?.zoom || 1;
+        const nextZoom = clamp(currentZoom + direction * ZOOM_STEP, ZOOM_MIN, ZOOM_MAX);
+        if (nextZoom === currentZoom) return prev;
+        return { ...prev, zoom: nextZoom };
+      });
+      return;
+    }
+
+    setCamera((prev) => ({
+      ...prev,
+      y: (prev?.y || 0) - evt.deltaY * WHEEL_PAN_FACTOR,
+    }));
+  };
 
   const handleStagePointerDown = (e) => {
     const evt = e.evt;
@@ -343,6 +388,7 @@ export default function KonvaCanvasRoot({
           onTouchStart={handleStagePointerDown}
           onTouchMove={handleStagePointerMove}
           onTouchEnd={handleStagePointerUp}
+          onWheel={handleStageWheel}
         >
           <Layer>
             <Group x={worldOrigin.x} y={worldOrigin.y} scaleX={worldOrigin.scale} scaleY={worldOrigin.scale}>
@@ -484,6 +530,7 @@ export default function KonvaCanvasRoot({
                       <Text
                         text={String(nameText)}
                         y={radius + 6}
+                        width={sizePx}
                         offsetX={radius}
                         align="center"
                         fontFamily="DmSans"
