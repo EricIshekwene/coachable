@@ -1,6 +1,6 @@
 # Object Snapping (Konva Canvas)
 
-This document explains how dragging + snapping works in `KonvaCanvasRoot.jsx`.
+This document explains how dragging and snapping works in `KonvaCanvasRoot.jsx`.
 
 ## What snapping does
 
@@ -8,7 +8,7 @@ When you drag a draggable item (player or ball) in **Select** mode, the canvas:
 
 1. Finds nearby alignment guides.
 2. Shows dashed guideline lines.
-3. Moves the dragged item so one of its edges/center aligns to the nearest guide.
+3. Moves the dragged item so its **center** aligns to the nearest guide.
 4. Clears guidelines when drag ends.
 
 Snapping can happen on:
@@ -26,14 +26,14 @@ The world is rendered inside:
 <Group x={worldOrigin.x} y={worldOrigin.y} scaleX={worldOrigin.scale} scaleY={worldOrigin.scale} />
 ```
 
-Because zoom changes screen scale, the snap distance is converted from pixels to world units:
+Because zoom changes screen scale, the snap threshold is converted from pixels to world units:
 
 `guidelineOffsetWorld = GUIDELINE_OFFSET / worldOrigin.scale`
 
 Where:
 - `GUIDELINE_OFFSET = 5` (screen pixels)
 
-This keeps snapping feel consistent at different zoom levels.
+This keeps snapping consistent across zoom levels.
 
 ## What it snaps to (guide stops)
 
@@ -43,32 +43,32 @@ Guide stops are built in world coordinates from:
 - Vertical: `x = 0` and current screen-center world `x`
 - Horizontal: `y = 0` and current screen-center world `y`
 
-2. Field/world bounds (when field image is available)
-- Vertical: `left`, `centerX`, `right`
-- Horizontal: `top`, `centerY`, `bottom`
+2. Field center lines (when field image is available)
+- Vertical: `centerX`
+- Horizontal: `centerY`
 
 3. Other items (excluding the dragged item)
-- Each item is treated as a circle:
-  - Player radius: same display size logic as rendering
-  - Ball radius: `ballSizePx / 2`
-- For each other item:
-  - Vertical stops: `x - r`, `x`, `x + r`
-  - Horizontal stops: `y - r`, `y`, `y + r`
+- Vertical stop: `item.x`
+- Horizontal stop: `item.y`
+
+Important:
+- No item edge guides are used (`x - r`, `x + r`, `y - r`, `y + r` are not included).
+- No field edge guides are used (`left/right/top/bottom` are not included).
 
 ## What part of dragged item can snap
 
-The dragged item is also treated as a circle and exposes snapping edges:
+The dragged item snaps by center only:
 
-- Vertical edges: `x - r`, `x`, `x + r`
-- Horizontal edges: `y - r`, `y`, `y + r`
+- Vertical snapping edge: `{ guide: node.x(), offset: 0, snap: "center" }`
+- Horizontal snapping edge: `{ guide: node.y(), offset: 0, snap: "center" }`
 
-Offsets are tracked so snapping sets the item center correctly after edge alignment.
+No start/end edge snapping is used.
 
 ## Closest-guide selection
 
 During drag move:
 
-1. Compare each dragged edge/center to each guide stop.
+1. Compare dragged center guides to all guide stops.
 2. Keep only candidates within `guidelineOffsetWorld`.
 3. Choose closest vertical candidate and closest horizontal candidate independently.
 
@@ -83,7 +83,8 @@ Guidelines are drawn in a dedicated overlay layer:
 ```
 
 They are:
-- Dashed
+- Orange stroke: `#FF7A18`
+- Dashed (`dash: [4, 4]`)
 - Non-interactive (`listening={false}`)
 - Drawn imperatively for performance (no React state churn during drag)
 
@@ -115,9 +116,9 @@ Guides are cleared on:
 
 ## Summary
 
-Object snapping aligns players/ball to:
-- Center lines
-- Optional field bounds
-- Other objects’ circle edges and centers
+Object snapping aligns players and ball centers to:
+- World/stage center lines
+- Optional field center lines
+- Other object centers
 
-with zoom-consistent thresholds and live dashed guidelines.
+with zoom-consistent thresholds and live dashed orange guidelines.
