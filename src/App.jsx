@@ -1,6 +1,6 @@
 import "./index.css";
 import WideSidebar from "./components/WideSidebar";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import ControlPill from "./components/controlPill/ControlPill";
 import RightPanel from "./components/RightPanel";
 import AdvancedSettings from "./components/AdvancedSettings";
@@ -24,6 +24,16 @@ const KEYFRAME_TOLERANCE = 4;
 const LOOP_SECONDS = 30;
 
 function App() {
+  const areArraysEqual = (a = [], b = []) => {
+    if (a === b) return true;
+    if (!Array.isArray(a) || !Array.isArray(b)) return false;
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i += 1) {
+      if (a[i] !== b[i]) return false;
+    }
+    return true;
+  };
+
   const [color, setColor] = useState("#561ecb");
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [logControlPillState, setLogControlPillState] = useState(false);
@@ -140,6 +150,8 @@ function App() {
   const pendingKeyframeUpdateRef = useRef(false);
   const pendingKeyframeTimeRef = useRef(null);
   const isItemDraggingRef = useRef(false);
+  const liveSnapshotRef = useRef(null);
+  const wasPlayingRef = useRef(false);
   const importInputRef = useRef(null);
 
   const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
@@ -206,15 +218,76 @@ function App() {
   const applySlate = (snapshot) => {
     if (!snapshot) return;
     isRestoringRef.current = true;
-    setPlayersById(snapshot.playersById || {});
-    setRepresentedPlayerIds(snapshot.representedPlayerIds || []);
-    setBall(snapshot.ball || INITIAL_BALL);
-    setSelectedPlayerIds((prev) =>
-      (prev || []).filter((playerId) => snapshot.playersById?.[playerId])
-    );
-    setSelectedItemIds((prev) =>
-      (prev || []).filter((itemId) => snapshot.playersById?.[itemId] || itemId === snapshot.ball?.id)
-    );
+    const nextPlayers = snapshot.playersById || {};
+    const nextRepresented = snapshot.representedPlayerIds || [];
+    const nextBall = snapshot.ball || INITIAL_BALL;
+
+    setPlayersById((prev) => {
+      const prevIds = Object.keys(prev || {});
+      const nextIds = Object.keys(nextPlayers);
+      if (prevIds.length !== nextIds.length) {
+        return nextPlayers;
+      }
+      let changed = false;
+      const merged = {};
+      for (let i = 0; i < nextIds.length; i += 1) {
+        const id = nextIds[i];
+        const incoming = nextPlayers[id];
+        const existing = prev?.[id];
+        if (!existing) {
+          merged[id] = incoming;
+          changed = true;
+          continue;
+        }
+        const sameMeta =
+          existing.id === incoming.id &&
+          existing.number === incoming.number &&
+          existing.name === incoming.name &&
+          existing.assignment === incoming.assignment &&
+          existing.color === incoming.color &&
+          existing.size === incoming.size &&
+          existing.sizePercent === incoming.sizePercent &&
+          existing.role === incoming.role &&
+          existing.draggable === incoming.draggable &&
+          existing.locked === incoming.locked &&
+          existing.hidden === incoming.hidden &&
+          existing.zIndex === incoming.zIndex;
+        const samePosition = existing.x === incoming.x && existing.y === incoming.y;
+        if (sameMeta && samePosition) {
+          merged[id] = existing;
+          continue;
+        }
+        changed = true;
+        merged[id] = sameMeta
+          ? { ...existing, x: incoming.x, y: incoming.y }
+          : incoming;
+      }
+      return changed ? merged : prev;
+    });
+
+    setRepresentedPlayerIds((prev) => (areArraysEqual(prev, nextRepresented) ? prev : nextRepresented));
+    setBall((prev) => {
+      const same =
+        prev?.id === nextBall?.id &&
+        prev?.x === nextBall?.x &&
+        prev?.y === nextBall?.y &&
+        prev?.radius === nextBall?.radius &&
+        prev?.size === nextBall?.size &&
+        prev?.sizePercent === nextBall?.sizePercent &&
+        prev?.draggable === nextBall?.draggable &&
+        prev?.locked === nextBall?.locked &&
+        prev?.hidden === nextBall?.hidden &&
+        prev?.zIndex === nextBall?.zIndex;
+      return same ? prev : nextBall;
+    });
+    setSelectedPlayerIds((prev) => {
+      const filtered = (prev || []).filter((playerId) => nextPlayers?.[playerId]);
+      return areArraysEqual(prev || [], filtered) ? prev : filtered;
+    });
+    setSelectedItemIds((prev) => {
+      const filtered = (prev || []).filter((itemId) => nextPlayers?.[itemId] || itemId === nextBall?.id);
+      return areArraysEqual(prev || [], filtered) ? prev : filtered;
+    });
     isRestoringRef.current = false;
   };
 
@@ -628,14 +701,42 @@ function App() {
   };
 
   const handleItemDragStart = (id) => {
+    const liveSnapshot = liveSnapshotRef.current;
+    if (liveSnapshot) {
+      applySlate(liveSnapshot);
+    }
     pushHistory();
     isItemDraggingRef.current = true;
     logEvent("slate", "dragStart", { id });
   };
 
-  const handleItemDragEnd = (id) => {
+  const handleItemDragEnd = (id, payload = {}) => {
     isItemDraggingRef.current = false;
     logEvent("slate", "dragEnd", { id });
+    const movedIds = Array.isArray(payload.ids) ? payload.ids : [];
+    const positions = payload.positions && typeof payload.positions === "object" ? payload.positions : {};
+    if (movedIds.length > 0) {
+      setPlayersById((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        movedIds.forEach((itemId) => {
+          const pos = positions[itemId];
+          if (!pos || !next[itemId]) return;
+          if (next[itemId].x === pos.x && next[itemId].y === pos.y) return;
+          next[itemId] = { ...next[itemId], x: pos.x, y: pos.y };
+          changed = true;
+        });
+        return changed ? next : prev;
+      });
+      if (ball?.id && positions[ball.id]) {
+        setBall((prev) => {
+          const pos = positions[ball.id];
+          if (!pos) return prev;
+          if (prev.x === pos.x && prev.y === pos.y) return prev;
+          return { ...prev, x: pos.x, y: pos.y };
+        });
+      }
+    }
     const targetKeyframe = findEditTargetKeyframe(timePercent, latestKeyframesRef.current);
     if (targetKeyframe !== null && targetKeyframe !== undefined) {
       const targetKey = sanitizePercentKey(targetKeyframe);
@@ -718,46 +819,70 @@ function App() {
   const latestKeyframeSnapshotsRef = useRef({});
   const pendingKeyframeSnapshotsRef = useRef(new Set());
   const lastAppliedKeyframeRef = useRef(null);
+  const itemCacheRef = useRef(new Map());
   const lerp = (from, to, t) => from + (to - from) * t;
 
-  const buildSnapshotAtTime = useCallback((timeValue, snapshots) => {
+  const buildSnapshotIndex = useCallback((snapshots) => {
+    const entries = Object.entries(snapshots || {})
+      .map(([key, snapshot]) => ({ value: Number(key), snapshot }))
+      .filter((entry) => Number.isFinite(entry.value) && entry.snapshot)
+      .sort((a, b) => a.value - b.value);
+    return {
+      values: entries.map((entry) => entry.value),
+      snapshots: entries.map((entry) => entry.snapshot),
+    };
+  }, []);
+
+  const snapshotIndex = useMemo(() => buildSnapshotIndex(keyframeSnapshots), [keyframeSnapshots, buildSnapshotIndex]);
+
+  const findBounds = useCallback((sortedValues, target) => {
+    let low = 0;
+    let high = sortedValues.length - 1;
+    while (low <= high) {
+      const mid = (low + high) >> 1;
+      const value = sortedValues[mid];
+      if (value < target) {
+        low = mid + 1;
+      } else if (value > target) {
+        high = mid - 1;
+      } else {
+        return { lower: mid, upper: mid };
+      }
+    }
+    return {
+      lower: Math.max(0, high),
+      upper: Math.min(sortedValues.length - 1, low),
+    };
+  }, []);
+
+  const buildSnapshotAtTime = useCallback((timeValue, snapshots, indexData = null) => {
     const source = snapshots || {};
     const exact = resolveSnapshotForKeyframe(timeValue, source);
     if (exact?.snapshot) return exact.snapshot;
 
-    const entries = Object.entries(source)
-      .map(([key, snapshot]) => ({
-        value: Number(key),
-        snapshot,
-      }))
-      .filter((entry) => Number.isFinite(entry.value) && entry.snapshot)
-      .sort((a, b) => a.value - b.value);
+    const indexed = indexData || buildSnapshotIndex(source);
+    const values = indexed.values || [];
+    const snapshotsAtValues = indexed.snapshots || [];
+    if (!values.length) return null;
+    if (timeValue <= values[0]) return snapshotsAtValues[0];
+    if (timeValue >= values[values.length - 1]) return snapshotsAtValues[values.length - 1];
 
-    if (!entries.length) return null;
-    if (timeValue <= entries[0].value) return entries[0].snapshot;
-    if (timeValue >= entries[entries.length - 1].value) return entries[entries.length - 1].snapshot;
+    const { lower: lowerIndex, upper: upperIndex } = findBounds(values, timeValue);
+    const lowerValue = values[lowerIndex];
+    const upperValue = values[upperIndex];
+    const lowerSnapshot = snapshotsAtValues[lowerIndex];
+    const upperSnapshot = snapshotsAtValues[upperIndex];
 
-    let lower = entries[0];
-    let upper = entries[entries.length - 1];
-    for (let i = 0; i < entries.length - 1; i += 1) {
-      const current = entries[i];
-      const next = entries[i + 1];
-      if (timeValue < current.value || timeValue > next.value) continue;
-      lower = current;
-      upper = next;
-      break;
+    if (Math.abs(upperValue - lowerValue) < 1e-9) {
+      return lowerSnapshot;
     }
 
-    if (Math.abs(upper.value - lower.value) < 1e-9) {
-      return lower.snapshot;
-    }
-
-    const alpha = (timeValue - lower.value) / (upper.value - lower.value);
-    const lowerPlayers = lower.snapshot?.playersById || {};
-    const upperPlayers = upper.snapshot?.playersById || {};
+    const alpha = (timeValue - lowerValue) / (upperValue - lowerValue);
+    const lowerPlayers = lowerSnapshot?.playersById || {};
+    const upperPlayers = upperSnapshot?.playersById || {};
     const represented = new Set([
-      ...(lower.snapshot?.representedPlayerIds || []),
-      ...(upper.snapshot?.representedPlayerIds || []),
+      ...(lowerSnapshot?.representedPlayerIds || []),
+      ...(upperSnapshot?.representedPlayerIds || []),
       ...Object.keys(lowerPlayers),
       ...Object.keys(upperPlayers),
     ]);
@@ -779,8 +904,8 @@ function App() {
       };
     });
 
-    const lowerBall = lower.snapshot?.ball ?? null;
-    const upperBall = upper.snapshot?.ball ?? null;
+    const lowerBall = lowerSnapshot?.ball ?? null;
+    const upperBall = upperSnapshot?.ball ?? null;
     const ballInterpolated = lowerBall || upperBall
       ? {
         ...(lowerBall || upperBall),
@@ -794,7 +919,7 @@ function App() {
       representedPlayerIds: Array.from(represented),
       ball: ballInterpolated,
     };
-  }, []);
+  }, [buildSnapshotIndex, findBounds]);
 
   const loadPlayFromExport = useCallback(
     (exportObj) => {
@@ -932,7 +1057,8 @@ function App() {
           : KEYFRAME_TOLERANCE
       );
       setTimePercent(0);
-      const initialSnapshot = buildSnapshotAtTime(0, importedSnapshots);
+      const importedSnapshotIndex = buildSnapshotIndex(importedSnapshots);
+      const initialSnapshot = buildSnapshotAtTime(0, importedSnapshots, importedSnapshotIndex);
       if (initialSnapshot) {
         applySlate(initialSnapshot);
       }
@@ -948,6 +1074,7 @@ function App() {
       currentPlayerColor,
       speedMultiplier,
       showMessage,
+      buildSnapshotIndex,
       buildSnapshotAtTime,
     ]
   );
@@ -1239,26 +1366,79 @@ function App() {
     }));
   }, [playersById, representedPlayerIds, ball]);
 
-  useEffect(() => {
-    if (isItemDraggingRef.current) return;
-    const snapshot = buildSnapshotAtTime(timePercent, keyframeSnapshots);
-    if (!snapshot) return;
-    applySlate(snapshot);
-  }, [timePercent, keyframeSnapshots, buildSnapshotAtTime]);
+  const liveSnapshot = useMemo(
+    () => buildSnapshotAtTime(timePercent, keyframeSnapshots, snapshotIndex),
+    [timePercent, keyframeSnapshots, buildSnapshotAtTime, snapshotIndex]
+  );
+  liveSnapshotRef.current = liveSnapshot || null;
 
-  const items = [
-    ...Object.values(playersById).map((p) => ({
-      id: p.id,
-      type: "player",
-      x: p.x,
-      y: p.y,
-      number: p.number,
-      name: p.name,
-      assignment: p.assignment,
-      color: p.color || allPlayersDisplay.color,
-    })),
-    { id: ball.id, type: "ball", x: ball.x, y: ball.y },
-  ];
+  useEffect(() => {
+    const wasPlaying = wasPlayingRef.current;
+    if (wasPlaying && !isPlaying) {
+      const liveSnapshot = liveSnapshotRef.current;
+      if (liveSnapshot && !isItemDraggingRef.current) {
+        applySlate(liveSnapshot);
+      }
+    }
+    wasPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  const items = useMemo(() => {
+    const nextCache = new Map();
+    const previousCache = itemCacheRef.current;
+    const nextItems = [];
+    const defaultColor = allPlayersDisplay.color;
+
+    Object.keys(playersById || {}).forEach((id) => {
+      const player = playersById[id];
+      if (!player) return;
+      const colorValue = player.color || defaultColor;
+      const cached = previousCache.get(id);
+      const canReuse =
+        cached &&
+        cached.type === "player" &&
+        cached.id === player.id &&
+        cached.number === player.number &&
+        cached.name === player.name &&
+        cached.assignment === player.assignment &&
+        cached.color === colorValue;
+      if (canReuse) {
+        cached.x = player.x;
+        cached.y = player.y;
+        nextCache.set(id, cached);
+        nextItems.push(cached);
+        return;
+      }
+      const nextItem = {
+        id: player.id,
+        type: "player",
+        x: player.x,
+        y: player.y,
+        number: player.number,
+        name: player.name,
+        assignment: player.assignment,
+        color: colorValue,
+      };
+      nextCache.set(id, nextItem);
+      nextItems.push(nextItem);
+    });
+
+    const ballCacheKey = ball?.id || "ball";
+    const cachedBall = previousCache.get(ballCacheKey);
+    if (cachedBall && cachedBall.type === "ball" && cachedBall.id === ball.id) {
+      cachedBall.x = ball.x;
+      cachedBall.y = ball.y;
+      nextCache.set(ballCacheKey, cachedBall);
+      nextItems.push(cachedBall);
+    } else {
+      const nextBall = { id: ball.id, type: "ball", x: ball.x, y: ball.y };
+      nextCache.set(ballCacheKey, nextBall);
+      nextItems.push(nextBall);
+    }
+
+    itemCacheRef.current = nextCache;
+    return nextItems;
+  }, [playersById, ball, allPlayersDisplay.color]);
   const selectedPlayers = (selectedPlayerIds || [])
     .map((id) => playersById?.[id])
     .filter(Boolean);
@@ -1311,6 +1491,8 @@ function App() {
             camera={camera}
             setCamera={setCamera}
             items={items}
+            isPlaying={isPlaying}
+            liveSnapshotRef={liveSnapshotRef}
             fieldRotation={fieldRotation}
             onPanStart={pushFieldHistory}
             onItemChange={handleItemChange}

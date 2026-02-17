@@ -14,16 +14,13 @@ const useImage = (src) => {
       setStatus("error");
       return;
     }
-    console.log(`[useImage] loading ${src}`);
     const img = new window.Image();
     img.src = src;
     const handleLoad = () => {
-      console.log(`[useImage] loaded ${src}`);
       setImage(img);
       setStatus("loaded");
     };
     const handleError = () => {
-      console.log(`[useImage] error ${src}`);
       setImage(null);
       setStatus("error");
     };
@@ -51,6 +48,8 @@ export default function KonvaCanvasRoot({
   camera,
   setCamera,
   items,
+  isPlaying = false,
+  liveSnapshotRef,
   fieldRotation = 0,
   onPanStart,
   onItemChange,
@@ -67,9 +66,15 @@ export default function KonvaCanvasRoot({
   const viewportRef = useRef(null);
   const stageRef = useRef(null);
   const containerRef = useRef(null);
+  const itemsLayerRef = useRef(null);
   const guidesLayerRef = useRef(null);
-  const dragStateRef = useRef(new Map());
+  const itemNodeRefs = useRef(new Map());
+  const itemPositionsRef = useRef(new Map());
+  const drawRafRef = useRef(null);
+  const dragSessionRef = useRef(null);
   const draggingIdsRef = useRef(new Set());
+  const suppressClickRef = useRef(new Set());
+  const lastAppliedSnapshotRef = useRef(null);
   const panRef = useRef({
     active: false,
     pointerId: null,
@@ -104,12 +109,19 @@ export default function KonvaCanvasRoot({
   const ballSizePercent = clamp(Number(ball.sizePercent ?? 100), 10, 400);
   const baseBallSizePx = 22;
   const ballSizePx = Math.max(6, Math.round((baseBallSizePx * ballSizePercent) / 100));
-  const ballRadius = ballSizePx / 2;
 
   const ballImageSrc = new URL("../assets/objects/balls/white_ball.png", import.meta.url).href;
   const fieldImage = useImage(showMarkings ? RugbyField : null);
   const ballImage = useImage(ballImageSrc);
   const ballImageElement = ballImage.image;
+
+  const scheduleDraw = () => {
+    if (drawRafRef.current) return;
+    drawRafRef.current = requestAnimationFrame(() => {
+      drawRafRef.current = null;
+      itemsLayerRef.current?.batchDraw?.();
+    });
+  };
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -131,6 +143,12 @@ export default function KonvaCanvasRoot({
     return () => window.removeEventListener("resize", updateSize);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (drawRafRef.current) cancelAnimationFrame(drawRafRef.current);
+    };
+  }, []);
+
   const worldOrigin = useMemo(() => {
     const zoom = camera?.zoom || 1;
     return {
@@ -139,6 +157,7 @@ export default function KonvaCanvasRoot({
       scale: zoom,
     };
   }, [camera?.x, camera?.y, camera?.zoom, size.width, size.height]);
+
   const guidelineOffsetWorld = GUIDELINE_OFFSET / Math.max(0.0001, worldOrigin.scale);
 
   const fieldBounds = useMemo(() => {
@@ -146,12 +165,12 @@ export default function KonvaCanvasRoot({
     const width = fieldImage.image.width || 0;
     const height = fieldImage.image.height || 0;
     return {
+      centerX: 0,
+      centerY: 0,
       left: -width / 2,
       right: width / 2,
       top: -height / 2,
       bottom: height / 2,
-      centerX: 0,
-      centerY: 0,
     };
   }, [fieldImage.image]);
 
@@ -194,28 +213,28 @@ export default function KonvaCanvasRoot({
           strokeWidth: 1,
           dash: [4, 4],
           listening: false,
-        }),
+        })
       );
     });
 
     layer.batchDraw();
   };
 
-  const getLineGuideStops = (skipId) => {
+  const getLineGuideStops = (skipIds = new Set()) => {
     const centerScreenWorld = toWorldCoords({ x: size.width / 2, y: size.height / 2 });
-
     const vertical = [0, centerScreenWorld.x];
     const horizontal = [0, centerScreenWorld.y];
+
     if (fieldBounds) {
       vertical.push(fieldBounds.centerX);
       horizontal.push(fieldBounds.centerY);
     }
 
-    items.forEach((item) => {
-      if (!item || item.id === skipId) return;
-      if (item.type !== "player" && item.type !== "ball") return;
-      vertical.push(item.x);
-      horizontal.push(item.y);
+    itemPositionsRef.current.forEach((pos, id) => {
+      if (skipIds.has(id)) return;
+      if (!pos) return;
+      vertical.push(pos.x);
+      horizontal.push(pos.y);
     });
 
     return {
@@ -224,10 +243,9 @@ export default function KonvaCanvasRoot({
     };
   };
 
-  const getObjectSnappingEdges = (item, node) => {
+  const getObjectSnappingEdges = (node) => {
     const x = node.x();
     const y = node.y();
-
     return {
       vertical: [{ guide: x, offset: 0, snap: "center" }],
       horizontal: [{ guide: y, offset: 0, snap: "center" }],
@@ -290,6 +308,61 @@ export default function KonvaCanvasRoot({
   };
 
   useEffect(() => {
+    const nextIds = new Set();
+    items.forEach((item) => {
+      if (!item?.id) return;
+      nextIds.add(item.id);
+      const existing = itemPositionsRef.current.get(item.id);
+      if (!existing || existing.x !== item.x || existing.y !== item.y) {
+        itemPositionsRef.current.set(item.id, { x: item.x, y: item.y });
+      }
+      const node = itemNodeRefs.current.get(item.id);
+      if (node && !draggingIdsRef.current.has(item.id)) {
+        node.position({ x: item.x, y: item.y });
+      }
+    });
+
+    Array.from(itemPositionsRef.current.keys()).forEach((id) => {
+      if (!nextIds.has(id)) {
+        itemPositionsRef.current.delete(id);
+        itemNodeRefs.current.delete(id);
+      }
+    });
+
+    scheduleDraw();
+  }, [items]);
+
+  useEffect(() => {
+    const snapshot = liveSnapshotRef?.current;
+    if (!snapshot || dragSessionRef.current) return;
+    if (snapshot === lastAppliedSnapshotRef.current) return;
+
+    Object.entries(snapshot.playersById || {}).forEach(([id, player]) => {
+      if (!id || !player) return;
+      const next = { x: player.x ?? 0, y: player.y ?? 0 };
+      const curr = itemPositionsRef.current.get(id);
+      if (curr && curr.x === next.x && curr.y === next.y) return;
+      itemPositionsRef.current.set(id, next);
+      const node = itemNodeRefs.current.get(id);
+      if (node) node.position(next);
+    });
+
+    if (snapshot.ball?.id) {
+      const id = snapshot.ball.id;
+      const next = { x: snapshot.ball.x ?? 0, y: snapshot.ball.y ?? 0 };
+      const curr = itemPositionsRef.current.get(id);
+      if (!curr || curr.x !== next.x || curr.y !== next.y) {
+        itemPositionsRef.current.set(id, next);
+        const node = itemNodeRefs.current.get(id);
+        if (node) node.position(next);
+      }
+    }
+
+    lastAppliedSnapshotRef.current = snapshot;
+    scheduleDraw();
+  });
+
+  useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
         if (!marqueeRef.current.active) return;
@@ -315,6 +388,7 @@ export default function KonvaCanvasRoot({
         return { ...prev, zoom: nextZoom };
       });
     };
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [setCamera]);
@@ -376,10 +450,7 @@ export default function KonvaCanvasRoot({
       return;
     }
 
-    if (!isMiddleMouse && tool !== "hand") {
-      return;
-    }
-
+    if (!isMiddleMouse && tool !== "hand") return;
     if (target !== stage) return;
 
     panRef.current.active = true;
@@ -406,6 +477,7 @@ export default function KonvaCanvasRoot({
       setMarquee({ x, y, width, height });
       return;
     }
+
     if (!panRef.current.active) return;
     const evt = e.evt;
     if (panRef.current.pointerId !== (evt?.pointerId ?? "mouse")) return;
@@ -437,9 +509,7 @@ export default function KonvaCanvasRoot({
       }
 
       const radius = playerRadius;
-
       const intersects = (itemX, itemY, itemRadius) => {
-        // Intersects rule: select if item's square bounds intersect marquee rect.
         const itemLeft = itemX - itemRadius;
         const itemRight = itemX + itemRadius;
         const itemTop = itemY - itemRadius;
@@ -450,14 +520,16 @@ export default function KonvaCanvasRoot({
       const selected = items
         .filter((item) => item?.type === "player" || item?.type === "ball")
         .filter((item) => {
-          const itemRadius = item.type === "ball" ? ballRadius : radius;
-          return intersects(item.x, item.y, itemRadius);
+          const itemRadius = item.type === "ball" ? ballSizePx / 2 : radius;
+          const pos = itemPositionsRef.current.get(item.id) || { x: item.x, y: item.y };
+          return intersects(pos.x, pos.y, itemRadius);
         })
         .map((item) => item.id);
 
       onMarqueeSelect?.(selected, { mode: modifierKey ? "add" : "replace" });
       return;
     }
+
     if (!panRef.current.active) return;
     const evt = e.evt;
     if (panRef.current.pointerId !== (evt?.pointerId ?? "mouse")) return;
@@ -467,24 +539,60 @@ export default function KonvaCanvasRoot({
     setIsHoveringItem(false);
   };
 
+  const resolveDragIds = (id) => {
+    const selected = Array.isArray(selectedItemIds) ? selectedItemIds : [];
+    if (selected.includes(id)) {
+      return selected.filter((itemId) => itemNodeRefs.current.has(itemId));
+    }
+    return [id];
+  };
+
   const handleItemDragStart = (item) => () => {
-    draggingIdsRef.current.add(item.id);
-    dragStateRef.current.set(item.id, { x: item.x, y: item.y });
+    const ids = resolveDragIds(item.id);
+    if (!ids.length) return;
+
+    const startPositions = new Map();
+    ids.forEach((id) => {
+      const node = itemNodeRefs.current.get(id);
+      const fallback = itemPositionsRef.current.get(id) || { x: 0, y: 0 };
+      const pos = node ? { x: node.x(), y: node.y() } : fallback;
+      startPositions.set(id, pos);
+      itemPositionsRef.current.set(id, pos);
+      draggingIdsRef.current.add(id);
+    });
+
+    dragSessionRef.current = {
+      activeId: item.id,
+      ids,
+      moved: false,
+      startPositions,
+    };
+
     clearGuides();
     setIsHoveringItem(false);
-    onItemDragStart?.(item.id);
+    onItemDragStart?.(item.id, { ids });
   };
 
   const handleItemDragMove = (item) => (e) => {
+    const session = dragSessionRef.current;
+    if (!session) return;
+
     const node = e.target;
-    const canSnap = tool === "select" && !marqueeRef.current.active && !panRef.current.active;
-    if (canSnap) {
-      const lineGuideStops = getLineGuideStops(item.id);
-      const itemBounds = getObjectSnappingEdges(item, node);
+    let nextX = node.x();
+    let nextY = node.y();
+
+    const shouldSnap =
+      tool === "select" &&
+      !marqueeRef.current.active &&
+      !panRef.current.active &&
+      session.ids.length <= 8;
+
+    if (shouldSnap) {
+      const skipIds = new Set(session.ids);
+      const lineGuideStops = getLineGuideStops(skipIds);
+      const itemBounds = getObjectSnappingEdges(node);
       const guides = getGuides(lineGuideStops, itemBounds, guidelineOffsetWorld);
       if (guides.length) {
-        let nextX = node.x();
-        let nextY = node.y();
         guides.forEach((guide) => {
           if (guide.orientation === "V") nextX = guide.lineGuide + guide.offset;
           if (guide.orientation === "H") nextY = guide.lineGuide + guide.offset;
@@ -498,24 +606,56 @@ export default function KonvaCanvasRoot({
       clearGuides();
     }
 
-    const next = { x: node.x(), y: node.y() };
-    const last = dragStateRef.current.get(item.id) || { x: item.x, y: item.y };
-    const delta = { x: next.x - last.x, y: next.y - last.y };
-    dragStateRef.current.set(item.id, next);
-    onItemChange?.(item.id, next, { delta });
+    const currentActive = itemPositionsRef.current.get(session.activeId) || { x: item.x, y: item.y };
+    const deltaX = nextX - currentActive.x;
+    const deltaY = nextY - currentActive.y;
+
+    if (Math.abs(deltaX) < 1e-6 && Math.abs(deltaY) < 1e-6) return;
+
+    session.ids.forEach((id) => {
+      const curr = itemPositionsRef.current.get(id) || { x: 0, y: 0 };
+      const next = { x: curr.x + deltaX, y: curr.y + deltaY };
+      itemPositionsRef.current.set(id, next);
+      const groupNode = itemNodeRefs.current.get(id);
+      if (groupNode) groupNode.position(next);
+    });
+
+    session.moved = true;
+    scheduleDraw();
   };
 
   const handleItemDragEnd = (item) => () => {
-    draggingIdsRef.current.add(item.id);
-    dragStateRef.current.delete(item.id);
+    const session = dragSessionRef.current;
+    const ids = session?.ids || [item.id];
+    const positions = {};
+    ids.forEach((id) => {
+      const pos = itemPositionsRef.current.get(id);
+      if (!pos) return;
+      positions[id] = { x: pos.x, y: pos.y };
+    });
+
+    if (session?.moved) {
+      ids.forEach((id) => suppressClickRef.current.add(id));
+      setTimeout(() => {
+        ids.forEach((id) => suppressClickRef.current.delete(id));
+      }, 0);
+    }
+
+    dragSessionRef.current = null;
+    ids.forEach((id) => draggingIdsRef.current.delete(id));
     clearGuides();
-    onItemDragEnd?.(item.id);
-    setTimeout(() => draggingIdsRef.current.delete(item.id), 0);
+    scheduleDraw();
     setIsHoveringItem(false);
+    onItemDragEnd?.(item.id, { ids, positions, moved: Boolean(session?.moved) });
   };
 
   const handleItemClick = (item) => (e) => {
     if (draggingIdsRef.current.has(item.id)) return;
+    if (suppressClickRef.current.has(item.id)) {
+      suppressClickRef.current.delete(item.id);
+      e.cancelBubble = true;
+      return;
+    }
     const modifierKey = isModifierPressed(e?.evt);
     const mode = modifierKey ? "toggle" : "replace";
     onSelectItem?.(item.id, item.type, { mode });
@@ -523,7 +663,7 @@ export default function KonvaCanvasRoot({
   };
 
   const isMarqueeActive = Boolean(marquee);
-
+  const interactionEnabled = !isPlaying;
   const isDragging = draggingIdsRef.current.size > 0;
   const baseCursor =
     tool === "hand"
@@ -535,7 +675,7 @@ export default function KonvaCanvasRoot({
   const derivedCursor =
     isPanning || isDragging
       ? "grabbing"
-      : hoverAllowed && isHoveringItem
+      : interactionEnabled && hoverAllowed && isHoveringItem
         ? "pointer"
         : baseCursor;
 
@@ -558,11 +698,9 @@ export default function KonvaCanvasRoot({
           onTouchEnd={handleStagePointerUp}
           onWheel={handleStageWheel}
         >
-          <Layer>
+          <Layer listening={false} hitGraphEnabled={false}>
             <Group x={worldOrigin.x} y={worldOrigin.y} scaleX={worldOrigin.scale} scaleY={worldOrigin.scale}>
               {fieldImage.image && (
-                // Rotation model: rotate only the field image so world coordinates stay axis-aligned.
-                // This keeps dragging, marquee selection, and timeline/keyframes intuitive and unrotated.
                 <KonvaImage
                   image={fieldImage.image}
                   x={0}
@@ -571,8 +709,14 @@ export default function KonvaCanvasRoot({
                   offsetY={fieldImage.image.height / 2}
                   rotation={fieldRotation}
                   listening={false}
+                  perfectDrawEnabled={false}
                 />
               )}
+            </Group>
+          </Layer>
+
+          <Layer ref={itemsLayerRef} listening={interactionEnabled} hitGraphEnabled={interactionEnabled}>
+            <Group x={worldOrigin.x} y={worldOrigin.y} scaleX={worldOrigin.scale} scaleY={worldOrigin.scale}>
               {items.map((item) => {
                 const isSelected =
                   item.type === "player"
@@ -584,15 +728,20 @@ export default function KonvaCanvasRoot({
                   return (
                     <Group
                       key={item.id}
+                      ref={(node) => {
+                        if (node) itemNodeRefs.current.set(item.id, node);
+                        else itemNodeRefs.current.delete(item.id);
+                      }}
                       x={item.x}
                       y={item.y}
-                      draggable={draggable}
+                      draggable={interactionEnabled && draggable}
+                      listening={interactionEnabled}
                       onMouseEnter={() => {
-                        if (!draggable || !hoverAllowed) return;
+                        if (!interactionEnabled || !draggable || !hoverAllowed) return;
                         setIsHoveringItem(true);
                       }}
                       onMouseLeave={() => {
-                        if (!draggable) return;
+                        if (!interactionEnabled || !draggable) return;
                         setIsHoveringItem(false);
                       }}
                       onDragStart={handleItemDragStart(item)}
@@ -600,11 +749,11 @@ export default function KonvaCanvasRoot({
                       onDragEnd={handleItemDragEnd(item)}
                       onClick={handleItemClick(item)}
                       onTap={handleItemClick(item)}
-                      onMouseDown={(e) => {
-                        e.cancelBubble = true;
+                      onMouseDown={(evt) => {
+                        evt.cancelBubble = true;
                       }}
-                      onTouchStart={(e) => {
-                        e.cancelBubble = true;
+                      onTouchStart={(evt) => {
+                        evt.cancelBubble = true;
                       }}
                     >
                       {ballImageElement ? (() => {
@@ -621,9 +770,7 @@ export default function KonvaCanvasRoot({
                             height={height}
                             offsetX={width / 2}
                             offsetY={height / 2}
-                            shadowColor="black"
-                            shadowOpacity={0.25}
-                            shadowBlur={2}
+                            perfectDrawEnabled={false}
                           />
                         );
                       })() : null}
@@ -633,6 +780,7 @@ export default function KonvaCanvasRoot({
                           stroke="#FF7A18"
                           strokeWidth={2}
                           listening={false}
+                          perfectDrawEnabled={false}
                         />
                       )}
                     </Group>
@@ -648,15 +796,20 @@ export default function KonvaCanvasRoot({
                 return (
                   <Group
                     key={item.id}
+                    ref={(node) => {
+                      if (node) itemNodeRefs.current.set(item.id, node);
+                      else itemNodeRefs.current.delete(item.id);
+                    }}
                     x={item.x}
                     y={item.y}
-                    draggable={draggable}
+                    draggable={interactionEnabled && draggable}
+                    listening={interactionEnabled}
                     onMouseEnter={() => {
-                      if (!draggable || !hoverAllowed) return;
+                      if (!interactionEnabled || !draggable || !hoverAllowed) return;
                       setIsHoveringItem(true);
                     }}
                     onMouseLeave={() => {
-                      if (!draggable) return;
+                      if (!interactionEnabled || !draggable) return;
                       setIsHoveringItem(false);
                     }}
                     onDragStart={handleItemDragStart(item)}
@@ -664,11 +817,11 @@ export default function KonvaCanvasRoot({
                     onDragEnd={handleItemDragEnd(item)}
                     onClick={handleItemClick(item)}
                     onTap={handleItemClick(item)}
-                    onMouseDown={(e) => {
-                      e.cancelBubble = true;
+                    onMouseDown={(evt) => {
+                      evt.cancelBubble = true;
                     }}
-                    onTouchStart={(e) => {
-                      e.cancelBubble = true;
+                    onTouchStart={(evt) => {
+                      evt.cancelBubble = true;
                     }}
                   >
                     <Circle
@@ -676,6 +829,7 @@ export default function KonvaCanvasRoot({
                       fill={color}
                       stroke={isSelected ? "#FF7A18" : "#111827"}
                       strokeWidth={isSelected ? 3 : 2}
+                      perfectDrawEnabled={false}
                     />
                     {showNumber && numberText !== "" && (
                       <Text
@@ -691,6 +845,7 @@ export default function KonvaCanvasRoot({
                         fontSize={Math.max(10, Math.round(sizePx * 0.45))}
                         fill="#111827"
                         listening={false}
+                        perfectDrawEnabled={false}
                       />
                     )}
                     {showName && nameText !== "" && (
@@ -705,6 +860,7 @@ export default function KonvaCanvasRoot({
                         fontSize={Math.max(9, Math.round(sizePx * 0.32))}
                         fill="#111827"
                         listening={false}
+                        perfectDrawEnabled={false}
                       />
                     )}
                   </Group>
@@ -712,8 +868,10 @@ export default function KonvaCanvasRoot({
               })}
             </Group>
           </Layer>
+
           <Layer listening={false} name="guidesLayer" ref={guidesLayerRef} />
-          <Layer listening={false}>
+
+          <Layer listening={false} hitGraphEnabled={false}>
             <Group x={worldOrigin.x} y={worldOrigin.y} scaleX={worldOrigin.scale} scaleY={worldOrigin.scale}>
               {marquee && (
                 <Rect
