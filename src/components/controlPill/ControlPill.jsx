@@ -27,6 +27,7 @@ export default function ControlPill({
   externalSpeed,
   externalSelectedKeyframe,
   externalAutoplayEnabled,
+  externalKeyframes,
   // Optional: external signal to add a keyframe at current time
   addKeyframeSignal,
   // Optional: external signal to reset timeline/keyframes
@@ -53,9 +54,25 @@ export default function ControlPill({
   const lastResetSignal = useRef(resetSignal);
   const latestTimePercentRef = useRef(externalTimePercent ?? 0);
 
+  const areKeyframesEqual = (a = [], b = []) => {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i += 1) {
+      if (Math.abs(a[i] - b[i]) > 0.0001) return false;
+    }
+    return true;
+  };
+
   useEffect(() => {
     latestTimePercentRef.current = externalTimePercent ?? timePercent;
   }, [externalTimePercent, timePercent]);
+
+  useEffect(() => {
+    if (!Array.isArray(externalKeyframes)) return;
+    const next = [...externalKeyframes].sort((a, b) => a - b);
+    setKeyframes((prev) => (areKeyframesEqual(prev, next) ? prev : next));
+    setActionHistory([]);
+    setRedoHistory([]);
+  }, [externalKeyframes]);
 
   // Notify parent of keyframes changes
   useEffect(() => {

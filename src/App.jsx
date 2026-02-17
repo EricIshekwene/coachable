@@ -1,6 +1,6 @@
 import "./index.css";
 import WideSidebar from "./components/WideSidebar";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import ControlPill from "./components/controlPill/ControlPill";
 import RightPanel from "./components/RightPanel";
 import AdvancedSettings from "./components/AdvancedSettings";
@@ -10,10 +10,13 @@ import PlayerEditPanel from "./components/rightPanel/PlayerEditPanel";
 import { buildPlayExportV1, downloadPlayExport } from "./utils/exportPlay";
 
 import {
+  IMPORT_SCHEMA_VERSION_1_0_0,
   IMPORT_FILE_SIZE_LIMIT_BYTES,
   addKeyframeFromData,
   addPlayerFromData,
+  importPlayV1_0_0,
   resolveSnapshotForKeyframe,
+  sanitizePercentKey,
   validatePlayExportV1,
 } from "./utils/importPlay";
 
@@ -323,13 +326,13 @@ function App() {
     const exportPayload = buildPlayExportV1({
       playName,
       appVersion,
+      sport: "rugby",
       advancedSettings,
       allPlayersDisplay,
       currentPlayerColor,
       camera,
       fieldRotation,
       playersById,
-      representedPlayerIds,
       ball,
       keyframes,
       keyframeSnapshots,
@@ -339,11 +342,7 @@ function App() {
         speedMultiplier,
         autoplayEnabled,
       },
-      coordinateSystem: {
-        origin: "center",
-        units: "px",
-        notes: "World coordinates are centered; +x right, +y down.",
-      },
+      fieldId: advancedSettings?.pitch?.pitchSize,
     });
     downloadPlayExport(exportPayload, playName);
   };
@@ -646,23 +645,6 @@ function App() {
     }
   };
 
-  const items = [
-    ...Object.values(playersById).map((p) => ({
-      id: p.id,
-      type: "player",
-      x: p.x,
-      y: p.y,
-      number: p.number,
-      name: p.name,
-      assignment: p.assignment,
-      color: p.color || allPlayersDisplay.color,
-    })),
-    { id: ball.id, type: "ball", x: ball.x, y: ball.y },
-  ];
-  const selectedPlayers = (selectedPlayerIds || [])
-    .map((id) => playersById?.[id])
-    .filter(Boolean);
-
   const handleItemChange = (id, next, meta) => {
     markKeyframeSnapshotPending();
     if (meta?.delta) {
@@ -738,48 +720,81 @@ function App() {
 
   const loadPlayFromExport = useCallback(
     (exportObj) => {
-      const { ok, error, play } = validatePlayExportV1(exportObj);
-      if (!ok) {
-        showMessage("Import failed", error, "error");
-        return false;
-      }
+      let imported = null;
 
-      let nextPlayers = {};
-      let nextRepresented = [];
-      Object.values(play.entities.playersById || {}).forEach((player) => {
-        const result = addPlayerFromData(nextPlayers, nextRepresented, player, { preserveId: true });
-        nextPlayers = result.playersById;
-        nextRepresented = result.representedPlayerIds;
-      });
-
-      const incomingRepresented = Array.isArray(play.entities.representedPlayerIds)
-        ? play.entities.representedPlayerIds
-        : [];
-      const representedSet = new Set([...nextRepresented, ...incomingRepresented]);
-      nextRepresented = Array.from(representedSet);
-
-      let nextKeyframes = [];
-      let nextSnapshots = {};
-      (play.timeline.keyframes || []).forEach((kf) => {
-        const resolved = resolveSnapshotForKeyframe(kf, play.timeline.keyframeSnapshots || {});
-        if (!resolved?.snapshot) return;
-        const normalizedSnapshot = {
-          playersById: { ...(resolved.snapshot.playersById || {}) },
-          representedPlayerIds: [...(resolved.snapshot.representedPlayerIds || [])],
-          ball: resolved.snapshot.ball ?? null,
+      if (exportObj?.schemaVersion === IMPORT_SCHEMA_VERSION_1_0_0) {
+        const result = importPlayV1_0_0(exportObj, { defaultBall: INITIAL_BALL });
+        if (!result.ok) {
+          showMessage("Import failed", result.error, "error");
+          return { ok: false };
+        }
+        const parsed = result.play;
+        imported = {
+          playName: parsed.name,
+          advancedSettings: parsed.advancedSettings ?? DEFAULT_ADVANCED_SETTINGS,
+          allPlayersDisplay: parsed.allPlayersDisplay ?? allPlayersDisplay,
+          currentPlayerColor: parsed.currentPlayerColor ?? currentPlayerColor,
+          playersById: parsed.playersById ?? {},
+          representedPlayerIds: parsed.representedPlayerIds ?? [],
+          ball: parsed.ball ?? INITIAL_BALL,
+          camera: parsed.camera ?? { x: 0, y: 0, zoom: 1 },
+          fieldRotation: parsed.fieldRotation ?? 0,
+          keyframes: parsed.keyframes ?? [],
+          keyframeSnapshots: parsed.keyframeSnapshots ?? {},
+          playback: parsed.playback ?? {},
         };
-        const result = addKeyframeFromData(nextKeyframes, nextSnapshots, kf, normalizedSnapshot);
-        nextKeyframes = result.keyframes;
-        nextSnapshots = result.keyframeSnapshots;
-      });
+      } else {
+        // Legacy fallback: preserve existing import behavior for older or unversioned files.
+        const { ok, error, play } = validatePlayExportV1(exportObj);
+        if (!ok) {
+          showMessage("Import failed", error, "error");
+          return { ok: false };
+        }
 
-      const nextBall = play.entities.ball ?? INITIAL_BALL;
-      const nextCamera = play.canvas?.camera ?? { x: 0, y: 0, zoom: 1 };
-      const nextFieldRotation = play.canvas?.fieldRotation ?? 0;
-      const nextSettings = play.settings?.advancedSettings ?? DEFAULT_ADVANCED_SETTINGS;
-      const nextAllPlayersDisplay = play.settings?.allPlayersDisplay ?? allPlayersDisplay;
-      const nextCurrentPlayerColor = play.settings?.currentPlayerColor ?? currentPlayerColor;
-      const playback = play.timeline?.playback ?? {};
+        let nextPlayers = {};
+        let nextRepresented = [];
+        Object.values(play.entities.playersById || {}).forEach((player) => {
+          const result = addPlayerFromData(nextPlayers, nextRepresented, player, { preserveId: true });
+          nextPlayers = result.playersById;
+          nextRepresented = result.representedPlayerIds;
+        });
+
+        const incomingRepresented = Array.isArray(play.entities.representedPlayerIds)
+          ? play.entities.representedPlayerIds
+          : [];
+        const representedSet = new Set([...nextRepresented, ...incomingRepresented]);
+        nextRepresented = Array.from(representedSet);
+
+        let nextKeyframes = [];
+        let nextSnapshots = {};
+        (play.timeline.keyframes || []).forEach((kf) => {
+          const resolved = resolveSnapshotForKeyframe(kf, play.timeline.keyframeSnapshots || {});
+          if (!resolved?.snapshot) return;
+          const normalizedSnapshot = {
+            playersById: { ...(resolved.snapshot.playersById || {}) },
+            representedPlayerIds: [...(resolved.snapshot.representedPlayerIds || [])],
+            ball: resolved.snapshot.ball ?? null,
+          };
+          const result = addKeyframeFromData(nextKeyframes, nextSnapshots, kf, normalizedSnapshot);
+          nextKeyframes = result.keyframes;
+          nextSnapshots = result.keyframeSnapshots;
+        });
+
+        imported = {
+          playName: play.name,
+          advancedSettings: play.settings?.advancedSettings ?? DEFAULT_ADVANCED_SETTINGS,
+          allPlayersDisplay: play.settings?.allPlayersDisplay ?? allPlayersDisplay,
+          currentPlayerColor: play.settings?.currentPlayerColor ?? currentPlayerColor,
+          playersById: nextPlayers,
+          representedPlayerIds: nextRepresented,
+          ball: play.entities.ball ?? INITIAL_BALL,
+          camera: play.canvas?.camera ?? { x: 0, y: 0, zoom: 1 },
+          fieldRotation: play.canvas?.fieldRotation ?? 0,
+          keyframes: nextKeyframes,
+          keyframeSnapshots: nextSnapshots,
+          playback: play.timeline?.playback ?? {},
+        };
+      }
 
       isRestoringRef.current = true;
       isFieldRestoringRef.current = true;
@@ -791,46 +806,54 @@ function App() {
       latestKeyframeSnapshotsRef.current = {};
       lastAppliedKeyframeRef.current = null;
 
-      setPlayName(play.name);
-      setAdvancedSettings(nextSettings);
-      setAllPlayersDisplay(nextAllPlayersDisplay);
-      setCurrentPlayerColor(nextCurrentPlayerColor);
-      setPlayersById(nextPlayers);
-      setRepresentedPlayerIds(nextRepresented);
-      setBall(nextBall);
-      setCamera(nextCamera);
-      setFieldRotation(nextFieldRotation);
+      setIsPlaying(false);
       setSelectedPlayerIds([]);
       setSelectedItemIds([]);
+      setSelectedKeyframe(null);
+
+      setPlayName(imported.playName);
+      setAdvancedSettings(imported.advancedSettings);
+      setAllPlayersDisplay(imported.allPlayersDisplay);
+      setCurrentPlayerColor(imported.currentPlayerColor);
+      setCamera(imported.camera);
+      setFieldRotation(imported.fieldRotation);
+      setPlayersById(imported.playersById);
+      setRepresentedPlayerIds(imported.representedPlayerIds);
+      setBall(imported.ball);
       setHistoryPast([]);
       setHistoryFuture([]);
       setFieldHistoryPast([]);
       setFieldHistoryFuture([]);
-      setKeyframes(nextKeyframes);
-      setKeyframeSnapshots(nextSnapshots);
+      setKeyframes(imported.keyframes);
+      setKeyframeSnapshots(imported.keyframeSnapshots);
+      const keys = Object.keys(imported.keyframeSnapshots || {}).sort((a, b) => Number(a) - Number(b));
+      
       setSpeedMultiplier(
-        typeof playback.speedMultiplier === "number" ? playback.speedMultiplier : speedMultiplier
+        typeof imported.playback.speedMultiplier === "number"
+          ? imported.playback.speedMultiplier
+          : speedMultiplier
       );
       setAutoplayEnabled(
-        typeof playback.autoplayEnabled === "boolean" ? playback.autoplayEnabled : autoplayEnabled
+        typeof imported.playback.autoplayEnabled === "boolean"
+          ? imported.playback.autoplayEnabled
+          : autoplayEnabled
       );
       setLoopSeconds(
-        typeof playback.loopSeconds === "number" && playback.loopSeconds > 0
-          ? playback.loopSeconds
+        typeof imported.playback.loopSeconds === "number" && imported.playback.loopSeconds > 0
+          ? imported.playback.loopSeconds
           : LOOP_SECONDS
       );
       setKeyframeTolerance(
-        typeof playback.keyframeTolerance === "number" && playback.keyframeTolerance > 0
-          ? playback.keyframeTolerance
+        typeof imported.playback.keyframeTolerance === "number" && imported.playback.keyframeTolerance > 0
+          ? imported.playback.keyframeTolerance
           : KEYFRAME_TOLERANCE
       );
       setTimePercent(0);
-      setIsPlaying(false);
-      setSelectedKeyframe(null);
+      setIsPlaying(Boolean(imported.playback.autoplayEnabled));
       setPlayerEditor({ open: false, id: null, draft: { number: "", name: "", assignment: "" } });
       isRestoringRef.current = false;
       isFieldRestoringRef.current = false;
-      return true;
+      return { ok: true, playName: imported.playName };
     },
     [
       allPlayersDisplay,
@@ -849,6 +872,10 @@ function App() {
     const file = event.target?.files?.[0];
     event.target.value = "";
     if (!file) return;
+    if (!/\.json$/i.test(file.name || "")) {
+      showMessage("Import failed", "Please select a .json file.", "error");
+      return;
+    }
     if (file.size > IMPORT_FILE_SIZE_LIMIT_BYTES) {
       showMessage("Import failed", "File too large (max 5 MB).", "error");
       return;
@@ -856,7 +883,10 @@ function App() {
     try {
       const text = await file.text();
       const parsed = JSON.parse(text);
-      loadPlayFromExport(parsed);
+      const result = loadPlayFromExport(parsed);
+      if (result?.ok) {
+        showMessage("Import successful", `Loaded "${result.playName}"`, "success");
+      }
     } catch (err) {
       showMessage("Import failed", "Could not read or parse JSON.", "error");
     }
@@ -904,9 +934,6 @@ function App() {
   const handleTimePercentChange = (next) => {
     const clamped = clamp(Number(next) || 0, 0, 100);
     setTimePercent((prev) => (Object.is(prev, clamped) ? prev : clamped));
-    if (isPlayingRef.current) {
-      setIsPlaying(false);
-    }
   };
 
   useEffect(() => {
@@ -1117,95 +1144,110 @@ function App() {
 
   const lerp = (from, to, t) => from + (to - from) * t;
 
-  const buildInterpolatedSlate = (timeValue, frames, snapshots) => {
-    const availableKeyframes = (frames || [])
-      .filter((kf) => snapshots[kf])
-      .sort((a, b) => a - b);
+  const buildActiveSnapshotAtTime = useCallback(
+    (timeValue, snapshots) => {
+      const source = snapshots || {};
+      const exactKey = sanitizePercentKey(timeValue);
+      if (source[exactKey]) return source[exactKey];
 
-    if (availableKeyframes.length === 0) return null;
+      const entries = Object.entries(source)
+        .map(([key, snapshot]) => ({
+          key,
+          value: Number(key),
+          snapshot,
+        }))
+        .filter((entry) => Number.isFinite(entry.value) && entry.snapshot)
+        .sort((a, b) => a.value - b.value);
 
-    if (timeValue <= availableKeyframes[0]) {
-      return snapshots[availableKeyframes[0]];
-    }
-    if (timeValue >= availableKeyframes[availableKeyframes.length - 1]) {
-      return snapshots[availableKeyframes[availableKeyframes.length - 1]];
-    }
+      if (!entries.length) return null;
+      if (timeValue <= entries[0].value) return entries[0].snapshot;
+      if (timeValue >= entries[entries.length - 1].value) return entries[entries.length - 1].snapshot;
 
-    let prevKeyframe = availableKeyframes[0];
-    let nextKeyframe = availableKeyframes[availableKeyframes.length - 1];
-    for (let i = 0; i < availableKeyframes.length - 1; i += 1) {
-      const current = availableKeyframes[i];
-      const next = availableKeyframes[i + 1];
-      if (timeValue >= current && timeValue <= next) {
-        prevKeyframe = current;
-        nextKeyframe = next;
+      let lower = entries[0];
+      let upper = entries[entries.length - 1];
+      for (let i = 0; i < entries.length - 1; i += 1) {
+        const current = entries[i];
+        const next = entries[i + 1];
+        if (timeValue < current.value || timeValue > next.value) continue;
+        lower = current;
+        upper = next;
         break;
       }
-    }
 
-    if (prevKeyframe === nextKeyframe) {
-      return snapshots[prevKeyframe];
-    }
-
-    const prevSnapshot = snapshots[prevKeyframe];
-    const nextSnapshot = snapshots[nextKeyframe];
-    if (!prevSnapshot || !nextSnapshot) return null;
-
-    const t = (timeValue - prevKeyframe) / (nextKeyframe - prevKeyframe);
-    const prevPlayers = prevSnapshot.playersById || {};
-    const nextPlayers = nextSnapshot.playersById || {};
-    const allPlayerIds = new Set([
-      ...Object.keys(prevPlayers),
-      ...Object.keys(nextPlayers),
-    ]);
-
-    const interpolatedPlayers = {};
-    allPlayerIds.forEach((id) => {
-      const prevPlayer = prevPlayers[id];
-      const nextPlayer = nextPlayers[id];
-      if (prevPlayer && nextPlayer) {
-        interpolatedPlayers[id] = {
-          ...prevPlayer,
-          ...nextPlayer,
-          x: lerp(prevPlayer.x ?? 0, nextPlayer.x ?? 0, t),
-          y: lerp(prevPlayer.y ?? 0, nextPlayer.y ?? 0, t),
-        };
-        return;
+      if (Math.abs(upper.value - lower.value) < 1e-9) {
+        return lower.snapshot;
       }
-      interpolatedPlayers[id] = { ...(prevPlayer || nextPlayer) };
-    });
 
-    const prevBall = prevSnapshot.ball || INITIAL_BALL;
-    const nextBall = nextSnapshot.ball || INITIAL_BALL;
-    const interpolatedBall = {
-      ...prevBall,
-      ...nextBall,
-      x: lerp(prevBall.x ?? 0, nextBall.x ?? 0, t),
-      y: lerp(prevBall.y ?? 0, nextBall.y ?? 0, t),
-    };
+      const alpha = (timeValue - lower.value) / (upper.value - lower.value);
+      const lowerPlayers = lower.snapshot?.playersById || {};
+      const upperPlayers = upper.snapshot?.playersById || {};
+      const represented = new Set([
+        ...(lower.snapshot?.representedPlayerIds || []),
+        ...(upper.snapshot?.representedPlayerIds || []),
+        ...Object.keys(lowerPlayers),
+        ...Object.keys(upperPlayers),
+      ]);
 
-    const represented =
-      t <= 0.5
-        ? [...(prevSnapshot.representedPlayerIds || [])]
-        : [...(nextSnapshot.representedPlayerIds || [])];
+      const playersByIdInterpolated = {};
+      represented.forEach((id) => {
+        const low = lowerPlayers[id];
+        const up = upperPlayers[id];
+        if (!low && !up) return;
+        const base = low || up;
+        const lowX = low?.x ?? up?.x ?? 0;
+        const lowY = low?.y ?? up?.y ?? 0;
+        const upX = up?.x ?? low?.x ?? 0;
+        const upY = up?.y ?? low?.y ?? 0;
+        playersByIdInterpolated[id] = {
+          ...base,
+          x: lerp(lowX, upX, alpha),
+          y: lerp(lowY, upY, alpha),
+        };
+      });
 
-    return {
-      playersById: interpolatedPlayers,
-      representedPlayerIds: represented,
-      ball: interpolatedBall,
-    };
-  };
+      const lowerBall = lower.snapshot?.ball ?? null;
+      const upperBall = upper.snapshot?.ball ?? null;
+      const ballInterpolated = lowerBall || upperBall
+        ? {
+          ...(lowerBall || upperBall),
+          x: lerp(lowerBall?.x ?? upperBall?.x ?? 0, upperBall?.x ?? lowerBall?.x ?? 0, alpha),
+          y: lerp(lowerBall?.y ?? upperBall?.y ?? 0, upperBall?.y ?? lowerBall?.y ?? 0, alpha),
+        }
+        : null;
 
-  useEffect(() => {
-    if (isItemDraggingRef.current) return;
-    const interpolatedSlate = buildInterpolatedSlate(
-      timePercent,
-      latestKeyframesRef.current,
-      latestKeyframeSnapshotsRef.current
-    );
-    if (!interpolatedSlate) return;
-    applySlate(interpolatedSlate);
-  }, [timePercent]);
+      return {
+        playersById: playersByIdInterpolated,
+        representedPlayerIds: Array.from(represented),
+        ball: ballInterpolated,
+      };
+    },
+    []
+  );
+
+  const activeSnapshot = useMemo(
+    () => buildActiveSnapshotAtTime(timePercent, keyframeSnapshots),
+    [buildActiveSnapshotAtTime, keyframeSnapshots, timePercent]
+  );
+
+  const renderPlayersById = activeSnapshot?.playersById || playersById;
+  const renderBall = activeSnapshot?.ball || ball;
+
+  const items = [
+    ...Object.values(renderPlayersById).map((p) => ({
+      id: p.id,
+      type: "player",
+      x: p.x,
+      y: p.y,
+      number: p.number,
+      name: p.name,
+      assignment: p.assignment,
+      color: p.color || allPlayersDisplay.color,
+    })),
+    { id: renderBall.id, type: "ball", x: renderBall.x, y: renderBall.y },
+  ];
+  const selectedPlayers = (selectedPlayerIds || [])
+    .map((id) => playersById?.[id])
+    .filter(Boolean);
 
   return (
     <>
@@ -1239,7 +1281,7 @@ function App() {
         >
           Test Message Popup
         </button>
-      
+
         <WideSidebar
           onToolChange={handleToolChange}
           onUndo={onUndo}
@@ -1292,6 +1334,7 @@ function App() {
           externalSpeed={speedMultiplier}
           externalSelectedKeyframe={selectedKeyframe}
           externalAutoplayEnabled={autoplayEnabled}
+          externalKeyframes={keyframes}
           addKeyframeSignal={keyframeSignal}
           resetSignal={timelineResetSignal}
           onRequestAddKeyframe={requestAddKeyframe}
