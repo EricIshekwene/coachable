@@ -1,6 +1,6 @@
 import "./index.css";
 import WideSidebar from "./components/WideSidebar";
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import ControlPill from "./components/controlPill/ControlPill";
 import RightPanel from "./components/RightPanel";
 import AdvancedSettings from "./components/AdvancedSettings";
@@ -638,9 +638,10 @@ function App() {
     logEvent("slate", "dragEnd", { id });
     const targetKeyframe = findEditTargetKeyframe(timePercent, latestKeyframesRef.current);
     if (targetKeyframe !== null && targetKeyframe !== undefined) {
+      const targetKey = sanitizePercentKey(targetKeyframe);
       setKeyframeSnapshots((prev) => ({
         ...prev,
-        [targetKeyframe]: snapshotSlateState(),
+        [targetKey]: snapshotSlateState(),
       }));
     }
   };
@@ -717,6 +718,83 @@ function App() {
   const latestKeyframeSnapshotsRef = useRef({});
   const pendingKeyframeSnapshotsRef = useRef(new Set());
   const lastAppliedKeyframeRef = useRef(null);
+  const lerp = (from, to, t) => from + (to - from) * t;
+
+  const buildSnapshotAtTime = useCallback((timeValue, snapshots) => {
+    const source = snapshots || {};
+    const exact = resolveSnapshotForKeyframe(timeValue, source);
+    if (exact?.snapshot) return exact.snapshot;
+
+    const entries = Object.entries(source)
+      .map(([key, snapshot]) => ({
+        value: Number(key),
+        snapshot,
+      }))
+      .filter((entry) => Number.isFinite(entry.value) && entry.snapshot)
+      .sort((a, b) => a.value - b.value);
+
+    if (!entries.length) return null;
+    if (timeValue <= entries[0].value) return entries[0].snapshot;
+    if (timeValue >= entries[entries.length - 1].value) return entries[entries.length - 1].snapshot;
+
+    let lower = entries[0];
+    let upper = entries[entries.length - 1];
+    for (let i = 0; i < entries.length - 1; i += 1) {
+      const current = entries[i];
+      const next = entries[i + 1];
+      if (timeValue < current.value || timeValue > next.value) continue;
+      lower = current;
+      upper = next;
+      break;
+    }
+
+    if (Math.abs(upper.value - lower.value) < 1e-9) {
+      return lower.snapshot;
+    }
+
+    const alpha = (timeValue - lower.value) / (upper.value - lower.value);
+    const lowerPlayers = lower.snapshot?.playersById || {};
+    const upperPlayers = upper.snapshot?.playersById || {};
+    const represented = new Set([
+      ...(lower.snapshot?.representedPlayerIds || []),
+      ...(upper.snapshot?.representedPlayerIds || []),
+      ...Object.keys(lowerPlayers),
+      ...Object.keys(upperPlayers),
+    ]);
+
+    const playersByIdInterpolated = {};
+    represented.forEach((id) => {
+      const low = lowerPlayers[id];
+      const up = upperPlayers[id];
+      if (!low && !up) return;
+      const base = low || up;
+      const lowX = low?.x ?? up?.x ?? 0;
+      const lowY = low?.y ?? up?.y ?? 0;
+      const upX = up?.x ?? low?.x ?? 0;
+      const upY = up?.y ?? low?.y ?? 0;
+      playersByIdInterpolated[id] = {
+        ...base,
+        x: lerp(lowX, upX, alpha),
+        y: lerp(lowY, upY, alpha),
+      };
+    });
+
+    const lowerBall = lower.snapshot?.ball ?? null;
+    const upperBall = upper.snapshot?.ball ?? null;
+    const ballInterpolated = lowerBall || upperBall
+      ? {
+        ...(lowerBall || upperBall),
+        x: lerp(lowerBall?.x ?? upperBall?.x ?? 0, upperBall?.x ?? lowerBall?.x ?? 0, alpha),
+        y: lerp(lowerBall?.y ?? upperBall?.y ?? 0, upperBall?.y ?? lowerBall?.y ?? 0, alpha),
+      }
+      : null;
+
+    return {
+      playersById: playersByIdInterpolated,
+      representedPlayerIds: Array.from(represented),
+      ball: ballInterpolated,
+    };
+  }, []);
 
   const loadPlayFromExport = useCallback(
     (exportObj) => {
@@ -801,9 +879,16 @@ function App() {
       pendingKeyframeUpdateRef.current = false;
       pendingKeyframeTimeRef.current = null;
       pendingKeyframeSnapshotsRef.current = new Set();
-      prevKeyframesRef.current = [];
-      latestKeyframesRef.current = [];
-      latestKeyframeSnapshotsRef.current = {};
+      const importedKeyframes = Array.from(
+        new Set((imported.keyframes || []).map((kf) => Number(kf)).filter((kf) => Number.isFinite(kf)))
+      ).sort((a, b) => a - b);
+      const importedSnapshots =
+        imported.keyframeSnapshots && typeof imported.keyframeSnapshots === "object"
+          ? imported.keyframeSnapshots
+          : {};
+      prevKeyframesRef.current = [...importedKeyframes];
+      latestKeyframesRef.current = [...importedKeyframes];
+      latestKeyframeSnapshotsRef.current = importedSnapshots;
       lastAppliedKeyframeRef.current = null;
 
       setIsPlaying(false);
@@ -817,6 +902,8 @@ function App() {
       setCurrentPlayerColor(imported.currentPlayerColor);
       setCamera(imported.camera);
       setFieldRotation(imported.fieldRotation);
+      setKeyframes(importedKeyframes);
+      setKeyframeSnapshots(importedSnapshots);
       setPlayersById(imported.playersById);
       setRepresentedPlayerIds(imported.representedPlayerIds);
       setBall(imported.ball);
@@ -824,10 +911,6 @@ function App() {
       setHistoryFuture([]);
       setFieldHistoryPast([]);
       setFieldHistoryFuture([]);
-      setKeyframes(imported.keyframes);
-      setKeyframeSnapshots(imported.keyframeSnapshots);
-      const keys = Object.keys(imported.keyframeSnapshots || {}).sort((a, b) => Number(a) - Number(b));
-      
       setSpeedMultiplier(
         typeof imported.playback.speedMultiplier === "number"
           ? imported.playback.speedMultiplier
@@ -849,6 +932,10 @@ function App() {
           : KEYFRAME_TOLERANCE
       );
       setTimePercent(0);
+      const initialSnapshot = buildSnapshotAtTime(0, importedSnapshots);
+      if (initialSnapshot) {
+        applySlate(initialSnapshot);
+      }
       setIsPlaying(Boolean(imported.playback.autoplayEnabled));
       setPlayerEditor({ open: false, id: null, draft: { number: "", name: "", assignment: "" } });
       isRestoringRef.current = false;
@@ -861,6 +948,7 @@ function App() {
       currentPlayerColor,
       speedMultiplier,
       showMessage,
+      buildSnapshotAtTime,
     ]
   );
 
@@ -1081,14 +1169,21 @@ function App() {
       setKeyframeSnapshots((prev) => {
         const next = { ...prev };
         removed.forEach((kf) => {
-          delete next[kf];
+          const resolved = resolveSnapshotForKeyframe(kf, next);
+          if (resolved?.key) {
+            delete next[resolved.key];
+          }
         });
         return next;
       });
     }
 
     if (added.length) {
-      added.forEach((kf) => pendingKeyframeSnapshotsRef.current.add(kf));
+      added.forEach((kf) => {
+        const existing = resolveSnapshotForKeyframe(kf, latestKeyframeSnapshotsRef.current);
+        if (existing?.snapshot) return;
+        pendingKeyframeSnapshotsRef.current.add(kf);
+      });
     }
 
     prevKeyframesRef.current = keyframes;
@@ -1105,7 +1200,7 @@ function App() {
     setKeyframeSnapshots((prev) => {
       const next = { ...prev };
       pending.forEach((kf) => {
-        next[kf] = snapshotSlateState();
+        next[sanitizePercentKey(kf)] = snapshotSlateState();
       });
       return next;
     });
@@ -1123,10 +1218,11 @@ function App() {
           ? frames[0]
           : null;
     if (target === null || target === undefined) return;
-    if (latestKeyframeSnapshotsRef.current[target]) return;
+    const existing = resolveSnapshotForKeyframe(target, latestKeyframeSnapshotsRef.current);
+    if (existing?.snapshot) return;
     setKeyframeSnapshots((prev) => ({
       ...prev,
-      [target]: snapshotSlateState(),
+      [sanitizePercentKey(target)]: snapshotSlateState(),
     }));
   }, [timePercent]);
 
@@ -1136,104 +1232,22 @@ function App() {
     if (keyframeAtTime === null || keyframeAtTime === undefined) return;
     pendingKeyframeUpdateRef.current = false;
     pendingKeyframeTimeRef.current = null;
+    const key = sanitizePercentKey(keyframeAtTime);
     setKeyframeSnapshots((prev) => ({
       ...prev,
-      [keyframeAtTime]: snapshotSlateState(),
+      [key]: snapshotSlateState(),
     }));
   }, [playersById, representedPlayerIds, ball]);
 
-  const lerp = (from, to, t) => from + (to - from) * t;
-
-  const buildActiveSnapshotAtTime = useCallback(
-    (timeValue, snapshots) => {
-      const source = snapshots || {};
-      const exactKey = sanitizePercentKey(timeValue);
-      if (source[exactKey]) return source[exactKey];
-
-      const entries = Object.entries(source)
-        .map(([key, snapshot]) => ({
-          key,
-          value: Number(key),
-          snapshot,
-        }))
-        .filter((entry) => Number.isFinite(entry.value) && entry.snapshot)
-        .sort((a, b) => a.value - b.value);
-
-      if (!entries.length) return null;
-      if (timeValue <= entries[0].value) return entries[0].snapshot;
-      if (timeValue >= entries[entries.length - 1].value) return entries[entries.length - 1].snapshot;
-
-      let lower = entries[0];
-      let upper = entries[entries.length - 1];
-      for (let i = 0; i < entries.length - 1; i += 1) {
-        const current = entries[i];
-        const next = entries[i + 1];
-        if (timeValue < current.value || timeValue > next.value) continue;
-        lower = current;
-        upper = next;
-        break;
-      }
-
-      if (Math.abs(upper.value - lower.value) < 1e-9) {
-        return lower.snapshot;
-      }
-
-      const alpha = (timeValue - lower.value) / (upper.value - lower.value);
-      const lowerPlayers = lower.snapshot?.playersById || {};
-      const upperPlayers = upper.snapshot?.playersById || {};
-      const represented = new Set([
-        ...(lower.snapshot?.representedPlayerIds || []),
-        ...(upper.snapshot?.representedPlayerIds || []),
-        ...Object.keys(lowerPlayers),
-        ...Object.keys(upperPlayers),
-      ]);
-
-      const playersByIdInterpolated = {};
-      represented.forEach((id) => {
-        const low = lowerPlayers[id];
-        const up = upperPlayers[id];
-        if (!low && !up) return;
-        const base = low || up;
-        const lowX = low?.x ?? up?.x ?? 0;
-        const lowY = low?.y ?? up?.y ?? 0;
-        const upX = up?.x ?? low?.x ?? 0;
-        const upY = up?.y ?? low?.y ?? 0;
-        playersByIdInterpolated[id] = {
-          ...base,
-          x: lerp(lowX, upX, alpha),
-          y: lerp(lowY, upY, alpha),
-        };
-      });
-
-      const lowerBall = lower.snapshot?.ball ?? null;
-      const upperBall = upper.snapshot?.ball ?? null;
-      const ballInterpolated = lowerBall || upperBall
-        ? {
-          ...(lowerBall || upperBall),
-          x: lerp(lowerBall?.x ?? upperBall?.x ?? 0, upperBall?.x ?? lowerBall?.x ?? 0, alpha),
-          y: lerp(lowerBall?.y ?? upperBall?.y ?? 0, upperBall?.y ?? lowerBall?.y ?? 0, alpha),
-        }
-        : null;
-
-      return {
-        playersById: playersByIdInterpolated,
-        representedPlayerIds: Array.from(represented),
-        ball: ballInterpolated,
-      };
-    },
-    []
-  );
-
-  const activeSnapshot = useMemo(
-    () => buildActiveSnapshotAtTime(timePercent, keyframeSnapshots),
-    [buildActiveSnapshotAtTime, keyframeSnapshots, timePercent]
-  );
-
-  const renderPlayersById = activeSnapshot?.playersById || playersById;
-  const renderBall = activeSnapshot?.ball || ball;
+  useEffect(() => {
+    if (isItemDraggingRef.current) return;
+    const snapshot = buildSnapshotAtTime(timePercent, keyframeSnapshots);
+    if (!snapshot) return;
+    applySlate(snapshot);
+  }, [timePercent, keyframeSnapshots, buildSnapshotAtTime]);
 
   const items = [
-    ...Object.values(renderPlayersById).map((p) => ({
+    ...Object.values(playersById).map((p) => ({
       id: p.id,
       type: "player",
       x: p.x,
@@ -1243,7 +1257,7 @@ function App() {
       assignment: p.assignment,
       color: p.color || allPlayersDisplay.color,
     })),
-    { id: renderBall.id, type: "ball", x: renderBall.x, y: renderBall.y },
+    { id: ball.id, type: "ball", x: ball.x, y: ball.y },
   ];
   const selectedPlayers = (selectedPlayerIds || [])
     .map((id) => playersById?.[id])

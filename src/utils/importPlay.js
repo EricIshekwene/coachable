@@ -290,9 +290,9 @@ export const importPlayV1_0_0 = (
   });
 
   const durationMs =
-    Number.isFinite(Number(exportObj.play?.timeline?.durationMs)) &&
-      Number(exportObj.play?.timeline?.durationMs) > 0
-      ? Number(exportObj.play.timeline.durationMs)
+    Number.isFinite(Number(exportObj.timeline?.durationMs)) &&
+      Number(exportObj.timeline?.durationMs) > 0
+      ? Number(exportObj.timeline.durationMs)
       : defaultDurationMs;
   const tracks = exportObj.tracks ?? {};
   const timesMs = unionTrackTimesMs(tracks);
@@ -302,12 +302,8 @@ export const importPlayV1_0_0 = (
     timesMs,
     durationMs
   );
-  console.log("IMPORT tracks keys:", Object.keys(tracks).slice(0, 5));
-  console.log("IMPORT sample track:", tracks[Object.keys(tracks)[0]]);
-  console.log("IMPORT timesMs:", timesMs.slice(0, 20), "count:", timesMs.length);
 
-
-  const controlPill = exportObj.play?.timeline?.controlPill ?? {};
+  const controlPill = exportObj.timeline?.controlPill ?? {};
   const loopSeconds = durationMs / 1000;
 
   return {
@@ -363,6 +359,6 @@ export const addKeyframeFromData = (keyframes, keyframeSnapshots, timeValue, sna
   }
   nextKeyframes.sort((a, b) => a - b);
   const nextSnapshots = { ...(keyframeSnapshots || {}) };
-  nextSnapshots[String(timeValue)] = snapshot;
+  nextSnapshots[sanitizePercentKey(timeValue)] = snapshot;
   return { keyframes: nextKeyframes, keyframeSnapshots: nextSnapshots };
 };
