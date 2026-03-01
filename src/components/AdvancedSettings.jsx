@@ -8,7 +8,7 @@ import AnimationSettingsSection from "./advancedSettings/AnimationSettingsSectio
 import LoggerSettingsSection from "./advancedSettings/LoggerSettingsSection";
 import SavePrefabButton from "./rightPanel/SavePrefabButton";
 
-export default function AdvancedSettings({ value, onChange, onReset, onClose }) {
+export default function AdvancedSettings({ value, onChange, onReset, onClose, onCopyDebug }) {
     const settings = value ?? {};
     const pitch = settings.pitch ?? {};
     const players = settings.players ?? {};
@@ -53,7 +53,7 @@ export default function AdvancedSettings({ value, onChange, onReset, onClose }) 
                 <BallSettingsSection value={ball} onChange={updateBall} />
                 <ExportVideoSettingsSection value={exportVideo} onChange={updateExportVideo} />
                 <AnimationSettingsSection value={animation} onChange={updateAnimation} />
-                <LoggerSettingsSection value={logging} onChange={updateLogging} />
+                <LoggerSettingsSection value={logging} onChange={updateLogging} onCopyDebug={onCopyDebug} />
                 <SavePrefabButton />
             </aside>
             {/* Reset to Default - Fixed at bottom */}

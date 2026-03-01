@@ -1,7 +1,10 @@
 import { createEmptyAnimation, deserializeAnimation } from "../animation";
 import { log as logAnimDebug } from "../animation/debugLogger";
 
+/** Expected schema version for import validation. */
 export const IMPORT_SCHEMA_VERSION = "play-export-v2";
+
+/** Maximum allowed file size for imports (5 MB). */
 export const IMPORT_FILE_SIZE_LIMIT_BYTES = 5 * 1024 * 1024;
 
 const asObject = (value) => {
@@ -9,6 +12,12 @@ const asObject = (value) => {
   return value;
 };
 
+/**
+ * Validates and normalizes an imported JSON object. Supports full play exports
+ * and raw animation JSON. Returns `{ ok, error?, play? }`.
+ * @param {Object} input - Parsed JSON input.
+ * @returns {{ ok: boolean, error?: string, play?: Object }}
+ */
 export const validatePlayImport = (input) => {
   const fail = (message) => {
     logAnimDebug(`import failed err=${message}`);

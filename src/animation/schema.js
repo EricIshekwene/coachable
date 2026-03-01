@@ -1,4 +1,7 @@
+/** Current animation schema version. */
 export const ANIMATION_VERSION = 1;
+
+/** Default animation duration in milliseconds. */
 export const DEFAULT_DURATION_MS = 30000;
 
 const EPSILON_MS = 0.5;
@@ -29,6 +32,7 @@ const normalizeKeyframe = (keyframe) => {
   return r === undefined ? { t, x, y } : { t, x, y, r };
 };
 
+/** Normalizes, sorts by time, and deduplicates a keyframes array (merging within 0.5ms). */
 export const sortAndDedupeKeyframes = (keyframes = []) => {
   const normalized = keyframes
     .map((entry) => normalizeKeyframe(entry))
@@ -47,10 +51,12 @@ export const sortAndDedupeKeyframes = (keyframes = []) => {
   return deduped;
 };
 
+/** Normalizes a single track, ensuring keyframes are sorted and deduplicated. */
 export const normalizeTrack = (track) => ({
   keyframes: sortAndDedupeKeyframes(track?.keyframes || []),
 });
 
+/** Normalizes a full animation object: validates duration, normalizes all tracks, preserves metadata. */
 export const normalizeAnimation = (animation) => {
   const source = animation && typeof animation === "object" ? animation : {};
   const durationMs = Math.max(1, normalizeTime(source.durationMs || DEFAULT_DURATION_MS));
@@ -81,6 +87,7 @@ export const normalizeAnimation = (animation) => {
   return normalized;
 };
 
+/** Creates a new empty animation with the given duration and timestamps. */
 export const createEmptyAnimation = ({ durationMs = DEFAULT_DURATION_MS } = {}) =>
   normalizeAnimation({
     version: ANIMATION_VERSION,
@@ -89,6 +96,7 @@ export const createEmptyAnimation = ({ durationMs = DEFAULT_DURATION_MS } = {}) 
     meta: { createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
   });
 
+/** Returns the track for a player ID, or an empty track if it doesn't exist. */
 export const ensureTrack = (animation, playerId) => {
   const normalized = normalizeAnimation(animation);
   const track = normalized.tracks[playerId];
@@ -96,6 +104,7 @@ export const ensureTrack = (animation, playerId) => {
   return { keyframes: [] };
 };
 
+/** Inserts or updates a keyframe in a track at the specified time (within 0.5ms tolerance). */
 export const upsertKeyframe = (track, keyframe) => {
   const normalized = normalizeTrack(track);
   const nextKeyframe = normalizeKeyframe(keyframe);
@@ -113,6 +122,7 @@ export const upsertKeyframe = (track, keyframe) => {
   };
 };
 
+/** Removes the keyframe at a specified time from a track (within tolerance). */
 export const deleteKeyframeAtTime = (track, timeMs, toleranceMs = EPSILON_MS) => {
   const normalized = normalizeTrack(track);
   const target = normalizeTime(timeMs);
@@ -121,6 +131,7 @@ export const deleteKeyframeAtTime = (track, timeMs, toleranceMs = EPSILON_MS) =>
   };
 };
 
+/** Collects all unique keyframe times across specified tracks, sorted ascending. */
 export const getTrackKeyframeTimes = (animation, playerIds) => {
   const normalized = normalizeAnimation(animation);
   const ids = Array.isArray(playerIds) && playerIds.length ? playerIds : Object.keys(normalized.tracks);
@@ -133,4 +144,5 @@ export const getTrackKeyframeTimes = (animation, playerIds) => {
   return Array.from(timeSet).sort((a, b) => a - b);
 };
 
+/** Deep-clones an animation object via normalization. */
 export const cloneAnimation = (animation) => normalizeAnimation(animation);

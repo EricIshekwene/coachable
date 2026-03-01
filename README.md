@@ -1,71 +1,99 @@
 # Coachable
 
-## Setup Instructions
+A browser-based sports play designer (rugby focus) built with React, Vite, and Konva.
 
-Follow these steps to set up the project on your machine:
+## Setup Instructions
 
 ### Prerequisites
 
 - **Node.js** (version 18 or higher recommended)
-- **npm** (comes with Node.js) or **yarn**
+- **npm** (comes with Node.js)
 
-To check if you have Node.js installed, run:
+### Installation
+
 ```bash
-node --version
-npm --version
+cd coachable
+npm install
+npm run dev
 ```
 
-If you don't have Node.js installed, download it from [nodejs.org](https://nodejs.org/).
-
-### Installation Steps
-
-1. **Clone or download the repository**
-   ```bash
-   cd coachable
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-   This will install all required packages listed in `package.json`.
-
-3. **Start the development server**
-   ```bash
-   npm run dev
-   ```
-   The application will start and you should see a local URL (typically `http://localhost:5173`) in your terminal.
-
-4. **Open in your browser**
-   - Open the URL shown in the terminal (usually `http://localhost:5173`)
-   - The page should load and you can start using the application
+The app will start at `http://localhost:5173`.
 
 ### Available Scripts
 
-- `npm run dev` - Start the development server
-- `npm run build` - Build the project for production
-- `npm run preview` - Preview the production build locally
-- `npm run lint` - Run ESLint to check for code issues
+- `npm run dev` — Start the development server
+- `npm run build` — Build for production
+- `npm run preview` — Preview the production build
+- `npm run lint` — Run ESLint
 
 ### Troubleshooting
 
-- If you encounter dependency issues, try deleting `node_modules` and `package-lock.json`, then run `npm install` again
-- Make sure you're using a compatible Node.js version (18+)
-- If the port is already in use, Vite will automatically try the next available port
+- If dependency issues occur, delete `node_modules` and `package-lock.json`, then run `npm install` again
+- Requires Node.js 18+
 
-## Canvas Coordinates and Centering
+## Project Structure
 
-- Background field is centered using CSS: `left: 50%`, `top: 50%`, `transform: translate(-50%, -50%)`.
-- World zoom now centers correctly by using `transform-origin: 50% 50%`.
-- Item coordinates use a centered origin: `(0, 0)` is the middle of the screen/field. Positive `x` moves right; positive `y` moves down.
-- Items render inside a center-origin container so their `left/top` are measured from the center.
+```
+src/
+├── main.jsx                    # App entry point
+├── App.jsx                     # Root component (message popup state)
+├── index.css                   # Global styles (Tailwind)
+│
+├── animation/                  # Animation engine and schema
+│   ├── schema.js               # Data normalization, keyframe helpers
+│   ├── engine.js               # RAF-driven playback engine
+│   ├── interpolate.js          # Pose interpolation between keyframes
+│   ├── serialize.js            # JSON import/export
+│   ├── debugLogger.js          # Ring-buffer debug logging
+│   └── index.js                # Public barrel exports
+│
+├── canvas/                     # Konva-based canvas rendering
+│   ├── KonvaCanvasRoot.jsx     # Main canvas (Stage, items, interactions)
+│   ├── BoardViewport.jsx       # Viewport wrapper (clipping, export ref)
+│   └── hooks/                  # Canvas interaction hooks
+│       ├── useCanvasSize.js    # ResizeObserver
+│       ├── useCanvasPan.js     # Pan handling
+│       ├── useCanvasMarquee.js # Marquee selection
+│       └── useCanvasSnapping.js # Snap guides
+│
+├── features/slate/             # Main play editor feature
+│   ├── Slate.jsx               # Top-level wiring component
+│   └── hooks/                  # State management hooks
+│       ├── useSlateEntities.js # Players, ball, selection, drag
+│       ├── useSlateHistory.js  # Undo/redo for entities
+│       ├── useFieldViewport.js # Camera, zoom, rotation
+│       └── useAdvancedSettings.js # Settings + logging
+│
+├── components/                 # UI components
+│   ├── WideSidebar.jsx         # Left tools panel entry
+│   ├── RightPanel.jsx          # Right info/settings panel
+│   ├── AdvancedSettings.jsx    # Advanced settings modal
+│   ├── controlPill/            # Bottom timeline controller
+│   ├── sidebar/                # Sidebar section components
+│   ├── wideSidebar/            # Wide sidebar root
+│   ├── rightPanel/             # Right panel sections
+│   ├── advancedSettings/       # Advanced settings sections
+│   ├── subcomponents/          # Shared UI primitives (Buttons, Popovers)
+│   ├── MessagePopup/           # Toast notifications
+│   └── messaging/              # useMessagePopup hook
+│
+├── utils/                      # Import/export utilities
+│   ├── exportPlay.js           # Build + download play JSON
+│   └── importPlay.js           # Validate + parse imported plays
+│
+└── assets/                     # Images and fonts
+```
 
-Implications:
-- New players/balls added at `{ x: 0, y: 0 }` appear at center.
-- Panning still uses the camera `{ x, y }` and does not change item world coordinates.
-- If you previously relied on top-left–based item coordinates, update your logic to the centered system.
+## Coordinate System
 
-Key files:
-- `src/canvas/FieldLayer.jsx` – centers the field image.
-- `src/canvas/WorldLayer.jsx` – applies camera transform with center `transform-origin`.
-- `src/canvas/ItemsLayer.jsx` – wraps items in a center-origin container.
+- World coordinates are centered: `(0, 0)` is the middle of the field.
+- `+x` is right, `+y` is down, units are pixels.
+- Camera transform is `translate(camera.x, camera.y) scale(camera.zoom)`.
+- Field rotates visually but world coordinates stay axis-aligned.
+
+## Key Architecture
+
+- **State management**: Custom hooks in `features/slate/hooks/` — no Redux or context
+- **Canvas**: Konva.js via react-konva. Single `KonvaCanvasRoot` component handles all rendering
+- **Animation**: Immutable JSON data + RAF engine. Playback updates Konva nodes imperatively (no React re-renders per frame)
+- **Import/Export**: Versioned JSON schema (`play-export-v2`)

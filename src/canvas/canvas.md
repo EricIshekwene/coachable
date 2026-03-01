@@ -1,273 +1,84 @@
 # Canvas System Overview
 
-This folder implements a layered canvas architecture for building interactive sports plays (field + players + camera).  
-The goal is to keep behavior predictable, scalable, and readable as complexity grows.
+This folder implements the interactive Konva-based canvas for the sports play designer.
 
-The canvas follows a **viewport → camera → world → items** mental model, similar to tools like Figma or Miro.
+## Architecture
 
----
+The canvas uses **react-konva** (Konva.js) with a single component (`KonvaCanvasRoot`) that handles all rendering and interaction. Canvas hooks extract reusable logic into focused modules.
 
-## Mental Model
+### Coordinate System
 
-There are three coordinate spaces:
-
-1. **Viewport space**
-   - What the user can see.
-   - Clipped to screen bounds.
-   - Used for export.
-
-2. **World space**
-   - The infinite field where objects live.
-   - Players, balls, and markings use world coordinates.
-   - The field image is anchored here.
-
-3. **Camera**
-   - Controls how the world is viewed.
-   - Panning moves the camera, not the field or items directly.
-   - Zoom scales the world uniformly.
-
-Dragging behavior depends on the active tool:
-- **Hand tool** → pans the camera.
-- **Select tool** → drags individual items.
+- World coordinates are centered: `(0, 0)` is the middle of the viewport/field.
+- `+x` is right, `+y` is down, units are pixels.
+- Camera transform: `translate(camera.x, camera.y) scale(camera.zoom)`.
+- Field rotates visually but world coords stay axis-aligned.
 
 ---
 
 ## Folder Structure
 
-src/canvas/
-├── CanvasRoot.jsx
-├── BoardViewport.jsx
-├── PanHandler.jsx
-├── WorldLayer.jsx
-├── FieldLayer.jsx
-├── DraggableItem.jsx
-├── ItemsLayer.jsx
-└── renderers/
-└── ItemVisual.jsx
-
-
-Each file has a single responsibility.
+```
+canvas/
+├── KonvaCanvasRoot.jsx    # Main canvas component (Stage, items, interactions)
+├── BoardViewport.jsx      # Wrapper div for clipping and export ref
+├── canvas.md              # This file
+├── object-snapping.md     # Snapping behavior documentation
+└── hooks/
+    ├── useCanvasSize.js   # ResizeObserver for container dimensions
+    ├── useCanvasPan.js    # Pointer-based camera panning
+    ├── useCanvasMarquee.js # Rubber-band marquee selection
+    └── useCanvasSnapping.js # Snap guide math + imperative drawing
+```
 
 ---
 
 ## Component Responsibilities
 
-### CanvasRoot
+### KonvaCanvasRoot
 
-**Role**
-- Top-level coordinator for the canvas.
-- Owns shared state.
+The main canvas component. Renders a Konva `Stage` containing:
+- **Field image** — centered and rotated based on `fieldRotation`
+- **Player circles** — colored circles with number/name text
+- **Ball** — image rendered at world coordinates
+- **Snap guidelines** — orange dashed lines drawn during drag
 
-**Owns**
-- `tool` ("hand" | "select")
-- `camera` `{ x, y, zoom }`
-- `items` array `{ id, type, x, y, ... }`
+Handles all interaction:
+- **Pan** (hand tool or middle-mouse) via `useCanvasPan`
+- **Zoom** (Ctrl+wheel or pinch)
+- **Marquee select** (drag on empty space with select tool) via `useCanvasMarquee`
+- **Item drag** with center-to-center snapping via `useCanvasSnapping`
+- **Add player** (click on empty space with addPlayer tool)
 
-**Does NOT**
-- Render visuals directly.
-- Handle pointer math itself.
-
----
+Exposes an imperative animation renderer via `animationRendererRef`:
+- `setPoses(poseMap)` — directly update Konva node positions (bypasses React state)
+- `clearPoses()` — clear animation overrides
+- `getCurrentPose(id)` — read current rendered position
 
 ### BoardViewport
 
-**Role**
-- Defines the visible screen area.
+Wrapper `<div>` that clips content with `overflow: hidden`, provides the ref for future image export, and prevents touch/select browser defaults.
 
-**Owns**
-- `ref` used for export.
-- Clipping via `overflow-hidden`.
-- Background color.
+### Hooks
 
-**Key properties**
-- `position: relative`
-- `overflow: hidden`
-
-Everything outside this component is invisible.
+- **useCanvasSize** — Tracks container width/height via ResizeObserver
+- **useCanvasPan** — Pointer-based panning with hand tool or middle-mouse
+- **useCanvasMarquee** — Rubber-band selection box with intersection testing
+- **useCanvasSnapping** — Pure snapping math (center-to-center, field center, canvas center) and imperative guideline drawing
 
 ---
 
-### PanHandler
+## Rendering Pipeline
 
-**Role**
-- Handles camera panning via pointer input.
+1. `BoardViewport` clips the visible area
+2. Konva `Stage` fills the viewport
+3. Background layer renders the field image (centered, rotated)
+4. Items layer renders players and ball at world coordinates
+5. Guides layer renders snap guidelines during drag (imperative, not React state)
 
-**Behavior**
-- Only active when `tool === "hand"`.
-- Only responds to dragging empty space.
-- Updates `camera.x` and `camera.y`.
+## Interaction Flow
 
-**Important rule**
-- If a draggable item is clicked, it calls `stopPropagation()`, preventing pan.
-
----
-
-### WorldLayer
-
-**Role**
-- Applies camera transform to the world.
-
-**Behavior**
-- Wraps all world content.
-- Applies:
-  - `transform: translate(camera.x, camera.y) scale(camera.zoom)`
-  - `transform-origin: 50% 50%` (zoom around center)
-
-
-**Result**
-- Field and all items move together during pan and zoom.
-- Zooming focuses on the visual center (no left/top drift).
-
----
-
-### FieldLayer
-
-**Role**
-- Renders the pitch graphic.
-
-**Positioning**
-- Centered by default using CSS percentages:
-- `left: 50%`
-- `top: 50%`
-- `transform: translate(-50%, -50%)`
-
-**Rules**
-- No React state.
-- No dragging logic.
-- `pointer-events: none`
-- `draggable={false}`
-
-The field can extend beyond the viewport and will be clipped.
-
----
-
-### DraggableItem
-
-**Role**
-- Generic draggable wrapper for a single object.
-
-**Used for**
-- Players
-- Balls
-- Cones, arrows, text (future)
-
-**Behavior**
-- Active only when `tool === "select"`.
-- Uses pointer delta math to update `{ x, y }` in world space.
-- Calls `e.stopPropagation()` on pointer down.
-
-**Does NOT**
-- Pan the camera.
-- Know about other items.
-- Handle visuals.
-
----
-
-### ItemsLayer
-
-**Role**
-- Renders all draggable items.
-
-**Behavior**
-- Wraps items in a center-origin container so world coordinates are measured from the visual center.
-- Maps `items` array → `DraggableItem`.
-- Delegates appearance to `ItemVisual`.
-
-Keeps rendering logic separate from interaction logic.
-
----
-
-### ItemVisual
-
-**Role**
-- Pure visual rendering.
-
-**Examples**
-- Player → colored circle
-- Ball → image asset
-
-**Rules**
-- No pointer logic.
-- No state.
-- No position math.
-
----
-
-## Default Positioning Rules
-
-- The field is always centered by CSS (50%/50% with translate).
-- The camera defaults to `{ x: 0, y: 0, zoom: 1 }`.
-- World coordinates are centered: `{ x: 0, y: 0 }` is the middle of the viewport/field.
-- Items placed at `{ x: 0, y: 0 }` appear at midfield; positive `x` is right, positive `y` is down.
-- Avoid hardcoded top-left–based pixel assumptions like `{ x: 300, y: 300 }` unless intentional.
-
-### Zoom Behavior
-- `WorldLayer` uses `transform-origin: 50% 50%` so zoom pivots around the center.
-- To zoom toward the pointer, compute camera deltas against pointer-to-center vector (not yet implemented here).
-
-### Adding New Items (Players/Ball)
-- Create items in world coordinates relative to center. Example: `{ x: 0, y: 0 }` spawns at the visual center.
-- If you want to spawn at the current screen center regardless of panning, you can use the current camera to compute a world position from a screen point and set the item `{ x, y }` accordingly.
-
----
-
-## Why This Architecture
-
-This structure prevents common issues:
-- No nested draggable conflicts.
-- No magic numbers tied to screen size.
-- Clean separation of input, layout, and visuals.
-- Easy export (capture only `BoardViewport`).
-
-It also makes future features easier:
-- Zoom
-- Snap-to-grid
-- Multi-select
-- Keyframe animation
-- Different sports fields
-
----
-
-## Summary
-
-- **Viewport** defines what is visible.
-- **Camera** defines where you are looking.
-- **World** contains everything.
-- **Items** move independently unless the camera moves.
-
-If something moves unexpectedly, check:
-1. Which layer owns the movement?
-2. Whether propagation was stopped.
-3. Whether the transform is applied at the correct level.
-
-## Debug Checklist
-
-Use this list when something moves incorrectly, drags unexpectedly, or disappears.
-
-### 1. Field is not centered
-- Confirm `FieldLayer` uses:
-  - `left: 50%`
-  - `top: 50%`
-  - `transform: translate(-50%, -50%)`
-- Ensure there is **no field position stored in React state**.
-- Verify the camera default is `{ x: 0, y: 0, zoom: 1 }`.
-
-### 1b. Zoom drifts left/top
-- Confirm `WorldLayer` style includes `transform-origin: 50% 50%`.
-- If zoom is pointer-centered, ensure camera adjusts during wheel (not included by default).
-
----
-
-### 2. Field or items disappear while panning
-- Check `BoardViewport` has:
-  - `position: relative`
-  - `overflow: hidden`
-- Confirm the field image has `max-w-none`.
-- Verify `WorldLayer` is not constrained by width/height.
-
----
-
-### 3. Dragging a player also pans the camera
-- Ensure `DraggableItem` calls:
-  ```js
-  e.stopPropagation();
+- Tool modes: `hand`, `select`, `addPlayer`, `color`
+- **Hand tool**: pointer down → pan start → pointer move → camera delta → pointer up → pan end
+- **Select tool**: pointer down on item → drag with snapping; pointer down on empty → marquee select
+- **Add player**: pointer down on empty → screen-to-world conversion → add player at world coords
+- **Zoom**: Ctrl+wheel → zoom toward pointer; plain wheel → vertical pan

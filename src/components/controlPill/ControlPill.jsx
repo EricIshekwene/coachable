@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import TimeBar from "./TimeBar";
 import SpeedSlider from "./SpeedSlider";
 import PlaybackControls from "./PlaybackControls";
@@ -29,11 +29,8 @@ export default function ControlPill({
   onAutoplayChange,
   getAuthoritativeTimeMs,
   onDragStateChange,
-  onCopyDebug,
 }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [copiedState, setCopiedState] = useState("idle");
-  const copiedResetRef = useRef(null);
 
   const timelineDurationMs = Math.max(1, Math.round(Number(durationMs) || 30000));
   const clampedTimeMs = clamp(Math.round(Number(currentTimeMs) || 0), 0, timelineDurationMs);
@@ -50,16 +47,6 @@ export default function ControlPill({
   );
 
   const sortedKeyframes = useMemo(() => [...(keyframesMs || [])].sort((a, b) => a - b), [keyframesMs]);
-
-  useEffect(
-    () => () => {
-      if (copiedResetRef.current) {
-        clearTimeout(copiedResetRef.current);
-        copiedResetRef.current = null;
-      }
-    },
-    []
-  );
 
   const handleSeek = (timeMs, meta) => {
     onSelectKeyframe?.(null);
@@ -146,24 +133,6 @@ export default function ControlPill({
     }
   };
 
-  const handleCopyDebug = async (event) => {
-    event.stopPropagation();
-    if (!onCopyDebug) return;
-    try {
-      const ok = await onCopyDebug();
-      setCopiedState(ok ? "copied" : "error");
-    } catch {
-      setCopiedState("error");
-    }
-    if (copiedResetRef.current) {
-      clearTimeout(copiedResetRef.current);
-    }
-    copiedResetRef.current = setTimeout(() => {
-      setCopiedState("idle");
-      copiedResetRef.current = null;
-    }, 1500);
-  };
-
   return (
     <>
       <div
@@ -207,14 +176,6 @@ export default function ControlPill({
             onAddKeyframe={handleAddKeyframe}
             onDeleteKeyframe={handleDeleteKeyframe}
           />
-
-          <button
-            type="button"
-            onClick={handleCopyDebug}
-            className="h-[16px] sm:h-[22px] md:h-[24px] lg:h-[32px] bg-BrandBlack2 border-[0.625px] border-BrandGray text-BrandOrange rounded-xl px-[6.25px] sm:px-[9.375px] text-[9px] sm:text-[11px] md:text-[12px] lg:text-[13px] font-DmSans cursor-pointer"
-          >
-            {copiedState === "copied" ? "Copied" : copiedState === "error" ? "Copy Failed" : "Copy Debug"}
-          </button>
         </div>
       </div>
 

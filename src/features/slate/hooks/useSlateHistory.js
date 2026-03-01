@@ -1,5 +1,14 @@
 import { useState } from "react";
 
+/**
+ * Manages undo/redo history for slate entity snapshots.
+ * @param {Object} params
+ * @param {Function} params.snapshotSlate - Returns a snapshot of current slate state.
+ * @param {Function} params.applySlate - Restores slate state from a snapshot.
+ * @param {React.MutableRefObject} params.isRestoringRef - Ref flag to suppress history push during restore.
+ * @param {Function} params.logEvent - Scoped logging callback.
+ * @returns {Object} pushHistory, onUndo, onRedo, clearSlateHistory, and stack state.
+ */
 export function useSlateHistory({ snapshotSlate, applySlate, isRestoringRef, logEvent }) {
   const [historyPast, setHistoryPast] = useState([]);
   const [historyFuture, setHistoryFuture] = useState([]);

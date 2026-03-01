@@ -2,6 +2,13 @@ const lerp = (from, to, t) => from + (to - from) * t;
 
 const hasRotation = (pose) => typeof pose?.r === "number" && Number.isFinite(pose.r);
 
+/**
+ * Linearly interpolates a pose (x, y, optional r) from a track's keyframes at a given time.
+ * @param {Object} track - Track with keyframes array.
+ * @param {number} timeMs - Time in milliseconds.
+ * @param {Object} [fallbackPose] - Fallback if track has no keyframes.
+ * @returns {{ x: number, y: number, r?: number }}
+ */
 export const getPoseAtTime = (track, timeMs, fallbackPose = { x: 0, y: 0, r: 0 }) => {
   const keyframes = Array.isArray(track?.keyframes) ? track.keyframes : [];
   if (keyframes.length === 0) {
@@ -49,6 +56,14 @@ export const getPoseAtTime = (track, timeMs, fallbackPose = { x: 0, y: 0, r: 0 }
   return pose;
 };
 
+/**
+ * Samples poses for multiple tracks at a given time.
+ * @param {Object} animation - Animation object with tracks.
+ * @param {number} timeMs - Time in milliseconds.
+ * @param {Object} [fallbackPoses] - Map of fallback poses keyed by player ID.
+ * @param {string[]} [playerIds] - Specific IDs to sample (defaults to all tracks).
+ * @returns {Object} Map of player ID to interpolated pose.
+ */
 export const samplePosesAtTime = (animation, timeMs, fallbackPoses = {}, playerIds) => {
   const tracks =
     animation && typeof animation === "object" && animation.tracks && typeof animation.tracks === "object"

@@ -1,8 +1,14 @@
 import React, { forwardRef } from "react";
 
-// BoardViewport: Defines the visible screen area.
-// - Relative positioning, overflow-hidden, no drag logic.
-// - Owns the export ref for future image export.
+/**
+ * Viewport wrapper that defines the visible canvas area.
+ * Provides relative positioning, overflow clipping, and touch/select prevention.
+ * @param {Object} props
+ * @param {string} [props.className] - Additional CSS classes.
+ * @param {Object} [props.style] - Inline styles (e.g., background color).
+ * @param {React.ReactNode} props.children - Canvas content to render.
+ * @param {React.Ref} ref - Forwarded ref to the outer div (used for image export).
+ */
 const BoardViewport = forwardRef(function BoardViewport({ className = "", style, children }, ref) {
   return (
     <div

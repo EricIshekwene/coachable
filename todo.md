@@ -1,6 +1,11 @@
-Download play file as json
-import plays
-save image frame as png
-drawing
-text
-groups going into prefabs
+# Todo
+
+## Completed
+- [x] Download play file as JSON
+- [x] Import plays
+
+## Pending
+- [ ] Save image frame as PNG
+- [ ] Drawing tools
+- [ ] Text tool
+- [ ] Groups / prefabs

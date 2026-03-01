@@ -1,131 +1,72 @@
 # ControlPill Component
 
-This folder contains the ControlPill timeline control component and all its subcomponents.
+Timeline view/controller for the play editor. Driven by external animation state from `Slate.jsx`.
 
-## Component Structure
+## Structure
 
 ```
 controlPill/
 ├── ControlPill.jsx       # Main timeline control component
+├── TimeBar.jsx           # Timeline progress bar with direct DOM updates
 ├── TimePill.jsx          # Draggable timeline with ticks and thumb
 ├── KeyframeDisplay.jsx   # Keyframe icons on timeline
 ├── SpeedSlider.jsx       # Speed control slider with time display
 ├── PlaybackControls.jsx  # Play/pause/skip buttons
 ├── KeyframeManager.jsx   # Add/delete keyframe button
-├── DropdownMenu.jsx      # Settings dropdown (trash, undo, redo, autoplay)
-└── README.md            # This file
+├── DropdownMenu.jsx      # Settings dropdown (trash, autoplay, copy debug)
+├── DebugOverlay.jsx      # Dev overlay for live engine timing
+└── README.md             # This file
 ```
 
-## Main ControlPill Component
+## Props (from Slate)
 
-The main `ControlPill.jsx` component orchestrates all these subcomponents and exposes state via optional callbacks.
+ControlPill is a **controlled component**. All state is owned by `Slate.jsx` and the `AnimationEngine`:
 
-### Usage Example
+| Prop | Type | Description |
+|------|------|-------------|
+| `currentTimeMs` | number | Current engine time in milliseconds |
+| `durationMs` | number | Total animation duration |
+| `isPlaying` | boolean | Whether the engine is playing |
+| `speedMultiplier` | number (0-100) | Speed slider value |
+| `keyframeTimes` | number[] | Array of keyframe times in ms |
+| `selectedKeyframeTime` | number \| null | Currently selected keyframe time |
+| `autoplayEnabled` | boolean | Whether animation loops |
+| `onSeek(timeMs)` | function | Seek the engine to a time |
+| `onPlayToggle()` | function | Toggle play/pause |
+| `onSpeedChange(value)` | function | Update speed multiplier |
+| `onAddKeyframe()` | function | Add keyframe at current time |
+| `onDeleteKeyframe(timeMs)` | function | Delete a specific keyframe |
+| `onDeleteAllKeyframes()` | function | Clear all keyframes |
+| `onAutoplayChange(enabled)` | function | Toggle autoplay |
 
-```jsx
-import ControlPill from './components/controlPill/ControlPill';
+## Sub-components
 
-function App() {
-  const [timePercent, setTimePercent] = useState(0);
-  const [keyframes, setKeyframes] = useState([]);
-  const [speed, setSpeed] = useState(50);
-  const [isPlaying, setIsPlaying] = useState(false);
-
-  return (
-    <ControlPill
-      // Optional: Receive state updates
-      onTimePercentChange={(percent) => {
-        setTimePercent(percent);
-        console.log('Time:', percent);
-      }}
-      onKeyframesChange={(kfs) => {
-        setKeyframes(kfs);
-        console.log('Keyframes:', kfs);
-      }}
-      onSpeedChange={(speed) => {
-        setSpeed(speed);
-        console.log('Speed:', speed);
-      }}
-      onPlayStateChange={(playing) => {
-        setIsPlaying(playing);
-        console.log('Playing:', playing);
-      }}
-      onSelectedKeyframeChange={(kf) => {
-        console.log('Selected keyframe:', kf);
-      }}
-      onAutoplayChange={(enabled) => {
-        console.log('Autoplay:', enabled);
-      }}
-      
-      // Optional: External control (two-way binding)
-      externalTimePercent={timePercent}
-      externalIsPlaying={isPlaying}
-      externalSpeed={speed}
-    />
-  );
-}
-```
-
-### Exposed State
-
-The ControlPill component exposes the following state via callbacks:
-
-1. **timePercent** (0-100) - Current timeline position
-2. **keyframes** - Array of keyframe positions (0-100 values)
-3. **speedMultiplier** (0-100) - Speed control value
-4. **isPlaying** - Playback state
-5. **selectedKeyframe** - Currently selected keyframe (number | null)
-6. **autoplayEnabled** - Whether animation loops
-
-### Key Functions
-
-- `onTimePercentChange(timePercent)` - Called when timeline position changes
-- `onKeyframesChange(keyframes)` - Called when keyframes are added/removed
-- `onSpeedChange(speedMultiplier)` - Called when speed slider changes
-- `onPlayStateChange(isPlaying)` - Called when play/pause state changes
-- `onSelectedKeyframeChange(keyframe)` - Called when keyframe selection changes
-- `onAutoplayChange(enabled)` - Called when autoplay toggle changes
-
-## Component Details
+### TimeBar
+Renders timeline progress using direct DOM updates (not React state) for smooth animation. RAF-throttled scrubbing.
 
 ### TimePill
-- Displays the timeline with tick marks at 0%, 25%, 50%, 75%, 100%
-- Shows keyframe icons (via KeyframeDisplay)
-- Draggable thumb for scrubbing through timeline
-- Clickable to jump to position
+Timeline with tick marks at 0%, 25%, 50%, 75%, 100%. Shows keyframe icons via KeyframeDisplay. Draggable thumb for scrubbing.
 
 ### KeyframeDisplay
-- Renders keyframe icons on the timeline
-- Shows selected vs unselected states
-- Handles keyframe click events
+Renders keyframe icons on the timeline. Shows selected vs unselected states.
 
 ### SpeedSlider
-- Material-UI slider for speed control (0-100)
-- Displays calculated duration in seconds
-- Shows time icon
+MUI slider for speed control (0-100). Displays calculated duration.
 
 ### PlaybackControls
-- Play/pause button (toggles playback)
-- Skip back button (placeholder for implementation)
-- Skip forward button (placeholder for implementation)
+Play/pause button, skip back (to previous keyframe or time 0), skip forward (to next keyframe or end).
 
 ### KeyframeManager
-- "Add Keyframe" button when no keyframe is selected
-- "Delete Keyframe" button when a keyframe is selected
-- Limits to 10 keyframes maximum
-- Enforces minimum 4% distance between keyframes
+"Add Keyframe" when no keyframe selected, "Delete Keyframe" when one is selected.
 
 ### DropdownMenu
-- Trash icon - Clear all keyframes
-- Undo icon - Undo last action
-- Redo icon - Redo last undone action
-- Autoplay toggle - Enable/disable looping
-- Close button - Collapse dropdown
+Trash (clear all keyframes), autoplay toggle, copy debug logs.
 
-## Notes
+### DebugOverlay
+Dev overlay showing live engine/UI timing and tick diagnostics. Enabled via advanced settings logging.
 
-- All callbacks are optional - ControlPill works standalone
-- External control props allow two-way binding for controlled component pattern
-- Speed calculation: `speed = (0.25 + (speedMultiplier / 100) * 3.75) * 3`
-- Base loop duration: 30 seconds
-- Visual timeline maps 3%-97% visual range to 0-100% timePercent
+## Speed Calculation
+
+`playbackRate = (0.25 + (speedMultiplier / 100) * 3.75) * 3`
+
+Base duration: 30 seconds.

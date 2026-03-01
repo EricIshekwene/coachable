@@ -4,6 +4,7 @@ import Konva from "konva";
 import BoardViewport from "./BoardViewport";
 import RugbyField from "../assets/objects/Field Vectors/Rugby_Field.png";
 
+/** Loads an HTML Image from a URL and tracks loading status. */
 const useImage = (src) => {
   const [image, setImage] = useState(null);
   const [status, setStatus] = useState("loading");
@@ -46,6 +47,12 @@ const ZOOM_STEP = 0.1;
 const WHEEL_PAN_FACTOR = 1;
 const GUIDELINE_OFFSET = 5;
 
+/**
+ * Main Konva canvas component. Renders the Stage with field image, player/ball items,
+ * pan/zoom, marquee selection, drag-with-snapping, and guideline layer.
+ * Exposes an imperative animation renderer via `animationRendererRef` for direct
+ * Konva node manipulation during playback (bypassing React state for performance).
+ */
 function KonvaCanvasRoot({
   tool = "hand",
   camera,

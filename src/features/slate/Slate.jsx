@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import WideSidebar from "../../components/WideSidebar";
 import ControlPill from "../../components/controlPill/ControlPill";
-import DebugOverlay from "../../components/controlPill/DebugOverlay";
 import RightPanel from "../../components/RightPanel";
 import AdvancedSettings from "../../components/AdvancedSettings";
 import KonvaCanvasRoot from "../../canvas/KonvaCanvasRoot";
@@ -22,6 +21,14 @@ import {
   upsertKeyframe,
 } from "../../animation";
 import { getLogs as getAnimDebugLogs, log as logAnimDebug } from "../../animation/debugLogger";
+
+/**
+ * Top-level feature component for the play editor. Wires together entities, history,
+ * viewport, animation engine, playback, import/export, and renders the canvas,
+ * sidebar, control pill, right panel, and settings modal.
+ *
+ * @module Slate
+ */
 
 const LOOP_SECONDS = 30;
 const DEFAULT_SPEED_MULTIPLIER = 50;
@@ -50,15 +57,6 @@ function Slate({ onShowMessage }) {
   const [selectedKeyframeMs, setSelectedKeyframeMs] = useState(null);
   const [timelineDisplayTimeMs, setTimelineDisplayTimeMs] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [debugSnapshot, setDebugSnapshot] = useState({
-    playing: false,
-    engineTimeMs: 0,
-    uiTimeMs: 0,
-    dragging: false,
-    lastTickDeltaMs: 0,
-    playersUpdated: 0,
-    durationMs: LOOP_SECONDS * 1000,
-  });
   const [animationData, setAnimationData] = useState(() =>
     createEmptyAnimation({ durationMs: LOOP_SECONDS * 1000 })
   );
@@ -274,7 +272,7 @@ function Slate({ onShowMessage }) {
 
   useEffect(() => {
     const engine = engineRef.current;
-    const unsubscribe = engine.onTick(({ timeMs, isPlaying: playing, durationMs, lastTickDeltaMs }) => {
+    const unsubscribe = engine.onTick(({ timeMs, isPlaying: playing, lastTickDeltaMs }) => {
       currentTimeRef.current = timeMs;
       const playersUpdated = renderPoseAtTime(timeMs);
       const roundedTime = Math.round(timeMs);
@@ -291,16 +289,6 @@ function Slate({ onShowMessage }) {
       if (!playing || now - lastUiUpdateRef.current >= UI_TIME_UPDATE_INTERVAL_MS) {
         lastUiUpdateRef.current = now;
         setTimelineDisplayTimeMs((prev) => (prev === roundedTime ? prev : roundedTime));
-        setDebugSnapshot((prev) => ({
-          ...prev,
-          playing,
-          engineTimeMs: roundedTime,
-          uiTimeMs: roundedTime,
-          dragging: timelineDraggingRef.current,
-          lastTickDeltaMs: roundedDt,
-          playersUpdated,
-          durationMs: Math.round(durationMs || animationDataRef.current?.durationMs || 0),
-        }));
       }
     });
 
@@ -344,16 +332,6 @@ function Slate({ onShowMessage }) {
     currentTimeRef.current = 0;
     latestPosesRef.current = {};
     animationRendererRef.current?.clearPoses?.();
-    setDebugSnapshot((prev) => ({
-      ...prev,
-      playing: false,
-      engineTimeMs: 0,
-      uiTimeMs: 0,
-      dragging: false,
-      lastTickDeltaMs: 0,
-      playersUpdated: 0,
-      durationMs: LOOP_SECONDS * 1000,
-    }));
   };
 
   const onSaveToPlaybook = () => {};
@@ -401,10 +379,6 @@ function Slate({ onShowMessage }) {
   const handleTimelineDragStateChange = useCallback((dragging) => {
     const nextDragging = Boolean(dragging);
     timelineDraggingRef.current = nextDragging;
-    setDebugSnapshot((prev) => {
-      if (prev.dragging === nextDragging) return prev;
-      return { ...prev, dragging: nextDragging };
-    });
   }, []);
 
   const handleCopyDebug = useCallback(async () => {
@@ -654,16 +628,6 @@ function Slate({ onShowMessage }) {
       currentTimeRef.current = 0;
       latestPosesRef.current = {};
       animationRendererRef.current?.clearPoses?.();
-      setDebugSnapshot((prev) => ({
-        ...prev,
-        playing: false,
-        engineTimeMs: 0,
-        uiTimeMs: 0,
-        dragging: false,
-        lastTickDeltaMs: 0,
-        playersUpdated: 0,
-        durationMs: importedAnimation.durationMs,
-      }));
       logAnimDebug(`import ok duration=${importedAnimation.durationMs} tracks=${trackCount}`);
       return true;
     },
@@ -767,7 +731,6 @@ function Slate({ onShowMessage }) {
         onAutoplayChange={setAutoplayEnabled}
         getAuthoritativeTimeMs={getAuthoritativeTimeMs}
         onDragStateChange={handleTimelineDragStateChange}
-        onCopyDebug={handleCopyDebug}
       />
 
       <RightPanel
@@ -819,19 +782,10 @@ function Slate({ onShowMessage }) {
           value={advancedSettings}
           onChange={setAdvancedSettings}
           onReset={() => setAdvancedSettings(DEFAULT_ADVANCED_SETTINGS)}
+          onCopyDebug={handleCopyDebug}
           onClose={() => setShowAdvancedSettings(false)}
         />
       )}
-      <DebugOverlay
-        playing={debugSnapshot.playing}
-        engineTimeMs={debugSnapshot.engineTimeMs}
-        uiTimeMs={debugSnapshot.uiTimeMs}
-        dragging={debugSnapshot.dragging}
-        lastTickDeltaMs={debugSnapshot.lastTickDeltaMs}
-        playersUpdated={debugSnapshot.playersUpdated}
-        durationMs={debugSnapshot.durationMs}
-        selectedKeyframeCount={visibleKeyframesMs.length}
-      />
     </>
   );
 }

@@ -10,14 +10,9 @@ wideSidebar/
 └── WideSidebarRoot.jsx # Layout, state, callbacks; reuses sidebar sections with wide={true}
 ```
 
-The public entry is `src/components/WideSidebar.jsx`, which renders `WideSidebarRoot`. The wide sidebar reuses the same section components as the narrow Sidebar (`src/components/sidebar/`) by passing `wide={true}` so each section renders icon + label in a row via `WideSidebarRowButton`.
+The public entry is `src/components/WideSidebar.jsx`, which renders `WideSidebarRoot`. The wide sidebar reuses the same section components from `src/components/sidebar/` by passing `wide={true}` so each section renders icon + label in a row via `WideSidebarRowButton`.
 
-## Relation to Sidebar
-
-- **Sidebar** (narrow, icon-only) remains in the codebase at `src/components/Sidebar.jsx` and `src/components/sidebar/SidebarRoot.jsx` but is **not mounted** in the app.
-- **WideSidebar** is what App mounts in place of Sidebar. It uses the same callbacks and optional props (`players`, `prefabs`).
-
-## Callbacks (same as Sidebar)
+## Callbacks
 
 | Callback | When called |
 |----------|-------------|
@@ -30,17 +25,17 @@ The public entry is `src/components/WideSidebar.jsx`, which renders `WideSidebar
 | `onPrefabSelect?(prefab)` | User selects a prefab |
 | `onAddPlayer?(data)` | Reserved for add-player form submit |
 
-## Usage (from App)
+## Usage (from Slate)
 
 ```jsx
 import WideSidebar from './components/WideSidebar';
 
 <WideSidebar
-  onToolChange={(tool) => { if (tool === "hand" || tool === "select") setCanvasTool(tool); }}
+  onToolChange={handleToolChange}
   onUndo={onUndo}
   onRedo={onRedo}
   onReset={onReset}
 />
 ```
 
-Optional props: `players`, `prefabs` (same as Sidebar).
+Optional props: `players`, `prefabs`.

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 
+/** Default values for all advanced settings (pitch, players, ball, export, animation, logging). */
 export const DEFAULT_ADVANCED_SETTINGS = {
   pitch: {
     showMarkings: true,
@@ -28,6 +29,10 @@ export const DEFAULT_ADVANCED_SETTINGS = {
   },
 };
 
+/**
+ * Manages advanced settings state and provides scoped logging utility.
+ * @returns {Object} Settings state, visibility toggle, logging config, and logEvent function.
+ */
 export function useAdvancedSettings() {
   const [advancedSettings, setAdvancedSettings] = useState(DEFAULT_ADVANCED_SETTINGS);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);

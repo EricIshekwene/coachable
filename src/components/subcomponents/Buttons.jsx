@@ -2,7 +2,7 @@ import React, { forwardRef } from "react";
 import { IoChevronDownOutline } from "react-icons/io5";
 import { FiEdit } from "react-icons/fi";
 import { MdDeleteOutline } from "react-icons/md";
-// Sidebar chevron button component
+/** Sidebar button with icon, optional label, and a chevron dropdown trigger. */
 export const SidebarChevronButton = forwardRef(({
     Icon,
     label,
@@ -73,7 +73,7 @@ export const SidebarChevronButton = forwardRef(({
 
 SidebarChevronButton.displayName = "SidebarChevronButton";
 
-// Wide sidebar row: icon + label in a row (same width as RightPanel)
+/** Wide sidebar row button with icon, label text, and optional chevron. */
 export const WideSidebarRowButton = forwardRef(({
     Icon,
     label,
@@ -141,7 +141,7 @@ export const WideSidebarRowButton = forwardRef(({
 
 WideSidebarRowButton.displayName = "WideSidebarRowButton";
 
-// Original Button component (kept for backward compatibility)
+/** Simple square icon button with selected state styling. */
 export const Button = ({ Icon, onHover, onClick, isSelected }) => {
     return (
         <div className="w-full">
@@ -162,79 +162,7 @@ export const Button = ({ Icon, onHover, onClick, isSelected }) => {
     );
 };
 
-// Original ButtonWithLabel component (kept for backward compatibility)
-export const ButtonWithLabel = ({ Icon, label, onHover, onClick, isSelected }) => {
-    return (
-        <div className="w-full flex flex-col items-center gap-1">
-            <button
-                className={`
-                    w-full aspect-square rounded-md border-[0.5px] border-BrandGray 
-                    transition-all duration-300 flex items-center justify-center 
-                    ${isSelected ? "bg-BrandOrange " : "bg-BrandBlack2 "}
-                `}
-                onMouseEnter={onHover}
-                onClick={onClick}
-            >
-                {Icon}
-            </button>
-            <span className="text-[10px] sm:text-xs text-BrandGray text-center leading-none font-DmSans">
-                {label}
-            </span>
-        </div>
-    );
-};
-
-// Legacy components (deprecated, kept for compatibility)
-export const ButtonWithChevron = ({ Icon, onHover, onClick, isSelected }) => {
-    return (
-        <div className="w-full flex items-center gap-1">
-            <button
-                className={`
-             w-full aspect-square
-             rounded-md border-[0.5px] border-BrandGray
-             transition-all duration-100
-             flex items-center justify-center
-           ${isSelected ? "bg-BrandOrange " : "bg-BrandBlack2 "}
-           `}
-                onMouseEnter={onHover}
-                onClick={onClick}
-            >
-                {Icon}
-            </button>
-            <IoChevronDownOutline className="shrink-0 text-BrandOrange text-[10px] sm:text-xs md:text-sm" />
-        </div>
-    );
-};
-
-export const ButtonWithChevronAndLabel = ({ Icon, label, onHover, onClick, isSelected }) => {
-    return (
-        <div className="w-full flex flex-col items-center gap-1">
-            <div className="w-full flex items-center gap-1">
-                <button
-                    className={`
-              w-full aspect-square
-              rounded-md border-[0.5px] border-BrandGray
-              transition-all duration-300
-              flex items-center justify-center
-            ${isSelected ? "bg-BrandOrange " : "bg-BrandBlack2 "}
-            `}
-                    onMouseEnter={onHover}
-                    onClick={onClick}
-                >
-                    {Icon}
-                </button>
-
-                <IoChevronDownOutline className="shrink-0 text-BrandOrange text-[10px] sm:text-xs md:text-sm" />
-            </div>
-
-            <span className="text-[10px] sm:text-xs text-BrandGray text-center leading-none font-DmSans">
-                {label}
-            </span>
-        </div>
-    );
-};
-
-//panel button component
+/** Wider aspect-ratio panel button with icon, used in the right panel. */
 export const PanelButton = ({ Icon, onHover, onClick, isSelected = false }) => {
     return (
 
@@ -257,6 +185,7 @@ export const PanelButton = ({ Icon, onHover, onClick, isSelected = false }) => {
     );
 };
 
+/** Player list row showing color swatch, number, name, assignment, with edit/delete actions. */
 export const PlayerButton = ({
     id,
     color = "#ef4444",

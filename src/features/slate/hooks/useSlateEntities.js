@@ -1,7 +1,9 @@
 import { useMemo, useRef, useState } from "react";
 
+/** Default red color used for new players. */
 export const DEFAULT_PLAYER_COLOR = "#ef4444";
 
+/** Initial players-by-id map containing a single default player. */
 export const INITIAL_PLAYERS_BY_ID = {
   "player-1": {
     id: "player-1",
@@ -14,6 +16,7 @@ export const INITIAL_PLAYERS_BY_ID = {
   },
 };
 
+/** Initial ball object with default position. */
 export const INITIAL_BALL = { id: "ball-1", x: 40, y: 0 };
 
 const EMPTY_EDITOR = {
@@ -55,6 +58,14 @@ const getRandomNearbyPosition = (base) => {
   return { x: (base?.x ?? 0) + dx, y: (base?.y ?? 0) + dy };
 };
 
+/**
+ * Manages all slate entity state: players, ball, selection, drag, and editing.
+ * Provides CRUD handlers, snapshot/restore helpers, and multi-select support.
+ * @param {Object} params
+ * @param {React.MutableRefObject} params.historyApiRef - Ref to history API for undo/redo push.
+ * @param {Function} params.logEvent - Scoped logging callback.
+ * @returns {Object} Entity state, setters, snapshot/restore helpers, and event handlers.
+ */
 export function useSlateEntities({ historyApiRef, logEvent }) {
   const [playersById, setPlayersById] = useState(() => INITIAL_PLAYERS_BY_ID);
   const [representedPlayerIds, setRepresentedPlayerIds] = useState(() => ["player-1"]);

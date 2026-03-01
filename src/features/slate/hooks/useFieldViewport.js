@@ -3,6 +3,10 @@ import { useRef, useState } from "react";
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
 const DEFAULT_CAMERA = { x: 0, y: 0, zoom: 1 };
 
+/**
+ * Manages camera position/zoom and field rotation with its own undo/redo history.
+ * @returns {Object} Camera state, zoom/rotate helpers, field history actions, and reset/load methods.
+ */
 export function useFieldViewport() {
   const [camera, setCamera] = useState(DEFAULT_CAMERA);
   const [fieldRotation, setFieldRotation] = useState(0);

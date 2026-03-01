@@ -1,7 +1,9 @@
 import { serializeAnimation } from "../animation";
 
+/** Current export schema version identifier. */
 export const EXPORT_SCHEMA_VERSION = "play-export-v2";
 
+/** Converts a play name into a safe, lowercase, hyphenated filename. */
 const sanitizeFilename = (name) => {
   const trimmed = String(name ?? "").trim();
   if (!trimmed) return "play";
@@ -12,6 +14,11 @@ const sanitizeFilename = (name) => {
   return collapsed || "play";
 };
 
+/**
+ * Builds a structured play export object from all application state.
+ * @param {Object} params - All play state slices (entities, animation, settings, canvas).
+ * @returns {Object} Versioned export object ready for JSON serialization.
+ */
 export const buildPlayExport = ({
   playName,
   playId = null,
@@ -65,6 +72,11 @@ export const buildPlayExport = ({
   };
 };
 
+/**
+ * Triggers a browser file download of a play export as JSON.
+ * @param {Object} playExport - The export object from buildPlayExport.
+ * @param {string} playName - Play name used to derive the filename.
+ */
 export const downloadPlayExport = (playExport, playName) => {
   if (!playExport) return;
   const filename = `${sanitizeFilename(playName)}.json`;

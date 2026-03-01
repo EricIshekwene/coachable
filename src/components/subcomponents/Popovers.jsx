@@ -11,7 +11,7 @@ function parseTopOffset(topOffset) {
     return match ? parseInt(match[0], 10) : 0;
 }
 
-// Generic Popover component – renders in a portal so it's never clipped by overflow-hidden
+/** Generic popover rendered via portal, positioned relative to an anchor. Handles Escape/click-outside to close. */
 export const Popover = ({ isOpen, onClose, children, anchorRef, topOffset = "top-0", position = "right", marginRight }) => {
     const popoverRef = useRef(null);
     const [style, setStyle] = useState({ left: 0, top: 0, opacity: 0 });
@@ -111,7 +111,7 @@ export const Popover = ({ isOpen, onClose, children, anchorRef, topOffset = "top
     return createPortal(popoverContent, document.body);
 };
 
-// Popover layout: Grid for option tiles
+/** Grid layout wrapper for popover content with configurable columns. */
 export const PopoverGrid = ({ cols = 2, children }) => {
     const gridCols = {
         2: "grid-cols-2",
@@ -133,22 +133,7 @@ export const PopoverGrid = ({ cols = 2, children }) => {
     );
 };
 
-// Popover layout: List for future lists
-export const PopoverList = ({ children }) => {
-    return (
-        <div
-            className="
-                bg-BrandBlack2 z-50 ml-2 rounded-md p-2
-                flex flex-col gap-1 min-w-[150px] shadow-lg
-                font-DmSans
-            "
-        >
-            {children}
-        </div>
-    );
-};
-
-// Popover layout: Form for forms like Add Player
+/** Form layout wrapper for popover content (e.g., Add Player form). */
 export const PopoverForm = ({ children }) => {
     return (
         <div
@@ -165,7 +150,7 @@ export const PopoverForm = ({ children }) => {
     );
 };
 
-// Tooltip component for hover tooltips
+/** Tooltip that renders beside an element when isOpen is true. */
 export const Tooltip = ({ children, text, isOpen }) => {
     if (!isOpen) return null;
 

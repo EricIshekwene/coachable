@@ -3,7 +3,12 @@ import { log as logAnimDebug } from "./debugLogger";
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
+/**
+ * RAF-driven animation engine managing playback time, looping, playback rate,
+ * seek, play/pause, and tick-based listener notification.
+ */
 export class AnimationEngine {
+  /** @param {Object} opts - Duration, initial time, loop flag, playback rate. */
   constructor({ durationMs = 30000, timeMs = 0, loop = true, playbackRate = 1 } = {}) {
     this.durationMs = Math.max(1, Math.round(Number(durationMs) || 30000));
     this.timeMs = clamp(Math.round(Number(timeMs) || 0), 0, this.durationMs);

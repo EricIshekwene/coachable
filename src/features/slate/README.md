@@ -3,35 +3,55 @@
 ## What `Slate` Owns
 
 `src/features/slate/Slate.jsx` is the scene-level composition component for the play editor. It wires together:
-- `WideSidebar`
-- `KonvaCanvasRoot`
-- `ControlPill`
-- `RightPanel`
-- import file input
-- `PlayerEditPanel`
-- `AdvancedSettings`
+- `WideSidebar` (left tools panel)
+- `KonvaCanvasRoot` (Konva canvas)
+- `ControlPill` (bottom timeline controller)
+- `RightPanel` (right info panel)
+- `PlayerEditPanel` (inline player editor)
+- `AdvancedSettings` (settings modal)
+- Import file input (hidden)
 
-It also owns import/export orchestration and receives `onShowMessage(message, subtitle, type, duration)` from `App` for popup/toast display.
+It also owns:
+- The `AnimationEngine` instance (RAF-driven playback)
+- Import/export orchestration
+- Keyboard shortcuts
+- Animation data state and keyframe management
+
+Receives `onShowMessage(message, subtitle, type, duration)` from `App` for toast display.
 
 ## Hook Split
 
-- `useAdvancedSettings`
+- **`useAdvancedSettings`**
   - Advanced settings state + modal open/close
-  - Logging flags and `logEvent(scope, action, payload)` helper
-- `useSlateEntities`
+  - Per-scope logging flags and `logEvent(scope, action, payload)` helper
+
+- **`useSlateEntities`**
   - Players, ball, selection, editor drawer state
   - Add/edit/delete/select/drag handlers
   - Slate snapshot/apply helpers for history + interpolation
-- `useSlateHistory`
-  - Slate undo/redo stacks for entity snapshots
-- `useFieldViewport`
-  - Camera/zoom/rotation and field-history undo/redo
-- `useTimelinePlayback`
-  - Time position, play/pause, speed, autoplay, RAF loop
-- `useKeyframeSnapshots`
-  - Keyframes, selected keyframe, keyframe snapshots
-  - Snapshot seeding and pending keyframe updates
-  - `addKeyframeSignal` / `requestAddKeyframe` and `timelineResetSignal`
+
+- **`useSlateHistory`**
+  - Undo/redo stacks for entity snapshots
+  - `pushHistory`, `onUndo`, `onRedo`, `clearSlateHistory`
+
+- **`useFieldViewport`**
+  - Camera position/zoom and field rotation
+  - Its own undo/redo history for viewport changes
+  - Zoom/rotate helper functions
+
+## Animation System
+
+Slate manages animation via the `AnimationEngine` class:
+
+- **Animation data** is immutable JSON (`{ version, durationMs, tracks, meta }`)
+- **Tracks** map entity IDs to keyframe arrays (`{ t, x, y, r? }`)
+- **Engine** runs a RAF loop, fires tick listeners with current time
+- **Rendering** samples poses at current time and pushes them to Konva nodes imperatively
+
+Key animation functions in Slate:
+- `renderPoseAtTime(timeMs)` — samples all track poses and pushes to renderer
+- `handleAddKeyframe` / `handleDeleteKeyframe` / `handleDeleteAllKeyframes`
+- `upsertKeyframesAtCurrentTime` — auto-inserts keyframes after drag
 
 ## Important Data Shapes
 
@@ -41,8 +61,7 @@ It also owns import/export orchestration and receives `onShowMessage(message, su
 {
   "player-1": {
     id: "player-1",
-    x: 0,
-    y: 0,
+    x: 0, y: 0,
     number: 1,
     name: "John",
     assignment: "Left Wing",
@@ -51,24 +70,24 @@ It also owns import/export orchestration and receives `onShowMessage(message, su
 }
 ```
 
-### `keyframes`
-
-```js
-[number, ...] // timeline percentages from 0-100
-```
-
-### `keyframeSnapshots`
+### Animation Data
 
 ```js
 {
-  [timePercent]: {
-    playersById: { ... },
-    representedPlayerIds: ["player-1", ...],
-    ball: { id: "ball-1", x: 40, y: 0 }
-  }
+  version: 1,
+  durationMs: 30000,
+  tracks: {
+    "player-1": {
+      keyframes: [{ t: 0, x: 0, y: 0 }, { t: 1200, x: 80, y: -20 }]
+    }
+  },
+  meta: { createdAt: "...", updatedAt: "..." }
 }
 ```
 
 ## Coordination Notes
 
-`Slate.jsx` uses small callback refs (`historyApiRef`, `keyframeApiRef`) to avoid hook-order cycles while keeping entity handlers and history/keyframe logic modularized.
+- `historyApiRef` is a callback ref that breaks hook-order cycles between entities and history
+- `isRestoringRef` prevents history push during slate restore (undo/redo)
+- `isItemDraggingRef` prevents interpolation during drag
+- Animation renderer ref is populated by `KonvaCanvasRoot` via `onAnimationRendererReady`
