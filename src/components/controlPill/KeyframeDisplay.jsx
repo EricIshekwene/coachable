@@ -7,7 +7,7 @@ import UnselectedKeyframeIcon from "../../assets/keyframes/Unselected Key Frame.
  */
 export default function KeyframeDisplay({
   keyframes = [],
-  selectedKeyframe = null,
+  selectedKeyframeMs = null,
   onKeyframeClick,
 }) {
   // Convert timePercent (0-100) to visual position percentage (3-97%)
@@ -17,16 +17,20 @@ export default function KeyframeDisplay({
 
   return (
     <>
-      {keyframes.map((kfTimePercent, idx) => {
-        const visualPos = timePercentToVisualPosition(kfTimePercent);
-        const isSelected = selectedKeyframe === kfTimePercent;
+      {keyframes.map((marker, idx) => {
+        const visualPos = timePercentToVisualPosition(marker.timePercent);
+        const isSelected = selectedKeyframeMs === marker.timeMs;
         return (
           <img
-            key={`kf-${kfTimePercent}-${idx}`}
+            key={`kf-${marker.timeMs}-${idx}`}
             src={isSelected ? SelectedKeyframeIcon : UnselectedKeyframeIcon}
             alt="keyframe"
             draggable={false}
-            onClick={(e) => onKeyframeClick(e, kfTimePercent)}
+            data-kf-marker="true"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+            }}
+            onClick={(e) => onKeyframeClick(e, marker)}
             className="absolute z-30 cursor-pointer"
             style={{
               left: `${visualPos}%`,

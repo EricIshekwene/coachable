@@ -2,19 +2,19 @@ import React from 'react';
 import { IoTimeOutline } from "react-icons/io5";
 import { Slider } from '@mui/material';
 
-const LOOP_SECONDS = 30; // Duration for one full traversal from 0 -> 100
-
 /**
  * SpeedSlider - Speed control slider with time display
  */
 export default function SpeedSlider({
   speedMultiplier,
   onSpeedChange,
+  durationMs = 30000,
 }) {
   // Calculate actual duration based on speed multiplier
   const calculateDuration = () => {
     const speed = (0.25 + (speedMultiplier / 100) * 3.75) * 3;
-    const actualDuration = LOOP_SECONDS / speed;
+    const baseDurationSeconds = Math.max(1, Number(durationMs) || 30000) / 1000;
+    const actualDuration = baseDurationSeconds / speed;
     return `${Math.round(actualDuration)}s`;
   };
 

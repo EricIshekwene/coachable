@@ -1,4 +1,6 @@
-export const EXPORT_SCHEMA_VERSION = "play-export-v1";
+import { serializeAnimation } from "../animation";
+
+export const EXPORT_SCHEMA_VERSION = "play-export-v2";
 
 const sanitizeFilename = (name) => {
   const trimmed = String(name ?? "").trim();
@@ -10,7 +12,7 @@ const sanitizeFilename = (name) => {
   return collapsed || "play";
 };
 
-export const buildPlayExportV1 = ({
+export const buildPlayExport = ({
   playName,
   playId = null,
   appVersion = null,
@@ -22,11 +24,13 @@ export const buildPlayExportV1 = ({
   playersById,
   representedPlayerIds,
   ball,
-  keyframes,
-  keyframeSnapshots,
+  animationData,
   playback,
   coordinateSystem,
 } = {}) => {
+  const animationJson = serializeAnimation(animationData, { pretty: false });
+  const animation = JSON.parse(animationJson);
+
   return {
     schemaVersion: EXPORT_SCHEMA_VERSION,
     exportedAt: new Date().toISOString(),
@@ -52,11 +56,8 @@ export const buildPlayExportV1 = ({
         representedPlayerIds: representedPlayerIds ?? [],
         ball: ball ?? null,
       },
-      timeline: {
-        keyframes: keyframes ?? [],
-        keyframeSnapshots: keyframeSnapshots ?? {},
-        playback: playback ?? null,
-      },
+      animation,
+      playback: playback ?? null,
       meta: {
         appVersion: appVersion ?? null,
       },

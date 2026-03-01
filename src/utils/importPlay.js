@@ -1,97 +1,83 @@
-export const IMPORT_SCHEMA_VERSION = "play-export-v1";
+import { createEmptyAnimation, deserializeAnimation } from "../animation";
+import { log as logAnimDebug } from "../animation/debugLogger";
+
+export const IMPORT_SCHEMA_VERSION = "play-export-v2";
 export const IMPORT_FILE_SIZE_LIMIT_BYTES = 5 * 1024 * 1024;
 
-const EPSILON = 1e-9;
-
-export const resolveSnapshotForKeyframe = (keyframeNumber, snapshots) => {
-  const exactKey = String(keyframeNumber);
-  if (snapshots && snapshots[exactKey]) {
-    return { key: exactKey, snapshot: snapshots[exactKey] };
-  }
-  const keys = Object.keys(snapshots || {});
-  for (const key of keys) {
-    const numericKey = Number(key);
-    if (Number.isNaN(numericKey)) continue;
-    if (Math.abs(numericKey - keyframeNumber) <= EPSILON) {
-      return { key, snapshot: snapshots[key] };
-    }
-  }
-  return null;
+const asObject = (value) => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value;
 };
 
-export const validatePlayExportV1 = (exportObj) => {
-  if (!exportObj || typeof exportObj !== "object") {
-    return { ok: false, error: "Invalid JSON: expected an object at the root." };
+export const validatePlayImport = (input) => {
+  const fail = (message) => {
+    logAnimDebug(`import failed err=${message}`);
+    return { ok: false, error: message };
+  };
+
+  if (!input || typeof input !== "object") {
+    return fail("Invalid JSON: expected an object at the root.");
   }
-  if (exportObj.schemaVersion !== IMPORT_SCHEMA_VERSION) {
-    return {
-      ok: false,
-      error: `Unsupported schemaVersion. Expected "${IMPORT_SCHEMA_VERSION}".`,
-    };
-  }
-  const play = exportObj.play;
-  if (!play || typeof play !== "object") {
-    return { ok: false, error: "Invalid export: missing play object." };
-  }
-  if (typeof play.name !== "string") {
-    return { ok: false, error: "Invalid export: play.name must be a string." };
-  }
-  const playersById = play.entities?.playersById;
-  if (!playersById || typeof playersById !== "object" || Array.isArray(playersById)) {
-    return { ok: false, error: "Invalid export: play.entities.playersById must be an object." };
-  }
-  const keyframes = play.timeline?.keyframes;
-  if (!Array.isArray(keyframes) || keyframes.some((kf) => typeof kf !== "number")) {
-    return { ok: false, error: "Invalid export: play.timeline.keyframes must be an array of numbers." };
-  }
-  const keyframeSnapshots = play.timeline?.keyframeSnapshots;
-  if (!keyframeSnapshots || typeof keyframeSnapshots !== "object" || Array.isArray(keyframeSnapshots)) {
-    return {
-      ok: false,
-      error: "Invalid export: play.timeline.keyframeSnapshots must be an object.",
-    };
-  }
-  for (const kf of keyframes) {
-    const resolved = resolveSnapshotForKeyframe(kf, keyframeSnapshots);
-    if (!resolved?.snapshot) {
+
+  // Allow importing raw animation JSON directly.
+  if (input.version === 1 && input.tracks && input.durationMs) {
+    try {
+      const animation = deserializeAnimation(input);
       return {
-        ok: false,
-        error: `Invalid export: missing snapshot for keyframe ${kf}.`,
+        ok: true,
+        play: {
+          name: "Imported Play",
+          settings: {},
+          canvas: {},
+          entities: { playersById: {}, representedPlayerIds: [], ball: null },
+          animation,
+          playback: {},
+          meta: {},
+        },
       };
+    } catch {
+      return fail("Invalid animation JSON.");
     }
   }
-  return { ok: true, play };
-};
 
-export const addPlayerFromData = (
-  playersById,
-  representedPlayerIds,
-  player,
-  { preserveId = true } = {}
-) => {
-  const nextPlayers = { ...(playersById || {}) };
-  const nextRepresented = [...(representedPlayerIds || [])];
-  if (!player || typeof player !== "object") {
-    return { playersById: nextPlayers, representedPlayerIds: nextRepresented };
+  if (input.schemaVersion !== IMPORT_SCHEMA_VERSION) {
+    return fail(`Unsupported schemaVersion. Expected "${IMPORT_SCHEMA_VERSION}" or animation version 1.`);
   }
-  const id = preserveId ? player.id : player.id;
-  if (!id) {
-    return { playersById: nextPlayers, representedPlayerIds: nextRepresented };
-  }
-  nextPlayers[id] = { ...player, id };
-  if (!nextRepresented.includes(id)) {
-    nextRepresented.push(id);
-  }
-  return { playersById: nextPlayers, representedPlayerIds: nextRepresented };
-};
 
-export const addKeyframeFromData = (keyframes, keyframeSnapshots, timeValue, snapshot) => {
-  const nextKeyframes = Array.isArray(keyframes) ? [...keyframes] : [];
-  if (!nextKeyframes.includes(timeValue)) {
-    nextKeyframes.push(timeValue);
+  const play = asObject(input.play);
+  if (!play) {
+    return fail("Invalid export: missing play object.");
   }
-  nextKeyframes.sort((a, b) => a - b);
-  const nextSnapshots = { ...(keyframeSnapshots || {}) };
-  nextSnapshots[String(timeValue)] = snapshot;
-  return { keyframes: nextKeyframes, keyframeSnapshots: nextSnapshots };
+
+  let animation;
+  try {
+    animation = play.animation
+      ? deserializeAnimation(play.animation)
+      : createEmptyAnimation({ durationMs: 30000 });
+  } catch {
+    return fail("Invalid export: play.animation is not valid.");
+  }
+
+  const entities = asObject(play.entities) || {};
+  const playersById = asObject(entities.playersById) || {};
+  const representedPlayerIds = Array.isArray(entities.representedPlayerIds)
+    ? [...entities.representedPlayerIds]
+    : Object.keys(playersById);
+
+  return {
+    ok: true,
+    play: {
+      name: typeof play.name === "string" ? play.name : "Imported Play",
+      settings: asObject(play.settings) || {},
+      canvas: asObject(play.canvas) || {},
+      entities: {
+        playersById,
+        representedPlayerIds,
+        ball: entities.ball ?? null,
+      },
+      animation,
+      playback: asObject(play.playback) || {},
+      meta: asObject(play.meta) || {},
+    },
+  };
 };

@@ -1,106 +1,366 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import WideSidebar from "../../components/WideSidebar";
 import ControlPill from "../../components/controlPill/ControlPill";
+import DebugOverlay from "../../components/controlPill/DebugOverlay";
 import RightPanel from "../../components/RightPanel";
 import AdvancedSettings from "../../components/AdvancedSettings";
 import KonvaCanvasRoot from "../../canvas/KonvaCanvasRoot";
 import PlayerEditPanel from "../../components/rightPanel/PlayerEditPanel";
-import { buildPlayExportV1, downloadPlayExport } from "../../utils/exportPlay";
-import {
-  IMPORT_FILE_SIZE_LIMIT_BYTES,
-  addKeyframeFromData,
-  addPlayerFromData,
-  resolveSnapshotForKeyframe,
-  validatePlayExportV1,
-} from "../../utils/importPlay";
+import { buildPlayExport, downloadPlayExport } from "../../utils/exportPlay";
+import { IMPORT_FILE_SIZE_LIMIT_BYTES, validatePlayImport } from "../../utils/importPlay";
 import { DEFAULT_ADVANCED_SETTINGS, useAdvancedSettings } from "./hooks/useAdvancedSettings";
 import { useFieldViewport } from "./hooks/useFieldViewport";
-import { useTimelinePlayback } from "./hooks/useTimelinePlayback";
-import {
-  INITIAL_BALL,
-  useSlateEntities,
-} from "./hooks/useSlateEntities";
-import { useKeyframeSnapshots } from "./hooks/useKeyframeSnapshots";
+import { INITIAL_BALL, useSlateEntities } from "./hooks/useSlateEntities";
 import { useSlateHistory } from "./hooks/useSlateHistory";
-import { buildInterpolatedSlate } from "./utils/interpolate";
+import {
+  AnimationEngine,
+  createEmptyAnimation,
+  deleteKeyframeAtTime,
+  getTrackKeyframeTimes,
+  normalizeAnimation,
+  samplePosesAtTime,
+  upsertKeyframe,
+} from "../../animation";
+import { getLogs as getAnimDebugLogs, log as logAnimDebug } from "../../animation/debugLogger";
 
-const KEYFRAME_TOLERANCE = 4;
 const LOOP_SECONDS = 30;
+const DEFAULT_SPEED_MULTIPLIER = 50;
+const UI_TIME_UPDATE_INTERVAL_MS = 100;
+const TICK_LOG_INTERVAL_MS = 100;
+
+const speedToPlaybackRate = (speedMultiplier) => (0.25 + (speedMultiplier / 100) * 3.75) * 3;
+
+const stampAnimationMeta = (nextAnimation, previousMeta) => {
+  const createdAt = previousMeta?.createdAt || nextAnimation?.meta?.createdAt || new Date().toISOString();
+  return {
+    ...nextAnimation,
+    meta: {
+      ...(nextAnimation.meta || {}),
+      createdAt,
+      updatedAt: new Date().toISOString(),
+    },
+  };
+};
 
 function Slate({ onShowMessage }) {
-  const [logControlPillState] = useState(false);
   const [canvasTool, setCanvasTool] = useState("hand");
   const [playName, setPlayName] = useState("Name");
+  const [speedMultiplier, setSpeedMultiplier] = useState(DEFAULT_SPEED_MULTIPLIER);
+  const [autoplayEnabled, setAutoplayEnabled] = useState(true);
+  const [selectedKeyframeMs, setSelectedKeyframeMs] = useState(null);
+  const [timelineDisplayTimeMs, setTimelineDisplayTimeMs] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [debugSnapshot, setDebugSnapshot] = useState({
+    playing: false,
+    engineTimeMs: 0,
+    uiTimeMs: 0,
+    dragging: false,
+    lastTickDeltaMs: 0,
+    playersUpdated: 0,
+    durationMs: LOOP_SECONDS * 1000,
+  });
+  const [animationData, setAnimationData] = useState(() =>
+    createEmptyAnimation({ durationMs: LOOP_SECONDS * 1000 })
+  );
+
   const importInputRef = useRef(null);
+  const historyApiRef = useRef({ pushHistory: () => {} });
+  const animationRendererRef = useRef(null);
+  const animationDataRef = useRef(animationData);
+  const playersByIdRef = useRef({});
+  const ballRef = useRef(INITIAL_BALL);
+  const representedPlayerIdsRef = useRef([]);
+  const activeTrackIdsRef = useRef([]);
+  const latestPosesRef = useRef({});
+  const currentTimeRef = useRef(0);
+  const lastUiUpdateRef = useRef(0);
+  const lastTickLogRef = useRef(0);
+  const timelineDraggingRef = useRef(false);
+  const engineRef = useRef(null);
+  if (!engineRef.current) {
+    engineRef.current = new AnimationEngine({
+      durationMs: LOOP_SECONDS * 1000,
+      loop: true,
+      playbackRate: speedToPlaybackRate(DEFAULT_SPEED_MULTIPLIER),
+    });
+  }
 
   const {
     advancedSettings,
     setAdvancedSettings,
     showAdvancedSettings,
     setShowAdvancedSettings,
-    logging,
     logEvent,
   } = useAdvancedSettings();
 
   const fieldViewport = useFieldViewport();
-  const timeline = useTimelinePlayback({ defaultLoopSeconds: LOOP_SECONDS });
-
-  const historyApiRef = useRef({ pushHistory: () => {} });
-  const keyframeApiRef = useRef({
-    markKeyframeSnapshotPending: () => {},
-    findEditTargetKeyframe: () => null,
-    latestKeyframesRef: { current: [] },
-    setKeyframeSnapshots: () => {},
-    timePercent: 0,
-  });
-
   const entities = useSlateEntities({
     historyApiRef,
-    keyframeApiRef,
     logEvent,
   });
-
-  const keyframesState = useKeyframeSnapshots({
-    defaultKeyframeTolerance: KEYFRAME_TOLERANCE,
-    snapshotSlateState: entities.snapshotSlateState,
-    playersById: entities.playersById,
-    representedPlayerIds: entities.representedPlayerIds,
-    ball: entities.ball,
-    timePercent: timeline.timePercent,
-  });
-
-  keyframeApiRef.current = {
-    markKeyframeSnapshotPending: keyframesState.markKeyframeSnapshotPending,
-    findEditTargetKeyframe: keyframesState.findEditTargetKeyframe,
-    latestKeyframesRef: keyframesState.latestKeyframesRef,
-    setKeyframeSnapshots: keyframesState.setKeyframeSnapshots,
-    timePercent: timeline.timePercent,
-  };
 
   const slateHistory = useSlateHistory({
     snapshotSlate: entities.snapshotSlate,
     applySlate: entities.applySlate,
     isRestoringRef: entities.isRestoringRef,
-    onMarkKeyframeSnapshotPending: keyframesState.markKeyframeSnapshotPending,
     logEvent,
   });
 
-  historyApiRef.current = { pushHistory: slateHistory.pushHistory };
+  useEffect(() => {
+    historyApiRef.current = { pushHistory: slateHistory.pushHistory };
+  }, [slateHistory.pushHistory]);
+
+  const setAnimationDataWithMeta = useCallback((updater) => {
+    setAnimationData((prev) => {
+      const base = normalizeAnimation(prev);
+      const nextDraft = updater(base);
+      if (!nextDraft) return prev;
+      const normalized = normalizeAnimation(nextDraft);
+      return stampAnimationMeta(normalized, base.meta);
+    });
+  }, []);
+
+  useEffect(() => {
+    animationDataRef.current = animationData;
+  }, [animationData]);
+
+  useEffect(() => {
+    playersByIdRef.current = entities.playersById;
+  }, [entities.playersById]);
+
+  useEffect(() => {
+    ballRef.current = entities.ball ?? INITIAL_BALL;
+  }, [entities.ball]);
+
+  useEffect(() => {
+    representedPlayerIdsRef.current = entities.representedPlayerIds;
+  }, [entities.representedPlayerIds]);
+
+  const representedTrackIds = useMemo(() => {
+    const ids = [...(entities.representedPlayerIds || [])];
+    const ballId = entities.ball?.id;
+    if (ballId) ids.push(ballId);
+    return Array.from(new Set(ids));
+  }, [entities.representedPlayerIds, entities.ball?.id]);
+
+  const activeTrackIds = useMemo(() => {
+    const ballId = entities.ball?.id;
+    const selectedTrackIds = (entities.selectedItemIds || []).filter(
+      (itemId) => Boolean(entities.playersById?.[itemId]) || itemId === ballId
+    );
+    return selectedTrackIds.length ? selectedTrackIds : representedTrackIds;
+  }, [entities.selectedItemIds, entities.playersById, entities.ball?.id, representedTrackIds]);
+
+  useEffect(() => {
+    activeTrackIdsRef.current = activeTrackIds;
+  }, [activeTrackIds]);
+
+  const resolveTrackPose = useCallback((itemId) => {
+    const rendererPose = animationRendererRef.current?.getCurrentPose?.(itemId);
+    if (rendererPose && Number.isFinite(rendererPose.x) && Number.isFinite(rendererPose.y)) {
+      return rendererPose;
+    }
+    const cachedPose = latestPosesRef.current[itemId];
+    if (cachedPose && Number.isFinite(cachedPose.x) && Number.isFinite(cachedPose.y)) {
+      return cachedPose;
+    }
+    const player = playersByIdRef.current?.[itemId];
+    if (player) {
+      return { x: player.x ?? 0, y: player.y ?? 0, r: 0 };
+    }
+    if (itemId === ballRef.current?.id) {
+      return { x: ballRef.current?.x ?? 0, y: ballRef.current?.y ?? 0, r: 0 };
+    }
+    return null;
+  }, []);
+
+  const renderPoseAtTime = useCallback((timeMs) => {
+    const allPlayers = playersByIdRef.current || {};
+    const represented = representedPlayerIdsRef.current || [];
+    const ball = ballRef.current;
+    const baseIds = represented.length ? represented : Object.keys(allPlayers);
+    const trackIds = Array.from(
+      new Set([...(baseIds || []), ...(ball?.id ? [ball.id] : [])])
+    );
+    const fallbackPoses = {};
+
+    trackIds.forEach((itemId) => {
+      if (itemId === ball?.id) {
+        fallbackPoses[itemId] = { x: ball.x ?? 0, y: ball.y ?? 0, r: 0 };
+        return;
+      }
+      const player = allPlayers[itemId];
+      if (!player) return;
+      fallbackPoses[itemId] = { x: player.x ?? 0, y: player.y ?? 0, r: 0 };
+    });
+
+    const sampledPoses = samplePosesAtTime(
+      animationDataRef.current,
+      timeMs,
+      fallbackPoses,
+      trackIds
+    );
+    const previousPoses = latestPosesRef.current || {};
+    const patch = {};
+    Object.entries(sampledPoses).forEach(([itemId, pose]) => {
+      const previous = previousPoses[itemId];
+      if (!previous) {
+        patch[itemId] = pose;
+        return;
+      }
+      const moved =
+        Math.abs((previous.x ?? 0) - (pose.x ?? 0)) > 0.01 ||
+        Math.abs((previous.y ?? 0) - (pose.y ?? 0)) > 0.01 ||
+        Math.abs((previous.r ?? 0) - (pose.r ?? 0)) > 0.01;
+      if (moved) {
+        patch[itemId] = pose;
+      }
+    });
+    latestPosesRef.current = sampledPoses;
+    if (Object.keys(patch).length) {
+      animationRendererRef.current?.setPoses?.(patch);
+    }
+    return Object.keys(sampledPoses || {}).length;
+  }, []);
+
+  useEffect(() => {
+    setAnimationDataWithMeta((base) => {
+      const playerIds = Object.keys(entities.playersById || {});
+      const ballId = entities.ball?.id;
+      const validIds = new Set([...playerIds, ...(ballId ? [ballId] : [])]);
+      const nextTracks = {};
+      let changed = false;
+
+      Object.entries(base.tracks || {}).forEach(([itemId, track]) => {
+        if (!validIds.has(itemId)) {
+          changed = true;
+          return;
+        }
+        nextTracks[itemId] = track;
+      });
+
+      validIds.forEach((itemId) => {
+        if (nextTracks[itemId]) return;
+        nextTracks[itemId] = { keyframes: [] };
+        changed = true;
+      });
+
+      if (!changed) return null;
+      return { ...base, tracks: nextTracks };
+    });
+  }, [entities.playersById, entities.ball?.id, setAnimationDataWithMeta]);
+
+  useEffect(() => {
+    if (entities.isItemDraggingRef.current) return;
+    renderPoseAtTime(currentTimeRef.current);
+  }, [
+    animationData,
+    entities.representedPlayerIds,
+    entities.ball?.id,
+    entities.isItemDraggingRef,
+    renderPoseAtTime,
+  ]);
+
+  const visibleKeyframesMs = useMemo(
+    () => getTrackKeyframeTimes(animationData, activeTrackIds),
+    [animationData, activeTrackIds]
+  );
+
+  useEffect(() => {
+    if (selectedKeyframeMs === null || selectedKeyframeMs === undefined) return;
+    if (visibleKeyframesMs.includes(selectedKeyframeMs)) return;
+    setSelectedKeyframeMs(null);
+  }, [selectedKeyframeMs, visibleKeyframesMs]);
+
+  useEffect(() => {
+    const engine = engineRef.current;
+    const unsubscribe = engine.onTick(({ timeMs, isPlaying: playing, durationMs, lastTickDeltaMs }) => {
+      currentTimeRef.current = timeMs;
+      const playersUpdated = renderPoseAtTime(timeMs);
+      const roundedTime = Math.round(timeMs);
+      const roundedDt = Math.round(lastTickDeltaMs || 0);
+
+      setIsPlaying((prev) => (prev === playing ? prev : playing));
+
+      const now = performance.now();
+      if (now - lastTickLogRef.current >= TICK_LOG_INTERVAL_MS) {
+        lastTickLogRef.current = now;
+        logAnimDebug(`tick t=${roundedTime} dt=${roundedDt} playersUpdated=${playersUpdated}`);
+      }
+
+      if (!playing || now - lastUiUpdateRef.current >= UI_TIME_UPDATE_INTERVAL_MS) {
+        lastUiUpdateRef.current = now;
+        setTimelineDisplayTimeMs((prev) => (prev === roundedTime ? prev : roundedTime));
+        setDebugSnapshot((prev) => ({
+          ...prev,
+          playing,
+          engineTimeMs: roundedTime,
+          uiTimeMs: roundedTime,
+          dragging: timelineDraggingRef.current,
+          lastTickDeltaMs: roundedDt,
+          playersUpdated,
+          durationMs: Math.round(durationMs || animationDataRef.current?.durationMs || 0),
+        }));
+      }
+    });
+
+    engine.seek(engine.getTime(), { shouldLog: false, source: "engine" });
+    return () => {
+      unsubscribe();
+    };
+  }, [renderPoseAtTime]);
+
+  useEffect(() => () => {
+    engineRef.current?.dispose?.();
+  }, []);
+
+  useEffect(() => {
+    engineRef.current.setDuration(animationData.durationMs);
+  }, [animationData.durationMs]);
+
+  useEffect(() => {
+    engineRef.current.setLoop(autoplayEnabled);
+  }, [autoplayEnabled]);
+
+  useEffect(() => {
+    engineRef.current.setPlaybackRate(speedToPlaybackRate(speedMultiplier));
+  }, [speedMultiplier]);
+
 
   const onReset = () => {
     logEvent("slate", "reset");
+    engineRef.current.pause({ shouldLog: false });
+    engineRef.current.seek(0, { shouldLog: false, source: "engine" });
     entities.resetSlateEntities();
     slateHistory.clearSlateHistory();
     fieldViewport.resetFieldViewport();
-    timeline.resetTimelinePlayback();
-    keyframesState.resetKeyframeState();
+    setAnimationData(createEmptyAnimation({ durationMs: LOOP_SECONDS * 1000 }));
+    setSpeedMultiplier(DEFAULT_SPEED_MULTIPLIER);
+    setAutoplayEnabled(true);
+    setSelectedKeyframeMs(null);
+    setTimelineDisplayTimeMs(0);
+    timelineDraggingRef.current = false;
+    setIsPlaying(false);
+    currentTimeRef.current = 0;
+    latestPosesRef.current = {};
+    animationRendererRef.current?.clearPoses?.();
+    setDebugSnapshot((prev) => ({
+      ...prev,
+      playing: false,
+      engineTimeMs: 0,
+      uiTimeMs: 0,
+      dragging: false,
+      lastTickDeltaMs: 0,
+      playersUpdated: 0,
+      durationMs: LOOP_SECONDS * 1000,
+    }));
   };
 
   const onSaveToPlaybook = () => {};
 
   const onDownload = () => {
     const appVersion = import.meta?.env?.VITE_APP_VERSION ?? null;
-    const exportPayload = buildPlayExportV1({
+    const exportPayload = buildPlayExport({
       playName,
       appVersion,
       advancedSettings,
@@ -111,13 +371,10 @@ function Slate({ onShowMessage }) {
       playersById: entities.playersById,
       representedPlayerIds: entities.representedPlayerIds,
       ball: entities.ball,
-      keyframes: keyframesState.keyframes,
-      keyframeSnapshots: keyframesState.keyframeSnapshots,
+      animationData,
       playback: {
-        loopSeconds: timeline.loopSeconds,
-        keyframeTolerance: keyframesState.keyframeTolerance,
-        speedMultiplier: timeline.speedMultiplier,
-        autoplayEnabled: timeline.autoplayEnabled,
+        speedMultiplier,
+        autoplayEnabled,
       },
       coordinateSystem: {
         origin: "center",
@@ -125,6 +382,9 @@ function Slate({ onShowMessage }) {
         notes: "World coordinates are centered; +x right, +y down.",
       },
     });
+    const exportJson = JSON.stringify(exportPayload);
+    const exportBytes = new TextEncoder().encode(exportJson).length;
+    logAnimDebug(`export bytes=${exportBytes}`);
     downloadPlayExport(exportPayload, playName);
   };
 
@@ -134,79 +394,246 @@ function Slate({ onShowMessage }) {
     }
   }, []);
 
-  const handleKeyframeAddAttempt = useCallback(
-    (payload) => {
-      logEvent("controlPill", "keyframeAddAttempt", payload);
-      if (payload?.added) return;
-      if (payload?.reason === "max") {
-        onShowMessage(
-          "Keyframe limit reached",
-          `Max ${payload.maxKeyframes ?? 30} keyframes`,
-          "error"
+  const getAuthoritativeTimeMs = useCallback(() => {
+    return engineRef.current.getTime();
+  }, []);
+
+  const handleTimelineDragStateChange = useCallback((dragging) => {
+    const nextDragging = Boolean(dragging);
+    timelineDraggingRef.current = nextDragging;
+    setDebugSnapshot((prev) => {
+      if (prev.dragging === nextDragging) return prev;
+      return { ...prev, dragging: nextDragging };
+    });
+  }, []);
+
+  const handleCopyDebug = useCallback(async () => {
+    const lines = getAnimDebugLogs(200);
+    const payload = lines.join("\n");
+    try {
+      await navigator.clipboard.writeText(payload);
+      return true;
+    } catch (error) {
+      logAnimDebug(`copyDebug failed err=${error?.message || "clipboard unavailable"}`);
+      onShowMessage("Copy debug failed", "Clipboard access was denied.", "error");
+      return false;
+    }
+  }, [onShowMessage]);
+
+  const seekTimeline = useCallback((timeMs, meta = {}) => {
+    const source = typeof meta?.source === "string" ? meta.source : "engine";
+    engineRef.current.seek(timeMs, { source });
+  }, []);
+
+  const pauseTimeline = useCallback(() => {
+    engineRef.current.pause();
+  }, []);
+
+  const togglePlayback = useCallback(() => {
+    engineRef.current.toggle();
+  }, []);
+
+  const handleAddKeyframe = useCallback(() => {
+    const timeMs = Math.round(currentTimeRef.current);
+    const targetTrackIds = activeTrackIdsRef.current || [];
+    if (!targetTrackIds.length) return;
+
+    setAnimationDataWithMeta((base) => {
+      const nextTracks = { ...base.tracks };
+      targetTrackIds.forEach((itemId) => {
+        const pose = resolveTrackPose(itemId);
+        if (!pose) return;
+        nextTracks[itemId] = upsertKeyframe(nextTracks[itemId], {
+          t: timeMs,
+          x: pose.x,
+          y: pose.y,
+          ...(pose.r !== undefined ? { r: pose.r } : {}),
+        });
+        logAnimDebug(
+          `addKeyframe item=${itemId} t=${timeMs} x=${Math.round(pose.x ?? 0)} y=${Math.round(pose.y ?? 0)}`
         );
-        return;
-      }
-      if (payload?.reason === "too-close") {
-        onShowMessage(
-          "Keyframe already nearby",
-          "Selected the existing keyframe instead",
-          "standard",
-          2000
-        );
-      }
+      });
+      return { ...base, tracks: nextTracks };
+    });
+
+    setSelectedKeyframeMs(timeMs);
+  }, [resolveTrackPose, setAnimationDataWithMeta]);
+
+  const handleDeleteKeyframe = useCallback(
+    (timeMs) => {
+      const targetTrackIds = activeTrackIdsRef.current || [];
+      if (!targetTrackIds.length) return;
+      const roundedTime = Math.round(timeMs);
+
+      setAnimationDataWithMeta((base) => {
+        const nextTracks = { ...base.tracks };
+        targetTrackIds.forEach((itemId) => {
+          nextTracks[itemId] = deleteKeyframeAtTime(nextTracks[itemId], roundedTime, 0.5);
+          logAnimDebug(`deleteKeyframe item=${itemId} t=${roundedTime}`);
+        });
+        return { ...base, tracks: nextTracks };
+      });
     },
-    [logEvent, onShowMessage]
+    [setAnimationDataWithMeta]
   );
 
-  const loadPlayFromExport = useCallback(
-    (exportObj) => {
-      const { ok, error, play } = validatePlayExportV1(exportObj);
+  const handleDeleteAllKeyframes = useCallback(() => {
+    const targetTrackIds = activeTrackIdsRef.current || [];
+    if (!targetTrackIds.length) return;
+
+    setAnimationDataWithMeta((base) => {
+      const nextTracks = { ...base.tracks };
+      let changed = false;
+      targetTrackIds.forEach((itemId) => {
+        const existing = nextTracks[itemId]?.keyframes || [];
+        if (!existing.length) return;
+        nextTracks[itemId] = { keyframes: [] };
+        changed = true;
+      });
+      if (!changed) return null;
+      return { ...base, tracks: nextTracks };
+    });
+  }, [setAnimationDataWithMeta]);
+
+  const upsertKeyframesAtCurrentTime = useCallback(
+    (targetTrackIds, { source = "unknown" } = {}) => {
+      const uniqueIds = Array.from(new Set((targetTrackIds || []).filter(Boolean)));
+      if (!uniqueIds.length) return;
+
+      const timeMs = Math.round(currentTimeRef.current);
+      setAnimationDataWithMeta((base) => {
+        const nextTracks = { ...base.tracks };
+        let changed = false;
+        const ballId = ballRef.current?.id;
+
+        uniqueIds.forEach((itemId) => {
+          if (!playersByIdRef.current?.[itemId] && itemId !== ballId) return;
+          const pose = resolveTrackPose(itemId);
+          if (!pose) return;
+          nextTracks[itemId] = upsertKeyframe(nextTracks[itemId], {
+            t: timeMs,
+            x: pose.x,
+            y: pose.y,
+            ...(pose.r !== undefined ? { r: pose.r } : {}),
+          });
+          changed = true;
+          logAnimDebug(
+            `autoKeyframe source=${source} item=${itemId} t=${timeMs} x=${Math.round(pose.x ?? 0)} y=${Math.round(pose.y ?? 0)}`
+          );
+        });
+
+        if (!changed) return null;
+        return { ...base, tracks: nextTracks };
+      });
+    },
+    [resolveTrackPose, setAnimationDataWithMeta]
+  );
+
+  const handleItemDragStart = useCallback(
+    (id) => {
+      engineRef.current.pause();
+      entities.handleItemDragStart(id);
+    },
+    [entities]
+  );
+
+  const handleItemDragEnd = useCallback(
+    (id) => {
+      entities.handleItemDragEnd(id);
+      if (engineRef.current.isPlaying()) return;
+
+      const ballId = ballRef.current?.id;
+      const selectedIds = entities.selectedItemIds || [];
+      const selectedTrackIds = selectedIds.filter(
+        (itemId) => Boolean(playersByIdRef.current?.[itemId]) || itemId === ballId
+      );
+      const targetTrackIds =
+        selectedTrackIds.length && selectedTrackIds.includes(id)
+          ? selectedTrackIds
+          : playersByIdRef.current?.[id] || id === ballId
+            ? [id]
+            : [];
+      upsertKeyframesAtCurrentTime(targetTrackIds, { source: "dragEnd" });
+    },
+    [entities, upsertKeyframesAtCurrentTime]
+  );
+
+  const handleItemChange = useCallback(
+    (id, next, meta) => {
+      entities.handleItemChange(id, next, meta);
+
+      const ballId = ballRef.current?.id;
+      const isTrackable = Boolean(playersByIdRef.current?.[id]) || id === ballId;
+      if (!isTrackable) return;
+      const patch = {};
+
+      if (
+        meta?.delta &&
+        entities.selectedItemIds?.includes(id) &&
+        entities.selectedItemIds.length > 1
+      ) {
+        entities.selectedItemIds.forEach((itemId) => {
+          const selectedTrackable = Boolean(playersByIdRef.current?.[itemId]) || itemId === ballId;
+          if (!selectedTrackable) return;
+          const currentPose = resolveTrackPose(itemId);
+          if (!currentPose) return;
+          patch[itemId] = {
+            ...currentPose,
+            x: (currentPose.x ?? 0) + (meta.delta?.x ?? 0),
+            y: (currentPose.y ?? 0) + (meta.delta?.y ?? 0),
+          };
+        });
+      } else {
+        const currentPose = resolveTrackPose(id) || { x: next.x, y: next.y };
+        patch[id] = { ...currentPose, x: next.x, y: next.y };
+      }
+
+      if (!Object.keys(patch).length) return;
+      Object.entries(patch).forEach(([itemId, pose]) => {
+        latestPosesRef.current[itemId] = pose;
+      });
+      animationRendererRef.current?.setPoses?.(patch);
+    },
+    [entities, resolveTrackPose]
+  );
+
+  const loadPlayFromImport = useCallback(
+    (importObj) => {
+      const { ok, error, play } = validatePlayImport(importObj);
       if (!ok) {
+        logAnimDebug(`import failed err=${error}`);
         onShowMessage("Import failed", error, "error");
         return false;
       }
 
-      let nextPlayers = {};
-      let nextRepresented = [];
-      Object.values(play.entities.playersById || {}).forEach((player) => {
-        const result = addPlayerFromData(nextPlayers, nextRepresented, player, { preserveId: true });
-        nextPlayers = result.playersById;
-        nextRepresented = result.representedPlayerIds;
-      });
-
-      const incomingRepresented = Array.isArray(play.entities.representedPlayerIds)
-        ? play.entities.representedPlayerIds
-        : [];
-      const representedSet = new Set([...nextRepresented, ...incomingRepresented]);
-      nextRepresented = Array.from(representedSet);
-
-      let nextKeyframes = [];
-      let nextSnapshots = {};
-      (play.timeline.keyframes || []).forEach((kf) => {
-        const resolved = resolveSnapshotForKeyframe(kf, play.timeline.keyframeSnapshots || {});
-        if (!resolved?.snapshot) return;
-        const normalizedSnapshot = {
-          playersById: { ...(resolved.snapshot.playersById || {}) },
-          representedPlayerIds: [...(resolved.snapshot.representedPlayerIds || [])],
-          ball: resolved.snapshot.ball ?? null,
-        };
-        const result = addKeyframeFromData(nextKeyframes, nextSnapshots, kf, normalizedSnapshot);
-        nextKeyframes = result.keyframes;
-        nextSnapshots = result.keyframeSnapshots;
-      });
-
-      const nextBall = play.entities.ball ?? INITIAL_BALL;
+      const nextPlayers = play.entities?.playersById || {};
+      const nextRepresented = play.entities?.representedPlayerIds || Object.keys(nextPlayers);
+      const nextBall = play.entities?.ball ?? INITIAL_BALL;
       const nextCamera = play.canvas?.camera ?? { x: 0, y: 0, zoom: 1 };
       const nextFieldRotation = play.canvas?.fieldRotation ?? 0;
       const nextSettings = play.settings?.advancedSettings ?? DEFAULT_ADVANCED_SETTINGS;
       const nextAllPlayersDisplay = play.settings?.allPlayersDisplay ?? entities.allPlayersDisplay;
       const nextCurrentPlayerColor =
         play.settings?.currentPlayerColor ?? entities.currentPlayerColor;
-      const playback = play.timeline?.playback ?? {};
+      const importedPlayback = play.playback ?? {};
+      const nextSpeed =
+        typeof importedPlayback.speedMultiplier === "number"
+          ? importedPlayback.speedMultiplier
+          : DEFAULT_SPEED_MULTIPLIER;
+      const nextAutoplay =
+        typeof importedPlayback.autoplayEnabled === "boolean"
+          ? importedPlayback.autoplayEnabled
+          : true;
+      const importedAnimation = normalizeAnimation(play.animation);
+      const trackCount = Object.keys(importedAnimation.tracks || {}).length;
 
-      keyframesState.clearKeyframeInternals();
+      engineRef.current.pause({ shouldLog: false });
+      engineRef.current.setDuration(importedAnimation.durationMs);
+      engineRef.current.setPlaybackRate(speedToPlaybackRate(nextSpeed));
+      engineRef.current.setLoop(nextAutoplay);
+      engineRef.current.seek(0, { shouldLog: false, source: "engine" });
 
-      setPlayName(play.name);
+      setPlayName(play.name ?? "Name");
       setAdvancedSettings(nextSettings);
       entities.setAllPlayersDisplay(nextAllPlayersDisplay);
       entities.setCurrentPlayerColor(nextCurrentPlayerColor);
@@ -217,40 +644,35 @@ function Slate({ onShowMessage }) {
       });
       fieldViewport.loadFieldViewport({ nextCamera, nextFieldRotation });
       slateHistory.clearSlateHistory();
-      keyframesState.loadKeyframeState({ nextKeyframes, nextSnapshots });
-      timeline.setSpeedMultiplier(
-        typeof playback.speedMultiplier === "number"
-          ? playback.speedMultiplier
-          : timeline.speedMultiplier
-      );
-      timeline.setAutoplayEnabled(
-        typeof playback.autoplayEnabled === "boolean"
-          ? playback.autoplayEnabled
-          : timeline.autoplayEnabled
-      );
-      timeline.setLoopSeconds(
-        typeof playback.loopSeconds === "number" && playback.loopSeconds > 0
-          ? playback.loopSeconds
-          : LOOP_SECONDS
-      );
-      keyframesState.setKeyframeTolerance(
-        typeof playback.keyframeTolerance === "number" && playback.keyframeTolerance > 0
-          ? playback.keyframeTolerance
-          : KEYFRAME_TOLERANCE
-      );
-      timeline.setTimePercent(0);
-      timeline.setIsPlaying(false);
-      keyframesState.setSelectedKeyframe(null);
+      setAnimationData(importedAnimation);
+      setSpeedMultiplier(nextSpeed);
+      setAutoplayEnabled(nextAutoplay);
+      setSelectedKeyframeMs(null);
+      setTimelineDisplayTimeMs(0);
+      timelineDraggingRef.current = false;
+      setIsPlaying(false);
+      currentTimeRef.current = 0;
+      latestPosesRef.current = {};
+      animationRendererRef.current?.clearPoses?.();
+      setDebugSnapshot((prev) => ({
+        ...prev,
+        playing: false,
+        engineTimeMs: 0,
+        uiTimeMs: 0,
+        dragging: false,
+        lastTickDeltaMs: 0,
+        playersUpdated: 0,
+        durationMs: importedAnimation.durationMs,
+      }));
+      logAnimDebug(`import ok duration=${importedAnimation.durationMs} tracks=${trackCount}`);
       return true;
     },
     [
       entities,
       fieldViewport,
-      keyframesState,
       onShowMessage,
       setAdvancedSettings,
       slateHistory,
-      timeline,
     ]
   );
 
@@ -263,111 +685,38 @@ function Slate({ onShowMessage }) {
     event.target.value = "";
     if (!file) return;
     if (file.size > IMPORT_FILE_SIZE_LIMIT_BYTES) {
+      logAnimDebug("import failed err=File too large (max 5 MB).");
       onShowMessage("Import failed", "File too large (max 5 MB).", "error");
       return;
     }
     try {
       const text = await file.text();
       const parsed = JSON.parse(text);
-      loadPlayFromExport(parsed);
+      loadPlayFromImport(parsed);
     } catch (err) {
-      void err;
+      logAnimDebug(`import failed err=${err?.message || "Could not read or parse JSON."}`);
       onShowMessage("Import failed", "Could not read or parse JSON.", "error");
     }
   };
-
-  useEffect(() => {
-    if (!logControlPillState) return;
-
-    const logState = () => {
-      const state = {
-        timePercent: timeline.timePercent.toFixed(2),
-        keyframes: keyframesState.keyframes,
-        speedMultiplier: timeline.speedMultiplier,
-        isPlaying: timeline.isPlaying,
-        selectedKeyframe: keyframesState.selectedKeyframe,
-        autoplayEnabled: timeline.autoplayEnabled,
-        timestamp: new Date().toLocaleTimeString(),
-      };
-
-      console.log("=== ControlPill State (every 10s) ===");
-      console.log("Time Percent:", state.timePercent + "%");
-      console.log("Keyframes:", state.keyframes.length > 0 ? state.keyframes : "[]");
-      console.log("Speed Multiplier:", state.speedMultiplier);
-      console.log("Is Playing:", state.isPlaying);
-      console.log("Selected Keyframe:", state.selectedKeyframe ?? "null");
-      console.log("Autoplay Enabled:", state.autoplayEnabled);
-      console.log("Timestamp:", state.timestamp);
-      console.log("=====================================");
-    };
-
-    logState();
-    const interval = setInterval(logState, 10000);
-    return () => clearInterval(interval);
-  }, [
-    logControlPillState,
-    keyframesState.keyframes,
-    keyframesState.selectedKeyframe,
-    timeline.autoplayEnabled,
-    timeline.isPlaying,
-    timeline.speedMultiplier,
-    timeline.timePercent,
-  ]);
-
-  useEffect(() => {
-    if (!logging?.controlPill) return;
-    logEvent("controlPill", "keyframesChange", { keyframes: keyframesState.keyframes });
-  }, [keyframesState.keyframes, logEvent, logging?.controlPill]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key !== "Escape") return;
       entities.setSelectedPlayerIds([]);
       entities.setSelectedItemIds([]);
-      keyframesState.setSelectedKeyframe(null);
+      setSelectedKeyframeMs(null);
       setCanvasTool("select");
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [entities, keyframesState]);
+  }, [entities]);
 
-  useEffect(() => {
-    if (entities.isItemDraggingRef.current) return;
-    const interpolatedSlate = buildInterpolatedSlate(
-      timeline.timePercent,
-      keyframesState.latestKeyframesRef.current,
-      keyframesState.latestKeyframeSnapshotsRef.current,
-      INITIAL_BALL,
-      keyframesState.keyframeTolerance
-    );
-    if (!interpolatedSlate) return;
-    entities.applySlate(interpolatedSlate);
-  }, [
-    entities,
-    keyframesState.keyframeTolerance,
-    keyframesState.latestKeyframeSnapshotsRef,
-    keyframesState.latestKeyframesRef,
-    timeline.timePercent,
-  ]);
+  const handleAnimationRendererReady = useCallback(() => {
+    renderPoseAtTime(currentTimeRef.current);
+  }, [renderPoseAtTime]);
 
   return (
     <>
-      <button
-        onClick={() => {
-          const messages = [
-            { message: "Success!", subtitle: "Operation completed successfully", type: "success" },
-            { message: "Error", subtitle: "Something went wrong", type: "error" },
-            { message: "Info", subtitle: "This is a standard message", type: "standard" },
-          ];
-          const random = Math.floor(Math.random() * messages.length);
-          const selected = messages[random];
-          onShowMessage(selected.message, selected.subtitle, selected.type);
-        }}
-        className="absolute hidden top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-BrandOrange text-BrandBlack px-4 py-2 rounded-md font-DmSans font-semibold hover:bg-BrandOrange/90 transition-colors"
-      >
-        Test Message Popup
-      </button>
-
       <WideSidebar
         onToolChange={handleToolChange}
         onUndo={slateHistory.onUndo}
@@ -385,9 +734,9 @@ function Slate({ onShowMessage }) {
           items={entities.items}
           fieldRotation={fieldViewport.fieldRotation}
           onPanStart={fieldViewport.pushFieldHistory}
-          onItemChange={entities.handleItemChange}
-          onItemDragStart={entities.handleItemDragStart}
-          onItemDragEnd={entities.handleItemDragEnd}
+          onItemChange={handleItemChange}
+          onItemDragStart={handleItemDragStart}
+          onItemDragEnd={handleItemDragEnd}
           onCanvasAddPlayer={entities.handleCanvasAddPlayer}
           selectedPlayerIds={entities.selectedPlayerIds}
           selectedItemIds={entities.selectedItemIds}
@@ -395,24 +744,30 @@ function Slate({ onShowMessage }) {
           onMarqueeSelect={entities.onMarqueeSelect}
           allPlayersDisplay={entities.allPlayersDisplay}
           advancedSettings={advancedSettings}
+          animationRendererRef={animationRendererRef}
+          onAnimationRendererReady={handleAnimationRendererReady}
         />
       </div>
       <ControlPill
-        onTimePercentChange={timeline.handleTimePercentChange}
-        onKeyframesChange={keyframesState.setKeyframes}
-        onSpeedChange={timeline.setSpeedMultiplier}
-        onPlayStateChange={timeline.setIsPlaying}
-        onSelectedKeyframeChange={keyframesState.setSelectedKeyframe}
-        onAutoplayChange={timeline.setAutoplayEnabled}
-        externalTimePercent={timeline.timePercent}
-        externalIsPlaying={timeline.isPlaying}
-        externalSpeed={timeline.speedMultiplier}
-        externalSelectedKeyframe={keyframesState.selectedKeyframe}
-        externalAutoplayEnabled={timeline.autoplayEnabled}
-        addKeyframeSignal={keyframesState.keyframeSignal}
-        resetSignal={keyframesState.timelineResetSignal}
-        onRequestAddKeyframe={keyframesState.requestAddKeyframe}
-        onKeyframeAddAttempt={handleKeyframeAddAttempt}
+        durationMs={animationData.durationMs}
+        currentTimeMs={timelineDisplayTimeMs}
+        isPlaying={isPlaying}
+        speedMultiplier={speedMultiplier}
+        autoplayEnabled={autoplayEnabled}
+        keyframesMs={visibleKeyframesMs}
+        selectedKeyframeMs={selectedKeyframeMs}
+        onSeek={seekTimeline}
+        onPause={pauseTimeline}
+        onPlayToggle={togglePlayback}
+        onSpeedChange={setSpeedMultiplier}
+        onAddKeyframe={handleAddKeyframe}
+        onDeleteKeyframe={handleDeleteKeyframe}
+        onDeleteAllKeyframes={handleDeleteAllKeyframes}
+        onSelectKeyframe={setSelectedKeyframeMs}
+        onAutoplayChange={setAutoplayEnabled}
+        getAuthoritativeTimeMs={getAuthoritativeTimeMs}
+        onDragStateChange={handleTimelineDragStateChange}
+        onCopyDebug={handleCopyDebug}
       />
 
       <RightPanel
@@ -467,6 +822,16 @@ function Slate({ onShowMessage }) {
           onClose={() => setShowAdvancedSettings(false)}
         />
       )}
+      <DebugOverlay
+        playing={debugSnapshot.playing}
+        engineTimeMs={debugSnapshot.engineTimeMs}
+        uiTimeMs={debugSnapshot.uiTimeMs}
+        dragging={debugSnapshot.dragging}
+        lastTickDeltaMs={debugSnapshot.lastTickDeltaMs}
+        playersUpdated={debugSnapshot.playersUpdated}
+        durationMs={debugSnapshot.durationMs}
+        selectedKeyframeCount={visibleKeyframesMs.length}
+      />
     </>
   );
 }

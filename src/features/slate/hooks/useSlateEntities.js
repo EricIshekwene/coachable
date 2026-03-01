@@ -55,7 +55,7 @@ const getRandomNearbyPosition = (base) => {
   return { x: (base?.x ?? 0) + dx, y: (base?.y ?? 0) + dy };
 };
 
-export function useSlateEntities({ historyApiRef, keyframeApiRef, logEvent }) {
+export function useSlateEntities({ historyApiRef, logEvent }) {
   const [playersById, setPlayersById] = useState(() => INITIAL_PLAYERS_BY_ID);
   const [representedPlayerIds, setRepresentedPlayerIds] = useState(() => ["player-1"]);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState([]);
@@ -163,24 +163,6 @@ export function useSlateEntities({ historyApiRef, keyframeApiRef, logEvent }) {
     setSelectedItemIds([newId]);
     logEvent?.("slate", "addPlayer", { id: newId, player: newPlayer });
 
-    keyframeApiRef.current?.setKeyframeSnapshots?.((prev) => {
-      const next = { ...prev };
-      Object.keys(next).forEach((kf) => {
-        const snapshot = next[kf];
-        const existingPlayers = snapshot?.playersById ?? {};
-        const existingRep = snapshot?.representedPlayerIds ?? [];
-        if (existingPlayers[newId]) return;
-        next[kf] = {
-          ...snapshot,
-          playersById: {
-            ...existingPlayers,
-            [newId]: { ...newPlayer },
-          },
-          representedPlayerIds: existingRep.includes(newId) ? existingRep : [...existingRep, newId],
-        };
-      });
-      return next;
-    });
   };
 
   const handleCanvasAddPlayer = ({ x, y }) => {
@@ -254,23 +236,6 @@ export function useSlateEntities({ historyApiRef, keyframeApiRef, logEvent }) {
     setRepresentedPlayerIds((prev) => prev.filter((playerId) => playerId !== id));
     setSelectedPlayerIds((prev) => (prev || []).filter((playerId) => playerId !== id));
     setSelectedItemIds((prev) => (prev || []).filter((itemId) => itemId !== id));
-    keyframeApiRef.current?.setKeyframeSnapshots?.((prev) => {
-      const next = { ...prev };
-      Object.keys(next).forEach((kf) => {
-        const snapshot = next[kf];
-        if (!snapshot?.playersById?.[id] && !(snapshot?.representedPlayerIds || []).includes(id)) {
-          return;
-        }
-        const nextPlayers = { ...(snapshot.playersById || {}) };
-        delete nextPlayers[id];
-        next[kf] = {
-          ...snapshot,
-          playersById: nextPlayers,
-          representedPlayerIds: (snapshot.representedPlayerIds || []).filter((playerId) => playerId !== id),
-        };
-      });
-      return next;
-    });
     if (playerEditor.open && playerEditor.id === id) {
       handleCloseEditPlayer();
     }
@@ -290,33 +255,6 @@ export function useSlateEntities({ historyApiRef, keyframeApiRef, logEvent }) {
     setRepresentedPlayerIds((prev) => prev.filter((playerId) => !selectedPlayerIds.includes(playerId)));
     setSelectedPlayerIds([]);
     setSelectedItemIds((prev) => (prev || []).filter((itemId) => !selectedPlayerIds.includes(itemId)));
-    keyframeApiRef.current?.setKeyframeSnapshots?.((prev) => {
-      const next = { ...prev };
-      Object.keys(next).forEach((kf) => {
-        const snapshot = next[kf];
-        if (!snapshot) return;
-        let changed = false;
-        const nextPlayers = { ...(snapshot.playersById || {}) };
-        selectedPlayerIds.forEach((id) => {
-          if (nextPlayers[id]) {
-            delete nextPlayers[id];
-            changed = true;
-          }
-        });
-        const nextRepresented = (snapshot.representedPlayerIds || []).filter((playerId) => {
-          const shouldKeep = !selectedPlayerIds.includes(playerId);
-          if (!shouldKeep) changed = true;
-          return shouldKeep;
-        });
-        if (!changed) return;
-        next[kf] = {
-          ...snapshot,
-          playersById: nextPlayers,
-          representedPlayerIds: nextRepresented,
-        };
-      });
-      return next;
-    });
     if (playerEditor.open && selectedPlayerIds.includes(playerEditor.id)) {
       handleCloseEditPlayer();
     }
@@ -372,20 +310,9 @@ export function useSlateEntities({ historyApiRef, keyframeApiRef, logEvent }) {
   const handleItemDragEnd = (id) => {
     isItemDraggingRef.current = false;
     logEvent?.("slate", "dragEnd", { id });
-    const targetKeyframe = keyframeApiRef.current?.findEditTargetKeyframe?.(
-      keyframeApiRef.current?.timePercent,
-      keyframeApiRef.current?.latestKeyframesRef?.current
-    );
-    if (targetKeyframe !== null && targetKeyframe !== undefined) {
-      keyframeApiRef.current?.setKeyframeSnapshots?.((prev) => ({
-        ...prev,
-        [targetKeyframe]: snapshotSlateState(),
-      }));
-    }
   };
 
   const handleItemChange = (id, next, meta) => {
-    keyframeApiRef.current?.markKeyframeSnapshotPending?.();
     if (meta?.delta) {
       logEvent?.("slate", "itemMove", { id, delta: meta.delta });
     }

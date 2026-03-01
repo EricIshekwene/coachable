@@ -9,7 +9,7 @@ export default function TimePill({
   timePercent,
   onTimeChange,
   keyframes = [],
-  selectedKeyframe = null,
+  selectedKeyframeMs = null,
   onKeyframeClick,
   onDragStart,
   onDragEnd,
@@ -111,7 +111,7 @@ export default function TimePill({
       {/* Keyframe icons scattered along the pill */}
       <KeyframeDisplay
         keyframes={keyframes}
-        selectedKeyframe={selectedKeyframe}
+        selectedKeyframeMs={selectedKeyframeMs}
         onKeyframeClick={onKeyframeClick}
       />
 

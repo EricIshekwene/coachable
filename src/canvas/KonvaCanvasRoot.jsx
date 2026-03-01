@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Stage, Layer, Group, Circle, Text, Image as KonvaImage, Rect } from "react-konva";
 import Konva from "konva";
 import BoardViewport from "./BoardViewport";
@@ -46,7 +46,7 @@ const ZOOM_STEP = 0.1;
 const WHEEL_PAN_FACTOR = 1;
 const GUIDELINE_OFFSET = 5;
 
-export default function KonvaCanvasRoot({
+function KonvaCanvasRoot({
   tool = "hand",
   camera,
   setCamera,
@@ -63,11 +63,16 @@ export default function KonvaCanvasRoot({
   onSelectItem,
   allPlayersDisplay,
   advancedSettings,
+  animationRendererRef,
+  onAnimationRendererReady,
 }) {
   const viewportRef = useRef(null);
   const stageRef = useRef(null);
   const containerRef = useRef(null);
   const guidesLayerRef = useRef(null);
+  const itemsLayerRef = useRef(null);
+  const itemNodeMapRef = useRef(new Map());
+  const poseOverridesRef = useRef({});
   const dragStateRef = useRef(new Map());
   const draggingIdsRef = useRef(new Set());
   const panRef = useRef({
@@ -163,6 +168,73 @@ export default function KonvaCanvasRoot({
     };
   };
 
+  const getRenderedPose = useCallback((item) => {
+    const override = poseOverridesRef.current[item.id];
+    if (!override) return item;
+    return {
+      ...item,
+      x: override.x ?? item.x,
+      y: override.y ?? item.y,
+      r: override.r ?? item.r,
+    };
+  }, []);
+
+  const setItemNodeRef = useCallback((itemId, node) => {
+    if (!itemId) return;
+    if (!node) {
+      itemNodeMapRef.current.delete(itemId);
+      return;
+    }
+    itemNodeMapRef.current.set(itemId, node);
+  }, []);
+
+  const applyPoseMapToNodes = useCallback((poseMap = {}) => {
+    if (!poseMap || typeof poseMap !== "object") return;
+    Object.entries(poseMap).forEach(([itemId, pose]) => {
+      if (!itemId || !pose) return;
+      poseOverridesRef.current[itemId] = {
+        ...(poseOverridesRef.current[itemId] || {}),
+        x: pose.x,
+        y: pose.y,
+        ...(pose.r !== undefined ? { r: pose.r } : {}),
+      };
+      const node = itemNodeMapRef.current.get(itemId);
+      if (!node || node.isDragging?.()) return;
+      if (Number.isFinite(pose.x) && Number.isFinite(pose.y)) {
+        node.position({ x: pose.x, y: pose.y });
+      }
+      if (Number.isFinite(pose.r)) {
+        node.rotation(pose.r);
+      }
+    });
+    itemsLayerRef.current?.batchDraw?.();
+  }, []);
+
+  useEffect(() => {
+    if (!animationRendererRef) return undefined;
+    const api = {
+      setPoses: (poses) => applyPoseMapToNodes(poses),
+      clearPoses: () => {
+        poseOverridesRef.current = {};
+        itemsLayerRef.current?.batchDraw?.();
+      },
+      getCurrentPose: (itemId) => {
+        const override = poseOverridesRef.current[itemId];
+        if (override) return { ...override };
+        const node = itemNodeMapRef.current.get(itemId);
+        if (!node) return null;
+        return { x: node.x(), y: node.y(), r: node.rotation() };
+      },
+    };
+    animationRendererRef.current = api;
+    onAnimationRendererReady?.(api);
+    return () => {
+      if (animationRendererRef.current === api) {
+        animationRendererRef.current = null;
+      }
+    };
+  }, [animationRendererRef, applyPoseMapToNodes, onAnimationRendererReady]);
+
   const clearGuides = () => {
     const layer = guidesLayerRef.current;
     if (!layer) return;
@@ -214,8 +286,9 @@ export default function KonvaCanvasRoot({
     items.forEach((item) => {
       if (!item || item.id === skipId) return;
       if (item.type !== "player" && item.type !== "ball") return;
-      vertical.push(item.x);
-      horizontal.push(item.y);
+      const rendered = getRenderedPose(item);
+      vertical.push(rendered.x);
+      horizontal.push(rendered.y);
     });
 
     return {
@@ -450,8 +523,9 @@ export default function KonvaCanvasRoot({
       const selected = items
         .filter((item) => item?.type === "player" || item?.type === "ball")
         .filter((item) => {
+          const rendered = getRenderedPose(item);
           const itemRadius = item.type === "ball" ? ballRadius : radius;
-          return intersects(item.x, item.y, itemRadius);
+          return intersects(rendered.x, rendered.y, itemRadius);
         })
         .map((item) => item.id);
 
@@ -469,7 +543,13 @@ export default function KonvaCanvasRoot({
 
   const handleItemDragStart = (item) => () => {
     draggingIdsRef.current.add(item.id);
-    dragStateRef.current.set(item.id, { x: item.x, y: item.y });
+    const node = itemNodeMapRef.current.get(item.id);
+    if (node) {
+      dragStateRef.current.set(item.id, { x: node.x(), y: node.y() });
+    } else {
+      const rendered = getRenderedPose(item);
+      dragStateRef.current.set(item.id, { x: rendered.x, y: rendered.y });
+    }
     clearGuides();
     setIsHoveringItem(false);
     onItemDragStart?.(item.id);
@@ -499,7 +579,14 @@ export default function KonvaCanvasRoot({
     }
 
     const next = { x: node.x(), y: node.y() };
-    const last = dragStateRef.current.get(item.id) || { x: item.x, y: item.y };
+    poseOverridesRef.current[item.id] = {
+      ...(poseOverridesRef.current[item.id] || {}),
+      x: next.x,
+      y: next.y,
+      r: node.rotation(),
+    };
+    const rendered = getRenderedPose(item);
+    const last = dragStateRef.current.get(item.id) || { x: rendered.x, y: rendered.y };
     const delta = { x: next.x - last.x, y: next.y - last.y };
     dragStateRef.current.set(item.id, next);
     onItemChange?.(item.id, next, { delta });
@@ -558,7 +645,7 @@ export default function KonvaCanvasRoot({
           onTouchEnd={handleStagePointerUp}
           onWheel={handleStageWheel}
         >
-          <Layer>
+          <Layer ref={itemsLayerRef}>
             <Group x={worldOrigin.x} y={worldOrigin.y} scaleX={worldOrigin.scale} scaleY={worldOrigin.scale}>
               {fieldImage.image && (
                 // Rotation model: rotate only the field image so world coordinates stay axis-aligned.
@@ -574,6 +661,7 @@ export default function KonvaCanvasRoot({
                 />
               )}
               {items.map((item) => {
+                const renderedItem = getRenderedPose(item);
                 const isSelected =
                   item.type === "player"
                     ? selectedPlayerIds?.includes(item.id)
@@ -584,8 +672,10 @@ export default function KonvaCanvasRoot({
                   return (
                     <Group
                       key={item.id}
-                      x={item.x}
-                      y={item.y}
+                      ref={(node) => setItemNodeRef(item.id, node)}
+                      x={renderedItem.x}
+                      y={renderedItem.y}
+                      rotation={renderedItem.r || 0}
                       draggable={draggable}
                       onMouseEnter={() => {
                         if (!draggable || !hoverAllowed) return;
@@ -648,8 +738,10 @@ export default function KonvaCanvasRoot({
                 return (
                   <Group
                     key={item.id}
-                    x={item.x}
-                    y={item.y}
+                    ref={(node) => setItemNodeRef(item.id, node)}
+                    x={renderedItem.x}
+                    y={renderedItem.y}
+                    rotation={renderedItem.r || 0}
                     draggable={draggable}
                     onMouseEnter={() => {
                       if (!draggable || !hoverAllowed) return;
@@ -734,3 +826,5 @@ export default function KonvaCanvasRoot({
     </BoardViewport>
   );
 }
+
+export default React.memo(KonvaCanvasRoot);

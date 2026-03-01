@@ -1,12 +1,11 @@
 import { useState } from "react";
 
-export function useSlateHistory({ snapshotSlate, applySlate, isRestoringRef, onMarkKeyframeSnapshotPending, logEvent }) {
+export function useSlateHistory({ snapshotSlate, applySlate, isRestoringRef, logEvent }) {
   const [historyPast, setHistoryPast] = useState([]);
   const [historyFuture, setHistoryFuture] = useState([]);
 
   const pushHistory = () => {
     if (isRestoringRef.current) return;
-    onMarkKeyframeSnapshotPending?.();
     setHistoryPast((prev) => [...prev, snapshotSlate()]);
     setHistoryFuture([]);
   };
