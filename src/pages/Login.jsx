@@ -1,25 +1,43 @@
 import { Link } from "react-router-dom";
 import logo from "../assets/logos/full_coachable_Logo.png";
-export default function Login() {
-  return (
-    <div className="h-screen overflow-hidden bg-BrandBlack gap-6">
-      <div className="w-full max-w-full md:max-w-1/2 h-full bg-BrandWhite text-BrandBlack px-6 sm:px-12 md:px-24 lg:px-50 py-12 sm:py-20 md:py-40 overflow-auto">
 
-        <div className="flex flex-col gap-4 w-full h-full">
+export default function Login() {
+  const inputClass =
+    "w-full rounded-md border border-BrandGray bg-white p-2 font-DmSans text-sm outline-none transition hover:border-BrandBlack focus:border-BrandOrange focus:shadow-[0_0_0_2px_rgba(255,122,24,0.2)]";
+
+  return (
+    <div className="h-screen overflow-hidden bg-BrandBlack">
+      <div className="h-full w-full max-w-full overflow-auto bg-BrandWhite px-6 py-10 text-BrandBlack sm:px-12 sm:py-16 md:max-w-1/2 md:px-24 md:py-24 lg:px-50">
+        <div className="flex h-full w-full max-w-2xl flex-col gap-5">
           <img src={logo} alt="logo" className="w-1/2 sm:w-1/3 md:w-1/4" />
-          <p className="text-2xl font-bold font-DmSans">Login</p>
-          <p className="text-sm font-DmSans">Welcome back! Please enter your details.</p>
-          <div className="flex flex-col gap-4 mt-3">
-            <p className="text-sm font-DmSans">Email </p>
-            <input type="email" placeholder="Email" className="w-full p-2 rounded-md border-1 border-BrandGray" />
-            <p className="text-sm font-DmSans">Password</p>
-            <input type="password" placeholder="Password" className="w-full p-2 rounded-md border-1 border-BrandGray" />
-            
+          <div className="flex flex-col gap-1">
+            <p className="font-DmSans text-2xl font-bold">Login</p>
+            <p className="font-DmSans text-sm text-BrandGray2">Welcome back! Please enter your details.</p>
           </div>
-          <p className="text-sm font-DmSans text-right text-BrandOrange">Forgot password?</p>
-          <button className="w-full p-2 rounded-md bg-BrandBlack text-BrandWhite">Login</button>
-          <p className="text-sm font-DmSans text-center">Don't have an account? <span className="text-BrandOrange underline">Sign up</span></p>
-          
+
+          <div className="mt-1 flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
+              <p className="font-DmSans text-sm font-semibold">Email</p>
+              <input type="email" placeholder="Email" className={inputClass} />
+            </div>
+            <div className="flex flex-col gap-2">
+              <p className="font-DmSans text-sm font-semibold">Password</p>
+              <input type="password" placeholder="Password" className={inputClass} />
+            </div>
+          </div>
+          <p className="font-DmSans text-right text-sm text-BrandOrange transition hover:opacity-80">
+            Forgot password?
+          </p>
+
+          <button className="w-full rounded-md bg-BrandBlack p-2 font-DmSans text-sm text-BrandWhite transition hover:bg-BrandBlack2 active:scale-[0.99]">
+            Login
+          </button>
+          <p className="font-DmSans text-sm text-center text-BrandGray2">
+            Don't have an account?{" "}
+            <Link to="/signup" className="text-BrandOrange underline transition hover:opacity-80">
+              Sign up
+            </Link>
+          </p>
         </div>
       </div>
     </div>
