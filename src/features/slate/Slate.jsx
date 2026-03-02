@@ -22,6 +22,8 @@ import {
   upsertKeyframe,
 } from "../../animation";
 import { getLogs as getAnimDebugLogs, log as logAnimDebug } from "../../animation/debugLogger";
+import { getLogs as getDrawDebugLogs, log as logDrawDebug } from "../../canvas/drawDebugLogger";
+import { useDrawings } from "./hooks/useDrawings";
 
 /**
  * Top-level feature component for the play editor. Wires together entities, history,
@@ -53,6 +55,14 @@ const stampAnimationMeta = (nextAnimation, previousMeta) => {
 function Slate({ onShowMessage }) {
   const [canvasTool, setCanvasTool] = useState("hand");
   const [drawSubTool, setDrawSubTool] = useState("draw");
+  const [drawColor, setDrawColor] = useState("#FFFFFF");
+  const [drawStrokeWidth, setDrawStrokeWidth] = useState(3);
+  const [drawTension, setDrawTension] = useState(0.3);
+  const [drawFontSize, setDrawFontSize] = useState(18);
+  const [drawTextAlign, setDrawTextAlign] = useState("left");
+  const [drawArrowHeadType, setDrawArrowHeadType] = useState("standard");
+  const [selectedDrawingId, setSelectedDrawingId] = useState(null);
+  const [textEditing, setTextEditing] = useState(null);
   const [playName, setPlayName] = useState("Name");
   const [speedMultiplier, setSpeedMultiplier] = useState(DEFAULT_SPEED_MULTIPLIER);
   const [autoplayEnabled, setAutoplayEnabled] = useState(true);
@@ -66,6 +76,7 @@ function Slate({ onShowMessage }) {
   const importInputRef = useRef(null);
   const historyApiRef = useRef({ pushHistory: () => {} });
   const animationRendererRef = useRef(null);
+  const drawingHookRef = useRef(null);
   const animationDataRef = useRef(animationData);
   const playersByIdRef = useRef({});
   const ballRef = useRef(INITIAL_BALL);
@@ -99,9 +110,30 @@ function Slate({ onShowMessage }) {
     logEvent,
   });
 
+  const drawingsState = useDrawings({ historyApiRef });
+
+  const selectedDrawing = useMemo(
+    () => drawingsState.drawings.find((d) => d.id === selectedDrawingId) || null,
+    [drawingsState.drawings, selectedDrawingId]
+  );
+
+  useEffect(() => {
+    logDrawDebug(`selection drawingId=${selectedDrawingId || "none"}`);
+  }, [selectedDrawingId]);
+
+  const compositeSnapshotSlate = useCallback(() => ({
+    ...entities.snapshotSlate(),
+    drawings: drawingsState.snapshotDrawings(),
+  }), [entities.snapshotSlate, drawingsState.snapshotDrawings]);
+
+  const compositeApplySlate = useCallback((snapshot) => {
+    entities.applySlate(snapshot);
+    drawingsState.applyDrawings(snapshot.drawings);
+  }, [entities.applySlate, drawingsState.applyDrawings]);
+
   const slateHistory = useSlateHistory({
-    snapshotSlate: entities.snapshotSlate,
-    applySlate: entities.applySlate,
+    snapshotSlate: compositeSnapshotSlate,
+    applySlate: compositeApplySlate,
     isRestoringRef: entities.isRestoringRef,
     logEvent,
   });
@@ -319,9 +351,13 @@ function Slate({ onShowMessage }) {
 
   const onReset = () => {
     logEvent("slate", "reset");
+    logDrawDebug("reset slate+drawings");
     engineRef.current.pause({ shouldLog: false });
     engineRef.current.seek(0, { shouldLog: false, source: "engine" });
     entities.resetSlateEntities();
+    drawingsState.resetDrawings();
+    setSelectedDrawingId(null);
+    setTextEditing(null);
     slateHistory.clearSlateHistory();
     fieldViewport.resetFieldViewport();
     setAnimationData(createEmptyAnimation({ durationMs: LOOP_SECONDS * 1000 }));
@@ -361,6 +397,7 @@ function Slate({ onShowMessage }) {
         units: "px",
         notes: "World coordinates are centered; +x right, +y down.",
       },
+      drawings: drawingsState.drawings,
     });
     const exportJson = JSON.stringify(exportPayload);
     const exportBytes = new TextEncoder().encode(exportJson).length;
@@ -368,10 +405,77 @@ function Slate({ onShowMessage }) {
     downloadPlayExport(exportPayload, playName);
   };
 
+  const handleDrawSubToolChange = useCallback((nextSubTool) => {
+    setDrawSubTool((prevSubTool) => {
+      if (prevSubTool === nextSubTool) return prevSubTool;
+      logDrawDebug(`subToolChange prev=${prevSubTool} next=${nextSubTool}`);
+      return nextSubTool;
+    });
+    setTextEditing(null);
+    setSelectedDrawingId(null);
+  }, []);
+
+  const handleDrawColorChange = useCallback((nextColor) => {
+    setDrawColor((prevColor) => {
+      if (prevColor === nextColor) return prevColor;
+      logDrawDebug(`style color prev=${prevColor} next=${nextColor}`);
+      return nextColor;
+    });
+  }, []);
+
+  const handleDrawStrokeWidthChange = useCallback((nextWidth) => {
+    setDrawStrokeWidth((prevWidth) => {
+      if (prevWidth === nextWidth) return prevWidth;
+      logDrawDebug(`style strokeWidth prev=${prevWidth} next=${nextWidth}`);
+      return nextWidth;
+    });
+  }, []);
+
+  const handleDrawTensionChange = useCallback((nextTension) => {
+    setDrawTension((prevTension) => {
+      if (prevTension === nextTension) return prevTension;
+      logDrawDebug(`style tension prev=${prevTension} next=${nextTension}`);
+      return nextTension;
+    });
+  }, []);
+
+  const handleDrawFontSizeChange = useCallback((nextFontSize) => {
+    setDrawFontSize((prevFontSize) => {
+      if (prevFontSize === nextFontSize) return prevFontSize;
+      logDrawDebug(`style fontSize prev=${prevFontSize} next=${nextFontSize}`);
+      return nextFontSize;
+    });
+  }, []);
+
+  const handleDrawTextAlignChange = useCallback((nextAlign) => {
+    setDrawTextAlign((prevAlign) => {
+      if (prevAlign === nextAlign) return prevAlign;
+      logDrawDebug(`style textAlign prev=${prevAlign} next=${nextAlign}`);
+      return nextAlign;
+    });
+  }, []);
+
+  const handleDrawArrowHeadTypeChange = useCallback((nextArrowHeadType) => {
+    setDrawArrowHeadType((prevArrowHeadType) => {
+      if (prevArrowHeadType === nextArrowHeadType) return prevArrowHeadType;
+      logDrawDebug(`style arrowHead prev=${prevArrowHeadType} next=${nextArrowHeadType}`);
+      return nextArrowHeadType;
+    });
+  }, []);
+
   const handleToolChange = useCallback((tool) => {
+    logDrawDebug(`toolChange request=${tool}`);
     if (tool === "hand" || tool === "select" || tool === "pen" || tool === "addPlayer" || tool === "color") {
-      setCanvasTool((prev) => (prev === tool ? prev : tool));
+      setCanvasTool((prev) => {
+        if (prev === tool) return prev;
+        logDrawDebug(`toolChange applied prev=${prev} next=${tool}`);
+        return tool;
+      });
+      setSelectedDrawingId(null);
+      setTextEditing(null);
+      return;
     }
+    logDrawDebug(`toolChange ignored invalidTool=${tool}`);
   }, []);
 
   const getAuthoritativeTimeMs = useCallback(() => {
@@ -385,13 +489,26 @@ function Slate({ onShowMessage }) {
 
   const handleCopyDebug = useCallback(async () => {
     const lines = getAnimDebugLogs(200);
-    const payload = lines.join("\n");
+    const payload = lines.length ? lines.join("\n") : "[ANIMDBG] no logs captured yet";
     try {
       await navigator.clipboard.writeText(payload);
       return true;
     } catch (error) {
       logAnimDebug(`copyDebug failed err=${error?.message || "clipboard unavailable"}`);
       onShowMessage("Copy debug failed", "Clipboard access was denied.", "error");
+      return false;
+    }
+  }, [onShowMessage]);
+
+  const handleCopyDrawDebug = useCallback(async () => {
+    const lines = getDrawDebugLogs(300);
+    const payload = lines.length ? lines.join("\n") : "[DRAWDBG] no logs captured yet";
+    try {
+      await navigator.clipboard.writeText(payload);
+      return true;
+    } catch (error) {
+      logDrawDebug(`copyDrawDebug failed err=${error?.message || "clipboard unavailable"}`);
+      onShowMessage("Copy draw debug failed", "Clipboard access was denied.", "error");
       return false;
     }
   }, [onShowMessage]);
@@ -630,6 +747,8 @@ function Slate({ onShowMessage }) {
       currentTimeRef.current = 0;
       latestPosesRef.current = {};
       animationRendererRef.current?.clearPoses?.();
+      drawingsState.applyDrawings(play.drawings || []);
+      setSelectedDrawingId(null);
       logAnimDebug(`import ok duration=${importedAnimation.durationMs} tracks=${trackCount}`);
       return true;
     },
@@ -670,6 +789,7 @@ function Slate({ onShowMessage }) {
       if (e.key === "Escape") {
         entities.setSelectedPlayerIds([]);
         entities.setSelectedItemIds([]);
+        setSelectedDrawingId(null);
         setSelectedKeyframeMs(null);
         setCanvasTool("select");
         return;
@@ -682,15 +802,23 @@ function Slate({ onShowMessage }) {
 
       const isDeleteKey = e.key === "Delete" || e.key === "Backspace";
       if (!isDeleteKey) return;
-      if (!entities.selectedPlayerIds?.length) return;
 
+      // Delete selected drawing element
+      if (selectedDrawingId && canvasTool === "pen" && drawSubTool === "select") {
+        e.preventDefault();
+        drawingsState.removeDrawing(selectedDrawingId);
+        setSelectedDrawingId(null);
+        return;
+      }
+
+      if (!entities.selectedPlayerIds?.length) return;
       e.preventDefault();
       entities.handleDeleteSelected();
       setSelectedKeyframeMs(null);
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [entities]);
+  }, [entities, selectedDrawingId, canvasTool, drawSubTool, drawingsState]);
 
   const handleAnimationRendererReady = useCallback(() => {
     renderPoseAtTime(currentTimeRef.current);
@@ -707,7 +835,7 @@ function Slate({ onShowMessage }) {
         onPlayerColorChange={entities.handlePlayerColorChange}
         onDeleteSelected={entities.handleDeleteSelected}
       />
-      <div className="flex-1 flex">
+      <div className="flex-1 flex relative">
         <KonvaCanvasRoot
           tool={canvasTool}
           camera={fieldViewport.camera}
@@ -727,12 +855,72 @@ function Slate({ onShowMessage }) {
           advancedSettings={advancedSettings}
           animationRendererRef={animationRendererRef}
           onAnimationRendererReady={handleAnimationRendererReady}
+          drawings={drawingsState.drawings}
+          drawSubTool={drawSubTool}
+          drawColor={drawColor}
+          drawStrokeWidth={drawStrokeWidth}
+          drawTension={drawTension}
+          drawFontSize={drawFontSize}
+          drawTextAlign={drawTextAlign}
+          drawArrowHeadType={drawArrowHeadType}
+          onAddDrawing={drawingsState.addDrawing}
+          onRemoveDrawing={drawingsState.removeDrawing}
+          onRemoveMultipleDrawings={drawingsState.removeMultipleDrawings}
+          onSelectDrawing={setSelectedDrawingId}
+          onUpdateDrawing={drawingsState.updateDrawing}
+          selectedDrawingId={selectedDrawingId}
+          textEditing={textEditing}
+          onTextEditingChange={setTextEditing}
+          drawingHookRef={drawingHookRef}
         />
+        {textEditing && (
+          <textarea
+            className="absolute z-[60] bg-transparent border border-BrandOrange p-1 outline-none resize-none rounded"
+            style={{
+              left: textEditing.screenX,
+              top: textEditing.screenY,
+              fontSize: drawFontSize,
+              fontFamily: "DmSans, sans-serif",
+              color: drawColor,
+              minWidth: 120,
+              minHeight: 36,
+            }}
+            ref={(el) => {
+              if (!el) return;
+              // Mark as just-mounted so we can ignore the immediate blur
+              // caused by the canvas mouseup completing the click cycle.
+              el.dataset.mountedAt = String(Date.now());
+              // Delay focus so it doesn't race with the click lifecycle.
+              requestAnimationFrame(() => el.focus());
+            }}
+            onBlur={(e) => {
+              const mountedAt = Number(e.target.dataset.mountedAt || 0);
+              if (Date.now() - mountedAt < 300) return; // ignore blur from initial click
+              const val = e.target.value;
+              if (val?.trim()) {
+                drawingHookRef.current?.commitText?.(val);
+              } else {
+                drawingHookRef.current?.cancelText?.();
+              }
+            }}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                drawingHookRef.current?.commitText?.(e.target.value);
+              }
+              if (e.key === "Escape") {
+                e.preventDefault();
+                drawingHookRef.current?.cancelText?.();
+              }
+            }}
+          />
+        )}
       </div>
       {canvasTool === "pen" && (
         <DrawToolsPill
           activeSubTool={drawSubTool}
-          onSubToolChange={setDrawSubTool}
+          onSubToolChange={handleDrawSubToolChange}
         />
       )}
       <ControlPill
@@ -759,6 +947,22 @@ function Slate({ onShowMessage }) {
       />
 
       <RightPanel
+        canvasTool={canvasTool}
+        drawSubTool={drawSubTool}
+        drawColor={drawColor}
+        drawStrokeWidth={drawStrokeWidth}
+        drawTension={drawTension}
+        drawFontSize={drawFontSize}
+        drawTextAlign={drawTextAlign}
+        drawArrowHeadType={drawArrowHeadType}
+        onDrawColorChange={handleDrawColorChange}
+        onDrawStrokeWidthChange={handleDrawStrokeWidthChange}
+        onDrawTensionChange={handleDrawTensionChange}
+        onDrawFontSizeChange={handleDrawFontSizeChange}
+        onDrawTextAlignChange={handleDrawTextAlignChange}
+        onDrawArrowHeadTypeChange={handleDrawArrowHeadTypeChange}
+        selectedDrawing={selectedDrawing}
+        onUpdateDrawing={drawingsState.updateDrawing}
         playName={playName}
         onPlayNameChange={setPlayName}
         zoomPercent={fieldViewport.zoomPercent}
@@ -808,6 +1012,7 @@ function Slate({ onShowMessage }) {
           onChange={setAdvancedSettings}
           onReset={() => setAdvancedSettings(DEFAULT_ADVANCED_SETTINGS)}
           onCopyDebug={handleCopyDebug}
+          onCopyDrawDebug={handleCopyDrawDebug}
           onClose={() => setShowAdvancedSettings(false)}
         />
       )}

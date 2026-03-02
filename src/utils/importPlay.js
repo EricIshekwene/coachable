@@ -85,6 +85,7 @@ export const validatePlayImport = (input) => {
         ball: entities.ball ?? null,
       },
       animation,
+      drawings: Array.isArray(play.drawings) ? play.drawings : [],
       playback: asObject(play.playback) || {},
       meta: asObject(play.meta) || {},
     },

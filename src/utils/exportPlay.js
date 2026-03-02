@@ -34,6 +34,7 @@ export const buildPlayExport = ({
   animationData,
   playback,
   coordinateSystem,
+  drawings,
 } = {}) => {
   const animationJson = serializeAnimation(animationData, { pretty: false });
   const animation = JSON.parse(animationJson);
@@ -64,6 +65,7 @@ export const buildPlayExport = ({
         ball: ball ?? null,
       },
       animation,
+      drawings: Array.isArray(drawings) ? drawings : [],
       playback: playback ?? null,
       meta: {
         appVersion: appVersion ?? null,

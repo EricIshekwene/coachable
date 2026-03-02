@@ -1,6 +1,7 @@
 import React from "react";
 import PlayNameEditor from "./rightPanel/PlayNameEditor";
 import FieldSettingsSection from "./rightPanel/FieldSettingsSection";
+import DrawingStyleSection from "./rightPanel/DrawingStyleSection";
 import PlayersSection from "./rightPanel/PlayersSection";
 import AdvancedSettingsButton from "./rightPanel/AdvancedSettingsButton";
 import AllPlayersSection from "./rightPanel/AllPlayersSection";
@@ -41,6 +42,24 @@ export default function RightPanel({
   onSaveToPlaybook,
   onDownload,
   onImport,
+
+  // Drawing style props
+  canvasTool,
+  drawSubTool,
+  drawColor,
+  drawStrokeWidth,
+  drawTension,
+  drawFontSize,
+  drawTextAlign,
+  drawArrowHeadType,
+  onDrawColorChange,
+  onDrawStrokeWidthChange,
+  onDrawTensionChange,
+  onDrawFontSizeChange,
+  onDrawTextAlignChange,
+  onDrawArrowHeadTypeChange,
+  selectedDrawing,
+  onUpdateDrawing,
 }) {
   return (
     <aside
@@ -72,6 +91,26 @@ export default function RightPanel({
             onRedo={onFieldRedo}
             onReset={onReset}
           />
+
+          {canvasTool === "pen" && (
+            <DrawingStyleSection
+              drawSubTool={drawSubTool}
+              drawColor={drawColor}
+              drawStrokeWidth={drawStrokeWidth}
+              drawTension={drawTension}
+              drawFontSize={drawFontSize}
+              drawTextAlign={drawTextAlign}
+              drawArrowHeadType={drawArrowHeadType}
+              onColorChange={onDrawColorChange}
+              onStrokeWidthChange={onDrawStrokeWidthChange}
+              onTensionChange={onDrawTensionChange}
+              onFontSizeChange={onDrawFontSizeChange}
+              onTextAlignChange={onDrawTextAlignChange}
+              onArrowHeadTypeChange={onDrawArrowHeadTypeChange}
+              selectedDrawing={selectedDrawing}
+              onUpdateDrawing={onUpdateDrawing}
+            />
+          )}
 
           <PlayersSection
             playersById={playersById}

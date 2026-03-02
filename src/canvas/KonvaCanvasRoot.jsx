@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Stage, Layer, Group, Circle, Text, Image as KonvaImage, Rect } from "react-konva";
+import { Stage, Layer, Group, Circle, Text, Image as KonvaImage, Rect, Line, Arrow } from "react-konva";
 import Konva from "konva";
 import BoardViewport from "./BoardViewport";
+import { useCanvasDrawing, getDrawingBounds } from "./hooks/useCanvasDrawing";
 import RugbyField from "../assets/objects/Field Vectors/Rugby_Field.png";
 
 /** Loads an HTML Image from a URL and tracks loading status. */
@@ -72,6 +73,23 @@ function KonvaCanvasRoot({
   advancedSettings,
   animationRendererRef,
   onAnimationRendererReady,
+  drawings = [],
+  drawSubTool,
+  drawColor,
+  drawStrokeWidth,
+  drawTension,
+  drawFontSize,
+  drawTextAlign,
+  drawArrowHeadType,
+  onAddDrawing,
+  onRemoveDrawing,
+  onRemoveMultipleDrawings,
+  onSelectDrawing,
+  onUpdateDrawing,
+  selectedDrawingId,
+  textEditing,
+  onTextEditingChange,
+  drawingHookRef,
 }) {
   const viewportRef = useRef(null);
   const stageRef = useRef(null);
@@ -174,6 +192,37 @@ function KonvaCanvasRoot({
       y: (screen.y - size.height / 2 - (camera?.y || 0)) / zoom,
     };
   };
+
+  const canvasDrawing = useCanvasDrawing({
+    tool,
+    subTool: drawSubTool,
+    stageRef,
+    toWorldCoords,
+    drawings,
+    drawColor,
+    drawStrokeWidth,
+    drawTension,
+    drawFontSize,
+    drawTextAlign,
+    drawArrowHeadType,
+    onAddDrawing,
+    onRemoveDrawing,
+    onRemoveMultipleDrawings,
+    onSelectDrawing,
+    onUpdateDrawing,
+    selectedDrawingId,
+    textEditing,
+    onTextEditingChange,
+  });
+
+  // Expose drawing hook API to parent via ref
+  useEffect(() => {
+    if (!drawingHookRef) return;
+    drawingHookRef.current = {
+      commitText: canvasDrawing.commitText,
+      cancelText: canvasDrawing.cancelText,
+    };
+  });
 
   const getRenderedPose = useCallback((item) => {
     const override = poseOverridesRef.current[item.id];
@@ -430,6 +479,12 @@ function KonvaCanvasRoot({
     const stage = stageRef.current;
     const target = e.target;
 
+    // Drawing tools — handle before pan/select/add
+    if (tool === "pen" && !isMiddleMouse && isPrimaryButton) {
+      const handled = canvasDrawing.handlePointerDown(e);
+      if (handled) return;
+    }
+
     if (isAddTool && !isMiddleMouse) {
       if (!isPrimaryButton) return;
       const pointer = stage?.getPointerPosition?.();
@@ -472,6 +527,12 @@ function KonvaCanvasRoot({
   };
 
   const handleStagePointerMove = (e) => {
+    // Drawing tools — handle before marquee/pan
+    if (tool === "pen") {
+      const handled = canvasDrawing.handlePointerMove(e);
+      if (handled) return;
+    }
+
     if (marqueeRef.current.active) {
       const stage = stageRef.current;
       const pointer = stage?.getPointerPosition?.();
@@ -496,6 +557,12 @@ function KonvaCanvasRoot({
   };
 
   const handleStagePointerUp = (e) => {
+    // Drawing tools
+    if (tool === "pen") {
+      const handled = canvasDrawing.handlePointerUp(e);
+      if (handled) return;
+    }
+
     if (marqueeRef.current.active) {
       const start = marqueeRef.current.start;
       const end = marqueeRef.current.end;
@@ -619,12 +686,16 @@ function KonvaCanvasRoot({
   const isMarqueeActive = Boolean(marquee);
 
   const isDragging = draggingIdsRef.current.size > 0;
+  const drawCursor =
+    drawSubTool === "select" ? "default" : drawSubTool === "text" ? "text" : drawSubTool === "erase" ? "crosshair" : "crosshair";
   const baseCursor =
     tool === "hand"
       ? "grab"
-      : tool === "addPlayer" || tool === "color"
-        ? "copy"
-        : "default";
+      : tool === "pen"
+        ? drawCursor
+        : tool === "addPlayer" || tool === "color"
+          ? "copy"
+          : "default";
   const hoverAllowed = !isMarqueeActive && !isPanning && !isDragging;
   const derivedCursor =
     isPanning || isDragging
@@ -632,6 +703,71 @@ function KonvaCanvasRoot({
       : hoverAllowed && isHoveringItem
         ? "pointer"
         : baseCursor;
+
+  const ARROW_HEAD_STYLES = {
+    standard: { pointerLength: 10, pointerWidth: 8 },
+    thin: { pointerLength: 12, pointerWidth: 4 },
+    wide: { pointerLength: 8, pointerWidth: 14 },
+    none: { pointerLength: 0, pointerWidth: 0 },
+  };
+
+  const erasingIds = canvasDrawing.erasingIds;
+
+  const renderDrawingNode = (d, key) => {
+    const isErasing = erasingIds && erasingIds.has(d.id);
+    const opacity = isErasing ? 0.3 : 1;
+
+    if (d.type === "stroke") {
+      return (
+        <Line
+          key={key}
+          points={d.points}
+          stroke={d.color || "#FFFFFF"}
+          strokeWidth={d.strokeWidth || 3}
+          lineCap="round"
+          lineJoin="round"
+          tension={d.tension ?? 0.3}
+          opacity={opacity}
+          listening={false}
+        />
+      );
+    }
+    if (d.type === "arrow") {
+      const headStyle = ARROW_HEAD_STYLES[d.arrowHeadType] || ARROW_HEAD_STYLES.standard;
+      return (
+        <Arrow
+          key={key}
+          points={d.points}
+          stroke={d.color || "#FFFFFF"}
+          fill={d.color || "#FFFFFF"}
+          strokeWidth={d.strokeWidth || 3}
+          pointerLength={headStyle.pointerLength}
+          pointerWidth={headStyle.pointerWidth}
+          lineCap="round"
+          lineJoin="round"
+          opacity={opacity}
+          listening={false}
+        />
+      );
+    }
+    if (d.type === "text") {
+      return (
+        <Text
+          key={key}
+          x={d.x}
+          y={d.y}
+          text={d.text || ""}
+          fill={d.color || "#FFFFFF"}
+          fontSize={d.fontSize || 18}
+          fontFamily="DmSans"
+          align={d.align || "left"}
+          opacity={opacity}
+          listening={false}
+        />
+      );
+    }
+    return null;
+  };
 
   return (
     <BoardViewport
@@ -809,6 +945,41 @@ function KonvaCanvasRoot({
                   </Group>
                 );
               })}
+            </Group>
+          </Layer>
+          <Layer listening={false} name="drawingsLayer">
+            <Group x={worldOrigin.x} y={worldOrigin.y} scaleX={worldOrigin.scale} scaleY={worldOrigin.scale}>
+              {drawings.map((d) => {
+                const isSelectedDrag = selectedDrawingId === d.id && canvasDrawing.selectDragOffset;
+                if (isSelectedDrag) {
+                  const off = canvasDrawing.selectDragOffset;
+                  return (
+                    <Group key={d.id} x={off.dx} y={off.dy}>
+                      {renderDrawingNode(d, d.id)}
+                    </Group>
+                  );
+                }
+                return renderDrawingNode(d, d.id);
+              })}
+              {canvasDrawing.activeDrawing && renderDrawingNode(canvasDrawing.activeDrawing, "active-preview")}
+              {selectedDrawingId && (() => {
+                const d = drawings.find((dr) => dr.id === selectedDrawingId);
+                if (!d) return null;
+                const bounds = getDrawingBounds(d);
+                const off = canvasDrawing.selectDragOffset || { dx: 0, dy: 0 };
+                return (
+                  <Rect
+                    x={bounds.x - 4 + off.dx}
+                    y={bounds.y - 4 + off.dy}
+                    width={bounds.width + 8}
+                    height={bounds.height + 8}
+                    stroke="#FF7A18"
+                    strokeWidth={1.5}
+                    dash={[4, 3]}
+                    listening={false}
+                  />
+                );
+              })()}
             </Group>
           </Layer>
           <Layer listening={false} name="guidesLayer" ref={guidesLayerRef} />

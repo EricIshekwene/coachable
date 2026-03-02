@@ -1,20 +1,31 @@
 import React, { useEffect, useRef, useState } from "react";
 
-export default function LoggerSettingsSection({ value = {}, onChange, onCopyDebug }) {
+export default function LoggerSettingsSection({
+  value = {},
+  onChange,
+  onCopyDebug,
+  onCopyDrawDebug,
+}) {
   const slate = value.slate ?? false;
   const controlPill = value.controlPill ?? false;
   const canvas = value.canvas ?? false;
   const sidebar = value.sidebar ?? false;
-  const [copyState, setCopyState] = useState("idle");
-  const copyResetRef = useRef(null);
+  const [copyAnimationState, setCopyAnimationState] = useState("idle");
+  const [copyDrawState, setCopyDrawState] = useState("idle");
+  const copyAnimationResetRef = useRef(null);
+  const copyDrawResetRef = useRef(null);
 
   const update = (patch) => onChange?.({ ...value, ...patch });
 
   useEffect(
     () => () => {
-      if (copyResetRef.current) {
-        clearTimeout(copyResetRef.current);
-        copyResetRef.current = null;
+      if (copyAnimationResetRef.current) {
+        clearTimeout(copyAnimationResetRef.current);
+        copyAnimationResetRef.current = null;
+      }
+      if (copyDrawResetRef.current) {
+        clearTimeout(copyDrawResetRef.current);
+        copyDrawResetRef.current = null;
       }
     },
     []
@@ -42,29 +53,45 @@ export default function LoggerSettingsSection({ value = {}, onChange, onCopyDebu
     </div>
   );
 
-  const handleCopyDebug = async (event) => {
+  const handleCopyAnimationDebug = async (event) => {
     event.stopPropagation();
     if (!onCopyDebug) return;
     try {
       const ok = await onCopyDebug();
-      setCopyState(ok ? "copied" : "error");
+      setCopyAnimationState(ok ? "copied" : "error");
     } catch {
-      setCopyState("error");
+      setCopyAnimationState("error");
     }
-    if (copyResetRef.current) {
-      clearTimeout(copyResetRef.current);
+    if (copyAnimationResetRef.current) {
+      clearTimeout(copyAnimationResetRef.current);
     }
-    copyResetRef.current = setTimeout(() => {
-      setCopyState("idle");
-      copyResetRef.current = null;
+    copyAnimationResetRef.current = setTimeout(() => {
+      setCopyAnimationState("idle");
+      copyAnimationResetRef.current = null;
+    }, 1500);
+  };
+
+  const handleCopyDrawDebug = async (event) => {
+    event.stopPropagation();
+    if (!onCopyDrawDebug) return;
+    try {
+      const ok = await onCopyDrawDebug();
+      setCopyDrawState(ok ? "copied" : "error");
+    } catch {
+      setCopyDrawState("error");
+    }
+    if (copyDrawResetRef.current) {
+      clearTimeout(copyDrawResetRef.current);
+    }
+    copyDrawResetRef.current = setTimeout(() => {
+      setCopyDrawState("idle");
+      copyDrawResetRef.current = null;
     }, 1500);
   };
 
   return (
     <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1 sm:gap-2">
-      <div className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans">
-        Logging
-      </div>
+      <div className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans">Logging</div>
       <div className="flex flex-col w-full items-start justify-start gap-1 sm:gap-1.5">
         <ToggleRow label="Slate" enabled={slate} onToggle={(v) => update({ slate: v })} />
         <ToggleRow
@@ -77,10 +104,25 @@ export default function LoggerSettingsSection({ value = {}, onChange, onCopyDebu
       </div>
       <button
         type="button"
-        onClick={handleCopyDebug}
+        onClick={handleCopyAnimationDebug}
         className="mt-1 h-6 sm:h-7 w-full bg-BrandBlack2 border-[0.625px] border-BrandGray text-BrandOrange rounded-md px-2 text-[10px] sm:text-[11px] md:text-[12px] font-DmSans cursor-pointer"
       >
-        {copyState === "copied" ? "Copied" : copyState === "error" ? "Copy Failed" : "Copy Animation Debug"}
+        {copyAnimationState === "copied"
+          ? "Copied"
+          : copyAnimationState === "error"
+            ? "Copy Failed"
+            : "Copy Animation Debug"}
+      </button>
+      <button
+        type="button"
+        onClick={handleCopyDrawDebug}
+        className="h-6 sm:h-7 w-full bg-BrandBlack2 border-[0.625px] border-BrandGray text-BrandOrange rounded-md px-2 text-[10px] sm:text-[11px] md:text-[12px] font-DmSans cursor-pointer"
+      >
+        {copyDrawState === "copied"
+          ? "Copied"
+          : copyDrawState === "error"
+            ? "Copy Failed"
+            : "Copy Draw Debug"}
       </button>
     </div>
   );
