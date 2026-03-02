@@ -4,13 +4,15 @@ import rugbyScrum from "../../assets/prefabIcons/Rugby Scrum.png";
 import rugbyLineout from "../../assets/prefabIcons/Rugby Lineout.png";
 import rugbyKickoff from "../../assets/prefabIcons/Rugby KickOff.png";
 
+import { MdDashboard } from "react-icons/md";
 import SelectToolSection from "../sidebar/SelectToolSection";
 import PenToolSection from "../sidebar/PenToolSection";
-import EraserToolSection from "../sidebar/EraserToolSection";
 import AddPlayerSection from "../sidebar/AddPlayerSection";
 import PlayerColorSection, { PLAYER_COLORS } from "../sidebar/PlayerColorSection";
 import PrefabsSection from "../sidebar/PrefabsSection";
 import HistoryActionsSection from "../sidebar/HistoryActionsSection";
+import { WideSidebarRowButton } from "../subcomponents/Buttons";
+import { Tooltip } from "../subcomponents/Popovers";
 
 const iconClass = "text-BrandOrange text-xl sm:text-2xl md:text-3xl";
 
@@ -79,7 +81,6 @@ export default function WideSidebarRoot({
     onToolChange,
     onSelectSubTool,
     onPenSubTool,
-    onEraserSubTool,
     onPlayerColorChange,
     onUndo,
     onRedo,
@@ -93,7 +94,6 @@ export default function WideSidebarRoot({
     const [selectedTool, setSelectedTool] = useState("select");
     const [selectToolType, setSelectToolType] = useState("select");
     const [penToolType, setPenToolType] = useState("pen");
-    const [eraserToolType, setEraserToolType] = useState("eraser");
     const [openPopover, setOpenPopover] = useState(null);
     const [playerNumber, setPlayerNumber] = useState("");
     const [playerName, setPlayerName] = useState("");
@@ -104,10 +104,10 @@ export default function WideSidebarRoot({
 
     const selectButtonRef = useRef(null);
     const penButtonRef = useRef(null);
-    const eraserButtonRef = useRef(null);
     const addPlayerButtonRef = useRef(null);
     const playerButtonRef = useRef(null);
     const prefabsButtonRef = useRef(null);
+    const componentsButtonRef = useRef(null);
     const playerDropdownRef = useRef(null);
 
     const players = playersProp ?? DEFAULT_PLAYERS;
@@ -132,12 +132,6 @@ export default function WideSidebarRoot({
         setSelectedTool("pen");
         closePopover();
         onPenSubTool?.(option);
-    };
-    const handleEraserSubTool = (option) => {
-        setEraserToolType(option);
-        setSelectedTool("eraser");
-        closePopover();
-        onEraserSubTool?.(option);
     };
     const handlePlayerColorChange = (hex) => {
         setPlayerColor(hex);
@@ -213,13 +207,6 @@ export default function WideSidebarRoot({
                 handlePenSubTool("pen");
             } else if (key === "q") {
                 handlePenSubTool("arrow");
-            } else if (key === "e") {
-                setSelectedTool("eraser");
-                closePopover();
-            } else if (key === "f") {
-                handleEraserSubTool("full");
-            } else if (key === "o") {
-                handleEraserSubTool("partial");
             } else if (key === "a") {
                 setSelectedTool("addPlayer");
                 closePopover();
@@ -231,7 +218,7 @@ export default function WideSidebarRoot({
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [closePopover, handleEraserSubTool, handlePenSubTool, handlePlayerColorChange, onDeleteSelected, onRedo, onUndo, playerColor]);
+    }, [closePopover, handlePenSubTool, handlePlayerColorChange, onDeleteSelected, onRedo, onUndo, playerColor]);
 
     useEffect(() => {
         if (!showPlayerDropdown) return;
@@ -297,21 +284,6 @@ export default function WideSidebarRoot({
             />
             {hr}
 
-            <EraserToolSection
-                wide
-                eraserToolType={eraserToolType}
-                isSelected={selectedTool === "eraser"}
-                openPopover={openPopover}
-                hoveredTooltip={hoveredTooltip}
-                anchorRef={eraserButtonRef}
-                onToolSelect={() => setSelectedTool("eraser")}
-                onEraserSubTool={handleEraserSubTool}
-                onPopoverToggle={togglePopover}
-                onPopoverClose={closePopover}
-                onHoverTooltip={setHoveredTooltip}
-            />
-            {hr}
-
             <AddPlayerSection
                 wide
                 isSelected={selectedTool === "addPlayer"}
@@ -365,6 +337,24 @@ export default function WideSidebarRoot({
                 onPrefabSelect={handlePrefabSelect}
                 onHoverTooltip={setHoveredTooltip}
             />
+            {hr}
+
+            <div
+                className="relative"
+                onMouseEnter={() => setHoveredTooltip("components")}
+                onMouseLeave={() => setHoveredTooltip(null)}
+            >
+                <WideSidebarRowButton
+                    ref={componentsButtonRef}
+                    Icon={<MdDashboard className={iconClass} />}
+                    label="Components"
+                    onHover={() => {}}
+                    isSelected={false}
+                    onClick={() => {}}
+                    onRowClick={() => {}}
+                />
+                <Tooltip isOpen={hoveredTooltip === "components"} text="Components" />
+            </div>
             {hr}
 
             <p className="text-BrandGray2 text-[10px] sm:text-xs font-DmSans uppercase tracking-wider px-2 mt-1 mb-0.5">

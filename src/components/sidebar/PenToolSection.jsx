@@ -21,7 +21,7 @@ export default function PenToolSection({
 }) {
     const popoverKey = "penOptions";
     const isOpen = openPopover === popoverKey;
-    const label = penToolType === "arrow" ? "Arrow" : "Pen";
+    const label = penToolType === "arrow" ? "Arrow" : "Draw";
     const IconNode = penToolType === "arrow" ? (
         <FaArrowUpLong
             className={isSelected ? selectedIconClass : iconClass}

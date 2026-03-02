@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npm run build)",
       "Bash(npx vite build)",
-      "Bash(npm install react-router-dom)"
+      "Bash(npm install react-router-dom)",
+      "Bash(npx vite build --logLevel error)"
     ]
   }
 }
