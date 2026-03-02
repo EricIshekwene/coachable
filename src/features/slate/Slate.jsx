@@ -4,6 +4,7 @@ import ControlPill from "../../components/controlPill/ControlPill";
 import RightPanel from "../../components/RightPanel";
 import AdvancedSettings from "../../components/AdvancedSettings";
 import KonvaCanvasRoot from "../../canvas/KonvaCanvasRoot";
+import DrawToolsPill from "../../components/DrawToolsPill";
 import PlayerEditPanel from "../../components/rightPanel/PlayerEditPanel";
 import { buildPlayExport, downloadPlayExport } from "../../utils/exportPlay";
 import { IMPORT_FILE_SIZE_LIMIT_BYTES, validatePlayImport } from "../../utils/importPlay";
@@ -51,6 +52,7 @@ const stampAnimationMeta = (nextAnimation, previousMeta) => {
 
 function Slate({ onShowMessage }) {
   const [canvasTool, setCanvasTool] = useState("hand");
+  const [drawSubTool, setDrawSubTool] = useState("draw");
   const [playName, setPlayName] = useState("Name");
   const [speedMultiplier, setSpeedMultiplier] = useState(DEFAULT_SPEED_MULTIPLIER);
   const [autoplayEnabled, setAutoplayEnabled] = useState(true);
@@ -367,7 +369,7 @@ function Slate({ onShowMessage }) {
   };
 
   const handleToolChange = useCallback((tool) => {
-    if (tool === "hand" || tool === "select" || tool === "addPlayer" || tool === "color") {
+    if (tool === "hand" || tool === "select" || tool === "pen" || tool === "addPlayer" || tool === "color") {
       setCanvasTool((prev) => (prev === tool ? prev : tool));
     }
   }, []);
@@ -665,11 +667,26 @@ function Slate({ onShowMessage }) {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key !== "Escape") return;
-      entities.setSelectedPlayerIds([]);
-      entities.setSelectedItemIds([]);
+      if (e.key === "Escape") {
+        entities.setSelectedPlayerIds([]);
+        entities.setSelectedItemIds([]);
+        setSelectedKeyframeMs(null);
+        setCanvasTool("select");
+        return;
+      }
+
+      const tagName = e.target?.tagName;
+      const isTypingTarget =
+        tagName === "INPUT" || tagName === "TEXTAREA" || e.target?.isContentEditable;
+      if (isTypingTarget) return;
+
+      const isDeleteKey = e.key === "Delete" || e.key === "Backspace";
+      if (!isDeleteKey) return;
+      if (!entities.selectedPlayerIds?.length) return;
+
+      e.preventDefault();
+      entities.handleDeleteSelected();
       setSelectedKeyframeMs(null);
-      setCanvasTool("select");
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -712,12 +729,19 @@ function Slate({ onShowMessage }) {
           onAnimationRendererReady={handleAnimationRendererReady}
         />
       </div>
+      {canvasTool === "pen" && (
+        <DrawToolsPill
+          activeSubTool={drawSubTool}
+          onSubToolChange={setDrawSubTool}
+        />
+      )}
       <ControlPill
         durationMs={animationData.durationMs}
         currentTimeMs={timelineDisplayTimeMs}
         isPlaying={isPlaying}
         speedMultiplier={speedMultiplier}
         autoplayEnabled={autoplayEnabled}
+        selectedObjectCount={entities.selectedPlayerIds?.length ?? 0}
         keyframesMs={visibleKeyframesMs}
         selectedKeyframeMs={selectedKeyframeMs}
         onSeek={seekTimeline}
@@ -727,6 +751,7 @@ function Slate({ onShowMessage }) {
         onAddKeyframe={handleAddKeyframe}
         onDeleteKeyframe={handleDeleteKeyframe}
         onDeleteAllKeyframes={handleDeleteAllKeyframes}
+        onDeleteSelectedObjects={entities.handleDeleteSelected}
         onSelectKeyframe={setSelectedKeyframeMs}
         onAutoplayChange={setAutoplayEnabled}
         getAuthoritativeTimeMs={getAuthoritativeTimeMs}

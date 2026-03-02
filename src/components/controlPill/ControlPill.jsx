@@ -16,6 +16,7 @@ export default function ControlPill({
   isPlaying = false,
   speedMultiplier = 50,
   autoplayEnabled = true,
+  selectedObjectCount = 0,
   keyframesMs = [],
   selectedKeyframeMs = null,
   onSeek,
@@ -25,6 +26,7 @@ export default function ControlPill({
   onAddKeyframe,
   onDeleteKeyframe,
   onDeleteAllKeyframes,
+  onDeleteSelectedObjects,
   onSelectKeyframe,
   onAutoplayChange,
   getAuthoritativeTimeMs,
@@ -49,6 +51,7 @@ export default function ControlPill({
   const sortedKeyframes = useMemo(() => [...(keyframesMs || [])].sort((a, b) => a - b), [keyframesMs]);
 
   const handleSeek = (timeMs, meta) => {
+    onPause?.();
     onSelectKeyframe?.(null);
     onSeek?.(timeMs, meta);
   };
@@ -107,6 +110,7 @@ export default function ControlPill({
 
   const handleAddKeyframe = (event) => {
     event.stopPropagation();
+    onPause?.();
     onAddKeyframe?.();
   };
 
@@ -119,6 +123,11 @@ export default function ControlPill({
 
   const handleTrash = (event) => {
     event.stopPropagation();
+    if (selectedObjectCount > 0) {
+      onDeleteSelectedObjects?.();
+      onSelectKeyframe?.(null);
+      return;
+    }
     onDeleteAllKeyframes?.();
     onSelectKeyframe?.(null);
   };
