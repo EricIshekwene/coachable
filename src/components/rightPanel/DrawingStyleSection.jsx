@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { FiAlignLeft, FiAlignCenter, FiAlignRight } from "react-icons/fi";
 
 const PRESET_COLORS = [
@@ -5,16 +6,14 @@ const PRESET_COLORS = [
   "#22c55e", "#a855f7",
 ];
 
-const STROKE_WIDTHS = [
-  { value: 2, label: "Thin" },
-  { value: 4, label: "Medium" },
-  { value: 6, label: "Thick" },
-];
+const FONT_SIZE_OPTIONS = [12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64, 72];
+const MAX_FONT_SIZE = 200;
 
 const ARROW_HEAD_TYPES = [
   { value: "standard", label: "Standard" },
   { value: "thin", label: "Thin" },
   { value: "wide", label: "Wide" },
+  { value: "chevron", label: "Chevron" },
   { value: "none", label: "None" },
 ];
 
@@ -42,33 +41,6 @@ function ColorSwatches({ value, onChange }) {
   );
 }
 
-function StrokeWidthPicker({ value, onChange }) {
-  return (
-    <div className="flex gap-1.5">
-      {STROKE_WIDTHS.map((w) => (
-        <button
-          key={w.value}
-          onClick={() => onChange?.(w.value)}
-          className={`
-            flex items-center gap-1 px-2 py-1 rounded-md text-[10px] sm:text-xs font-DmSans
-            transition-all duration-100
-            ${value === w.value
-              ? "bg-BrandOrange text-BrandBlack"
-              : "text-BrandOrange hover:bg-BrandBlack2 border border-BrandGray2"
-            }
-          `}
-        >
-          <span
-            className="rounded-full bg-current"
-            style={{ width: w.value * 2, height: w.value * 2 }}
-          />
-          {w.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function SectionLabel({ children }) {
   return (
     <p className="text-BrandOrange text-[10px] sm:text-xs font-DmSans uppercase tracking-wider mt-1.5 mb-1">
@@ -77,40 +49,124 @@ function SectionLabel({ children }) {
   );
 }
 
+function SliderControl({ label, value, onChange, min, max, step = 1 }) {
+  return (
+    <>
+      <SectionLabel>{label}</SectionLabel>
+      <div className="flex items-center gap-2 w-full">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange?.(Number(e.target.value))}
+          className="flex-1 accent-BrandOrange h-1.5"
+        />
+        <span className="text-BrandWhite text-[10px] sm:text-xs font-DmSans w-8 text-right">
+          {Number.isInteger(step) ? value : value.toFixed(2)}
+        </span>
+      </div>
+    </>
+  );
+}
+
+/** Small SVG preview of an arrow head style */
+function ArrowHeadPreview({ type, isActive }) {
+  const color = isActive ? "#1a1a1a" : "#FF7A18";
+  return (
+    <svg width="36" height="18" viewBox="0 0 36 18" className="block">
+      <line x1="2" y1="9" x2="24" y2="9" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      {type === "standard" && (
+        <polygon points="24,4 34,9 24,14" fill={color} />
+      )}
+      {type === "thin" && (
+        <polygon points="22,6 34,9 22,12" fill={color} />
+      )}
+      {type === "wide" && (
+        <polygon points="22,1 34,9 22,17" fill={color} />
+      )}
+      {type === "chevron" && (
+        <polyline points="22,2 34,9 22,16" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      )}
+      {type === "none" && (
+        <circle cx="30" cy="9" r="2" fill={color} />
+      )}
+    </svg>
+  );
+}
+
+function FontSizeDropdown({ value, onChange }) {
+  const [isCustom, setIsCustom] = useState(false);
+  const [customValue, setCustomValue] = useState(String(value));
+
+  const handleSelectChange = (e) => {
+    const v = e.target.value;
+    if (v === "custom") {
+      setIsCustom(true);
+      setCustomValue(String(value));
+      return;
+    }
+    setIsCustom(false);
+    onChange?.(Number(v));
+  };
+
+  const commitCustom = () => {
+    const num = Math.min(MAX_FONT_SIZE, Math.max(1, parseInt(customValue, 10) || 18));
+    onChange?.(num);
+    setCustomValue(String(num));
+  };
+
+  if (isCustom) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <input
+          type="number"
+          min={1}
+          max={MAX_FONT_SIZE}
+          value={customValue}
+          onChange={(e) => setCustomValue(e.target.value)}
+          onBlur={commitCustom}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === "Enter") { commitCustom(); setIsCustom(false); }
+            if (e.key === "Escape") setIsCustom(false);
+          }}
+          autoFocus
+          className="w-16 bg-BrandBlack2 border border-BrandGray2 text-BrandWhite text-xs font-DmSans rounded px-1.5 py-0.5 outline-none focus:border-BrandOrange"
+        />
+        <button
+          onClick={() => setIsCustom(false)}
+          className="text-BrandGray hover:text-BrandWhite text-xs"
+        >
+          Done
+        </button>
+      </div>
+    );
+  }
+
+  const isPreset = FONT_SIZE_OPTIONS.includes(value);
+  return (
+    <select
+      value={isPreset ? value : "custom"}
+      onChange={handleSelectChange}
+      className="w-full bg-BrandBlack2 border border-BrandGray2 text-BrandWhite text-xs font-DmSans rounded px-1.5 py-1 outline-none focus:border-BrandOrange cursor-pointer"
+    >
+      {FONT_SIZE_OPTIONS.map((s) => (
+        <option key={s} value={s}>{s}px</option>
+      ))}
+      <option value="custom">{isPreset ? "Custom..." : `${value}px (custom)`}</option>
+    </select>
+  );
+}
+
 function DrawSubToolStyle({ drawColor, drawStrokeWidth, drawTension, onColorChange, onStrokeWidthChange, onTensionChange }) {
   return (
     <>
       <SectionLabel>Color</SectionLabel>
       <ColorSwatches value={drawColor} onChange={onColorChange} />
-      <SectionLabel>Brush Size</SectionLabel>
-      <StrokeWidthPicker value={drawStrokeWidth} onChange={onStrokeWidthChange} />
-      <SectionLabel>Stabilization</SectionLabel>
-      <div className="flex gap-1.5">
-        <button
-          onClick={() => onTensionChange?.(0)}
-          className={`px-2 py-1 rounded-md text-[10px] sm:text-xs font-DmSans transition-all duration-100 ${
-            drawTension === 0 ? "bg-BrandOrange text-BrandBlack" : "text-BrandOrange hover:bg-BrandBlack2 border border-BrandGray2"
-          }`}
-        >
-          Off
-        </button>
-        <button
-          onClick={() => onTensionChange?.(0.3)}
-          className={`px-2 py-1 rounded-md text-[10px] sm:text-xs font-DmSans transition-all duration-100 ${
-            drawTension === 0.3 ? "bg-BrandOrange text-BrandBlack" : "text-BrandOrange hover:bg-BrandBlack2 border border-BrandGray2"
-          }`}
-        >
-          Low
-        </button>
-        <button
-          onClick={() => onTensionChange?.(0.5)}
-          className={`px-2 py-1 rounded-md text-[10px] sm:text-xs font-DmSans transition-all duration-100 ${
-            drawTension === 0.5 ? "bg-BrandOrange text-BrandBlack" : "text-BrandOrange hover:bg-BrandBlack2 border border-BrandGray2"
-          }`}
-        >
-          High
-        </button>
-      </div>
+      <SliderControl label="Brush Size" value={drawStrokeWidth} onChange={onStrokeWidthChange} min={1} max={20} step={1} />
+      <SliderControl label="Stabilization" value={drawTension} onChange={onTensionChange} min={0} max={1} step={0.05} />
     </>
   );
 }
@@ -120,23 +176,23 @@ function ArrowSubToolStyle({ drawColor, drawStrokeWidth, drawArrowHeadType, onCo
     <>
       <SectionLabel>Color</SectionLabel>
       <ColorSwatches value={drawColor} onChange={onColorChange} />
-      <SectionLabel>Stroke Width</SectionLabel>
-      <StrokeWidthPicker value={drawStrokeWidth} onChange={onStrokeWidthChange} />
+      <SliderControl label="Stroke Width" value={drawStrokeWidth} onChange={onStrokeWidthChange} min={1} max={20} step={1} />
       <SectionLabel>Arrow Head</SectionLabel>
-      <div className="flex gap-1.5 flex-wrap">
+      <div className="flex gap-1 flex-wrap">
         {ARROW_HEAD_TYPES.map((t) => (
           <button
             key={t.value}
             onClick={() => onArrowHeadTypeChange?.(t.value)}
+            title={t.label}
             className={`
-              px-2 py-1 rounded-md text-[10px] sm:text-xs font-DmSans transition-all duration-100
+              p-1 rounded-md transition-all duration-100
               ${drawArrowHeadType === t.value
-                ? "bg-BrandOrange text-BrandBlack"
-                : "text-BrandOrange hover:bg-BrandBlack2 border border-BrandGray2"
+                ? "bg-BrandOrange"
+                : "hover:bg-BrandBlack2 border border-BrandGray2"
               }
             `}
           >
-            {t.label}
+            <ArrowHeadPreview type={t.value} isActive={drawArrowHeadType === t.value} />
           </button>
         ))}
       </div>
@@ -150,20 +206,7 @@ function TextSubToolStyle({ drawColor, drawFontSize, drawTextAlign, onColorChang
       <SectionLabel>Color</SectionLabel>
       <ColorSwatches value={drawColor} onChange={onColorChange} />
       <SectionLabel>Font Size</SectionLabel>
-      <div className="flex items-center gap-2 w-full">
-        <input
-          type="range"
-          min={12}
-          max={48}
-          step={2}
-          value={drawFontSize}
-          onChange={(e) => onFontSizeChange?.(Number(e.target.value))}
-          className="flex-1 accent-BrandOrange h-1.5"
-        />
-        <span className="text-BrandWhite text-[10px] sm:text-xs font-DmSans w-6 text-right">
-          {drawFontSize}
-        </span>
-      </div>
+      <FontSizeDropdown value={drawFontSize} onChange={onFontSizeChange} />
       <SectionLabel>Alignment</SectionLabel>
       <div className="flex gap-1.5">
         {TEXT_ALIGNS.map(({ value, Icon }) => (
@@ -186,6 +229,17 @@ function TextSubToolStyle({ drawColor, drawFontSize, drawTextAlign, onColorChang
   );
 }
 
+function EraserSubToolStyle({ eraserSize, onEraserSizeChange }) {
+  return (
+    <>
+      <SliderControl label="Eraser Size" value={eraserSize ?? 10} onChange={onEraserSizeChange} min={5} max={50} step={1} />
+      <p className="text-BrandGray text-[10px] sm:text-xs font-DmSans mt-1">
+        Drag over drawings to erase them.
+      </p>
+    </>
+  );
+}
+
 function SelectedDrawingStyle({ selectedDrawing, onUpdateDrawing }) {
   if (!selectedDrawing) return null;
   const d = selectedDrawing;
@@ -196,22 +250,8 @@ function SelectedDrawingStyle({ selectedDrawing, onUpdateDrawing }) {
       <>
         <SectionLabel>Color</SectionLabel>
         <ColorSwatches value={d.color} onChange={(c) => update({ color: c })} />
-        <SectionLabel>Brush Size</SectionLabel>
-        <StrokeWidthPicker value={d.strokeWidth} onChange={(w) => update({ strokeWidth: w })} />
-        <SectionLabel>Stabilization</SectionLabel>
-        <div className="flex gap-1.5">
-          {[{ v: 0, l: "Off" }, { v: 0.3, l: "Low" }, { v: 0.5, l: "High" }].map(({ v, l }) => (
-            <button
-              key={v}
-              onClick={() => update({ tension: v })}
-              className={`px-2 py-1 rounded-md text-[10px] sm:text-xs font-DmSans transition-all duration-100 ${
-                (d.tension ?? 0.3) === v ? "bg-BrandOrange text-BrandBlack" : "text-BrandOrange hover:bg-BrandBlack2 border border-BrandGray2"
-              }`}
-            >
-              {l}
-            </button>
-          ))}
-        </div>
+        <SliderControl label="Brush Size" value={d.strokeWidth || 3} onChange={(w) => update({ strokeWidth: w })} min={1} max={20} step={1} />
+        <SliderControl label="Stabilization" value={d.tension ?? 0.3} onChange={(t) => update({ tension: t })} min={0} max={1} step={0.05} />
       </>
     );
   }
@@ -221,23 +261,23 @@ function SelectedDrawingStyle({ selectedDrawing, onUpdateDrawing }) {
       <>
         <SectionLabel>Color</SectionLabel>
         <ColorSwatches value={d.color} onChange={(c) => update({ color: c })} />
-        <SectionLabel>Stroke Width</SectionLabel>
-        <StrokeWidthPicker value={d.strokeWidth} onChange={(w) => update({ strokeWidth: w })} />
+        <SliderControl label="Stroke Width" value={d.strokeWidth || 3} onChange={(w) => update({ strokeWidth: w })} min={1} max={20} step={1} />
         <SectionLabel>Arrow Head</SectionLabel>
-        <div className="flex gap-1.5 flex-wrap">
+        <div className="flex gap-1 flex-wrap">
           {ARROW_HEAD_TYPES.map((t) => (
             <button
               key={t.value}
               onClick={() => update({ arrowHeadType: t.value })}
+              title={t.label}
               className={`
-                px-2 py-1 rounded-md text-[10px] sm:text-xs font-DmSans transition-all duration-100
+                p-1 rounded-md transition-all duration-100
                 ${(d.arrowHeadType || "standard") === t.value
-                  ? "bg-BrandOrange text-BrandBlack"
-                  : "text-BrandOrange hover:bg-BrandBlack2 border border-BrandGray2"
+                  ? "bg-BrandOrange"
+                  : "hover:bg-BrandBlack2 border border-BrandGray2"
                 }
               `}
             >
-              {t.label}
+              <ArrowHeadPreview type={t.value} isActive={(d.arrowHeadType || "standard") === t.value} />
             </button>
           ))}
         </div>
@@ -248,23 +288,19 @@ function SelectedDrawingStyle({ selectedDrawing, onUpdateDrawing }) {
   if (d.type === "text") {
     return (
       <>
+        <SectionLabel>Text Content</SectionLabel>
+        <textarea
+          value={d.text || ""}
+          onChange={(e) => update({ text: e.target.value })}
+          onKeyDown={(e) => e.stopPropagation()}
+          rows={3}
+          className="w-full bg-BrandBlack2 border border-BrandGray2 text-BrandWhite text-xs font-DmSans rounded px-1.5 py-1 outline-none focus:border-BrandOrange resize-none"
+          placeholder="Enter text..."
+        />
         <SectionLabel>Color</SectionLabel>
         <ColorSwatches value={d.color} onChange={(c) => update({ color: c })} />
         <SectionLabel>Font Size</SectionLabel>
-        <div className="flex items-center gap-2 w-full">
-          <input
-            type="range"
-            min={12}
-            max={48}
-            step={2}
-            value={d.fontSize || 18}
-            onChange={(e) => update({ fontSize: Number(e.target.value) })}
-            className="flex-1 accent-BrandOrange h-1.5"
-          />
-          <span className="text-BrandWhite text-[10px] sm:text-xs font-DmSans w-6 text-right">
-            {d.fontSize || 18}
-          </span>
-        </div>
+        <FontSizeDropdown value={d.fontSize || 18} onChange={(s) => update({ fontSize: s })} />
         <SectionLabel>Alignment</SectionLabel>
         <div className="flex gap-1.5">
           {TEXT_ALIGNS.map(({ value, Icon }) => (
@@ -290,10 +326,6 @@ function SelectedDrawingStyle({ selectedDrawing, onUpdateDrawing }) {
   return null;
 }
 
-/**
- * Multi-selection style panel: when multiple drawings are selected,
- * show shared color editing only.
- */
 function MultiSelectedStyle({ selectedDrawings, onUpdateMultipleDrawings }) {
   if (!selectedDrawings?.length) return null;
   const handleColorChange = (color) => {
@@ -303,7 +335,6 @@ function MultiSelectedStyle({ selectedDrawings, onUpdateMultipleDrawings }) {
     }
     onUpdateMultipleDrawings?.(changes);
   };
-  // Use first selected drawing's color as the active swatch
   const currentColor = selectedDrawings[0]?.color || "#FFFFFF";
   return (
     <>
@@ -331,6 +362,8 @@ export default function DrawingStyleSection({
   selectedDrawings = [],
   onUpdateDrawing,
   onUpdateMultipleDrawings,
+  eraserSize,
+  onEraserSizeChange,
 }) {
   const multiSelected = selectedDrawings.length > 1;
   const showSelectedStyle = drawSubTool === "select" && selectedDrawing && !multiSelected;
@@ -398,9 +431,10 @@ export default function DrawingStyleSection({
       )}
 
       {drawSubTool === "erase" && (
-        <p className="text-BrandGray text-[10px] sm:text-xs font-DmSans mt-1">
-          Drag over drawings to erase them.
-        </p>
+        <EraserSubToolStyle
+          eraserSize={eraserSize}
+          onEraserSizeChange={onEraserSizeChange}
+        />
       )}
 
       {drawSubTool === "select" && !selectedDrawing && !multiSelected && (

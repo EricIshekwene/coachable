@@ -2,6 +2,7 @@ import React from "react";
 import PlayNameEditor from "./rightPanel/PlayNameEditor";
 import FieldSettingsSection from "./rightPanel/FieldSettingsSection";
 import DrawingStyleSection from "./rightPanel/DrawingStyleSection";
+import DrawingObjectsList from "./rightPanel/DrawingObjectsList";
 import PlayersSection from "./rightPanel/PlayersSection";
 import AdvancedSettingsButton from "./rightPanel/AdvancedSettingsButton";
 import AllPlayersSection from "./rightPanel/AllPlayersSection";
@@ -62,6 +63,13 @@ export default function RightPanel({
   selectedDrawings,
   onUpdateDrawing,
   onUpdateMultipleDrawings,
+  // Drawing objects list props
+  drawings,
+  selectedDrawingIds,
+  onSelectedDrawingIdsChange,
+  onRemoveDrawing,
+  eraserSize,
+  onEraserSizeChange,
 }) {
   return (
     <aside
@@ -95,25 +103,35 @@ export default function RightPanel({
           />
 
           {canvasTool === "pen" && (
-            <DrawingStyleSection
-              drawSubTool={drawSubTool}
-              drawColor={drawColor}
-              drawStrokeWidth={drawStrokeWidth}
-              drawTension={drawTension}
-              drawFontSize={drawFontSize}
-              drawTextAlign={drawTextAlign}
-              drawArrowHeadType={drawArrowHeadType}
-              onColorChange={onDrawColorChange}
-              onStrokeWidthChange={onDrawStrokeWidthChange}
-              onTensionChange={onDrawTensionChange}
-              onFontSizeChange={onDrawFontSizeChange}
-              onTextAlignChange={onDrawTextAlignChange}
-              onArrowHeadTypeChange={onDrawArrowHeadTypeChange}
-              selectedDrawing={selectedDrawing}
-              selectedDrawings={selectedDrawings}
-              onUpdateDrawing={onUpdateDrawing}
-              onUpdateMultipleDrawings={onUpdateMultipleDrawings}
-            />
+            <>
+              <DrawingStyleSection
+                drawSubTool={drawSubTool}
+                drawColor={drawColor}
+                drawStrokeWidth={drawStrokeWidth}
+                drawTension={drawTension}
+                drawFontSize={drawFontSize}
+                drawTextAlign={drawTextAlign}
+                drawArrowHeadType={drawArrowHeadType}
+                onColorChange={onDrawColorChange}
+                onStrokeWidthChange={onDrawStrokeWidthChange}
+                onTensionChange={onDrawTensionChange}
+                onFontSizeChange={onDrawFontSizeChange}
+                onTextAlignChange={onDrawTextAlignChange}
+                onArrowHeadTypeChange={onDrawArrowHeadTypeChange}
+                selectedDrawing={selectedDrawing}
+                selectedDrawings={selectedDrawings}
+                onUpdateDrawing={onUpdateDrawing}
+                onUpdateMultipleDrawings={onUpdateMultipleDrawings}
+                eraserSize={eraserSize}
+                onEraserSizeChange={onEraserSizeChange}
+              />
+              <DrawingObjectsList
+                drawings={drawings}
+                selectedDrawingIds={selectedDrawingIds}
+                onSelectedDrawingIdsChange={onSelectedDrawingIdsChange}
+                onRemoveDrawing={onRemoveDrawing}
+              />
+            </>
           )}
 
           <PlayersSection

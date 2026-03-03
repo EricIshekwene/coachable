@@ -12,6 +12,8 @@ import {
   applyTranslation,
   applyResize,
   applyRotation,
+  getArrowEndpointHandles,
+  hitTestEndpointHandle,
   HANDLE_CURSORS,
 } from "../drawingGeometry";
 import { log as logDrawDebug } from "../drawDebugLogger";
@@ -58,6 +60,14 @@ export function useDrawingSelection({
     [selectionBounds, zoom]
   );
 
+  // Arrow endpoint handles (only when exactly 1 arrow is selected)
+  const arrowEndpointHandles = useMemo(() => {
+    if (selectedDrawingIds.length !== 1) return [];
+    const selD = drawings.find((d) => d.id === selectedDrawingIds[0]);
+    if (!selD || selD.type !== "arrow") return [];
+    return getArrowEndpointHandles(selD, handleSize * 1.5);
+  }, [drawings, selectedDrawingIds, handleSize]);
+
   // --- Snapshot helpers ---
   const snapshotSelected = useCallback(() => {
     const idSet = new Set(selectedDrawingIds);
@@ -81,6 +91,23 @@ export function useDrawingSelection({
       const evt = e.evt || e;
       const shiftKey = evt?.shiftKey || false;
       const altKey = evt?.altKey || false;
+
+      // 0. Hit-test arrow endpoint handles (before resize handles)
+      if (arrowEndpointHandles.length > 0) {
+        const hitEndpoint = hitTestEndpointHandle(arrowEndpointHandles, world);
+        if (hitEndpoint) {
+          historyApiRef.current?.pushHistory?.();
+          gestureRef.current = {
+            type: "endpoint",
+            endpointPosition: hitEndpoint,
+            startWorld: { ...world },
+            startDrawingsSnapshot: snapshotSelected(),
+            ids: [...selectedDrawingIds],
+          };
+          logDrawDebug(`selection endpoint start endpoint=${hitEndpoint}`);
+          return true;
+        }
+      }
 
       // 1. Hit-test resize handles
       if (selectedDrawingIds.length > 0 && selectionBounds) {
@@ -167,8 +194,8 @@ export function useDrawingSelection({
     },
     [
       stageRef, toWorldCoords, drawings, selectedDrawingIds, selectionBounds,
-      handles, rotateHandlePos, zoom, historyApiRef, onSelectedDrawingIdsChange,
-      snapshotSelected,
+      handles, rotateHandlePos, arrowEndpointHandles, zoom, historyApiRef,
+      onSelectedDrawingIdsChange, snapshotSelected,
     ]
   );
 
@@ -189,6 +216,26 @@ export function useDrawingSelection({
           width: Math.abs(world.x - start.x),
           height: Math.abs(world.y - start.y),
         });
+        return true;
+      }
+
+      // Endpoint drag (arrow)
+      if (gestureRef.current?.type === "endpoint") {
+        const id = gestureRef.current.ids[0];
+        const snap = gestureRef.current.startDrawingsSnapshot.get(id);
+        if (snap && snap.points) {
+          const newPoints = [...snap.points];
+          if (gestureRef.current.endpointPosition === "start") {
+            newPoints[0] = world.x;
+            newPoints[1] = world.y;
+          } else {
+            newPoints[2] = world.x;
+            newPoints[3] = world.y;
+          }
+          const changes = new Map();
+          changes.set(id, { points: newPoints });
+          onUpdateMultipleNoHistory(changes);
+        }
         return true;
       }
 
@@ -342,7 +389,14 @@ export function useDrawingSelection({
       if (gestureRef.current?.type === "move") return "grabbing";
       if (gestureRef.current?.type === "resize") return "grabbing";
       if (gestureRef.current?.type === "rotate") return "grabbing";
+      if (gestureRef.current?.type === "endpoint") return "grabbing";
       if (marqueeRef.current) return "crosshair";
+
+      // Arrow endpoint handles
+      if (arrowEndpointHandles.length > 0) {
+        const hitEndpoint = hitTestEndpointHandle(arrowEndpointHandles, worldPoint);
+        if (hitEndpoint) return "crosshair";
+      }
 
       if (selectedDrawingIds.length > 0 && selectionBounds) {
         if (hitTestRotateHandle(rotateHandlePos, worldPoint, zoom)) return "grab";
@@ -353,7 +407,7 @@ export function useDrawingSelection({
       if (hitId) return "pointer";
       return null;
     },
-    [drawings, selectedDrawingIds, selectionBounds, handles, rotateHandlePos, zoom]
+    [drawings, selectedDrawingIds, selectionBounds, handles, rotateHandlePos, arrowEndpointHandles, zoom]
   );
 
   return {

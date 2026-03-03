@@ -4,7 +4,9 @@
       "Bash(npm run build)",
       "Bash(npx vite build)",
       "Bash(npm install -D vitest)",
-      "Bash(npx vitest run)"
+      "Bash(npx vitest run)",
+      "WebFetch(domain:konvajs.org)",
+      "Bash(npm test)"
     ]
   }
 }

@@ -83,6 +83,7 @@ function KonvaCanvasRoot({
   drawFontSize,
   drawTextAlign,
   drawArrowHeadType,
+  eraserSize = 10,
   onAddDrawing,
   onRemoveDrawing,
   onRemoveMultipleDrawings,
@@ -95,6 +96,7 @@ function KonvaCanvasRoot({
   textEditing,
   onTextEditingChange,
   drawingHookRef,
+  onDrawSubToolChange,
 }) {
   const viewportRef = useRef(null);
   const stageRef = useRef(null);
@@ -115,6 +117,7 @@ function KonvaCanvasRoot({
   const [isPanning, setIsPanning] = useState(false);
   const [marquee, setMarquee] = useState(null);
   const [isHoveringItem, setIsHoveringItem] = useState(false);
+  const [eraserCursorWorld, setEraserCursorWorld] = useState(null);
   const marqueeRef = useRef({
     active: false,
     start: { x: 0, y: 0 },
@@ -210,11 +213,14 @@ function KonvaCanvasRoot({
     drawFontSize,
     drawTextAlign,
     drawArrowHeadType,
+    eraserSize,
     onAddDrawing,
     onRemoveDrawing,
     onRemoveMultipleDrawings,
     textEditing,
     onTextEditingChange,
+    onSelectedDrawingIdsChange,
+    onDrawSubToolChange,
   });
 
   const drawingSelection = useDrawingSelection({
@@ -554,6 +560,17 @@ function KonvaCanvasRoot({
   };
 
   const handleStagePointerMove = (e) => {
+    // Track eraser cursor position
+    if (tool === "pen" && drawSubTool === "erase") {
+      const stage = stageRef.current;
+      const pointer = stage?.getPointerPosition?.();
+      if (pointer) {
+        setEraserCursorWorld(toWorldCoords(pointer));
+      }
+    } else if (eraserCursorWorld) {
+      setEraserCursorWorld(null);
+    }
+
     // Drawing tools — handle before marquee/pan
     if (tool === "pen") {
       if (drawSubTool === "select") {
@@ -759,6 +776,7 @@ function KonvaCanvasRoot({
     standard: { pointerLength: 10, pointerWidth: 8 },
     thin: { pointerLength: 12, pointerWidth: 4 },
     wide: { pointerLength: 8, pointerWidth: 14 },
+    chevron: { pointerLength: 14, pointerWidth: 18 },
     none: { pointerLength: 0, pointerWidth: 0 },
   };
 
@@ -802,20 +820,41 @@ function KonvaCanvasRoot({
       );
     }
     if (d.type === "text") {
+      const isTextSelected = selectedDrawingIds.includes(d.id);
       return (
-        <Text
-          key={key}
-          x={d.x}
-          y={d.y}
-          rotation={d.rotation || 0}
-          text={d.text || ""}
-          fill={d.color || "#FFFFFF"}
-          fontSize={d.fontSize || 18}
-          fontFamily="DmSans"
-          align={d.align || "left"}
-          opacity={opacity}
-          listening={false}
-        />
+        <React.Fragment key={key}>
+          <Text
+            x={d.x}
+            y={d.y}
+            rotation={d.rotation || 0}
+            text={d.text || ""}
+            fill={d.color || "#FFFFFF"}
+            fontSize={d.fontSize || 18}
+            fontFamily="DmSans"
+            align={d.align || "left"}
+            width={d.width || undefined}
+            wrap={d.width ? "word" : "none"}
+            padding={d.width ? 4 : 0}
+            opacity={opacity}
+            listening={false}
+          />
+          {isTextSelected && (() => {
+            const b = getDrawingWorldBounds(d);
+            const sw = 1 / (camera?.zoom || 1);
+            return (
+              <Rect
+                x={b.x}
+                y={b.y}
+                width={b.width}
+                height={b.height}
+                stroke="#FF7A18"
+                strokeWidth={sw}
+                dash={[3, 2]}
+                listening={false}
+              />
+            );
+          })()}
+        </React.Fragment>
       );
     }
     return null;
@@ -1062,6 +1101,35 @@ function KonvaCanvasRoot({
                   </React.Fragment>
                 );
               })()}
+              {/* Arrow endpoint handles (single arrow selected) */}
+              {selectedDrawingIds.length === 1 && (() => {
+                const selD = drawings.find((d) => d.id === selectedDrawingIds[0]);
+                if (!selD || selD.type !== "arrow" || !selD.points || selD.points.length < 4) return null;
+                const r = 5 / (camera?.zoom || 1);
+                const sw = 1.5 / (camera?.zoom || 1);
+                return (
+                  <React.Fragment>
+                    <Circle
+                      x={selD.points[0]}
+                      y={selD.points[1]}
+                      radius={r}
+                      fill="#FF7A18"
+                      stroke="#FFFFFF"
+                      strokeWidth={sw}
+                      listening={false}
+                    />
+                    <Circle
+                      x={selD.points[2]}
+                      y={selD.points[3]}
+                      radius={r}
+                      fill="#FF7A18"
+                      stroke="#FFFFFF"
+                      strokeWidth={sw}
+                      listening={false}
+                    />
+                  </React.Fragment>
+                );
+              })()}
               {/* Drawing marquee (pen+select mode) */}
               {drawingSelection.drawingMarquee && (
                 <Rect
@@ -1073,6 +1141,19 @@ function KonvaCanvasRoot({
                   stroke="#FF7A18"
                   strokeWidth={1.5 / (camera?.zoom || 1)}
                   dash={[6, 3]}
+                  listening={false}
+                />
+              )}
+              {/* Eraser cursor circle */}
+              {eraserCursorWorld && drawSubTool === "erase" && tool === "pen" && (
+                <Circle
+                  x={eraserCursorWorld.x}
+                  y={eraserCursorWorld.y}
+                  radius={eraserSize / 2}
+                  fill="transparent"
+                  stroke="#FFFFFF"
+                  strokeWidth={1 / (camera?.zoom || 1)}
+                  dash={[3, 2]}
                   listening={false}
                 />
               )}

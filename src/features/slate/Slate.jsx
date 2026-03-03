@@ -61,6 +61,7 @@ function Slate({ onShowMessage }) {
   const [drawFontSize, setDrawFontSize] = useState(18);
   const [drawTextAlign, setDrawTextAlign] = useState("left");
   const [drawArrowHeadType, setDrawArrowHeadType] = useState("standard");
+  const [eraserSize, setEraserSize] = useState(10);
   const [selectedDrawingIds, setSelectedDrawingIds] = useState([]);
   const drawingSelectionRef = useRef(null);
   const [textEditing, setTextEditing] = useState(null);
@@ -462,6 +463,14 @@ function Slate({ onShowMessage }) {
       if (prevArrowHeadType === nextArrowHeadType) return prevArrowHeadType;
       logDrawDebug(`style arrowHead prev=${prevArrowHeadType} next=${nextArrowHeadType}`);
       return nextArrowHeadType;
+    });
+  }, []);
+
+  const handleEraserSizeChange = useCallback((nextSize) => {
+    setEraserSize((prev) => {
+      if (prev === nextSize) return prev;
+      logDrawDebug(`style eraserSize prev=${prev} next=${nextSize}`);
+      return nextSize;
     });
   }, []);
 
@@ -873,6 +882,7 @@ function Slate({ onShowMessage }) {
           drawFontSize={drawFontSize}
           drawTextAlign={drawTextAlign}
           drawArrowHeadType={drawArrowHeadType}
+          eraserSize={eraserSize}
           onAddDrawing={drawingsState.addDrawing}
           onRemoveDrawing={drawingsState.removeDrawing}
           onRemoveMultipleDrawings={drawingsState.removeMultipleDrawings}
@@ -885,50 +895,9 @@ function Slate({ onShowMessage }) {
           textEditing={textEditing}
           onTextEditingChange={setTextEditing}
           drawingHookRef={drawingHookRef}
+          onDrawSubToolChange={handleDrawSubToolChange}
         />
-        {textEditing && (
-          <textarea
-            className="absolute z-[60] bg-transparent border border-BrandOrange p-1 outline-none resize-none rounded"
-            style={{
-              left: textEditing.screenX,
-              top: textEditing.screenY,
-              fontSize: drawFontSize,
-              fontFamily: "DmSans, sans-serif",
-              color: drawColor,
-              minWidth: 120,
-              minHeight: 36,
-            }}
-            ref={(el) => {
-              if (!el) return;
-              // Mark as just-mounted so we can ignore the immediate blur
-              // caused by the canvas mouseup completing the click cycle.
-              el.dataset.mountedAt = String(Date.now());
-              // Delay focus so it doesn't race with the click lifecycle.
-              requestAnimationFrame(() => el.focus());
-            }}
-            onBlur={(e) => {
-              const mountedAt = Number(e.target.dataset.mountedAt || 0);
-              if (Date.now() - mountedAt < 300) return; // ignore blur from initial click
-              const val = e.target.value;
-              if (val?.trim()) {
-                drawingHookRef.current?.commitText?.(val);
-              } else {
-                drawingHookRef.current?.cancelText?.();
-              }
-            }}
-            onKeyDown={(e) => {
-              e.stopPropagation();
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                drawingHookRef.current?.commitText?.(e.target.value);
-              }
-              if (e.key === "Escape") {
-                e.preventDefault();
-                drawingHookRef.current?.cancelText?.();
-              }
-            }}
-          />
-        )}
+        {/* Text editing is now handled via right panel textarea */}
       </div>
       {canvasTool === "pen" && (
         <DrawToolsPill
@@ -978,6 +947,12 @@ function Slate({ onShowMessage }) {
         selectedDrawings={selectedDrawings}
         onUpdateDrawing={drawingsState.updateDrawing}
         onUpdateMultipleDrawings={drawingsState.updateMultipleDrawings}
+        drawings={drawingsState.drawings}
+        selectedDrawingIds={selectedDrawingIds}
+        onSelectedDrawingIdsChange={setSelectedDrawingIds}
+        onRemoveDrawing={drawingsState.removeDrawing}
+        eraserSize={eraserSize}
+        onEraserSizeChange={handleEraserSizeChange}
         playName={playName}
         onPlayNameChange={setPlayName}
         zoomPercent={fieldViewport.zoomPercent}

@@ -29,11 +29,14 @@ export function useCanvasDrawing({
   drawFontSize,
   drawTextAlign,
   drawArrowHeadType,
+  eraserSize = 10,
   onAddDrawing,
   onRemoveDrawing,
   onRemoveMultipleDrawings,
   textEditing,
   onTextEditingChange,
+  onSelectedDrawingIdsChange,
+  onDrawSubToolChange,
 }) {
   const drawingRef = useRef(null);
   const eraseRef = useRef({ active: false, removedIds: new Set() });
@@ -100,21 +103,31 @@ export function useCanvasDrawing({
       }
 
       if (subTool === "text") {
-        setTextEditing({
-          screenX: pointer.x,
-          screenY: pointer.y,
-          worldX: world.x,
-          worldY: world.y,
-        });
+        // Create text drawing immediately and auto-select it
+        const textDrawing = {
+          type: "text",
+          x: world.x,
+          y: world.y,
+          text: "Text",
+          color: drawColor,
+          fontSize: drawFontSize,
+          align: drawTextAlign,
+        };
+        const newId = onAddDrawing?.(textDrawing);
         logDrawDebug(
-          `text start screenX=${round2(pointer.x)} screenY=${round2(pointer.y)} worldX=${round2(world.x)} worldY=${round2(world.y)} color=${drawColor} fontSize=${drawFontSize} align=${drawTextAlign}`
+          `text create id=${newId} worldX=${round2(world.x)} worldY=${round2(world.y)} color=${drawColor} fontSize=${drawFontSize} align=${drawTextAlign}`
         );
+        // Auto-select and switch to select sub-tool
+        if (newId) {
+          onSelectedDrawingIdsChange?.([newId]);
+          onDrawSubToolChange?.("select");
+        }
         return true;
       }
 
       if (subTool === "erase") {
         const newSet = new Set();
-        const hitId = hitTestDrawings(drawings, world, 10);
+        const hitId = hitTestDrawings(drawings, world, eraserSize);
         if (hitId) newSet.add(hitId);
         eraseRef.current = { active: true, removedIds: newSet };
         setErasingIds(newSet.size > 0 ? new Set(newSet) : null);
@@ -136,9 +149,13 @@ export function useCanvasDrawing({
       drawStrokeWidth,
       drawTension,
       drawArrowHeadType,
+      eraserSize,
       drawings,
       drawFontSize,
       drawTextAlign,
+      onAddDrawing,
+      onSelectedDrawingIdsChange,
+      onDrawSubToolChange,
     ]
   );
 
@@ -150,7 +167,7 @@ export function useCanvasDrawing({
         const pointer = stage?.getPointerPosition?.();
         if (!pointer) return false;
         const world = toWorldCoords(pointer);
-        const hitId = hitTestDrawings(drawings, world, 10, eraseRef.current.removedIds);
+        const hitId = hitTestDrawings(drawings, world, eraserSize, eraseRef.current.removedIds);
         if (hitId) {
           eraseRef.current.removedIds.add(hitId);
           setErasingIds(new Set(eraseRef.current.removedIds));
@@ -194,7 +211,7 @@ export function useCanvasDrawing({
 
       return false;
     },
-    [stageRef, toWorldCoords, drawings]
+    [stageRef, toWorldCoords, drawings, eraserSize]
   );
 
   const handlePointerUp = useCallback(() => {

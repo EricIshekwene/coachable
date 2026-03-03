@@ -26,6 +26,7 @@ export const DEFAULT_ADVANCED_SETTINGS = {
     controlPill: false,
     canvas: false,
     sidebar: false,
+    drawing: false,
   },
 };
 

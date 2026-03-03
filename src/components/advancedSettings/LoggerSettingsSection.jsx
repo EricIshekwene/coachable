@@ -10,6 +10,7 @@ export default function LoggerSettingsSection({
   const controlPill = value.controlPill ?? false;
   const canvas = value.canvas ?? false;
   const sidebar = value.sidebar ?? false;
+  const drawing = value.drawing ?? false;
   const [copyAnimationState, setCopyAnimationState] = useState("idle");
   const [copyDrawState, setCopyDrawState] = useState("idle");
   const copyAnimationResetRef = useRef(null);
@@ -101,6 +102,7 @@ export default function LoggerSettingsSection({
         />
         <ToggleRow label="Canvas" enabled={canvas} onToggle={(v) => update({ canvas: v })} />
         <ToggleRow label="Sidebar" enabled={sidebar} onToggle={(v) => update({ sidebar: v })} />
+        <ToggleRow label="Drawing" enabled={drawing} onToggle={(v) => update({ drawing: v })} />
       </div>
       <button
         type="button"

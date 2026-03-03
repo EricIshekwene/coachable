@@ -13,6 +13,8 @@ import {
   applyRotation,
   getRotateHandlePosition,
   hitTestRotateHandle,
+  getArrowEndpointHandles,
+  hitTestEndpointHandle,
 } from "../drawingGeometry";
 
 // ─── pointToSegmentDist ─────────────────────────────────────────────────────
@@ -351,5 +353,52 @@ describe("hitTestRotateHandle", () => {
   it("misses outside radius", () => {
     const pos = { x: 50, y: -24 };
     expect(hitTestRotateHandle(pos, { x: 50, y: 0 }, 1)).toBe(false);
+  });
+});
+
+// ─── Arrow Endpoint Handles ────────────────────────────────────────────────
+
+describe("getArrowEndpointHandles", () => {
+  it("returns 2 handles for an arrow", () => {
+    const d = { type: "arrow", points: [10, 20, 100, 80] };
+    const handles = getArrowEndpointHandles(d, 10);
+    expect(handles.length).toBe(2);
+    expect(handles[0].position).toBe("start");
+    expect(handles[1].position).toBe("end");
+  });
+
+  it("returns handles centered on arrow endpoints", () => {
+    const d = { type: "arrow", points: [10, 20, 100, 80] };
+    const handles = getArrowEndpointHandles(d, 10);
+    expect(handles[0].x).toBe(5);  // 10 - 5
+    expect(handles[0].y).toBe(15); // 20 - 5
+    expect(handles[1].x).toBe(95); // 100 - 5
+    expect(handles[1].y).toBe(75); // 80 - 5
+  });
+
+  it("returns empty for non-arrow", () => {
+    const d = { type: "stroke", points: [0, 0, 10, 10] };
+    expect(getArrowEndpointHandles(d, 10)).toEqual([]);
+  });
+
+  it("returns empty for null drawing", () => {
+    expect(getArrowEndpointHandles(null, 10)).toEqual([]);
+  });
+});
+
+describe("hitTestEndpointHandle", () => {
+  const d = { type: "arrow", points: [10, 20, 100, 80] };
+  const handles = getArrowEndpointHandles(d, 10);
+
+  it("detects hit on start handle", () => {
+    expect(hitTestEndpointHandle(handles, { x: 10, y: 20 })).toBe("start");
+  });
+
+  it("detects hit on end handle", () => {
+    expect(hitTestEndpointHandle(handles, { x: 100, y: 80 })).toBe("end");
+  });
+
+  it("returns null when missing", () => {
+    expect(hitTestEndpointHandle(handles, { x: 50, y: 50 })).toBeNull();
   });
 });

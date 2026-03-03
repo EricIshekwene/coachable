@@ -402,3 +402,36 @@ export function applyRotation(drawingsSnapshot, selectedIds, center, angleDelta)
   }
   return result;
 }
+
+// ─── Arrow Endpoint Handles ────────────────────────────────────────────────
+
+/**
+ * Returns 2 handle descriptors for the start and end points of an arrow drawing.
+ */
+export function getArrowEndpointHandles(drawing, handleSize) {
+  if (!drawing || drawing.type !== "arrow" || !drawing.points || drawing.points.length < 4) {
+    return [];
+  }
+  const hs = handleSize / 2;
+  return [
+    { position: "start", x: drawing.points[0] - hs, y: drawing.points[1] - hs, width: handleSize, height: handleSize },
+    { position: "end", x: drawing.points[2] - hs, y: drawing.points[3] - hs, width: handleSize, height: handleSize },
+  ];
+}
+
+/**
+ * Hit-test arrow endpoint handles. Returns "start" | "end" | null.
+ */
+export function hitTestEndpointHandle(handles, worldPoint) {
+  for (const h of handles) {
+    if (
+      worldPoint.x >= h.x &&
+      worldPoint.x <= h.x + h.width &&
+      worldPoint.y >= h.y &&
+      worldPoint.y <= h.y + h.height
+    ) {
+      return h.position;
+    }
+  }
+  return null;
+}
