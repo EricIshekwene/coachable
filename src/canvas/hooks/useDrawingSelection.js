@@ -337,8 +337,8 @@ export function useDrawingSelection({
           for (const d of drawings) {
             const orig = snap.get(d.id);
             if (!orig) continue;
-            if (d.type === "text") {
-              if (Math.abs(d.x - orig.x) > MOVE_THRESHOLD || Math.abs(d.y - orig.y) > MOVE_THRESHOLD) {
+            if (d.type === "text" || d.type === "shape") {
+              if (Math.abs((d.x || 0) - (orig.x || 0)) > MOVE_THRESHOLD || Math.abs((d.y || 0) - (orig.y || 0)) > MOVE_THRESHOLD) {
                 moved = true;
                 break;
               }

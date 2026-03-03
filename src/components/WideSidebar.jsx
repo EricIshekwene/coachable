@@ -1,6 +1,7 @@
 import WideSidebarRoot from "./wideSidebar/WideSidebarRoot";
 
 export default function WideSidebar({
+    activeTool,
     onToolChange,
     onSelectSubTool,
     onPenSubTool,
@@ -17,6 +18,7 @@ export default function WideSidebar({
 }) {
     return (
         <WideSidebarRoot
+            activeTool={activeTool}
             onToolChange={onToolChange}
             onSelectSubTool={onSelectSubTool}
             onPenSubTool={onPenSubTool}

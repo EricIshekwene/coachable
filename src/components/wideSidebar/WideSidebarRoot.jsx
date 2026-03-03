@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import rugbyScrum from "../../assets/prefabIcons/Rugby Scrum.png";
 import rugbyLineout from "../../assets/prefabIcons/Rugby Lineout.png";
 import rugbyKickoff from "../../assets/prefabIcons/Rugby KickOff.png";
@@ -76,6 +76,7 @@ function buildDefaultPrefabs() {
 const WIDE_SIDEBAR_WIDTH_CLASS = "w-32 sm:w-36 md:w-40 lg:w-44 xl:w-48";
 
 export default function WideSidebarRoot({
+    activeTool,
     onToolChange,
     onSelectSubTool,
     onPlayerColorChange,
@@ -97,6 +98,9 @@ export default function WideSidebarRoot({
     const [showPlayerDropdown, setShowPlayerDropdown] = useState(false);
     const [playerColor, setPlayerColor] = useState(PLAYER_COLORS.red);
     const [hoveredTooltip, setHoveredTooltip] = useState(null);
+    const selectedToolForUi = activeTool ?? selectedTool;
+    const selectToolTypeForUi =
+        activeTool === "select" || activeTool === "hand" ? activeTool : selectToolType;
 
     const selectButtonRef = useRef(null);
     const penButtonRef = useRef(null);
@@ -116,10 +120,14 @@ export default function WideSidebarRoot({
         setOpenPopover((prev) => (prev === key ? null : key));
     };
     const closePopover = () => setOpenPopover(null);
+    const setTool = useCallback((tool) => {
+        setSelectedTool(tool);
+        onToolChange?.(tool);
+    }, [onToolChange]);
 
     const handleSelectSubTool = (option) => {
         setSelectToolType(option);
-        setSelectedTool(option);
+        setTool(option);
         closePopover();
         onSelectSubTool?.(option);
     };
@@ -129,7 +137,7 @@ export default function WideSidebarRoot({
         onPlayerColorChange?.(hex);
     };
     const handlePrefabSelect = (prefab) => {
-        setSelectedTool("prefab");
+        setTool("prefab");
         onPrefabSelect?.(prefab);
     };
     const handlePlayerAssign = (name) => {
@@ -159,10 +167,6 @@ export default function WideSidebarRoot({
     };
 
     useEffect(() => {
-        onToolChange?.(selectedTool);
-    }, [selectedTool, onToolChange]);
-
-    useEffect(() => {
         const handleKeyDown = (e) => {
             const tag = e.target.tagName;
             if (tag === "INPUT" || tag === "TEXTAREA" || e.target.isContentEditable) return;
@@ -187,27 +191,27 @@ export default function WideSidebarRoot({
             const key = e.key.toLowerCase();
             if (key === "s") {
                 setSelectToolType("select");
-                setSelectedTool("select");
+                setTool("select");
                 closePopover();
             } else if (key === "h") {
                 setSelectToolType("hand");
-                setSelectedTool("hand");
+                setTool("hand");
                 closePopover();
             } else if (key === "p") {
-                setSelectedTool("pen");
+                setTool("pen");
                 closePopover();
             } else if (key === "a") {
-                setSelectedTool("addPlayer");
+                setTool("addPlayer");
                 closePopover();
             } else if (key === "c") {
                 const nextColor = playerColor === PLAYER_COLORS.red ? PLAYER_COLORS.blue : PLAYER_COLORS.red;
                 handlePlayerColorChange(nextColor);
-                setSelectedTool("color");
+                setTool("color");
             }
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [closePopover, handlePlayerColorChange, onDeleteSelected, onRedo, onUndo, playerColor]);
+    }, [closePopover, handlePlayerColorChange, onDeleteSelected, onRedo, onUndo, playerColor, setTool]);
 
     useEffect(() => {
         if (!showPlayerDropdown) return;
@@ -245,12 +249,12 @@ export default function WideSidebarRoot({
             </p>
             <SelectToolSection
                 wide
-                selectToolType={selectToolType}
-                isSelected={selectedTool === "select" || selectedTool === "hand"}
+                selectToolType={selectToolTypeForUi}
+                isSelected={selectedToolForUi === "select" || selectedToolForUi === "hand"}
                 openPopover={openPopover}
                 hoveredTooltip={hoveredTooltip}
                 anchorRef={selectButtonRef}
-                onToolSelect={(t) => setSelectedTool(t)}
+                onToolSelect={(t) => setTool(t)}
                 onSelectSubTool={handleSelectSubTool}
                 onPopoverToggle={togglePopover}
                 onPopoverClose={closePopover}
@@ -260,17 +264,17 @@ export default function WideSidebarRoot({
 
             <PenToolSection
                 wide
-                isSelected={selectedTool === "pen"}
+                isSelected={selectedToolForUi === "pen"}
                 hoveredTooltip={hoveredTooltip}
                 anchorRef={penButtonRef}
-                onToolSelect={() => setSelectedTool("pen")}
+                onToolSelect={() => setTool("pen")}
                 onHoverTooltip={setHoveredTooltip}
             />
             {hr}
 
             <AddPlayerSection
                 wide
-                isSelected={selectedTool === "addPlayer"}
+                isSelected={selectedToolForUi === "addPlayer"}
                 openPopover={openPopover}
                 hoveredTooltip={hoveredTooltip}
                 numberValue={playerNumber}
@@ -280,7 +284,7 @@ export default function WideSidebarRoot({
                 filteredPlayers={filteredPlayers}
                 anchorRef={addPlayerButtonRef}
                 dropdownRef={playerDropdownRef}
-                onToolSelect={() => setSelectedTool("addPlayer")}
+                onToolSelect={() => setTool("addPlayer")}
                 onPopoverToggle={togglePopover}
                 onPopoverClose={closePopover}
                 onNumberChange={setPlayerNumber}
@@ -297,11 +301,11 @@ export default function WideSidebarRoot({
             <PlayerColorSection
                 wide
                 playerColor={playerColor}
-                isSelected={selectedTool === "color"}
+                isSelected={selectedToolForUi === "color"}
                 openPopover={openPopover}
                 hoveredTooltip={hoveredTooltip}
                 anchorRef={playerButtonRef}
-                onToolSelect={() => setSelectedTool("color")}
+                onToolSelect={() => setTool("color")}
                 onPlayerColorChange={handlePlayerColorChange}
                 onPopoverToggle={togglePopover}
                 onPopoverClose={closePopover}

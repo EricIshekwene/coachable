@@ -48,12 +48,14 @@ export default function RightPanel({
   canvasTool,
   drawSubTool,
   drawColor,
+  drawOpacity,
   drawStrokeWidth,
   drawTension,
   drawFontSize,
   drawTextAlign,
   drawArrowHeadType,
   onDrawColorChange,
+  onDrawOpacityChange,
   onDrawStrokeWidthChange,
   onDrawTensionChange,
   onDrawFontSizeChange,
@@ -70,6 +72,12 @@ export default function RightPanel({
   onRemoveDrawing,
   eraserSize,
   onEraserSizeChange,
+  drawShapeType,
+  drawShapeStrokeColor,
+  drawShapeFill,
+  onDrawShapeTypeChange,
+  onDrawShapeStrokeColorChange,
+  onDrawShapeFillChange,
 }) {
   return (
     <aside
@@ -107,12 +115,14 @@ export default function RightPanel({
               <DrawingStyleSection
                 drawSubTool={drawSubTool}
                 drawColor={drawColor}
+                drawOpacity={drawOpacity}
                 drawStrokeWidth={drawStrokeWidth}
                 drawTension={drawTension}
                 drawFontSize={drawFontSize}
                 drawTextAlign={drawTextAlign}
                 drawArrowHeadType={drawArrowHeadType}
                 onColorChange={onDrawColorChange}
+                onOpacityChange={onDrawOpacityChange}
                 onStrokeWidthChange={onDrawStrokeWidthChange}
                 onTensionChange={onDrawTensionChange}
                 onFontSizeChange={onDrawFontSizeChange}
@@ -124,6 +134,12 @@ export default function RightPanel({
                 onUpdateMultipleDrawings={onUpdateMultipleDrawings}
                 eraserSize={eraserSize}
                 onEraserSizeChange={onEraserSizeChange}
+                drawShapeType={drawShapeType}
+                drawShapeStrokeColor={drawShapeStrokeColor}
+                drawShapeFill={drawShapeFill}
+                onShapeTypeChange={onDrawShapeTypeChange}
+                onShapeStrokeColorChange={onDrawShapeStrokeColorChange}
+                onShapeFillChange={onDrawShapeFillChange}
               />
               <DrawingObjectsList
                 drawings={drawings}

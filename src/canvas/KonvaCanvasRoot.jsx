@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Stage, Layer, Group, Circle, Text, Image as KonvaImage, Rect, Line, Arrow } from "react-konva";
+import { Stage, Layer, Group, Circle, Text, Image as KonvaImage, Rect, Line, Arrow, Ellipse } from "react-konva";
 import Konva from "konva";
 import BoardViewport from "./BoardViewport";
 import { useCanvasDrawing } from "./hooks/useCanvasDrawing";
 import { useDrawingSelection } from "./hooks/useDrawingSelection";
-import { getDrawingWorldBounds } from "./drawingGeometry";
+import { getDrawingWorldBounds, getTrianglePoints } from "./drawingGeometry";
+import { log as logKeyToolDebug } from "./keyboardToolDebugLogger";
 import RugbyField from "../assets/objects/Field Vectors/Rugby_Field.png";
 
 /** Loads an HTML Image from a URL and tracks loading status. */
@@ -78,12 +79,16 @@ function KonvaCanvasRoot({
   drawings = [],
   drawSubTool,
   drawColor,
+  drawOpacity = 1,
   drawStrokeWidth,
   drawTension,
   drawFontSize,
   drawTextAlign,
   drawArrowHeadType,
   eraserSize = 10,
+  drawShapeType = "rect",
+  drawShapeStrokeColor = "#FFFFFF",
+  drawShapeFill = "transparent",
   onAddDrawing,
   onRemoveDrawing,
   onRemoveMultipleDrawings,
@@ -208,12 +213,16 @@ function KonvaCanvasRoot({
     toWorldCoords,
     drawings,
     drawColor,
+    drawOpacity,
     drawStrokeWidth,
     drawTension,
     drawFontSize,
     drawTextAlign,
     drawArrowHeadType,
     eraserSize,
+    drawShapeType,
+    drawShapeStrokeColor,
+    drawShapeFill,
     onAddDrawing,
     onRemoveDrawing,
     onRemoveMultipleDrawings,
@@ -248,6 +257,8 @@ function KonvaCanvasRoot({
     drawingHookRef.current = {
       commitText: canvasDrawing.commitText,
       cancelText: canvasDrawing.cancelText,
+      commitCustomShape: canvasDrawing.commitCustomShape,
+      cancelCustomShape: canvasDrawing.cancelCustomShape,
     };
   });
 
@@ -448,10 +459,13 @@ function KonvaCanvasRoot({
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
-        if (!marqueeRef.current.active) return;
+        const marqueeActive = Boolean(marqueeRef.current.active);
+        logKeyToolDebug(`canvas keydown Escape marqueeActive=${marqueeActive}`);
+        if (!marqueeActive) return;
         marqueeRef.current.active = false;
         setMarquee(null);
         clearGuides();
+        logKeyToolDebug("canvas escape action=clearMarquee");
         return;
       }
 
@@ -730,6 +744,7 @@ function KonvaCanvasRoot({
   };
 
   const handleItemClick = (item) => (e) => {
+    if (tool !== "select") return;
     if (draggingIdsRef.current.has(item.id)) return;
     const modifierKey = isModifierPressed(e?.evt);
     const mode = modifierKey ? "toggle" : "replace";
@@ -784,7 +799,8 @@ function KonvaCanvasRoot({
 
   const renderDrawingNode = (d, key) => {
     const isErasing = erasingIds && erasingIds.has(d.id);
-    const opacity = isErasing ? 0.3 : 1;
+    const drawingOpacity = d.opacity == null ? 1 : d.opacity;
+    const opacity = isErasing ? Math.min(0.3, drawingOpacity) : drawingOpacity;
 
     if (d.type === "stroke") {
       return (
@@ -856,6 +872,79 @@ function KonvaCanvasRoot({
           })()}
         </React.Fragment>
       );
+    }
+    if (d.type === "shape") {
+      const fillColor = d.fill === "transparent" ? undefined : (d.fill || undefined);
+      const strokeColor = d.color === "transparent" ? undefined : (d.color || "#FFFFFF");
+      const sw = strokeColor ? (d.strokeWidth || 2) : 0;
+
+      if (d.shapeType === "rect") {
+        return (
+          <Rect
+            key={key}
+            x={d.x}
+            y={d.y}
+            width={d.width || 0}
+            height={d.height || 0}
+            rotation={d.rotation || 0}
+            fill={fillColor}
+            stroke={strokeColor}
+            strokeWidth={sw}
+            opacity={opacity}
+            listening={false}
+          />
+        );
+      }
+      if (d.shapeType === "ellipse") {
+        return (
+          <Ellipse
+            key={key}
+            x={(d.x || 0) + (d.width || 0) / 2}
+            y={(d.y || 0) + (d.height || 0) / 2}
+            radiusX={(d.width || 0) / 2}
+            radiusY={(d.height || 0) / 2}
+            rotation={d.rotation || 0}
+            fill={fillColor}
+            stroke={strokeColor}
+            strokeWidth={sw}
+            opacity={opacity}
+            listening={false}
+          />
+        );
+      }
+      if (d.shapeType === "triangle") {
+        const triPts = getTrianglePoints(d);
+        return (
+          <Line
+            key={key}
+            points={triPts}
+            closed
+            rotation={d.rotation || 0}
+            fill={fillColor}
+            stroke={strokeColor}
+            strokeWidth={sw}
+            lineJoin="round"
+            opacity={opacity}
+            listening={false}
+          />
+        );
+      }
+      if (d.shapeType === "custom" && d.points?.length >= 4) {
+        return (
+          <Line
+            key={key}
+            points={d.points}
+            closed
+            fill={fillColor}
+            stroke={strokeColor}
+            strokeWidth={sw}
+            lineJoin="round"
+            opacity={opacity}
+            listening={false}
+          />
+        );
+      }
+      return null;
     }
     return null;
   };
@@ -1042,6 +1131,19 @@ function KonvaCanvasRoot({
             <Group x={worldOrigin.x} y={worldOrigin.y} scaleX={worldOrigin.scale} scaleY={worldOrigin.scale}>
               {drawings.map((d) => renderDrawingNode(d, d.id))}
               {canvasDrawing.activeDrawing && renderDrawingNode(canvasDrawing.activeDrawing, "active-preview")}
+              {/* Custom shape preview line (from last point to cursor) */}
+              {canvasDrawing.customPreviewLine && (() => {
+                const pl = canvasDrawing.customPreviewLine;
+                return (
+                  <Line
+                    points={[pl.x1, pl.y1, pl.x2, pl.y2]}
+                    stroke="#FF7A18"
+                    strokeWidth={1 / (camera?.zoom || 1)}
+                    dash={[4, 3]}
+                    listening={false}
+                  />
+                );
+              })()}
               {/* Multi-selection bounds box */}
               {drawingSelection.selectionBounds && selectedDrawingIds.length > 0 && (() => {
                 const sb = drawingSelection.selectionBounds;

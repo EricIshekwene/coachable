@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FiAlignLeft, FiAlignCenter, FiAlignRight } from "react-icons/fi";
+import { Slider } from "@mui/material";
 
 const PRESET_COLORS = [
   "#FFFFFF", "#000000", "#ef4444", "#3b82f6", "#facc15", "#FF7A18",
@@ -21,6 +22,17 @@ const TEXT_ALIGNS = [
   { value: "left", Icon: FiAlignLeft },
   { value: "center", Icon: FiAlignCenter },
   { value: "right", Icon: FiAlignRight },
+];
+
+const SHAPE_TYPES = [
+  { value: "rect", label: "Rectangle" },
+  { value: "triangle", label: "Triangle" },
+  { value: "ellipse", label: "Circle" },
+  { value: "custom", label: "Custom" },
+];
+
+const SHAPE_COLORS = [
+  "transparent", ...PRESET_COLORS,
 ];
 
 function ColorSwatches({ value, onChange }) {
@@ -49,22 +61,65 @@ function SectionLabel({ children }) {
   );
 }
 
+const DRAW_SLIDER_SX = {
+  width: "100%",
+  color: "#FF7A18",
+  height: "6.25px",
+  "& .MuiSlider-thumb": {
+    width: "12.5px",
+    height: "12.5px",
+    backgroundColor: "#FF7A18",
+    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
+    "&:hover": {
+      boxShadow: "0 4px 8px rgba(0, 0, 0, 0.3)",
+    },
+    "&:focus, &:active, &.Mui-focusVisible": {
+      outline: "none",
+      boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
+    },
+  },
+  "& .MuiSlider-track": {
+    backgroundColor: "#FF7A18",
+    height: "6.25px",
+    border: "none",
+  },
+  "& .MuiSlider-rail": {
+    backgroundColor: "#75492a",
+    height: "6.25px",
+    opacity: 1,
+  },
+};
+
+const roundToOneDecimal = (value) => Math.round(value * 10) / 10;
+
 function SliderControl({ label, value, onChange, min, max, step = 1 }) {
+  const isDecimalStep = !Number.isInteger(step);
+  const rawSliderValue = typeof value === "number" ? value : min;
+  const sliderValue = isDecimalStep ? roundToOneDecimal(rawSliderValue) : rawSliderValue;
+  const displayValue = Number.isFinite(sliderValue) ? roundToOneDecimal(sliderValue) : min;
+  const handleChange = (_, newValue) => {
+    const numericValue = Array.isArray(newValue) ? newValue[0] : newValue;
+    if (!Number.isFinite(numericValue)) return;
+    onChange?.(isDecimalStep ? roundToOneDecimal(numericValue) : numericValue);
+  };
+
   return (
     <>
       <SectionLabel>{label}</SectionLabel>
       <div className="flex items-center gap-2 w-full">
-        <input
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={(e) => onChange?.(Number(e.target.value))}
-          className="flex-1 accent-BrandOrange h-1.5"
-        />
+        <div className="flex-1 min-w-0 overflow-x-hidden overflow-y-hidden flex items-center justify-start px-2">
+          <Slider
+            min={min}
+            max={max}
+            step={step}
+            value={sliderValue}
+            onChange={handleChange}
+            sx={DRAW_SLIDER_SX}
+            aria-label={label}
+          />
+        </div>
         <span className="text-BrandWhite text-[10px] sm:text-xs font-DmSans w-8 text-right">
-          {Number.isInteger(step) ? value : value.toFixed(2)}
+          {displayValue}
         </span>
       </div>
     </>
@@ -160,22 +215,30 @@ function FontSizeDropdown({ value, onChange }) {
   );
 }
 
-function DrawSubToolStyle({ drawColor, drawStrokeWidth, drawTension, onColorChange, onStrokeWidthChange, onTensionChange }) {
+function DrawSubToolStyle({
+  drawColor, drawOpacity, drawStrokeWidth, drawTension,
+  onColorChange, onOpacityChange, onStrokeWidthChange, onTensionChange,
+}) {
   return (
     <>
       <SectionLabel>Color</SectionLabel>
       <ColorSwatches value={drawColor} onChange={onColorChange} />
+      <SliderControl label="Opacity" value={drawOpacity} onChange={onOpacityChange} min={0} max={1} step={0.1} />
       <SliderControl label="Brush Size" value={drawStrokeWidth} onChange={onStrokeWidthChange} min={1} max={20} step={1} />
-      <SliderControl label="Stabilization" value={drawTension} onChange={onTensionChange} min={0} max={1} step={0.05} />
+      <SliderControl label="Stabilization" value={drawTension} onChange={onTensionChange} min={0} max={1} step={0.1} />
     </>
   );
 }
 
-function ArrowSubToolStyle({ drawColor, drawStrokeWidth, drawArrowHeadType, onColorChange, onStrokeWidthChange, onArrowHeadTypeChange }) {
+function ArrowSubToolStyle({
+  drawColor, drawOpacity, drawStrokeWidth, drawArrowHeadType,
+  onColorChange, onOpacityChange, onStrokeWidthChange, onArrowHeadTypeChange,
+}) {
   return (
     <>
       <SectionLabel>Color</SectionLabel>
       <ColorSwatches value={drawColor} onChange={onColorChange} />
+      <SliderControl label="Opacity" value={drawOpacity} onChange={onOpacityChange} min={0} max={1} step={0.1} />
       <SliderControl label="Stroke Width" value={drawStrokeWidth} onChange={onStrokeWidthChange} min={1} max={20} step={1} />
       <SectionLabel>Arrow Head</SectionLabel>
       <div className="flex gap-1 flex-wrap">
@@ -200,11 +263,15 @@ function ArrowSubToolStyle({ drawColor, drawStrokeWidth, drawArrowHeadType, onCo
   );
 }
 
-function TextSubToolStyle({ drawColor, drawFontSize, drawTextAlign, onColorChange, onFontSizeChange, onTextAlignChange }) {
+function TextSubToolStyle({
+  drawColor, drawOpacity, drawFontSize, drawTextAlign,
+  onColorChange, onOpacityChange, onFontSizeChange, onTextAlignChange,
+}) {
   return (
     <>
       <SectionLabel>Color</SectionLabel>
       <ColorSwatches value={drawColor} onChange={onColorChange} />
+      <SliderControl label="Opacity" value={drawOpacity} onChange={onOpacityChange} min={0} max={1} step={0.1} />
       <SectionLabel>Font Size</SectionLabel>
       <FontSizeDropdown value={drawFontSize} onChange={onFontSizeChange} />
       <SectionLabel>Alignment</SectionLabel>
@@ -229,13 +296,131 @@ function TextSubToolStyle({ drawColor, drawFontSize, drawTextAlign, onColorChang
   );
 }
 
+function TextContentEditor({ text, drawingId, onUpdate }) {
+  const textareaRef = useRef(null);
+  const prevIdRef = useRef(null);
+
+  useEffect(() => {
+    if (drawingId !== prevIdRef.current) {
+      prevIdRef.current = drawingId;
+      // Auto-focus and select all when a new text drawing is selected
+      requestAnimationFrame(() => {
+        const el = textareaRef.current;
+        if (el) {
+          el.focus();
+          el.select();
+        }
+      });
+    }
+  }, [drawingId]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={text}
+      onChange={(e) => onUpdate({ text: e.target.value })}
+      onKeyDown={(e) => e.stopPropagation()}
+      rows={3}
+      className="w-full bg-BrandBlack2 border border-BrandGray2 text-BrandWhite text-xs font-DmSans rounded px-1.5 py-1 outline-none focus:border-BrandOrange resize-none"
+      placeholder="Enter text..."
+    />
+  );
+}
+
+/** Small SVG preview of a shape type */
+function ShapeTypePreview({ type, isActive }) {
+  const color = isActive ? "#1a1a1a" : "#FF7A18";
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" className="block">
+      {type === "rect" && (
+        <rect x="3" y="5" width="18" height="14" rx="1" fill="none" stroke={color} strokeWidth="2" />
+      )}
+      {type === "triangle" && (
+        <polygon points="12,3 3,21 21,21" fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" />
+      )}
+      {type === "ellipse" && (
+        <ellipse cx="12" cy="12" rx="9" ry="9" fill="none" stroke={color} strokeWidth="2" />
+      )}
+      {type === "custom" && (
+        <polygon points="12,2 22,8 19,20 5,20 2,8" fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" />
+      )}
+    </svg>
+  );
+}
+
+function ShapeColorPicker({ value, onChange, noneTitle = "No color" }) {
+  return (
+    <div className="flex gap-1.5 flex-wrap">
+      {SHAPE_COLORS.map((c) => {
+        const isTransparent = c === "transparent";
+        const isSelected = value === c;
+        return (
+          <button
+            key={c}
+            onClick={() => onChange?.(c)}
+            className={`
+              w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 transition-all duration-100 relative overflow-hidden
+              ${isSelected ? "border-BrandOrange scale-110" : "border-transparent hover:border-BrandGray"}
+            `}
+            style={isTransparent ? undefined : { backgroundColor: c }}
+            title={isTransparent ? noneTitle : c}
+          >
+            {isTransparent && (
+              <svg viewBox="0 0 24 24" className="w-full h-full">
+                <rect width="24" height="24" fill="#333" />
+                <line x1="0" y1="24" x2="24" y2="0" stroke="#ef4444" strokeWidth="2.5" />
+              </svg>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ShapeSubToolStyle({
+  drawShapeStrokeColor, drawOpacity, drawStrokeWidth, drawShapeType, drawShapeFill,
+  onShapeStrokeColorChange, onOpacityChange, onStrokeWidthChange, onShapeTypeChange, onShapeFillChange,
+}) {
+  const hasStroke = drawShapeStrokeColor !== "transparent";
+
+  return (
+    <>
+      <SectionLabel>Shape</SectionLabel>
+      <div className="flex gap-1 flex-wrap">
+        {SHAPE_TYPES.map((t) => (
+          <button
+            key={t.value}
+            onClick={() => onShapeTypeChange?.(t.value)}
+            title={t.label}
+            className={`
+              p-1 rounded-md transition-all duration-100
+              ${drawShapeType === t.value
+                ? "bg-BrandOrange"
+                : "hover:bg-BrandBlack2 border border-BrandGray2"
+              }
+            `}
+          >
+            <ShapeTypePreview type={t.value} isActive={drawShapeType === t.value} />
+          </button>
+        ))}
+      </div>
+      <SectionLabel>Stroke Color</SectionLabel>
+      <ShapeColorPicker value={drawShapeStrokeColor} onChange={onShapeStrokeColorChange} noneTitle="No stroke" />
+      <SliderControl label="Opacity" value={drawOpacity} onChange={onOpacityChange} min={0} max={1} step={0.1} />
+      <SectionLabel>Fill Color</SectionLabel>
+      <ShapeColorPicker value={drawShapeFill} onChange={onShapeFillChange} noneTitle="No fill" />
+      {hasStroke && (
+        <SliderControl label="Stroke Width" value={drawStrokeWidth} onChange={onStrokeWidthChange} min={1} max={20} step={1} />
+      )}
+    </>
+  );
+}
+
 function EraserSubToolStyle({ eraserSize, onEraserSizeChange }) {
   return (
     <>
       <SliderControl label="Eraser Size" value={eraserSize ?? 10} onChange={onEraserSizeChange} min={5} max={50} step={1} />
-      <p className="text-BrandGray text-[10px] sm:text-xs font-DmSans mt-1">
-        Drag over drawings to erase them.
-      </p>
     </>
   );
 }
@@ -250,8 +435,9 @@ function SelectedDrawingStyle({ selectedDrawing, onUpdateDrawing }) {
       <>
         <SectionLabel>Color</SectionLabel>
         <ColorSwatches value={d.color} onChange={(c) => update({ color: c })} />
+        <SliderControl label="Opacity" value={d.opacity ?? 1} onChange={(o) => update({ opacity: o })} min={0} max={1} step={0.1} />
         <SliderControl label="Brush Size" value={d.strokeWidth || 3} onChange={(w) => update({ strokeWidth: w })} min={1} max={20} step={1} />
-        <SliderControl label="Stabilization" value={d.tension ?? 0.3} onChange={(t) => update({ tension: t })} min={0} max={1} step={0.05} />
+        <SliderControl label="Stabilization" value={d.tension ?? 0.3} onChange={(t) => update({ tension: t })} min={0} max={1} step={0.1} />
       </>
     );
   }
@@ -261,6 +447,7 @@ function SelectedDrawingStyle({ selectedDrawing, onUpdateDrawing }) {
       <>
         <SectionLabel>Color</SectionLabel>
         <ColorSwatches value={d.color} onChange={(c) => update({ color: c })} />
+        <SliderControl label="Opacity" value={d.opacity ?? 1} onChange={(o) => update({ opacity: o })} min={0} max={1} step={0.1} />
         <SliderControl label="Stroke Width" value={d.strokeWidth || 3} onChange={(w) => update({ strokeWidth: w })} min={1} max={20} step={1} />
         <SectionLabel>Arrow Head</SectionLabel>
         <div className="flex gap-1 flex-wrap">
@@ -289,16 +476,10 @@ function SelectedDrawingStyle({ selectedDrawing, onUpdateDrawing }) {
     return (
       <>
         <SectionLabel>Text Content</SectionLabel>
-        <textarea
-          value={d.text || ""}
-          onChange={(e) => update({ text: e.target.value })}
-          onKeyDown={(e) => e.stopPropagation()}
-          rows={3}
-          className="w-full bg-BrandBlack2 border border-BrandGray2 text-BrandWhite text-xs font-DmSans rounded px-1.5 py-1 outline-none focus:border-BrandOrange resize-none"
-          placeholder="Enter text..."
-        />
+        <TextContentEditor text={d.text || ""} drawingId={d.id} onUpdate={update} />
         <SectionLabel>Color</SectionLabel>
         <ColorSwatches value={d.color} onChange={(c) => update({ color: c })} />
+        <SliderControl label="Opacity" value={d.opacity ?? 1} onChange={(o) => update({ opacity: o })} min={0} max={1} step={0.1} />
         <SectionLabel>Font Size</SectionLabel>
         <FontSizeDropdown value={d.fontSize || 18} onChange={(s) => update({ fontSize: s })} />
         <SectionLabel>Alignment</SectionLabel>
@@ -323,6 +504,26 @@ function SelectedDrawingStyle({ selectedDrawing, onUpdateDrawing }) {
     );
   }
 
+  if (d.type === "shape") {
+    const shapeLabel = { rect: "Rectangle", triangle: "Triangle", ellipse: "Circle", custom: "Polygon" };
+    const strokeColor = d.color || "#FFFFFF";
+    const hasStroke = strokeColor !== "transparent";
+
+    return (
+      <>
+        <p className="text-BrandGray text-[10px] sm:text-xs font-DmSans">{shapeLabel[d.shapeType] || "Shape"}</p>
+        <SectionLabel>Stroke Color</SectionLabel>
+        <ShapeColorPicker value={strokeColor} onChange={(c) => update({ color: c })} noneTitle="No stroke" />
+        <SliderControl label="Opacity" value={d.opacity ?? 1} onChange={(o) => update({ opacity: o })} min={0} max={1} step={0.1} />
+        <SectionLabel>Fill Color</SectionLabel>
+        <ShapeColorPicker value={d.fill || "transparent"} onChange={(f) => update({ fill: f })} noneTitle="No fill" />
+        {hasStroke && (
+          <SliderControl label="Stroke Width" value={d.strokeWidth || 2} onChange={(w) => update({ strokeWidth: w })} min={1} max={20} step={1} />
+        )}
+      </>
+    );
+  }
+
   return null;
 }
 
@@ -335,11 +536,20 @@ function MultiSelectedStyle({ selectedDrawings, onUpdateMultipleDrawings }) {
     }
     onUpdateMultipleDrawings?.(changes);
   };
+  const handleOpacityChange = (opacity) => {
+    const changes = {};
+    for (const d of selectedDrawings) {
+      changes[d.id] = { opacity };
+    }
+    onUpdateMultipleDrawings?.(changes);
+  };
   const currentColor = selectedDrawings[0]?.color || "#FFFFFF";
+  const currentOpacity = selectedDrawings[0]?.opacity ?? 1;
   return (
     <>
       <SectionLabel>Color</SectionLabel>
       <ColorSwatches value={currentColor} onChange={handleColorChange} />
+      <SliderControl label="Opacity" value={currentOpacity} onChange={handleOpacityChange} min={0} max={1} step={0.1} />
     </>
   );
 }
@@ -347,23 +557,31 @@ function MultiSelectedStyle({ selectedDrawings, onUpdateMultipleDrawings }) {
 export default function DrawingStyleSection({
   drawSubTool,
   drawColor,
+  drawOpacity = 1,
   drawStrokeWidth,
   drawTension,
   drawFontSize,
   drawTextAlign,
   drawArrowHeadType,
+  drawShapeStrokeColor = "#FFFFFF",
   onColorChange,
+  onOpacityChange,
   onStrokeWidthChange,
   onTensionChange,
   onFontSizeChange,
   onTextAlignChange,
   onArrowHeadTypeChange,
+  onShapeStrokeColorChange,
   selectedDrawing,
   selectedDrawings = [],
   onUpdateDrawing,
   onUpdateMultipleDrawings,
   eraserSize,
   onEraserSizeChange,
+  drawShapeType,
+  drawShapeFill,
+  onShapeTypeChange,
+  onShapeFillChange,
 }) {
   const multiSelected = selectedDrawings.length > 1;
   const showSelectedStyle = drawSubTool === "select" && selectedDrawing && !multiSelected;
@@ -372,11 +590,12 @@ export default function DrawingStyleSection({
   if (drawSubTool === "draw") title = "Brush";
   else if (drawSubTool === "arrow") title = "Arrow";
   else if (drawSubTool === "text") title = "Text";
+  else if (drawSubTool === "shape") title = "Shape";
   else if (drawSubTool === "erase") title = "Eraser";
   else if (drawSubTool === "select" && multiSelected) {
     title = `${selectedDrawings.length} Selected`;
   } else if (drawSubTool === "select" && selectedDrawing) {
-    const typeLabel = { stroke: "Brush", arrow: "Arrow", text: "Text" };
+    const typeLabel = { stroke: "Brush", arrow: "Arrow", text: "Text", shape: "Shape" };
     title = typeLabel[selectedDrawing.type] || "Selected";
   } else if (drawSubTool === "select") title = "Select";
 
@@ -400,9 +619,11 @@ export default function DrawingStyleSection({
       {drawSubTool === "draw" && (
         <DrawSubToolStyle
           drawColor={drawColor}
+          drawOpacity={drawOpacity}
           drawStrokeWidth={drawStrokeWidth}
           drawTension={drawTension}
           onColorChange={onColorChange}
+          onOpacityChange={onOpacityChange}
           onStrokeWidthChange={onStrokeWidthChange}
           onTensionChange={onTensionChange}
         />
@@ -411,20 +632,39 @@ export default function DrawingStyleSection({
       {drawSubTool === "arrow" && (
         <ArrowSubToolStyle
           drawColor={drawColor}
+          drawOpacity={drawOpacity}
           drawStrokeWidth={drawStrokeWidth}
           drawArrowHeadType={drawArrowHeadType}
           onColorChange={onColorChange}
+          onOpacityChange={onOpacityChange}
           onStrokeWidthChange={onStrokeWidthChange}
           onArrowHeadTypeChange={onArrowHeadTypeChange}
+        />
+      )}
+
+      {drawSubTool === "shape" && (
+        <ShapeSubToolStyle
+          drawShapeStrokeColor={drawShapeStrokeColor}
+          drawOpacity={drawOpacity}
+          drawStrokeWidth={drawStrokeWidth}
+          drawShapeType={drawShapeType}
+          drawShapeFill={drawShapeFill}
+          onShapeStrokeColorChange={onShapeStrokeColorChange}
+          onOpacityChange={onOpacityChange}
+          onStrokeWidthChange={onStrokeWidthChange}
+          onShapeTypeChange={onShapeTypeChange}
+          onShapeFillChange={onShapeFillChange}
         />
       )}
 
       {drawSubTool === "text" && (
         <TextSubToolStyle
           drawColor={drawColor}
+          drawOpacity={drawOpacity}
           drawFontSize={drawFontSize}
           drawTextAlign={drawTextAlign}
           onColorChange={onColorChange}
+          onOpacityChange={onOpacityChange}
           onFontSizeChange={onFontSizeChange}
           onTextAlignChange={onTextAlignChange}
         />

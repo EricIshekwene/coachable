@@ -15,6 +15,7 @@ export default function AdvancedSettings({
     onClose,
     onCopyDebug,
     onCopyDrawDebug,
+    onCopyKeyToolDebug,
 }) {
     const settings = value ?? {};
     const pitch = settings.pitch ?? {};
@@ -22,7 +23,6 @@ export default function AdvancedSettings({
     const ball = settings.ball ?? {};
     const exportVideo = settings.exportVideo ?? {};
     const animation = settings.animation ?? {};
-    const logging = settings.logging ?? {};
 
     const update = (patch) => onChange?.({ ...settings, ...patch });
     const updatePitch = (patch) => update({ pitch: { ...pitch, ...patch } });
@@ -30,7 +30,6 @@ export default function AdvancedSettings({
     const updateBall = (patch) => update({ ball: { ...ball, ...patch } });
     const updateExportVideo = (patch) => update({ exportVideo: { ...exportVideo, ...patch } });
     const updateAnimation = (patch) => update({ animation: { ...animation, ...patch } });
-    const updateLogging = (patch) => update({ logging: { ...logging, ...patch } });
 
     return (
         <div className="absolute right-0 top-0 h-screen z-50 flex flex-col">
@@ -61,10 +60,9 @@ export default function AdvancedSettings({
                 <ExportVideoSettingsSection value={exportVideo} onChange={updateExportVideo} />
                 <AnimationSettingsSection value={animation} onChange={updateAnimation} />
                 <LoggerSettingsSection
-                    value={logging}
-                    onChange={updateLogging}
                     onCopyDebug={onCopyDebug}
                     onCopyDrawDebug={onCopyDrawDebug}
+                    onCopyKeyToolDebug={onCopyKeyToolDebug}
                 />
                 <SavePrefabButton />
             </aside>

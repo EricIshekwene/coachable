@@ -23,6 +23,7 @@ import {
 } from "../../animation";
 import { getLogs as getAnimDebugLogs, log as logAnimDebug } from "../../animation/debugLogger";
 import { getLogs as getDrawDebugLogs, log as logDrawDebug } from "../../canvas/drawDebugLogger";
+import { getLogs as getKeyToolDebugLogs, log as logKeyToolDebug } from "../../canvas/keyboardToolDebugLogger";
 import { useDrawings } from "./hooks/useDrawings";
 
 /**
@@ -56,12 +57,16 @@ function Slate({ onShowMessage }) {
   const [canvasTool, setCanvasTool] = useState("hand");
   const [drawSubTool, setDrawSubTool] = useState("draw");
   const [drawColor, setDrawColor] = useState("#FFFFFF");
+  const [drawOpacity, setDrawOpacity] = useState(1);
   const [drawStrokeWidth, setDrawStrokeWidth] = useState(3);
   const [drawTension, setDrawTension] = useState(0.3);
   const [drawFontSize, setDrawFontSize] = useState(18);
   const [drawTextAlign, setDrawTextAlign] = useState("left");
   const [drawArrowHeadType, setDrawArrowHeadType] = useState("standard");
   const [eraserSize, setEraserSize] = useState(10);
+  const [drawShapeType, setDrawShapeType] = useState("rect");
+  const [drawShapeStrokeColor, setDrawShapeStrokeColor] = useState("#FFFFFF");
+  const [drawShapeFill, setDrawShapeFill] = useState("transparent");
   const [selectedDrawingIds, setSelectedDrawingIds] = useState([]);
   const drawingSelectionRef = useRef(null);
   const [textEditing, setTextEditing] = useState(null);
@@ -408,14 +413,24 @@ function Slate({ onShowMessage }) {
     downloadPlayExport(exportPayload, playName);
   };
 
-  const handleDrawSubToolChange = useCallback((nextSubTool) => {
+  const handleDrawSubToolChange = useCallback((nextSubTool, opts) => {
     setDrawSubTool((prevSubTool) => {
-      if (prevSubTool === nextSubTool) return prevSubTool;
+      if (prevSubTool === nextSubTool) {
+        logKeyToolDebug(`drawSubTool unchanged subTool=${nextSubTool}`);
+        return prevSubTool;
+      }
       logDrawDebug(`subToolChange prev=${prevSubTool} next=${nextSubTool}`);
+      logKeyToolDebug(`drawSubTool changed prev=${prevSubTool} next=${nextSubTool}`);
       return nextSubTool;
     });
     setTextEditing(null);
-    setSelectedDrawingIds([]);
+    // Allow callers to preserve or set a specific selection (e.g. text tool auto-select)
+    if (opts?.keepSelection) return;
+    if (opts?.selectIds) {
+      setSelectedDrawingIds(opts.selectIds);
+    } else {
+      setSelectedDrawingIds([]);
+    }
   }, []);
 
   const handleDrawColorChange = useCallback((nextColor) => {
@@ -423,6 +438,14 @@ function Slate({ onShowMessage }) {
       if (prevColor === nextColor) return prevColor;
       logDrawDebug(`style color prev=${prevColor} next=${nextColor}`);
       return nextColor;
+    });
+  }, []);
+
+  const handleDrawOpacityChange = useCallback((nextOpacity) => {
+    setDrawOpacity((prevOpacity) => {
+      if (prevOpacity === nextOpacity) return prevOpacity;
+      logDrawDebug(`style opacity prev=${prevOpacity} next=${nextOpacity}`);
+      return nextOpacity;
     });
   }, []);
 
@@ -474,12 +497,41 @@ function Slate({ onShowMessage }) {
     });
   }, []);
 
+  const handleDrawShapeTypeChange = useCallback((nextType) => {
+    setDrawShapeType((prev) => {
+      if (prev === nextType) return prev;
+      logDrawDebug(`style shapeType prev=${prev} next=${nextType}`);
+      return nextType;
+    });
+  }, []);
+
+  const handleDrawShapeStrokeColorChange = useCallback((nextColor) => {
+    setDrawShapeStrokeColor((prev) => {
+      if (prev === nextColor) return prev;
+      logDrawDebug(`style shapeStrokeColor prev=${prev} next=${nextColor}`);
+      return nextColor;
+    });
+  }, []);
+
+  const handleDrawShapeFillChange = useCallback((nextFill) => {
+    setDrawShapeFill((prev) => {
+      if (prev === nextFill) return prev;
+      logDrawDebug(`style shapeFill prev=${prev} next=${nextFill}`);
+      return nextFill;
+    });
+  }, []);
+
   const handleToolChange = useCallback((tool) => {
     logDrawDebug(`toolChange request=${tool}`);
+    logKeyToolDebug(`toolChange request=${tool}`);
     if (tool === "hand" || tool === "select" || tool === "pen" || tool === "addPlayer" || tool === "color") {
       setCanvasTool((prev) => {
-        if (prev === tool) return prev;
+        if (prev === tool) {
+          logKeyToolDebug(`toolChange noop current=${prev}`);
+          return prev;
+        }
         logDrawDebug(`toolChange applied prev=${prev} next=${tool}`);
+        logKeyToolDebug(`toolChange applied prev=${prev} next=${tool}`);
         return tool;
       });
       setSelectedDrawingIds([]);
@@ -487,6 +539,7 @@ function Slate({ onShowMessage }) {
       return;
     }
     logDrawDebug(`toolChange ignored invalidTool=${tool}`);
+    logKeyToolDebug(`toolChange ignored invalidTool=${tool}`);
   }, []);
 
   const getAuthoritativeTimeMs = useCallback(() => {
@@ -520,6 +573,19 @@ function Slate({ onShowMessage }) {
     } catch (error) {
       logDrawDebug(`copyDrawDebug failed err=${error?.message || "clipboard unavailable"}`);
       onShowMessage("Copy draw debug failed", "Clipboard access was denied.", "error");
+      return false;
+    }
+  }, [onShowMessage]);
+
+  const handleCopyKeyToolDebug = useCallback(async () => {
+    const lines = getKeyToolDebugLogs(500);
+    const payload = lines.length ? lines.join("\n") : "[KEYDBG] no logs captured yet";
+    try {
+      await navigator.clipboard.writeText(payload);
+      return true;
+    } catch (error) {
+      logKeyToolDebug(`copyKeyToolDebug failed err=${error?.message || "clipboard unavailable"}`);
+      onShowMessage("Copy keyboard debug failed", "Clipboard access was denied.", "error");
       return false;
     }
   }, [onShowMessage]);
@@ -797,19 +863,58 @@ function Slate({ onShowMessage }) {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
+      const tagName = e.target?.tagName || "UNKNOWN";
+      const isTypingTarget =
+        tagName === "INPUT" || tagName === "TEXTAREA" || e.target?.isContentEditable;
+
       if (e.key === "Escape") {
-        entities.setSelectedPlayerIds([]);
-        entities.setSelectedItemIds([]);
-        setSelectedDrawingIds([]);
+        // Cancel custom shape in progress
+        if (canvasTool === "pen" && drawSubTool === "shape") {
+          drawingHookRef.current?.cancelCustomShape?.();
+        }
+
+        const hasEntitySelection =
+          (entities.selectedPlayerIds?.length || 0) > 0 ||
+          (entities.selectedItemIds?.length || 0) > 0;
+        const hasDrawingSelection = selectedDrawingIds.length > 0;
+        const hasSelection = hasEntitySelection || hasDrawingSelection;
+        const isSelectionMode = canvasTool === "select" || canvasTool === "pen";
+
+        logKeyToolDebug(
+          `keydown Escape tool=${canvasTool} subTool=${drawSubTool} typing=${Boolean(
+            isTypingTarget
+          )} selectedPlayers=${entities.selectedPlayerIds?.length || 0} selectedItems=${entities.selectedItemIds?.length || 0} selectedDrawings=${selectedDrawingIds.length} repeat=${Boolean(e.repeat)}`
+        );
+
+        if (hasEntitySelection) {
+          entities.setSelectedPlayerIds([]);
+          entities.setSelectedItemIds([]);
+        }
+        if (hasDrawingSelection) {
+          setSelectedDrawingIds([]);
+        }
         drawingSelectionRef.current?.cancelGesture?.();
         setSelectedKeyframeMs(null);
-        setCanvasTool("select");
+
+        if (hasSelection && isSelectionMode) {
+          logKeyToolDebug("escape action=clearSelection");
+          return;
+        }
+        if (canvasTool !== "select") {
+          logKeyToolDebug(`escape action=switchToSelect from=${canvasTool}`);
+          setCanvasTool("select");
+          return;
+        }
+        logKeyToolDebug("escape action=noop");
         return;
       }
 
-      const tagName = e.target?.tagName;
-      const isTypingTarget =
-        tagName === "INPUT" || tagName === "TEXTAREA" || e.target?.isContentEditable;
+      // Enter commits custom shape polygon
+      if (e.key === "Enter" && canvasTool === "pen" && drawSubTool === "shape" && !isTypingTarget) {
+        drawingHookRef.current?.commitCustomShape?.();
+        return;
+      }
+
       if (isTypingTarget) return;
 
       // Ctrl/Cmd+A selects all drawings in pen+select mode
@@ -846,6 +951,7 @@ function Slate({ onShowMessage }) {
   return (
     <>
       <WideSidebar
+        activeTool={canvasTool}
         onToolChange={handleToolChange}
         onUndo={slateHistory.onUndo}
         onRedo={slateHistory.onRedo}
@@ -877,12 +983,16 @@ function Slate({ onShowMessage }) {
           drawings={drawingsState.drawings}
           drawSubTool={drawSubTool}
           drawColor={drawColor}
+          drawOpacity={drawOpacity}
           drawStrokeWidth={drawStrokeWidth}
           drawTension={drawTension}
           drawFontSize={drawFontSize}
           drawTextAlign={drawTextAlign}
           drawArrowHeadType={drawArrowHeadType}
           eraserSize={eraserSize}
+          drawShapeType={drawShapeType}
+          drawShapeStrokeColor={drawShapeStrokeColor}
+          drawShapeFill={drawShapeFill}
           onAddDrawing={drawingsState.addDrawing}
           onRemoveDrawing={drawingsState.removeDrawing}
           onRemoveMultipleDrawings={drawingsState.removeMultipleDrawings}
@@ -932,12 +1042,14 @@ function Slate({ onShowMessage }) {
         canvasTool={canvasTool}
         drawSubTool={drawSubTool}
         drawColor={drawColor}
+        drawOpacity={drawOpacity}
         drawStrokeWidth={drawStrokeWidth}
         drawTension={drawTension}
         drawFontSize={drawFontSize}
         drawTextAlign={drawTextAlign}
         drawArrowHeadType={drawArrowHeadType}
         onDrawColorChange={handleDrawColorChange}
+        onDrawOpacityChange={handleDrawOpacityChange}
         onDrawStrokeWidthChange={handleDrawStrokeWidthChange}
         onDrawTensionChange={handleDrawTensionChange}
         onDrawFontSizeChange={handleDrawFontSizeChange}
@@ -953,6 +1065,12 @@ function Slate({ onShowMessage }) {
         onRemoveDrawing={drawingsState.removeDrawing}
         eraserSize={eraserSize}
         onEraserSizeChange={handleEraserSizeChange}
+        drawShapeType={drawShapeType}
+        drawShapeStrokeColor={drawShapeStrokeColor}
+        drawShapeFill={drawShapeFill}
+        onDrawShapeTypeChange={handleDrawShapeTypeChange}
+        onDrawShapeStrokeColorChange={handleDrawShapeStrokeColorChange}
+        onDrawShapeFillChange={handleDrawShapeFillChange}
         playName={playName}
         onPlayNameChange={setPlayName}
         zoomPercent={fieldViewport.zoomPercent}
@@ -1003,6 +1121,7 @@ function Slate({ onShowMessage }) {
           onReset={() => setAdvancedSettings(DEFAULT_ADVANCED_SETTINGS)}
           onCopyDebug={handleCopyDebug}
           onCopyDrawDebug={handleCopyDrawDebug}
+          onCopyKeyToolDebug={handleCopyKeyToolDebug}
           onClose={() => setShowAdvancedSettings(false)}
         />
       )}

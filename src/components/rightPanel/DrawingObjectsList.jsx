@@ -10,6 +10,10 @@ function getDrawingLabel(drawing, index, drawings) {
   const typeIndex = typeDrawings.indexOf(drawing) + 1;
   if (drawing.type === "arrow") return `Arrow ${typeIndex}`;
   if (drawing.type === "stroke") return `Drawing ${typeIndex}`;
+  if (drawing.type === "shape") {
+    const shapeLabels = { rect: "Rect", triangle: "Triangle", ellipse: "Circle", custom: "Polygon" };
+    return `${shapeLabels[drawing.shapeType] || "Shape"} ${typeIndex}`;
+  }
   return `Object ${typeIndex}`;
 }
 
@@ -17,6 +21,7 @@ function getTypeIcon(type) {
   if (type === "text") return "T";
   if (type === "arrow") return "\u2192";
   if (type === "stroke") return "\u270E";
+  if (type === "shape") return "\u25A1";
   return "\u25CF";
 }
 

@@ -33,6 +33,26 @@ export function getDrawingWorldBounds(d) {
     const h = fontSize * 1.3;
     return { x: d.x, y: d.y - h, width: w, height: h };
   }
+  if (d.type === "shape") {
+    if (d.shapeType === "custom" && d.points?.length >= 4) {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (let i = 0; i < d.points.length; i += 2) {
+        if (d.points[i] < minX) minX = d.points[i];
+        if (d.points[i] > maxX) maxX = d.points[i];
+        if (d.points[i + 1] < minY) minY = d.points[i + 1];
+        if (d.points[i + 1] > maxY) maxY = d.points[i + 1];
+      }
+      const pad = (d.strokeWidth || 2) / 2;
+      return { x: minX - pad, y: minY - pad, width: maxX - minX + pad * 2, height: maxY - minY + pad * 2 };
+    }
+    const pad = (d.strokeWidth || 2) / 2;
+    return {
+      x: (d.x || 0) - pad,
+      y: (d.y || 0) - pad,
+      width: (d.width || 0) + pad * 2,
+      height: (d.height || 0) + pad * 2,
+    };
+  }
   // stroke or arrow
   const pts = d.points;
   if (!pts || pts.length < 2) return { x: 0, y: 0, width: 0, height: 0 };
@@ -127,6 +147,34 @@ export function hitTestDrawings(drawings, worldPoint, tolerance = 10, skipIds) {
         worldPoint.y <= b.y + b.height + tolerance
       ) {
         return d.id;
+      }
+    } else if (d.type === "shape") {
+      if (d.shapeType === "ellipse") {
+        const cx = (d.x || 0) + (d.width || 0) / 2;
+        const cy = (d.y || 0) + (d.height || 0) / 2;
+        const rx = (d.width || 0) / 2 + tolerance;
+        const ry = (d.height || 0) / 2 + tolerance;
+        if (rx > 0 && ry > 0) {
+          const nx = (worldPoint.x - cx) / rx;
+          const ny = (worldPoint.y - cy) / ry;
+          if (nx * nx + ny * ny <= 1) return d.id;
+        }
+      } else if (d.shapeType === "custom" && d.points?.length >= 6) {
+        if (pointInPolygon(worldPoint.x, worldPoint.y, d.points, tolerance)) return d.id;
+      } else if (d.shapeType === "triangle") {
+        const triPts = getTrianglePoints(d);
+        if (pointInPolygon(worldPoint.x, worldPoint.y, triPts, tolerance)) return d.id;
+      } else {
+        // rect
+        const b = getDrawingWorldBounds(d);
+        if (
+          worldPoint.x >= b.x - tolerance &&
+          worldPoint.x <= b.x + b.width + tolerance &&
+          worldPoint.y >= b.y - tolerance &&
+          worldPoint.y <= b.y + b.height + tolerance
+        ) {
+          return d.id;
+        }
       }
     }
   }
@@ -318,6 +366,16 @@ export function applyTranslation(drawingsSnapshot, selectedIds, dx, dy) {
     if (!idSet.has(d.id)) continue;
     if (d.type === "text") {
       result.set(d.id, { x: d.x + dx, y: d.y + dy });
+    } else if (d.type === "shape") {
+      const changes = { x: (d.x || 0) + dx, y: (d.y || 0) + dy };
+      if (d.shapeType === "custom" && d.points) {
+        const newPoints = [];
+        for (let i = 0; i < d.points.length; i += 2) {
+          newPoints.push(d.points[i] + dx, d.points[i + 1] + dy);
+        }
+        changes.points = newPoints;
+      }
+      result.set(d.id, changes);
     } else {
       const newPoints = [];
       for (let i = 0; i < d.points.length; i += 2) {
@@ -348,6 +406,24 @@ export function applyResize(drawingsSnapshot, selectedIds, oldBounds, newBounds)
       const newY = newBounds.y + (d.y - oldBounds.y) * scaleY;
       const newFontSize = Math.max(8, Math.round((d.fontSize || 18) * Math.min(scaleX, scaleY)));
       result.set(d.id, { x: newX, y: newY, fontSize: newFontSize });
+    } else if (d.type === "shape") {
+      const newX = newBounds.x + ((d.x || 0) - oldBounds.x) * scaleX;
+      const newY = newBounds.y + ((d.y || 0) - oldBounds.y) * scaleY;
+      const changes = { x: newX, y: newY, width: (d.width || 0) * scaleX, height: (d.height || 0) * scaleY };
+      if (d.shapeType === "custom" && d.points) {
+        const newPoints = [];
+        for (let i = 0; i < d.points.length; i += 2) {
+          newPoints.push(
+            newBounds.x + (d.points[i] - oldBounds.x) * scaleX,
+            newBounds.y + (d.points[i + 1] - oldBounds.y) * scaleY
+          );
+        }
+        changes.points = newPoints;
+      }
+      if (d.strokeWidth) {
+        changes.strokeWidth = Math.max(1, d.strokeWidth * Math.min(scaleX, scaleY));
+      }
+      result.set(d.id, changes);
     } else {
       const newPoints = [];
       for (let i = 0; i < d.points.length; i += 2) {
@@ -391,6 +467,19 @@ export function applyRotation(drawingsSnapshot, selectedIds, center, angleDelta)
       const rotated = rotatePoint(d.x, d.y);
       const angleDeg = (d.rotation || 0) + (angleDelta * 180) / Math.PI;
       result.set(d.id, { x: rotated.x, y: rotated.y, rotation: angleDeg });
+    } else if (d.type === "shape") {
+      const rotated = rotatePoint(d.x || 0, d.y || 0);
+      const angleDeg = (d.rotation || 0) + (angleDelta * 180) / Math.PI;
+      const changes = { x: rotated.x, y: rotated.y, rotation: angleDeg };
+      if (d.shapeType === "custom" && d.points) {
+        const newPoints = [];
+        for (let i = 0; i < d.points.length; i += 2) {
+          const rp = rotatePoint(d.points[i], d.points[i + 1]);
+          newPoints.push(rp.x, rp.y);
+        }
+        changes.points = newPoints;
+      }
+      result.set(d.id, changes);
     } else {
       const newPoints = [];
       for (let i = 0; i < d.points.length; i += 2) {
@@ -401,6 +490,51 @@ export function applyRotation(drawingsSnapshot, selectedIds, center, angleDelta)
     }
   }
   return result;
+}
+
+// ─── Shape Helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Get triangle vertices from a bounding-box shape drawing.
+ * Returns flat [x1,y1, x2,y2, x3,y3] array: top-center, bottom-left, bottom-right.
+ */
+export function getTrianglePoints(d) {
+  const x = d.x || 0, y = d.y || 0, w = d.width || 0, h = d.height || 0;
+  return [x + w / 2, y, x, y + h, x + w, y + h];
+}
+
+/**
+ * Point-in-polygon test (ray casting). Points is flat [x1,y1, x2,y2, ...].
+ * tolerance adds a buffer around edges.
+ */
+export function pointInPolygon(px, py, points, tolerance = 0) {
+  // First check bounding box with tolerance
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (let i = 0; i < points.length; i += 2) {
+    if (points[i] < minX) minX = points[i];
+    if (points[i] > maxX) maxX = points[i];
+    if (points[i + 1] < minY) minY = points[i + 1];
+    if (points[i + 1] > maxY) maxY = points[i + 1];
+  }
+  if (px < minX - tolerance || px > maxX + tolerance || py < minY - tolerance || py > maxY + tolerance) {
+    return false;
+  }
+  // Ray casting
+  const n = points.length / 2;
+  let inside = false;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const xi = points[i * 2], yi = points[i * 2 + 1];
+    const xj = points[j * 2], yj = points[j * 2 + 1];
+    // Check edge proximity for tolerance
+    if (tolerance > 0) {
+      const dist = pointToSegmentDist(px, py, xi, yi, xj, yj);
+      if (dist <= tolerance) return true;
+    }
+    if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+  }
+  return inside;
 }
 
 // ─── Arrow Endpoint Handles ────────────────────────────────────────────────

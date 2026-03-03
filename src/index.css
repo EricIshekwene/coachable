@@ -59,7 +59,6 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
-
 ::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(180deg, #ff8d3d 0%, #FF7A18 100%);
     background-clip: padding-box;
