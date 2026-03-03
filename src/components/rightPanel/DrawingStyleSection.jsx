@@ -290,6 +290,29 @@ function SelectedDrawingStyle({ selectedDrawing, onUpdateDrawing }) {
   return null;
 }
 
+/**
+ * Multi-selection style panel: when multiple drawings are selected,
+ * show shared color editing only.
+ */
+function MultiSelectedStyle({ selectedDrawings, onUpdateMultipleDrawings }) {
+  if (!selectedDrawings?.length) return null;
+  const handleColorChange = (color) => {
+    const changes = {};
+    for (const d of selectedDrawings) {
+      changes[d.id] = { color };
+    }
+    onUpdateMultipleDrawings?.(changes);
+  };
+  // Use first selected drawing's color as the active swatch
+  const currentColor = selectedDrawings[0]?.color || "#FFFFFF";
+  return (
+    <>
+      <SectionLabel>Color</SectionLabel>
+      <ColorSwatches value={currentColor} onChange={handleColorChange} />
+    </>
+  );
+}
+
 export default function DrawingStyleSection({
   drawSubTool,
   drawColor,
@@ -305,16 +328,21 @@ export default function DrawingStyleSection({
   onTextAlignChange,
   onArrowHeadTypeChange,
   selectedDrawing,
+  selectedDrawings = [],
   onUpdateDrawing,
+  onUpdateMultipleDrawings,
 }) {
-  const showSelectedStyle = drawSubTool === "select" && selectedDrawing;
+  const multiSelected = selectedDrawings.length > 1;
+  const showSelectedStyle = drawSubTool === "select" && selectedDrawing && !multiSelected;
 
   let title = "Drawing Style";
   if (drawSubTool === "draw") title = "Brush";
   else if (drawSubTool === "arrow") title = "Arrow";
   else if (drawSubTool === "text") title = "Text";
   else if (drawSubTool === "erase") title = "Eraser";
-  else if (drawSubTool === "select" && selectedDrawing) {
+  else if (drawSubTool === "select" && multiSelected) {
+    title = `${selectedDrawings.length} Selected`;
+  } else if (drawSubTool === "select" && selectedDrawing) {
     const typeLabel = { stroke: "Brush", arrow: "Arrow", text: "Text" };
     title = typeLabel[selectedDrawing.type] || "Selected";
   } else if (drawSubTool === "select") title = "Select";
@@ -324,6 +352,13 @@ export default function DrawingStyleSection({
       <div className="text-BrandOrange text-xs sm:text-sm md:text-base font-DmSans font-bold mb-0.5">
         {title}
       </div>
+
+      {multiSelected && drawSubTool === "select" && (
+        <MultiSelectedStyle
+          selectedDrawings={selectedDrawings}
+          onUpdateMultipleDrawings={onUpdateMultipleDrawings}
+        />
+      )}
 
       {showSelectedStyle && (
         <SelectedDrawingStyle selectedDrawing={selectedDrawing} onUpdateDrawing={onUpdateDrawing} />
@@ -368,9 +403,9 @@ export default function DrawingStyleSection({
         </p>
       )}
 
-      {drawSubTool === "select" && !selectedDrawing && (
+      {drawSubTool === "select" && !selectedDrawing && !multiSelected && (
         <p className="text-BrandGray text-[10px] sm:text-xs font-DmSans mt-1">
-          Click a drawing to select it.
+          Click or drag to select drawings.
         </p>
       )}
     </div>

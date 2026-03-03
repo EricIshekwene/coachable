@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Stage, Layer, Group, Circle, Text, Image as KonvaImage, Rect, Line, Arrow } from "react-konva";
 import Konva from "konva";
 import BoardViewport from "./BoardViewport";
-import { useCanvasDrawing, getDrawingBounds } from "./hooks/useCanvasDrawing";
+import { useCanvasDrawing } from "./hooks/useCanvasDrawing";
+import { useDrawingSelection } from "./hooks/useDrawingSelection";
+import { getDrawingWorldBounds } from "./drawingGeometry";
 import RugbyField from "../assets/objects/Field Vectors/Rugby_Field.png";
 
 /** Loads an HTML Image from a URL and tracks loading status. */
@@ -84,9 +86,12 @@ function KonvaCanvasRoot({
   onAddDrawing,
   onRemoveDrawing,
   onRemoveMultipleDrawings,
-  onSelectDrawing,
   onUpdateDrawing,
-  selectedDrawingId,
+  selectedDrawingIds = [],
+  onSelectedDrawingIdsChange,
+  onUpdateMultipleDrawingsNoHistory,
+  historyApiRef,
+  drawingSelectionRef,
   textEditing,
   onTextEditingChange,
   drawingHookRef,
@@ -208,11 +213,27 @@ function KonvaCanvasRoot({
     onAddDrawing,
     onRemoveDrawing,
     onRemoveMultipleDrawings,
-    onSelectDrawing,
-    onUpdateDrawing,
-    selectedDrawingId,
     textEditing,
     onTextEditingChange,
+  });
+
+  const drawingSelection = useDrawingSelection({
+    drawings,
+    toWorldCoords,
+    stageRef,
+    selectedDrawingIds,
+    onSelectedDrawingIdsChange,
+    onUpdateMultipleNoHistory: onUpdateMultipleDrawingsNoHistory,
+    historyApiRef,
+    zoom: camera?.zoom || 1,
+  });
+
+  // Expose selection hook to parent via ref (for cancelGesture on Escape)
+  useEffect(() => {
+    if (!drawingSelectionRef) return;
+    drawingSelectionRef.current = {
+      cancelGesture: drawingSelection.cancelGesture,
+    };
   });
 
   // Expose drawing hook API to parent via ref
@@ -481,8 +502,14 @@ function KonvaCanvasRoot({
 
     // Drawing tools — handle before pan/select/add
     if (tool === "pen" && !isMiddleMouse && isPrimaryButton) {
-      const handled = canvasDrawing.handlePointerDown(e);
-      if (handled) return;
+      // Select sub-tool routes to the selection hook
+      if (drawSubTool === "select") {
+        const handled = drawingSelection.handleSelectPointerDown(e);
+        if (handled) return;
+      } else {
+        const handled = canvasDrawing.handlePointerDown(e);
+        if (handled) return;
+      }
     }
 
     if (isAddTool && !isMiddleMouse) {
@@ -529,8 +556,13 @@ function KonvaCanvasRoot({
   const handleStagePointerMove = (e) => {
     // Drawing tools — handle before marquee/pan
     if (tool === "pen") {
-      const handled = canvasDrawing.handlePointerMove(e);
-      if (handled) return;
+      if (drawSubTool === "select") {
+        const handled = drawingSelection.handleSelectPointerMove(e);
+        if (handled) return;
+      } else {
+        const handled = canvasDrawing.handlePointerMove(e);
+        if (handled) return;
+      }
     }
 
     if (marqueeRef.current.active) {
@@ -559,8 +591,13 @@ function KonvaCanvasRoot({
   const handleStagePointerUp = (e) => {
     // Drawing tools
     if (tool === "pen") {
-      const handled = canvasDrawing.handlePointerUp(e);
-      if (handled) return;
+      if (drawSubTool === "select") {
+        const handled = drawingSelection.handleSelectPointerUp(e);
+        if (handled) return;
+      } else {
+        const handled = canvasDrawing.handlePointerUp(e);
+        if (handled) return;
+      }
     }
 
     if (marqueeRef.current.active) {
@@ -686,6 +723,17 @@ function KonvaCanvasRoot({
   const isMarqueeActive = Boolean(marquee);
 
   const isDragging = draggingIdsRef.current.size > 0;
+
+  // Selection cursor: check if pointer is over handles/drawings in pen+select mode
+  const getDrawingSelectionCursorNow = () => {
+    if (tool !== "pen" || drawSubTool !== "select") return null;
+    const stage = stageRef.current;
+    const pointer = stage?.getPointerPosition?.();
+    if (!pointer) return null;
+    const world = toWorldCoords(pointer);
+    return drawingSelection.getSelectionCursor(world);
+  };
+
   const drawCursor =
     drawSubTool === "select" ? "default" : drawSubTool === "text" ? "text" : drawSubTool === "erase" ? "crosshair" : "crosshair";
   const baseCursor =
@@ -697,12 +745,15 @@ function KonvaCanvasRoot({
           ? "copy"
           : "default";
   const hoverAllowed = !isMarqueeActive && !isPanning && !isDragging;
+  const selCursor = getDrawingSelectionCursorNow();
   const derivedCursor =
     isPanning || isDragging
       ? "grabbing"
-      : hoverAllowed && isHoveringItem
-        ? "pointer"
-        : baseCursor;
+      : selCursor
+        ? selCursor
+        : hoverAllowed && isHoveringItem
+          ? "pointer"
+          : baseCursor;
 
   const ARROW_HEAD_STYLES = {
     standard: { pointerLength: 10, pointerWidth: 8 },
@@ -756,6 +807,7 @@ function KonvaCanvasRoot({
           key={key}
           x={d.x}
           y={d.y}
+          rotation={d.rotation || 0}
           text={d.text || ""}
           fill={d.color || "#FFFFFF"}
           fontSize={d.fontSize || 18}
@@ -949,37 +1001,81 @@ function KonvaCanvasRoot({
           </Layer>
           <Layer listening={false} name="drawingsLayer">
             <Group x={worldOrigin.x} y={worldOrigin.y} scaleX={worldOrigin.scale} scaleY={worldOrigin.scale}>
-              {drawings.map((d) => {
-                const isSelectedDrag = selectedDrawingId === d.id && canvasDrawing.selectDragOffset;
-                if (isSelectedDrag) {
-                  const off = canvasDrawing.selectDragOffset;
-                  return (
-                    <Group key={d.id} x={off.dx} y={off.dy}>
-                      {renderDrawingNode(d, d.id)}
-                    </Group>
-                  );
-                }
-                return renderDrawingNode(d, d.id);
-              })}
+              {drawings.map((d) => renderDrawingNode(d, d.id))}
               {canvasDrawing.activeDrawing && renderDrawingNode(canvasDrawing.activeDrawing, "active-preview")}
-              {selectedDrawingId && (() => {
-                const d = drawings.find((dr) => dr.id === selectedDrawingId);
-                if (!d) return null;
-                const bounds = getDrawingBounds(d);
-                const off = canvasDrawing.selectDragOffset || { dx: 0, dy: 0 };
+              {/* Multi-selection bounds box */}
+              {drawingSelection.selectionBounds && selectedDrawingIds.length > 0 && (() => {
+                const sb = drawingSelection.selectionBounds;
+                const pad = 4;
+                const sw = 1.5 / (camera?.zoom || 1);
                 return (
-                  <Rect
-                    x={bounds.x - 4 + off.dx}
-                    y={bounds.y - 4 + off.dy}
-                    width={bounds.width + 8}
-                    height={bounds.height + 8}
-                    stroke="#FF7A18"
-                    strokeWidth={1.5}
-                    dash={[4, 3]}
-                    listening={false}
-                  />
+                  <React.Fragment>
+                    <Rect
+                      x={sb.x - pad}
+                      y={sb.y - pad}
+                      width={sb.width + pad * 2}
+                      height={sb.height + pad * 2}
+                      stroke="#FF7A18"
+                      strokeWidth={sw}
+                      dash={[4, 3]}
+                      listening={false}
+                    />
+                    {/* Resize handles */}
+                    {drawingSelection.handles.map((h) => (
+                      <Rect
+                        key={h.position}
+                        x={h.x}
+                        y={h.y}
+                        width={h.width}
+                        height={h.height}
+                        fill="#FFFFFF"
+                        stroke="#FF7A18"
+                        strokeWidth={1 / (camera?.zoom || 1)}
+                        listening={false}
+                      />
+                    ))}
+                    {/* Rotate handle */}
+                    {drawingSelection.rotateHandlePos && (() => {
+                      const rh = drawingSelection.rotateHandlePos;
+                      const r = 5 / (camera?.zoom || 1);
+                      const lineTop = sb.y - pad;
+                      return (
+                        <React.Fragment>
+                          <Line
+                            points={[rh.x, lineTop, rh.x, rh.y + r]}
+                            stroke="#FF7A18"
+                            strokeWidth={1 / (camera?.zoom || 1)}
+                            listening={false}
+                          />
+                          <Circle
+                            x={rh.x}
+                            y={rh.y}
+                            radius={r}
+                            fill="#FFFFFF"
+                            stroke="#FF7A18"
+                            strokeWidth={1 / (camera?.zoom || 1)}
+                            listening={false}
+                          />
+                        </React.Fragment>
+                      );
+                    })()}
+                  </React.Fragment>
                 );
               })()}
+              {/* Drawing marquee (pen+select mode) */}
+              {drawingSelection.drawingMarquee && (
+                <Rect
+                  x={drawingSelection.drawingMarquee.x}
+                  y={drawingSelection.drawingMarquee.y}
+                  width={drawingSelection.drawingMarquee.width}
+                  height={drawingSelection.drawingMarquee.height}
+                  fill="rgba(255, 122, 24, 0.15)"
+                  stroke="#FF7A18"
+                  strokeWidth={1.5 / (camera?.zoom || 1)}
+                  dash={[6, 3]}
+                  listening={false}
+                />
+              )}
             </Group>
           </Layer>
           <Layer listening={false} name="guidesLayer" ref={guidesLayerRef} />

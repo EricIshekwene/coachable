@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npm run build)",
-      "Bash(npx vite build)"
+      "Bash(npx vite build)",
+      "Bash(npm install -D vitest)",
+      "Bash(npx vitest run)"
     ]
   }
 }

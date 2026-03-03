@@ -61,7 +61,8 @@ function Slate({ onShowMessage }) {
   const [drawFontSize, setDrawFontSize] = useState(18);
   const [drawTextAlign, setDrawTextAlign] = useState("left");
   const [drawArrowHeadType, setDrawArrowHeadType] = useState("standard");
-  const [selectedDrawingId, setSelectedDrawingId] = useState(null);
+  const [selectedDrawingIds, setSelectedDrawingIds] = useState([]);
+  const drawingSelectionRef = useRef(null);
   const [textEditing, setTextEditing] = useState(null);
   const [playName, setPlayName] = useState("Name");
   const [speedMultiplier, setSpeedMultiplier] = useState(DEFAULT_SPEED_MULTIPLIER);
@@ -112,14 +113,15 @@ function Slate({ onShowMessage }) {
 
   const drawingsState = useDrawings({ historyApiRef });
 
-  const selectedDrawing = useMemo(
-    () => drawingsState.drawings.find((d) => d.id === selectedDrawingId) || null,
-    [drawingsState.drawings, selectedDrawingId]
+  const selectedDrawings = useMemo(
+    () => drawingsState.drawings.filter((d) => selectedDrawingIds.includes(d.id)),
+    [drawingsState.drawings, selectedDrawingIds]
   );
+  const selectedDrawing = selectedDrawings.length === 1 ? selectedDrawings[0] : null;
 
   useEffect(() => {
-    logDrawDebug(`selection drawingId=${selectedDrawingId || "none"}`);
-  }, [selectedDrawingId]);
+    logDrawDebug(`selection drawingIds=[${selectedDrawingIds.join(",")}]`);
+  }, [selectedDrawingIds]);
 
   const compositeSnapshotSlate = useCallback(() => ({
     ...entities.snapshotSlate(),
@@ -356,7 +358,7 @@ function Slate({ onShowMessage }) {
     engineRef.current.seek(0, { shouldLog: false, source: "engine" });
     entities.resetSlateEntities();
     drawingsState.resetDrawings();
-    setSelectedDrawingId(null);
+    setSelectedDrawingIds([]);
     setTextEditing(null);
     slateHistory.clearSlateHistory();
     fieldViewport.resetFieldViewport();
@@ -412,7 +414,7 @@ function Slate({ onShowMessage }) {
       return nextSubTool;
     });
     setTextEditing(null);
-    setSelectedDrawingId(null);
+    setSelectedDrawingIds([]);
   }, []);
 
   const handleDrawColorChange = useCallback((nextColor) => {
@@ -471,7 +473,7 @@ function Slate({ onShowMessage }) {
         logDrawDebug(`toolChange applied prev=${prev} next=${tool}`);
         return tool;
       });
-      setSelectedDrawingId(null);
+      setSelectedDrawingIds([]);
       setTextEditing(null);
       return;
     }
@@ -748,7 +750,7 @@ function Slate({ onShowMessage }) {
       latestPosesRef.current = {};
       animationRendererRef.current?.clearPoses?.();
       drawingsState.applyDrawings(play.drawings || []);
-      setSelectedDrawingId(null);
+      setSelectedDrawingIds([]);
       logAnimDebug(`import ok duration=${importedAnimation.durationMs} tracks=${trackCount}`);
       return true;
     },
@@ -789,7 +791,8 @@ function Slate({ onShowMessage }) {
       if (e.key === "Escape") {
         entities.setSelectedPlayerIds([]);
         entities.setSelectedItemIds([]);
-        setSelectedDrawingId(null);
+        setSelectedDrawingIds([]);
+        drawingSelectionRef.current?.cancelGesture?.();
         setSelectedKeyframeMs(null);
         setCanvasTool("select");
         return;
@@ -800,14 +803,21 @@ function Slate({ onShowMessage }) {
         tagName === "INPUT" || tagName === "TEXTAREA" || e.target?.isContentEditable;
       if (isTypingTarget) return;
 
+      // Ctrl/Cmd+A selects all drawings in pen+select mode
+      if ((e.ctrlKey || e.metaKey) && e.key === "a" && canvasTool === "pen" && drawSubTool === "select") {
+        e.preventDefault();
+        setSelectedDrawingIds(drawingsState.drawings.map((d) => d.id));
+        return;
+      }
+
       const isDeleteKey = e.key === "Delete" || e.key === "Backspace";
       if (!isDeleteKey) return;
 
-      // Delete selected drawing element
-      if (selectedDrawingId && canvasTool === "pen" && drawSubTool === "select") {
+      // Delete selected drawing elements
+      if (selectedDrawingIds.length > 0 && canvasTool === "pen" && drawSubTool === "select") {
         e.preventDefault();
-        drawingsState.removeDrawing(selectedDrawingId);
-        setSelectedDrawingId(null);
+        drawingsState.removeMultipleDrawings(selectedDrawingIds);
+        setSelectedDrawingIds([]);
         return;
       }
 
@@ -818,7 +828,7 @@ function Slate({ onShowMessage }) {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [entities, selectedDrawingId, canvasTool, drawSubTool, drawingsState]);
+  }, [entities, selectedDrawingIds, canvasTool, drawSubTool, drawingsState]);
 
   const handleAnimationRendererReady = useCallback(() => {
     renderPoseAtTime(currentTimeRef.current);
@@ -866,9 +876,12 @@ function Slate({ onShowMessage }) {
           onAddDrawing={drawingsState.addDrawing}
           onRemoveDrawing={drawingsState.removeDrawing}
           onRemoveMultipleDrawings={drawingsState.removeMultipleDrawings}
-          onSelectDrawing={setSelectedDrawingId}
           onUpdateDrawing={drawingsState.updateDrawing}
-          selectedDrawingId={selectedDrawingId}
+          selectedDrawingIds={selectedDrawingIds}
+          onSelectedDrawingIdsChange={setSelectedDrawingIds}
+          onUpdateMultipleDrawingsNoHistory={drawingsState.updateMultipleDrawingsNoHistory}
+          historyApiRef={historyApiRef}
+          drawingSelectionRef={drawingSelectionRef}
           textEditing={textEditing}
           onTextEditingChange={setTextEditing}
           drawingHookRef={drawingHookRef}
@@ -962,7 +975,9 @@ function Slate({ onShowMessage }) {
         onDrawTextAlignChange={handleDrawTextAlignChange}
         onDrawArrowHeadTypeChange={handleDrawArrowHeadTypeChange}
         selectedDrawing={selectedDrawing}
+        selectedDrawings={selectedDrawings}
         onUpdateDrawing={drawingsState.updateDrawing}
+        onUpdateMultipleDrawings={drawingsState.updateMultipleDrawings}
         playName={playName}
         onPlayNameChange={setPlayName}
         zoomPercent={fieldViewport.zoomPercent}

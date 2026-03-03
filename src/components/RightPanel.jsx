@@ -59,7 +59,9 @@ export default function RightPanel({
   onDrawTextAlignChange,
   onDrawArrowHeadTypeChange,
   selectedDrawing,
+  selectedDrawings,
   onUpdateDrawing,
+  onUpdateMultipleDrawings,
 }) {
   return (
     <aside
@@ -108,7 +110,9 @@ export default function RightPanel({
               onTextAlignChange={onDrawTextAlignChange}
               onArrowHeadTypeChange={onDrawArrowHeadTypeChange}
               selectedDrawing={selectedDrawing}
+              selectedDrawings={selectedDrawings}
               onUpdateDrawing={onUpdateDrawing}
+              onUpdateMultipleDrawings={onUpdateMultipleDrawings}
             />
           )}
 

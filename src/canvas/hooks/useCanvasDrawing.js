@@ -1,5 +1,9 @@
 import { useRef, useState, useCallback } from "react";
 import { log as logDrawDebug } from "../drawDebugLogger";
+import { hitTestDrawings } from "../drawingGeometry";
+
+// Re-export for backward compatibility
+export { getDrawingBounds, getDrawingWorldBounds, hitTestDrawings } from "../drawingGeometry";
 
 const MIN_STROKE_POINTS = 4; // at least 2 points (4 values in flat array)
 const MIN_ARROW_LENGTH = 5; // px in world coords
@@ -8,95 +12,10 @@ const MOVE_LOG_INTERVAL_MS = 120;
 const round2 = (value) => (Number.isFinite(value) ? Number(value).toFixed(2) : "nan");
 
 /**
- * Distance from point (px, py) to line segment (ax, ay)-(bx, by).
- */
-function pointToSegmentDist(px, py, ax, ay, bx, by) {
-  const dx = bx - ax;
-  const dy = by - ay;
-  const lenSq = dx * dx + dy * dy;
-  if (lenSq === 0) return Math.hypot(px - ax, py - ay);
-  let t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
-  t = Math.max(0, Math.min(1, t));
-  const projX = ax + t * dx;
-  const projY = ay + t * dy;
-  return Math.hypot(px - projX, py - projY);
-}
-
-/**
- * Hit-test drawings array at a world-space point. Returns the id of the
- * topmost drawing under the point, or null.
- * Optionally skips IDs in the `skipIds` set.
- */
-function hitTestDrawings(drawings, worldPoint, tolerance, skipIds) {
-  for (let i = drawings.length - 1; i >= 0; i--) {
-    const d = drawings[i];
-    if (skipIds && skipIds.has(d.id)) continue;
-    if (d.type === "stroke") {
-      for (let j = 0; j < d.points.length - 2; j += 2) {
-        const dist = pointToSegmentDist(
-          worldPoint.x,
-          worldPoint.y,
-          d.points[j],
-          d.points[j + 1],
-          d.points[j + 2],
-          d.points[j + 3]
-        );
-        if (dist < tolerance + (d.strokeWidth || 3) / 2) return d.id;
-      }
-    } else if (d.type === "arrow") {
-      const dist = pointToSegmentDist(
-        worldPoint.x,
-        worldPoint.y,
-        d.points[0],
-        d.points[1],
-        d.points[2],
-        d.points[3]
-      );
-      if (dist < tolerance + (d.strokeWidth || 3) / 2) return d.id;
-    } else if (d.type === "text") {
-      const approxWidth = (d.text?.length || 1) * (d.fontSize || 18) * 0.6;
-      const approxHeight = (d.fontSize || 18) * 1.3;
-      if (
-        worldPoint.x >= d.x &&
-        worldPoint.x <= d.x + approxWidth &&
-        worldPoint.y >= d.y - approxHeight &&
-        worldPoint.y <= d.y
-      ) {
-        return d.id;
-      }
-    }
-  }
-  return null;
-}
-
-/**
- * Compute axis-aligned bounding box for a drawing.
- */
-export function getDrawingBounds(d) {
-  if (d.type === "text") {
-    const w = (d.text?.length || 1) * (d.fontSize || 18) * 0.6;
-    const h = (d.fontSize || 18) * 1.3;
-    return { x: d.x, y: d.y - h, width: w, height: h };
-  }
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  for (let i = 0; i < d.points.length; i += 2) {
-    minX = Math.min(minX, d.points[i]);
-    maxX = Math.max(maxX, d.points[i]);
-    minY = Math.min(minY, d.points[i + 1]);
-    maxY = Math.max(maxY, d.points[i + 1]);
-  }
-  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-}
-
-/**
  * useCanvasDrawing
  *
- * Handles pointer events for the drawing sub-tools (select, draw, arrow, text, erase).
- * Follows the same handler pattern as useCanvasMarquee and returns handler functions
- * that the parent component calls from its pointer-down/move/up handlers.
+ * Handles pointer events for the drawing sub-tools (draw, arrow, text, erase).
+ * Select sub-tool is now handled by useDrawingSelection.
  */
 export function useCanvasDrawing({
   tool,
@@ -113,19 +32,14 @@ export function useCanvasDrawing({
   onAddDrawing,
   onRemoveDrawing,
   onRemoveMultipleDrawings,
-  onSelectDrawing,
-  onUpdateDrawing,
-  selectedDrawingId,
   textEditing,
   onTextEditingChange,
 }) {
   const drawingRef = useRef(null);
   const eraseRef = useRef({ active: false, removedIds: new Set() });
-  const selectDragRef = useRef(null);
   const lastMoveLogAtRef = useRef(0);
   const [activeDrawing, setActiveDrawing] = useState(null);
   const [erasingIds, setErasingIds] = useState(null);
-  const [selectDragOffset, setSelectDragOffset] = useState(null);
 
   const setTextEditing = onTextEditingChange;
 
@@ -140,6 +54,9 @@ export function useCanvasDrawing({
   const handlePointerDown = useCallback(
     (e) => {
       if (tool !== "pen") return false;
+      // Select sub-tool is handled by useDrawingSelection — skip here
+      if (subTool === "select") return false;
+
       const evt = e.evt;
       const isPrimaryButton = evt?.button === 0 || evt?.button === undefined;
       if (!isPrimaryButton) return false;
@@ -151,23 +68,6 @@ export function useCanvasDrawing({
         return false;
       }
       const world = toWorldCoords(pointer);
-
-      if (subTool === "select") {
-        const hitId = hitTestDrawings(drawings, world, 10);
-        onSelectDrawing?.(hitId);
-        logDrawDebug(
-          `select pointerDown x=${round2(world.x)} y=${round2(world.y)} hitId=${hitId || "none"} selected=${selectedDrawingId || "none"}`
-        );
-        if (hitId) {
-          selectDragRef.current = {
-            drawingId: hitId,
-            startWorld: { x: world.x, y: world.y },
-            drawing: drawings.find((d) => d.id === hitId),
-          };
-          logDrawDebug(`select dragStart drawingId=${hitId}`);
-        }
-        return true;
-      }
 
       if (subTool === "draw") {
         drawingRef.current = {
@@ -237,8 +137,6 @@ export function useCanvasDrawing({
       drawTension,
       drawArrowHeadType,
       drawings,
-      onSelectDrawing,
-      selectedDrawingId,
       drawFontSize,
       drawTextAlign,
     ]
@@ -260,21 +158,6 @@ export function useCanvasDrawing({
             `erase hit drawingId=${hitId} total=${eraseRef.current.removedIds.size} x=${round2(world.x)} y=${round2(world.y)}`
           );
         }
-        return true;
-      }
-
-      // Select drag: move selected drawing.
-      if (selectDragRef.current) {
-        const stage = stageRef.current;
-        const pointer = stage?.getPointerPosition?.();
-        if (!pointer) return false;
-        const world = toWorldCoords(pointer);
-        const dx = world.x - selectDragRef.current.startWorld.x;
-        const dy = world.y - selectDragRef.current.startWorld.y;
-        setSelectDragOffset({ dx, dy });
-        maybeLogMove(
-          `select dragMove drawingId=${selectDragRef.current.drawingId} dx=${round2(dx)} dy=${round2(dy)}`
-        );
         return true;
       }
 
@@ -329,32 +212,6 @@ export function useCanvasDrawing({
       return true;
     }
 
-    // Select drag commit: apply move offset.
-    if (selectDragRef.current) {
-      const { drawingId, drawing } = selectDragRef.current;
-      const offset = selectDragOffset;
-      selectDragRef.current = null;
-      setSelectDragOffset(null);
-
-      if (offset && (Math.abs(offset.dx) > 2 || Math.abs(offset.dy) > 2) && drawing) {
-        if (drawing.type === "text") {
-          onUpdateDrawing?.(drawingId, { x: drawing.x + offset.dx, y: drawing.y + offset.dy });
-        } else {
-          const newPoints = [];
-          for (let i = 0; i < drawing.points.length; i += 2) {
-            newPoints.push(drawing.points[i] + offset.dx, drawing.points[i + 1] + offset.dy);
-          }
-          onUpdateDrawing?.(drawingId, { points: newPoints });
-        }
-        logDrawDebug(
-          `select dragCommit drawingId=${drawingId} type=${drawing.type} dx=${round2(offset.dx)} dy=${round2(offset.dy)}`
-        );
-      } else {
-        logDrawDebug(`select dragCommit skipped drawingId=${drawingId || "none"}`);
-      }
-      return true;
-    }
-
     if (!drawingRef.current) return false;
     const drawing = drawingRef.current;
     drawingRef.current = null;
@@ -379,7 +236,7 @@ export function useCanvasDrawing({
 
     onAddDrawing?.(drawing);
     return true;
-  }, [onAddDrawing, onRemoveDrawing, onRemoveMultipleDrawings, onUpdateDrawing, selectDragOffset]);
+  }, [onAddDrawing, onRemoveDrawing, onRemoveMultipleDrawings]);
 
   const commitText = useCallback(
     (text) => {
@@ -418,7 +275,6 @@ export function useCanvasDrawing({
   return {
     activeDrawing,
     erasingIds,
-    selectDragOffset,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,

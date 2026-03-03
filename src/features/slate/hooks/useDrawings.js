@@ -81,6 +81,45 @@ export function useDrawings({ historyApiRef }) {
     });
   }, [historyApiRef]);
 
+  /**
+   * Update multiple drawings in a single setState call WITHOUT pushing history.
+   * Used during drag/resize/rotate gestures where history was pushed at gesture start.
+   * @param {Map<string, Object>|Object} idToChanges
+   */
+  const updateMultipleDrawingsNoHistory = useCallback((idToChanges) => {
+    const entries = idToChanges instanceof Map
+      ? Array.from(idToChanges.entries())
+      : Object.entries(idToChanges);
+    if (!entries.length) return;
+    const changesMap = new Map(entries);
+    setDrawings((prev) =>
+      prev.map((d) => {
+        const changes = changesMap.get(d.id);
+        return changes ? { ...d, ...changes } : d;
+      })
+    );
+  }, []);
+
+  /**
+   * Update multiple drawings with a single history push.
+   * Used for final style changes applied to multiple selected drawings.
+   */
+  const updateMultipleDrawings = useCallback((idToChanges) => {
+    const entries = idToChanges instanceof Map
+      ? Array.from(idToChanges.entries())
+      : Object.entries(idToChanges);
+    if (!entries.length) return;
+    historyApiRef.current?.pushHistory?.();
+    const changesMap = new Map(entries);
+    setDrawings((prev) =>
+      prev.map((d) => {
+        const changes = changesMap.get(d.id);
+        return changes ? { ...d, ...changes } : d;
+      })
+    );
+    logDrawDebug(`updateMultipleDrawings count=${entries.length}`);
+  }, [historyApiRef]);
+
   const clearDrawings = useCallback(() => {
     setDrawings([]);
     logDrawDebug("clearDrawings");
@@ -112,6 +151,8 @@ export function useDrawings({ historyApiRef }) {
     removeDrawing,
     removeMultipleDrawings,
     updateDrawing,
+    updateMultipleDrawings,
+    updateMultipleDrawingsNoHistory,
     clearDrawings,
     resetDrawings,
     snapshotDrawings,
