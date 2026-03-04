@@ -6,8 +6,10 @@ import AdvancedSettings from "../../components/AdvancedSettings";
 import KonvaCanvasRoot from "../../canvas/KonvaCanvasRoot";
 import DrawToolsPill from "../../components/DrawToolsPill";
 import PlayerEditPanel from "../../components/rightPanel/PlayerEditPanel";
-import { buildPlayExport, downloadPlayExport, downloadScreenshot } from "../../utils/exportPlay";
+import { buildPlayExport, downloadPlayExport, downloadScreenshot, downloadVideo } from "../../utils/exportPlay";
 import ScreenshotConfirmBar from "../../components/ScreenshotConfirmBar";
+import ExportModal from "../../components/ExportModal";
+import ExportOverlay from "../../components/ExportOverlay";
 import { IMPORT_FILE_SIZE_LIMIT_BYTES, validatePlayImport } from "../../utils/importPlay";
 import { DEFAULT_ADVANCED_SETTINGS, useAdvancedSettings } from "./hooks/useAdvancedSettings";
 import { useFieldViewport } from "./hooks/useFieldViewport";
@@ -55,7 +57,7 @@ const stampAnimationMeta = (nextAnimation, previousMeta) => {
 };
 
 function Slate({ onShowMessage }) {
-  const [canvasTool, setCanvasTool] = useState("hand");
+  const [canvasTool, setCanvasTool] = useState("select");
   const [drawSubTool, setDrawSubTool] = useState("draw");
   const [drawColor, setDrawColor] = useState("#FFFFFF");
   const [drawOpacity, setDrawOpacity] = useState(1);
@@ -74,6 +76,16 @@ function Slate({ onShowMessage }) {
   const [screenshotMode, setScreenshotMode] = useState(false);
   const [screenshotRegion, setScreenshotRegion] = useState(null);
   const screenshotApiRef = useRef(null);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportModalFormat, setExportModalFormat] = useState("photo");
+  const [exportConfig, setExportConfig] = useState(null);
+  const [exportProgress, setExportProgress] = useState(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [previewRegion, setPreviewRegion] = useState(null);
+  const previewCanvasRef = useRef(null);
+  const previewRafRef = useRef(null);
+  const previewDurationSecRef = useRef(30);
+  const previewStartWallRef = useRef(0);
   const [playName, setPlayName] = useState("Name");
   const [speedMultiplier, setSpeedMultiplier] = useState(DEFAULT_SPEED_MULTIPLIER);
   const [autoplayEnabled, setAutoplayEnabled] = useState(true);
@@ -417,51 +429,287 @@ function Slate({ onShowMessage }) {
     downloadPlayExport(exportPayload, playName);
   };
 
-  const handleScreenshotStart = useCallback(() => {
-    setScreenshotMode(true);
-    setScreenshotRegion(null);
-    logDrawDebug("screenshot mode started");
+  // --- Export handlers ---
+
+  const [exportInitialFormat, setExportInitialFormat] = useState("photo");
+
+  const handleScreenshotExportClick = useCallback(() => {
+    setExportInitialFormat("photo");
+    setExportModalOpen(true);
   }, []);
 
-  const handleScreenshotConfirm = useCallback(async () => {
-    if (!screenshotRegion || !screenshotApiRef.current?.captureRegion) {
-      onShowMessage?.("Screenshot failed", "No region selected.", "error");
+  const handleVideoExportClick = useCallback(() => {
+    setExportInitialFormat("video");
+    setExportModalOpen(true);
+  }, []);
+
+  const clearSelectionsForCapture = useCallback(() => {
+    const prevDrawingIds = [...selectedDrawingIds];
+    const prevPlayerIds = entities.selectedPlayerIds ? [...entities.selectedPlayerIds] : [];
+    setSelectedDrawingIds([]);
+    entities.handleSelectItem?.(null, null, { mode: "clear" });
+    return { prevDrawingIds, prevPlayerIds };
+  }, [selectedDrawingIds, entities]);
+
+  const restoreSelections = useCallback(({ prevDrawingIds, prevPlayerIds }) => {
+    setSelectedDrawingIds(prevDrawingIds);
+    if (prevPlayerIds.length > 0) {
+      prevPlayerIds.forEach((id) =>
+        entities.handleSelectItem?.(id, null, { mode: "add" })
+      );
+    }
+  }, [entities]);
+
+  const capturePhoto = useCallback(async (worldRect, quality = {}) => {
+    const api = screenshotApiRef.current;
+    if (!api?.captureRegion) {
+      onShowMessage?.("Export failed", "Capture API not ready.", "error");
       return;
     }
     try {
-      // Clear selections so they don't appear in the screenshot
-      const prevSelectedDrawingIds = [...selectedDrawingIds];
-      const prevSelectedPlayerIds = entities.selectedPlayerIds ? [...entities.selectedPlayerIds] : [];
-      setSelectedDrawingIds([]);
-      entities.handleSelectItem?.(null, null, { mode: "clear" });
+      const saved = clearSelectionsForCapture();
+      await new Promise((r) => requestAnimationFrame(r));
+      const dataUrl = api.captureRegion(worldRect, { pixelRatio: quality.pixelRatio || 2 });
+      await downloadScreenshot(dataUrl, playName);
+      onShowMessage?.("Photo exported", "Download starting...", "success");
+      restoreSelections(saved);
+    } catch (err) {
+      onShowMessage?.("Export failed", String(err), "error");
+    }
+  }, [playName, onShowMessage, clearSelectionsForCapture, restoreSelections]);
 
-      // Wait one frame for React to re-render without selection overlays
+  const recordVideoExport = useCallback(async (worldRect, durationSec, quality = {}) => {
+    const api = screenshotApiRef.current;
+    if (!api?.captureFrameCanvas || !api?.hideOverlays || !api?.showOverlays) {
+      onShowMessage?.("Export failed", "Capture API not ready.", "error");
+      return;
+    }
+    const engine = engineRef.current;
+    const playDurationMs = LOOP_SECONDS * 1000;
+    const fps = quality.fps || 30;
+    const pixelRatio = quality.pixelRatio || 2;
+    const bitrate = quality.bitrate || 5_000_000;
+    const totalFrames = Math.ceil(fps * durationSec);
+    const frameDurationMs = 1000 / fps;
+
+    setIsExporting(true);
+    setExportProgress(0);
+
+    try {
+      const saved = clearSelectionsForCapture();
+      const wasPlaying = engine.playing;
+      engine.pause({ shouldLog: false });
       await new Promise((r) => requestAnimationFrame(r));
 
-      const dataUrl = screenshotApiRef.current.captureRegion(screenshotRegion);
-      await downloadScreenshot(dataUrl, playName);
-      onShowMessage?.("Screenshot saved", "Download starting...", "success");
-      logDrawDebug("screenshot captured and downloaded");
+      api.hideOverlays();
 
-      // Restore selections
-      setSelectedDrawingIds(prevSelectedDrawingIds);
-      if (prevSelectedPlayerIds.length > 0) {
-        prevSelectedPlayerIds.forEach((id) =>
-          entities.handleSelectItem?.(id, null, { mode: "add" })
-        );
+      // Set up offscreen canvas + MediaRecorder
+      const firstCanvas = api.captureFrameCanvas(worldRect, { pixelRatio });
+      const offscreen = document.createElement("canvas");
+      offscreen.width = firstCanvas.width;
+      offscreen.height = firstCanvas.height;
+      const ctx = offscreen.getContext("2d");
+
+      const stream = offscreen.captureStream(0);
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
+        ? "video/webm;codecs=vp9"
+        : "video/webm";
+      const recorder = new MediaRecorder(stream, {
+        mimeType,
+        videoBitsPerSecond: bitrate,
+      });
+      const chunks = [];
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+
+      const recorderStopped = new Promise((resolve) => { recorder.onstop = resolve; });
+      recorder.start();
+
+      for (let i = 0; i < totalFrames; i++) {
+        const playTimeMs = (i / totalFrames) * playDurationMs;
+        renderPoseAtTime(playTimeMs);
+
+        // Capture composited Konva stage for this frame
+        const frameCanvas = api.captureFrameCanvas(worldRect, { pixelRatio });
+        ctx.clearRect(0, 0, offscreen.width, offscreen.height);
+        ctx.drawImage(frameCanvas, 0, 0);
+
+        // Push frame to recorder
+        const track = stream.getVideoTracks()[0];
+        if (track?.requestFrame) track.requestFrame();
+
+        // Pace recording — MediaRecorder uses wall-clock timing
+        await new Promise((r) => setTimeout(r, Math.max(1, frameDurationMs - 5)));
+
+        // Update progress every 10 frames
+        if (i % 10 === 0) {
+          setExportProgress((i + 1) / totalFrames);
+        }
       }
+
+      setExportProgress(1);
+      recorder.stop();
+      await recorderStopped;
+
+      const blob = new Blob(chunks, { type: mimeType });
+      downloadVideo(blob, playName);
+      onShowMessage?.("Video exported", "Download starting...", "success");
+
+      api.showOverlays();
+      restoreSelections(saved);
+      if (wasPlaying) engine.play();
     } catch (err) {
-      onShowMessage?.("Screenshot failed", String(err), "error");
-      logDrawDebug(`screenshot error: ${err}`);
+      onShowMessage?.("Export failed", String(err), "error");
+      logDrawDebug(`video export error: ${err}`);
+      screenshotApiRef.current?.showOverlays?.();
+    } finally {
+      setIsExporting(false);
+      setExportProgress(null);
     }
+  }, [playName, onShowMessage, clearSelectionsForCapture, restoreSelections, renderPoseAtTime]);
+
+  // --- Live preview animation loop for export modal ---
+  const PREVIEW_FPS = 15;
+  const PREVIEW_FRAME_MS = 1000 / PREVIEW_FPS;
+
+  useEffect(() => {
+    if (!exportModalOpen || exportModalFormat !== "video") {
+      if (previewRafRef.current) {
+        cancelAnimationFrame(previewRafRef.current);
+        previewRafRef.current = null;
+      }
+      return;
+    }
+
+    const api = screenshotApiRef.current;
+    if (!api?.captureFrameCanvas || !api?.getFieldWorldBounds || !api?.hideOverlays || !api?.showOverlays) {
+      return;
+    }
+
+    const engine = engineRef.current;
+    const wasPlaying = engine.playing;
+    const savedTimeMs = currentTimeRef.current;
+    engine.pause({ shouldLog: false });
+
+    const captureBounds = previewRegion || api.getFieldWorldBounds();
+    if (!captureBounds) return;
+
+    api.hideOverlays();
+
+    const playDurationMs = LOOP_SECONDS * 1000;
+    previewStartWallRef.current = performance.now();
+    let lastFrameTime = 0;
+
+    const tick = () => {
+      previewRafRef.current = requestAnimationFrame(tick);
+
+      const now = performance.now();
+      if (now - lastFrameTime < PREVIEW_FRAME_MS) return;
+      lastFrameTime = now;
+
+      const canvas = previewCanvasRef.current;
+      if (!canvas) return;
+
+      const elapsed = now - previewStartWallRef.current;
+      const durationSec = previewDurationSecRef.current || 30;
+      const loopMs = durationSec * 1000;
+      const loopTime = elapsed % loopMs;
+      const playTimeMs = (loopTime / loopMs) * playDurationMs;
+
+      renderPoseAtTime(playTimeMs);
+
+      const frameCanvas = api.captureFrameCanvas(captureBounds, { pixelRatio: 0.5 });
+      if (frameCanvas) {
+        if (canvas.width !== frameCanvas.width || canvas.height !== frameCanvas.height) {
+          canvas.width = frameCanvas.width;
+          canvas.height = frameCanvas.height;
+        }
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(frameCanvas, 0, 0);
+      }
+    };
+
+    previewRafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (previewRafRef.current) {
+        cancelAnimationFrame(previewRafRef.current);
+        previewRafRef.current = null;
+      }
+      api.showOverlays();
+      renderPoseAtTime(savedTimeMs);
+      if (wasPlaying) engine.play();
+    };
+  }, [exportModalOpen, exportModalFormat, previewRegion, renderPoseAtTime]);
+
+  const handlePreviewFormatChange = useCallback((fmt) => {
+    setExportModalFormat(fmt);
+  }, []);
+
+  const handlePreviewDurationChange = useCallback((sec) => {
+    previewDurationSecRef.current = sec;
+    previewStartWallRef.current = performance.now();
+  }, []);
+
+  const handleCustomRegionRequest = useCallback(() => {
+    setExportModalOpen(false);
+    setPreviewRegion(null);
+    setScreenshotMode(true);
+    setScreenshotRegion(null);
+    logDrawDebug("custom region selection requested from export modal");
+  }, []);
+
+  const handleExportModalSubmit = useCallback(({ format, region, durationSec, quality }) => {
+    setExportModalOpen(false);
+
+    let bounds;
+    if (region === "custom" && previewRegion) {
+      bounds = previewRegion;
+    } else {
+      bounds = screenshotApiRef.current?.getFieldWorldBounds?.();
+    }
+
+    if (!bounds) {
+      onShowMessage?.("Export failed", "Field bounds not available.", "error");
+      setExportConfig(null);
+      setPreviewRegion(null);
+      return;
+    }
+
+    if (format === "photo") {
+      capturePhoto(bounds, quality).then(() => { setExportConfig(null); setPreviewRegion(null); });
+    } else {
+      recordVideoExport(bounds, durationSec, quality).then(() => { setExportConfig(null); setPreviewRegion(null); });
+    }
+  }, [onShowMessage, capturePhoto, recordVideoExport, previewRegion]);
+
+  const handleScreenshotConfirm = useCallback(async () => {
+    if (!screenshotRegion) {
+      onShowMessage?.("Export failed", "No region selected.", "error");
+      return;
+    }
+
+    // If we came from the export modal Custom button, reopen modal with the region
+    if (exportConfig) {
+      setScreenshotMode(false);
+      setPreviewRegion(screenshotRegion);
+      setScreenshotRegion(null);
+      setExportModalOpen(true);
+      return;
+    }
+
+    // Legacy direct export path
     setScreenshotMode(false);
     setScreenshotRegion(null);
-  }, [screenshotRegion, playName, onShowMessage, selectedDrawingIds, entities]);
+    await capturePhoto(screenshotRegion, {});
+  }, [screenshotRegion, exportConfig, onShowMessage, capturePhoto]);
 
   const handleScreenshotCancel = useCallback(() => {
     setScreenshotMode(false);
     setScreenshotRegion(null);
-    logDrawDebug("screenshot mode cancelled");
+    setPreviewRegion(null);
+    setExportConfig(null);
+    logDrawDebug("export region selection cancelled");
   }, []);
 
   const handleScreenshotRegionChange = useCallback((region) => {
@@ -923,7 +1171,14 @@ function Slate({ onShowMessage }) {
         tagName === "INPUT" || tagName === "TEXTAREA" || e.target?.isContentEditable;
 
       if (e.key === "Escape") {
-        // Cancel screenshot mode
+        // Cancel export modal
+        if (exportModalOpen) {
+          setExportModalOpen(false);
+          return;
+        }
+        // Block all shortcuts during video export
+        if (isExporting) return;
+        // Cancel screenshot/region selection mode
         if (screenshotMode) {
           handleScreenshotCancel();
           return;
@@ -1080,6 +1335,21 @@ function Slate({ onShowMessage }) {
           onCancel={handleScreenshotCancel}
         />
       )}
+      <ExportModal
+        open={exportModalOpen}
+        initialFormat={exportInitialFormat}
+        onClose={() => { setExportModalOpen(false); setPreviewRegion(null); setExportConfig(null); }}
+        onExport={handleExportModalSubmit}
+        previewCanvasRef={previewCanvasRef}
+        onFormatChange={handlePreviewFormatChange}
+        onDurationChange={handlePreviewDurationChange}
+        onCustomRegionRequest={handleCustomRegionRequest}
+        hasCustomRegion={Boolean(previewRegion)}
+      />
+      <ExportOverlay
+        visible={isExporting}
+        progress={exportProgress ?? 0}
+      />
       {canvasTool === "pen" && !screenshotMode && (
         <DrawToolsPill
           activeSubTool={drawSubTool}
@@ -1169,7 +1439,8 @@ function Slate({ onShowMessage }) {
         onSaveToPlaybook={onSaveToPlaybook}
         onDownload={onDownload}
         onImport={handleImportClick}
-        onScreenshot={handleScreenshotStart}
+        onScreenshot={handleScreenshotExportClick}
+        onVideoExport={handleVideoExportClick}
       />
       <input
         ref={importInputRef}

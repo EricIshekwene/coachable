@@ -4,7 +4,7 @@ import { FaArrowUpLong } from "react-icons/fa6";
 
 const tools = [
     { id: "select", label: "Select", Icon: PiCursorFill },
-    { id: "text", label: "Text", Icon: PiTextTBold, disabled: true },
+    { id: "text", label: "Text", Icon: PiTextTBold },
     { id: "draw", label: "Draw", Icon: PiPenNib, iconStyle: { transform: "rotate(90deg)" } },
     { id: "arrow", label: "Arrow", Icon: FaArrowUpLong, iconStyle: { transform: "rotate(45deg)" } },
     { id: "shape", label: "Shape", Icon: PiShapesFill },

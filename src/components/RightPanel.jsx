@@ -44,6 +44,7 @@ export default function RightPanel({
   onDownload,
   onImport,
   onScreenshot,
+  onVideoExport,
 
   // Drawing style props
   canvasTool,
@@ -176,12 +177,13 @@ export default function RightPanel({
       </div>
 
       {/* Fixed bottom area */}
-      <div className="shrink-0 pt-1.5 sm:pt-2 border">
+      <div className="shrink-0 pt-1.5 sm:pt-2 border-t border-BrandGray2/60">
         <ExportActions
           onSaveToPlaybook={onSaveToPlaybook}
           onDownload={onDownload}
           onImport={onImport}
           onScreenshot={onScreenshot}
+          onVideoExport={onVideoExport}
         />
       </div>
     </aside>

@@ -4,7 +4,14 @@ import Konva from "konva";
 import BoardViewport from "./BoardViewport";
 import { useCanvasDrawing } from "./hooks/useCanvasDrawing";
 import { useDrawingSelection } from "./hooks/useDrawingSelection";
-import { getDrawingWorldBounds, getTrianglePoints } from "./drawingGeometry";
+import {
+  getDrawingWorldBounds,
+  getTrianglePoints,
+  getResizeHandles,
+  hitTestHandle,
+  computeResizedBounds,
+  HANDLE_CURSORS,
+} from "./drawingGeometry";
 import { log as logKeyToolDebug } from "./keyboardToolDebugLogger";
 import RugbyField from "../assets/objects/Field Vectors/Rugby_Field.png";
 
@@ -50,6 +57,8 @@ const ZOOM_MAX = 4;
 const ZOOM_STEP = 0.1;
 const WHEEL_PAN_FACTOR = 1;
 const GUIDELINE_OFFSET = 5;
+const SCREENSHOT_HANDLE_SIZE_PX = 10;
+const SCREENSHOT_HANDLE_HIT_PADDING_PX = 16;
 
 /**
  * Main Konva canvas component. Renders the Stage with field image, player/ball items,
@@ -58,7 +67,7 @@ const GUIDELINE_OFFSET = 5;
  * Konva node manipulation during playback (bypassing React state for performance).
  */
 function KonvaCanvasRoot({
-  tool = "hand",
+  tool = "select",
   camera,
   setCamera,
   items,
@@ -121,7 +130,7 @@ function KonvaCanvasRoot({
     pointerId: null,
     last: { x: 0, y: 0 },
   });
-  const screenshotDragRef = useRef(null); // { startWorld: {x,y} }
+  const screenshotDragRef = useRef(null); // { type, startWorld, startBounds?, handlePosition? }
   const overlayLayerRef = useRef(null);
 
   const [size, setSize] = useState({ width: 1, height: 1 });
@@ -189,6 +198,8 @@ function KonvaCanvasRoot({
     };
   }, [camera?.x, camera?.y, camera?.zoom, size.width, size.height]);
   const guidelineOffsetWorld = GUIDELINE_OFFSET / Math.max(0.0001, worldOrigin.scale);
+  const screenshotHandleSize = SCREENSHOT_HANDLE_SIZE_PX / Math.max(0.0001, worldOrigin.scale);
+  const screenshotHandleHitPadding = SCREENSHOT_HANDLE_HIT_PADDING_PX / Math.max(0.0001, worldOrigin.scale);
 
   const fieldBounds = useMemo(() => {
     if (!fieldImage.image) return null;
@@ -203,6 +214,11 @@ function KonvaCanvasRoot({
       centerY: 0,
     };
   }, [fieldImage.image]);
+
+  const screenshotHandles = useMemo(() => {
+    if (!screenshotRegion || screenshotRegion.width <= 0 || screenshotRegion.height <= 0) return [];
+    return getResizeHandles(screenshotRegion, screenshotHandleSize, 0);
+  }, [screenshotRegion, screenshotHandleSize]);
 
   const toWorldCoords = (screen) => {
     const zoom = camera?.zoom || 1;
@@ -384,14 +400,42 @@ function KonvaCanvasRoot({
   // Screenshot capture API
   useEffect(() => {
     if (!screenshotApiRef) return;
+    const hideOverlays = () => {
+      const stage = stageRef.current;
+      const overlay = overlayLayerRef.current;
+      const guides = guidesLayerRef.current;
+      if (overlay) { overlay.visible(false); }
+      if (guides) { guides.visible(false); }
+      if (stage) stage.batchDraw();
+    };
+
+    const showOverlays = () => {
+      const stage = stageRef.current;
+      const overlay = overlayLayerRef.current;
+      const guides = guidesLayerRef.current;
+      if (overlay) { overlay.visible(true); }
+      if (guides) { guides.visible(true); }
+      if (stage) stage.batchDraw();
+    };
+
+    const worldToScreen = (worldRect) => {
+      const scale = worldOrigin.scale;
+      return {
+        x: worldOrigin.x + worldRect.x * scale,
+        y: worldOrigin.y + worldRect.y * scale,
+        width: worldRect.width * scale,
+        height: worldRect.height * scale,
+      };
+    };
+
     screenshotApiRef.current = {
-      captureRegion: (worldRect) => {
+      captureRegion: (worldRect, { pixelRatio = 2 } = {}) => {
         const stage = stageRef.current;
         if (!stage) return null;
         const scale = worldOrigin.scale;
 
         // Inset by the screenshot border stroke width so the green rect isn't captured
-        const inset = 3 / scale; // 3 screen px → world coords
+        const inset = 3 / scale;
         const insetRect = {
           x: worldRect.x + inset,
           y: worldRect.y + inset,
@@ -399,31 +443,47 @@ function KonvaCanvasRoot({
           height: Math.max(1, worldRect.height - inset * 2),
         };
 
-        // Hide overlay layers (screenshot rect, marquee, selection handles, guides)
-        const overlay = overlayLayerRef.current;
-        const guides = guidesLayerRef.current;
-        if (overlay) { overlay.visible(false); stage.batchDraw(); }
-        if (guides) { guides.visible(false); stage.batchDraw(); }
-
-        const dataUrl = stage.toDataURL({
-          x: worldOrigin.x + insetRect.x * scale,
-          y: worldOrigin.y + insetRect.y * scale,
-          width: insetRect.width * scale,
-          height: insetRect.height * scale,
-          pixelRatio: 2,
-        });
-
-        // Restore overlay layers
-        if (overlay) { overlay.visible(true); stage.batchDraw(); }
-        if (guides) { guides.visible(true); stage.batchDraw(); }
-
+        hideOverlays();
+        const dataUrl = stage.toDataURL({ ...worldToScreen(insetRect), pixelRatio });
+        showOverlays();
         return dataUrl;
       },
+
+      /** Returns a Canvas element for the given world rect (faster than dataURL for video). */
+      captureFrameCanvas: (worldRect, { pixelRatio = 2 } = {}) => {
+        const stage = stageRef.current;
+        if (!stage) return null;
+        return stage.toCanvas({ ...worldToScreen(worldRect), pixelRatio });
+      },
+
+      /** Returns world-space bounds of the field image as {x, y, width, height}. */
+      getFieldWorldBounds: () => {
+        if (!fieldBounds) return null;
+        return {
+          x: fieldBounds.left,
+          y: fieldBounds.top,
+          width: fieldBounds.right - fieldBounds.left,
+          height: fieldBounds.bottom - fieldBounds.top,
+        };
+      },
+
+      hideOverlays,
+      showOverlays,
     };
     return () => {
       if (screenshotApiRef.current) screenshotApiRef.current = null;
     };
-  }, [screenshotApiRef, worldOrigin]);
+  }, [screenshotApiRef, worldOrigin, fieldBounds]);
+
+  useEffect(() => {
+    if (!screenshotMode) {
+      screenshotDragRef.current = null;
+    }
+    const layer = guidesLayerRef.current;
+    if (!layer) return;
+    layer.destroyChildren();
+    layer.batchDraw();
+  }, [screenshotMode]);
 
   const getLineGuideStops = (skipId) => {
     const centerScreenWorld = toWorldCoords({ x: size.width / 2, y: size.height / 2 });
@@ -583,8 +643,22 @@ function KonvaCanvasRoot({
       const pointer = stage?.getPointerPosition?.();
       if (pointer) {
         const world = toWorldCoords(pointer);
-        screenshotDragRef.current = { startWorld: { ...world } };
+        const hasRegion = screenshotRegion && screenshotRegion.width > 0 && screenshotRegion.height > 0;
+        if (hasRegion) {
+          const hitHandle = hitTestHandle(screenshotHandles, world, screenshotHandleHitPadding);
+          if (hitHandle) {
+            screenshotDragRef.current = {
+              type: "resize",
+              handlePosition: hitHandle,
+              startWorld: { ...world },
+              startBounds: { ...screenshotRegion },
+            };
+            return;
+          }
+        }
+        screenshotDragRef.current = { type: "draw", startWorld: { ...world } };
         onScreenshotRegionChange?.(null);
+        clearGuides();
       }
       return;
     }
@@ -643,18 +717,272 @@ function KonvaCanvasRoot({
   };
 
   const handleStagePointerMove = (e) => {
+    if (screenshotMode && containerRef.current) {
+      const stage = stageRef.current;
+      const pointer = stage?.getPointerPosition?.();
+      if (pointer) {
+        const world = toWorldCoords(pointer);
+        let nextCursor = "crosshair";
+        const drag = screenshotDragRef.current;
+        if (drag?.type === "resize") {
+          nextCursor = HANDLE_CURSORS[drag.handlePosition] || "crosshair";
+        } else if (screenshotHandles.length > 0) {
+          const hitHandle = hitTestHandle(screenshotHandles, world, screenshotHandleHitPadding);
+          if (hitHandle) {
+            nextCursor = HANDLE_CURSORS[hitHandle] || "crosshair";
+          }
+        }
+        containerRef.current.style.cursor = nextCursor;
+      }
+    }
+
     // Screenshot region drag
     if (screenshotMode && screenshotDragRef.current) {
       const stage = stageRef.current;
       const pointer = stage?.getPointerPosition?.();
       if (pointer) {
+        const drag = screenshotDragRef.current;
         const world = toWorldCoords(pointer);
-        const start = screenshotDragRef.current.startWorld;
+
+        if (drag.type === "resize" && drag.startBounds && drag.handlePosition) {
+          const handlePosition = drag.handlePosition;
+          const startBounds = drag.startBounds;
+          const dragDelta = {
+            dx: world.x - drag.startWorld.x,
+            dy: world.y - drag.startWorld.y,
+          };
+          const resized = computeResizedBounds(handlePosition, startBounds, dragDelta);
+          let snapped = { ...resized };
+
+          if (fieldBounds && guidelineOffsetWorld) {
+            const vStops = [0, fieldBounds.left, fieldBounds.right, fieldBounds.centerX];
+            const hStops = [0, fieldBounds.top, fieldBounds.bottom, fieldBounds.centerY];
+            const guides = [];
+
+            const canResizeWest = handlePosition.includes("w");
+            const canResizeEast = handlePosition.includes("e");
+            const canResizeNorth = handlePosition.includes("n");
+            const canResizeSouth = handlePosition.includes("s");
+
+            if (canResizeWest || canResizeEast) {
+              const vEdges = canResizeWest
+                ? [
+                    { guide: snapped.x, snap: "left" },
+                    { guide: snapped.x + snapped.width / 2, snap: "center" },
+                  ]
+                : [
+                    { guide: snapped.x + snapped.width, snap: "right" },
+                    { guide: snapped.x + snapped.width / 2, snap: "center" },
+                  ];
+
+              let closestV = null;
+              vStops.forEach((stop) => {
+                vEdges.forEach((edge) => {
+                  const diff = Math.abs(stop - edge.guide);
+                  if (diff <= guidelineOffsetWorld && (!closestV || diff < closestV.diff)) {
+                    closestV = { lineGuide: stop, diff, snap: edge.snap };
+                  }
+                });
+              });
+
+              if (closestV) {
+                const leftFixed = startBounds.x;
+                const rightFixed = startBounds.x + startBounds.width;
+                if (canResizeWest) {
+                  if (closestV.snap === "left") {
+                    snapped.x = closestV.lineGuide;
+                    snapped.width = rightFixed - snapped.x;
+                  } else {
+                    snapped.x = closestV.lineGuide * 2 - rightFixed;
+                    snapped.width = rightFixed - snapped.x;
+                  }
+                } else if (canResizeEast) {
+                  if (closestV.snap === "right") {
+                    snapped.width = closestV.lineGuide - leftFixed;
+                    snapped.x = leftFixed;
+                  } else {
+                    const right = closestV.lineGuide * 2 - leftFixed;
+                    snapped.width = right - leftFixed;
+                    snapped.x = leftFixed;
+                  }
+                }
+                guides.push({ orientation: "V", lineGuide: closestV.lineGuide, offset: 0, snap: closestV.snap });
+              }
+            }
+
+            if (canResizeNorth || canResizeSouth) {
+              const hEdges = canResizeNorth
+                ? [
+                    { guide: snapped.y, snap: "top" },
+                    { guide: snapped.y + snapped.height / 2, snap: "center" },
+                  ]
+                : [
+                    { guide: snapped.y + snapped.height, snap: "bottom" },
+                    { guide: snapped.y + snapped.height / 2, snap: "center" },
+                  ];
+
+              let closestH = null;
+              hStops.forEach((stop) => {
+                hEdges.forEach((edge) => {
+                  const diff = Math.abs(stop - edge.guide);
+                  if (diff <= guidelineOffsetWorld && (!closestH || diff < closestH.diff)) {
+                    closestH = { lineGuide: stop, diff, snap: edge.snap };
+                  }
+                });
+              });
+
+              if (closestH) {
+                const topFixed = startBounds.y;
+                const bottomFixed = startBounds.y + startBounds.height;
+                if (canResizeNorth) {
+                  if (closestH.snap === "top") {
+                    snapped.y = closestH.lineGuide;
+                    snapped.height = bottomFixed - snapped.y;
+                  } else {
+                    snapped.y = closestH.lineGuide * 2 - bottomFixed;
+                    snapped.height = bottomFixed - snapped.y;
+                  }
+                } else if (canResizeSouth) {
+                  if (closestH.snap === "bottom") {
+                    snapped.height = closestH.lineGuide - topFixed;
+                    snapped.y = topFixed;
+                  } else {
+                    const bottom = closestH.lineGuide * 2 - topFixed;
+                    snapped.height = bottom - topFixed;
+                    snapped.y = topFixed;
+                  }
+                }
+                guides.push({ orientation: "H", lineGuide: closestH.lineGuide, offset: 0, snap: closestH.snap });
+              }
+            }
+
+            const MIN_SIZE = 4;
+            if (canResizeWest) {
+              if (snapped.width < MIN_SIZE) {
+                const rightFixed = startBounds.x + startBounds.width;
+                snapped.width = MIN_SIZE;
+                snapped.x = rightFixed - MIN_SIZE;
+              }
+            } else if (canResizeEast) {
+              if (snapped.width < MIN_SIZE) {
+                snapped.width = MIN_SIZE;
+                snapped.x = startBounds.x;
+              }
+            }
+
+            if (canResizeNorth) {
+              if (snapped.height < MIN_SIZE) {
+                const bottomFixed = startBounds.y + startBounds.height;
+                snapped.height = MIN_SIZE;
+                snapped.y = bottomFixed - MIN_SIZE;
+              }
+            } else if (canResizeSouth) {
+              if (snapped.height < MIN_SIZE) {
+                snapped.height = MIN_SIZE;
+                snapped.y = startBounds.y;
+              }
+            }
+
+            if (guides.length) {
+              drawGuides(guides);
+            } else {
+              clearGuides();
+            }
+          } else {
+            clearGuides();
+          }
+
+          onScreenshotRegionChange?.(snapped);
+          return;
+        }
+
+        const start = drag.startWorld;
+        let endX = world.x;
+        let endY = world.y;
+
+        if (fieldBounds && guidelineOffsetWorld) {
+          const startX = start.x;
+          const startY = start.y;
+          const tentBounds = {
+            x: Math.min(startX, endX),
+            y: Math.min(startY, endY),
+            width: Math.abs(endX - startX),
+            height: Math.abs(endY - startY),
+          };
+          const cx = tentBounds.x + tentBounds.width / 2;
+          const cy = tentBounds.y + tentBounds.height / 2;
+          const vStops = [0, fieldBounds.left, fieldBounds.right, fieldBounds.centerX];
+          const hStops = [0, fieldBounds.top, fieldBounds.bottom, fieldBounds.centerY];
+          const vEdges = [
+            { guide: tentBounds.x, offset: tentBounds.x - cx, snap: "left" },
+            { guide: cx, offset: 0, snap: "center" },
+            { guide: tentBounds.x + tentBounds.width, offset: tentBounds.x + tentBounds.width - cx, snap: "right" },
+          ];
+          const hEdges = [
+            { guide: tentBounds.y, offset: tentBounds.y - cy, snap: "top" },
+            { guide: cy, offset: 0, snap: "center" },
+            { guide: tentBounds.y + tentBounds.height, offset: tentBounds.y + tentBounds.height - cy, snap: "bottom" },
+          ];
+
+          let closestV = null;
+          vStops.forEach((stop) => {
+            vEdges.forEach((edge) => {
+              const diff = Math.abs(stop - edge.guide);
+              if (diff <= guidelineOffsetWorld && (!closestV || diff < closestV.diff)) {
+                closestV = { lineGuide: stop, diff, offset: edge.offset, snap: edge.snap };
+              }
+            });
+          });
+
+          let closestH = null;
+          hStops.forEach((stop) => {
+            hEdges.forEach((edge) => {
+              const diff = Math.abs(stop - edge.guide);
+              if (diff <= guidelineOffsetWorld && (!closestH || diff < closestH.diff)) {
+                closestH = { lineGuide: stop, diff, offset: edge.offset, snap: edge.snap };
+              }
+            });
+          });
+
+          const guides = [];
+          if (closestV) {
+            const snapTarget = closestV.lineGuide;
+            const edgeSnap = closestV.snap;
+            if (edgeSnap === "left" || edgeSnap === "right") {
+              endX = world.x + (snapTarget - (edgeSnap === "left" ? Math.min(startX, world.x) : Math.max(startX, world.x)));
+            } else {
+              const mid = (startX + endX) / 2;
+              endX += (snapTarget - mid);
+            }
+            guides.push({ orientation: "V", lineGuide: snapTarget, offset: closestV.offset, snap: closestV.snap });
+          }
+
+          if (closestH) {
+            const snapTarget = closestH.lineGuide;
+            const edgeSnap = closestH.snap;
+            if (edgeSnap === "top" || edgeSnap === "bottom") {
+              endY = world.y + (snapTarget - (edgeSnap === "top" ? Math.min(startY, world.y) : Math.max(startY, world.y)));
+            } else {
+              const mid = (startY + endY) / 2;
+              endY += (snapTarget - mid);
+            }
+            guides.push({ orientation: "H", lineGuide: snapTarget, offset: closestH.offset, snap: closestH.snap });
+          }
+
+          if (guides.length) {
+            drawGuides(guides);
+          } else {
+            clearGuides();
+          }
+        } else {
+          clearGuides();
+        }
+
         onScreenshotRegionChange?.({
-          x: Math.min(start.x, world.x),
-          y: Math.min(start.y, world.y),
-          width: Math.abs(world.x - start.x),
-          height: Math.abs(world.y - start.y),
+          x: Math.min(start.x, endX),
+          y: Math.min(start.y, endY),
+          width: Math.abs(endX - start.x),
+          height: Math.abs(endY - start.y),
         });
       }
       return;
@@ -724,6 +1052,7 @@ function KonvaCanvasRoot({
     // Screenshot region commit
     if (screenshotMode && screenshotDragRef.current) {
       screenshotDragRef.current = null;
+      clearGuides();
       return;
     }
 
@@ -1382,17 +1711,32 @@ function KonvaCanvasRoot({
                 />
               )}
               {screenshotMode && screenshotRegion && screenshotRegion.width > 0 && screenshotRegion.height > 0 && (
-                <Rect
-                  x={screenshotRegion.x}
-                  y={screenshotRegion.y}
-                  width={screenshotRegion.width}
-                  height={screenshotRegion.height}
-                  fill="rgba(255, 255, 255, 0.08)"
-                  stroke="#22c55e"
-                  strokeWidth={2 / (camera?.zoom || 1)}
-                  dash={[6, 4]}
-                  listening={false}
-                />
+                <React.Fragment>
+                  <Rect
+                    x={screenshotRegion.x}
+                    y={screenshotRegion.y}
+                    width={screenshotRegion.width}
+                    height={screenshotRegion.height}
+                    fill="rgba(255, 255, 255, 0.08)"
+                    stroke="#22c55e"
+                    strokeWidth={2 / (camera?.zoom || 1)}
+                    dash={[6, 4]}
+                    listening={false}
+                  />
+                  {screenshotHandles.map((h) => (
+                    <Rect
+                      key={`screenshot-handle-${h.position}`}
+                      x={h.x}
+                      y={h.y}
+                      width={h.width}
+                      height={h.height}
+                      fill="#FFFFFF"
+                      stroke="#22c55e"
+                      strokeWidth={1 / (camera?.zoom || 1)}
+                      listening={false}
+                    />
+                  ))}
+                </React.Fragment>
               )}
             </Group>
           </Layer>

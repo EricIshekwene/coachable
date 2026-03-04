@@ -6,7 +6,9 @@
       "Bash(npm install -D vitest)",
       "Bash(npx vitest run)",
       "WebFetch(domain:konvajs.org)",
-      "Bash(npm test)"
+      "Bash(npm test)",
+      "Bash(grep -n \"export.*AnimationEngine\" /c/Users/ericl/Desktop/coachable/src/animation/*.js)",
+      "Bash(grep -n \"export.*createEmptyAnimation\\\\|export.*buildInterpolatedSlate\\\\|export.*samplePosesAtTime\" /c/Users/ericl/Desktop/coachable/src/animation/*.js)"
     ]
   }
 }

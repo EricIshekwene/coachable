@@ -97,13 +97,30 @@ export const downloadPlayExport = (playExport, playName) => {
 /**
  * Downloads a data URL as a PNG file.
  * @param {string} dataUrl - The data URL from canvas capture.
- * @param {string} playName - Play name used to derive the filename.
  */
 export const downloadScreenshot = async (dataUrl, playName) => {
   if (!dataUrl) return;
   const filename = `${sanitizeFilename(playName)}_screenshot.png`;
   const res = await fetch(dataUrl);
   const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};
+
+/**
+ * Downloads a video blob as a WebM file.
+ * @param {Blob} blob - The recorded video blob.
+ * @param {string} playName - Play name used to derive the filename.
+ */
+export const downloadVideo = (blob, playName) => {
+  if (!blob) return;
+  const filename = `${sanitizeFilename(playName)}_export.webm`;
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;

@@ -28,10 +28,16 @@ export function pointToSegmentDist(px, py, ax, ay, bx, by) {
  */
 export function getDrawingWorldBounds(d) {
   if (d.type === "text") {
+    if (d.width && d.height) {
+      return { x: d.x, y: d.y, width: d.width, height: d.height };
+    }
     const fontSize = d.fontSize || 18;
-    const w = (d.text?.length || 1) * fontSize * 0.6;
-    const h = fontSize * 1.3;
-    return { x: d.x, y: d.y - h, width: w, height: h };
+    const text = d.text || "";
+    const lines = text.split("\n");
+    const maxLineLen = Math.max(...lines.map((l) => l.length), 1);
+    const w = maxLineLen * fontSize * 0.6;
+    const h = lines.length * fontSize * 1.3;
+    return { x: d.x, y: d.y, width: w, height: h };
   }
   if (d.type === "shape") {
     if (d.shapeType === "custom" && d.points?.length >= 4) {
