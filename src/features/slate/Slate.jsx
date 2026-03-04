@@ -27,6 +27,7 @@ import {
 import { getLogs as getAnimDebugLogs, log as logAnimDebug } from "../../animation/debugLogger";
 import { getLogs as getDrawDebugLogs, log as logDrawDebug } from "../../canvas/drawDebugLogger";
 import { getLogs as getKeyToolDebugLogs, log as logKeyToolDebug } from "../../canvas/keyboardToolDebugLogger";
+import { getLogs as getVideoExportDebugLogs, log as logVideoExport } from "../../utils/videoExportDebugLogger";
 import { useDrawings } from "./hooks/useDrawings";
 
 /**
@@ -80,6 +81,7 @@ function Slate({ onShowMessage }) {
   const [exportConfig, setExportConfig] = useState(null);
   const [exportProgress, setExportProgress] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState(null);
   const [playName, setPlayName] = useState("Name");
   const [speedMultiplier, setSpeedMultiplier] = useState(DEFAULT_SPEED_MULTIPLIER);
   const [autoplayEnabled, setAutoplayEnabled] = useState(true);
@@ -473,9 +475,16 @@ function Slate({ onShowMessage }) {
   }, [playName, onShowMessage, clearSelectionsForCapture, restoreSelections]);
 
   const recordVideoExport = useCallback(async (worldRect, durationSec, quality = {}) => {
+    logVideoExport(`=== VIDEO EXPORT START ===`);
+    logVideoExport(`worldRect: x=${worldRect?.x} y=${worldRect?.y} w=${worldRect?.width} h=${worldRect?.height}`);
+    logVideoExport(`durationSec=${durationSec} quality=${JSON.stringify(quality)}`);
+
     const api = screenshotApiRef.current;
     if (!api?.captureFrameCanvas || !api?.hideOverlays || !api?.showOverlays) {
-      onShowMessage?.("Export failed", "Capture API not ready.", "error");
+      const reason = "Capture API not ready";
+      logVideoExport(`ABORT: ${reason} — captureFrameCanvas=${!!api?.captureFrameCanvas} hideOverlays=${!!api?.hideOverlays} showOverlays=${!!api?.showOverlays}`);
+      onShowMessage?.("Export failed", reason, "error");
+      setExportError(reason);
       return;
     }
     const engine = engineRef.current;
@@ -486,53 +495,103 @@ function Slate({ onShowMessage }) {
     const totalFrames = Math.ceil(fps * durationSec);
     const frameDurationMs = 1000 / fps;
 
+    logVideoExport(`playDurationMs=${playDurationMs} fps=${fps} pixelRatio=${pixelRatio} bitrate=${bitrate} totalFrames=${totalFrames}`);
+
     setIsExporting(true);
     setExportProgress(0);
+    setExportError(null);
+
+    let saved = null;
+    let wasPlaying = false;
 
     try {
-      const saved = clearSelectionsForCapture();
-      const wasPlaying = engine.playing;
+      saved = clearSelectionsForCapture();
+      wasPlaying = engine.playing;
       engine.pause({ shouldLog: false });
+      logVideoExport(`engine paused, wasPlaying=${wasPlaying}`);
       await new Promise((r) => requestAnimationFrame(r));
 
       api.hideOverlays();
+      logVideoExport(`overlays hidden`);
 
       // Set up offscreen canvas + MediaRecorder
       const firstCanvas = api.captureFrameCanvas(worldRect, { pixelRatio });
+      if (!firstCanvas) {
+        throw new Error("captureFrameCanvas returned null on first frame — stage may not be mounted");
+      }
+      logVideoExport(`firstCanvas: ${firstCanvas.width}x${firstCanvas.height}`);
+
       const offscreen = document.createElement("canvas");
       offscreen.width = firstCanvas.width;
       offscreen.height = firstCanvas.height;
       const ctx = offscreen.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to get 2D context from offscreen canvas");
+      }
 
       const stream = offscreen.captureStream(0);
+      const videoTrack = stream.getVideoTracks()[0];
+      if (!videoTrack) {
+        throw new Error("captureStream produced no video track");
+      }
+      logVideoExport(`stream created, track=${videoTrack.label}, requestFrame=${typeof videoTrack.requestFrame}`);
+
       const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
         ? "video/webm;codecs=vp9"
-        : "video/webm";
+        : MediaRecorder.isTypeSupported("video/webm")
+          ? "video/webm"
+          : null;
+      if (!mimeType) {
+        throw new Error("Browser does not support WebM video recording (MediaRecorder)");
+      }
+      logVideoExport(`mimeType=${mimeType}`);
+
+      let recorderError = null;
       const recorder = new MediaRecorder(stream, {
         mimeType,
         videoBitsPerSecond: bitrate,
       });
       const chunks = [];
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+        logVideoExport(`chunk received: ${e.data.size} bytes (total chunks=${chunks.length})`);
+      };
+      recorder.onerror = (e) => {
+        recorderError = e.error || new Error("MediaRecorder error event");
+        logVideoExport(`MediaRecorder error`, recorderError);
+      };
 
       const recorderStopped = new Promise((resolve) => { recorder.onstop = resolve; });
       recorder.start();
+      logVideoExport(`recorder started, state=${recorder.state}`);
 
+      let lastLoggedFrame = -1;
       for (let i = 0; i < totalFrames; i++) {
+        if (recorderError) {
+          throw recorderError;
+        }
+
         const playTimeMs = (i / totalFrames) * playDurationMs;
         renderPoseAtTime(playTimeMs);
 
-        // Capture composited Konva stage for this frame
         const frameCanvas = api.captureFrameCanvas(worldRect, { pixelRatio });
+        if (!frameCanvas) {
+          throw new Error(`captureFrameCanvas returned null at frame ${i}/${totalFrames} (playTimeMs=${playTimeMs.toFixed(1)})`);
+        }
+
         ctx.clearRect(0, 0, offscreen.width, offscreen.height);
         ctx.drawImage(frameCanvas, 0, 0);
 
-        // Push frame to recorder
-        const track = stream.getVideoTracks()[0];
-        if (track?.requestFrame) track.requestFrame();
+        if (videoTrack.requestFrame) videoTrack.requestFrame();
 
         // Pace recording — MediaRecorder uses wall-clock timing
         await new Promise((r) => setTimeout(r, Math.max(1, frameDurationMs - 5)));
+
+        // Log every 30 frames (~1s of video)
+        if (i - lastLoggedFrame >= 30 || i === totalFrames - 1) {
+          logVideoExport(`frame ${i + 1}/${totalFrames} playTimeMs=${playTimeMs.toFixed(1)} recorderState=${recorder.state}`);
+          lastLoggedFrame = i;
+        }
 
         // Update progress every 10 frames
         if (i % 10 === 0) {
@@ -540,21 +599,39 @@ function Slate({ onShowMessage }) {
         }
       }
 
+      logVideoExport(`all ${totalFrames} frames rendered, stopping recorder`);
       setExportProgress(1);
       recorder.stop();
       await recorderStopped;
+      logVideoExport(`recorder stopped, ${chunks.length} chunks collected`);
+
+      if (recorderError) {
+        throw recorderError;
+      }
+      if (chunks.length === 0) {
+        throw new Error("MediaRecorder produced 0 data chunks — video is empty");
+      }
 
       const blob = new Blob(chunks, { type: mimeType });
+      logVideoExport(`blob created: ${(blob.size / 1024 / 1024).toFixed(2)} MB, type=${blob.type}`);
       downloadVideo(blob, playName);
       onShowMessage?.("Video exported", "Download starting...", "success");
+      logVideoExport(`=== VIDEO EXPORT SUCCESS ===`);
 
       api.showOverlays();
       restoreSelections(saved);
       if (wasPlaying) engine.play();
     } catch (err) {
-      onShowMessage?.("Export failed", String(err), "error");
-      logDrawDebug(`video export error: ${err}`);
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      const errorStack = err instanceof Error ? err.stack : "";
+      logVideoExport(`=== VIDEO EXPORT FAILED ===`);
+      logVideoExport(`error: ${errorMsg}`);
+      if (errorStack) logVideoExport(`stack: ${errorStack}`);
+      onShowMessage?.("Export failed", errorMsg, "error");
+      setExportError(errorMsg);
       screenshotApiRef.current?.showOverlays?.();
+      if (saved) restoreSelections(saved);
+      if (wasPlaying) engineRef.current?.play?.();
     } finally {
       setIsExporting(false);
       setExportProgress(null);
@@ -789,6 +866,19 @@ function Slate({ onShowMessage }) {
     } catch (error) {
       logKeyToolDebug(`copyKeyToolDebug failed err=${error?.message || "clipboard unavailable"}`);
       onShowMessage("Copy keyboard debug failed", "Clipboard access was denied.", "error");
+      return false;
+    }
+  }, [onShowMessage]);
+
+  const handleCopyVideoExportDebug = useCallback(async () => {
+    const lines = getVideoExportDebugLogs(400);
+    const payload = lines.length ? lines.join("\n") : "[VIDEXPORT] no logs captured yet";
+    try {
+      await navigator.clipboard.writeText(payload);
+      return true;
+    } catch (error) {
+      logVideoExport(`copyVideoExportDebug failed err=${error?.message || "clipboard unavailable"}`);
+      onShowMessage("Copy video export debug failed", "Clipboard access was denied.", "error");
       return false;
     }
   }, [onShowMessage]);
@@ -1242,8 +1332,10 @@ function Slate({ onShowMessage }) {
         onExport={handleExportModalSubmit}
       />
       <ExportOverlay
-        visible={isExporting}
+        visible={isExporting || !!exportError}
         progress={exportProgress ?? 0}
+        error={exportError}
+        onDismissError={() => setExportError(null)}
       />
       {canvasTool === "pen" && !screenshotMode && (
         <DrawToolsPill
@@ -1359,6 +1451,7 @@ function Slate({ onShowMessage }) {
           onCopyDebug={handleCopyDebug}
           onCopyDrawDebug={handleCopyDrawDebug}
           onCopyKeyToolDebug={handleCopyKeyToolDebug}
+          onCopyVideoExportDebug={handleCopyVideoExportDebug}
           onDownload={onDownload}
           onClose={() => setShowAdvancedSettings(false)}
         />

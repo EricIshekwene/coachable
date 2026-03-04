@@ -1394,16 +1394,16 @@ function KonvaCanvasRoot({
           onWheel={handleStageWheel}
         >
           <Layer ref={itemsLayerRef}>
-            {/* Background fill so screenshots capture the pitch color instead of transparency */}
-            <Rect
-              x={0}
-              y={0}
-              width={size.width}
-              height={size.height}
-              fill={pitchColor || "#4FA85D"}
-              listening={false}
-            />
             <Group x={worldOrigin.x} y={worldOrigin.y} scaleX={worldOrigin.scale} scaleY={worldOrigin.scale}>
+              {/* Background fill in world coordinates so exports always capture the pitch color */}
+              <Rect
+                x={-5000}
+                y={-5000}
+                width={10000}
+                height={10000}
+                fill={pitchColor || "#4FA85D"}
+                listening={false}
+              />
               {fieldImage.image && (
                 // Rotation model: rotate only the field image so world coordinates stay axis-aligned.
                 // This keeps dragging, marquee selection, and timeline/keyframes intuitive and unrotated.

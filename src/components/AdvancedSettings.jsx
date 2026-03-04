@@ -17,6 +17,7 @@ export default function AdvancedSettings({
     onCopyDebug,
     onCopyDrawDebug,
     onCopyKeyToolDebug,
+    onCopyVideoExportDebug,
     onDownload,
 }) {
     const settings = value ?? {};
@@ -80,6 +81,7 @@ export default function AdvancedSettings({
                     onCopyDebug={onCopyDebug}
                     onCopyDrawDebug={onCopyDrawDebug}
                     onCopyKeyToolDebug={onCopyKeyToolDebug}
+                    onCopyVideoExportDebug={onCopyVideoExportDebug}
                 />
                 <SavePrefabButton />
             </aside>
