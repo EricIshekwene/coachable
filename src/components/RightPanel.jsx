@@ -43,6 +43,7 @@ export default function RightPanel({
   onSaveToPlaybook,
   onDownload,
   onImport,
+  onScreenshot,
 
   // Drawing style props
   canvasTool,
@@ -111,43 +112,35 @@ export default function RightPanel({
           />
 
           {canvasTool === "pen" && (
-            <>
-              <DrawingStyleSection
-                drawSubTool={drawSubTool}
-                drawColor={drawColor}
-                drawOpacity={drawOpacity}
-                drawStrokeWidth={drawStrokeWidth}
-                drawTension={drawTension}
-                drawFontSize={drawFontSize}
-                drawTextAlign={drawTextAlign}
-                drawArrowHeadType={drawArrowHeadType}
-                onColorChange={onDrawColorChange}
-                onOpacityChange={onDrawOpacityChange}
-                onStrokeWidthChange={onDrawStrokeWidthChange}
-                onTensionChange={onDrawTensionChange}
-                onFontSizeChange={onDrawFontSizeChange}
-                onTextAlignChange={onDrawTextAlignChange}
-                onArrowHeadTypeChange={onDrawArrowHeadTypeChange}
-                selectedDrawing={selectedDrawing}
-                selectedDrawings={selectedDrawings}
-                onUpdateDrawing={onUpdateDrawing}
-                onUpdateMultipleDrawings={onUpdateMultipleDrawings}
-                eraserSize={eraserSize}
-                onEraserSizeChange={onEraserSizeChange}
-                drawShapeType={drawShapeType}
-                drawShapeStrokeColor={drawShapeStrokeColor}
-                drawShapeFill={drawShapeFill}
-                onShapeTypeChange={onDrawShapeTypeChange}
-                onShapeStrokeColorChange={onDrawShapeStrokeColorChange}
-                onShapeFillChange={onDrawShapeFillChange}
-              />
-              <DrawingObjectsList
-                drawings={drawings}
-                selectedDrawingIds={selectedDrawingIds}
-                onSelectedDrawingIdsChange={onSelectedDrawingIdsChange}
-                onRemoveDrawing={onRemoveDrawing}
-              />
-            </>
+            <DrawingStyleSection
+              drawSubTool={drawSubTool}
+              drawColor={drawColor}
+              drawOpacity={drawOpacity}
+              drawStrokeWidth={drawStrokeWidth}
+              drawTension={drawTension}
+              drawFontSize={drawFontSize}
+              drawTextAlign={drawTextAlign}
+              drawArrowHeadType={drawArrowHeadType}
+              onColorChange={onDrawColorChange}
+              onOpacityChange={onDrawOpacityChange}
+              onStrokeWidthChange={onDrawStrokeWidthChange}
+              onTensionChange={onDrawTensionChange}
+              onFontSizeChange={onDrawFontSizeChange}
+              onTextAlignChange={onDrawTextAlignChange}
+              onArrowHeadTypeChange={onDrawArrowHeadTypeChange}
+              selectedDrawing={selectedDrawing}
+              selectedDrawings={selectedDrawings}
+              onUpdateDrawing={onUpdateDrawing}
+              onUpdateMultipleDrawings={onUpdateMultipleDrawings}
+              eraserSize={eraserSize}
+              onEraserSizeChange={onEraserSizeChange}
+              drawShapeType={drawShapeType}
+              drawShapeStrokeColor={drawShapeStrokeColor}
+              drawShapeFill={drawShapeFill}
+              onShapeTypeChange={onDrawShapeTypeChange}
+              onShapeStrokeColorChange={onDrawShapeStrokeColorChange}
+              onShapeFillChange={onDrawShapeFillChange}
+            />
           )}
 
           <PlayersSection
@@ -157,6 +150,13 @@ export default function RightPanel({
             onSelectPlayer={onSelectPlayer}
             onEditPlayer={onEditPlayer}
             onDeletePlayer={onDeletePlayer}
+          />
+
+          <DrawingObjectsList
+            drawings={drawings}
+            selectedDrawingIds={selectedDrawingIds}
+            onSelectedDrawingIdsChange={onSelectedDrawingIdsChange}
+            onRemoveDrawing={onRemoveDrawing}
           />
 
           {selectedPlayerIds?.length > 0 ? (
@@ -181,6 +181,7 @@ export default function RightPanel({
           onSaveToPlaybook={onSaveToPlaybook}
           onDownload={onDownload}
           onImport={onImport}
+          onScreenshot={onScreenshot}
         />
       </div>
     </aside>

@@ -200,37 +200,43 @@ export const HANDLE_CURSORS = {
  * Returns 8 handle descriptors for a selection bounds rect.
  * handleSize is in world-space (typically 8 / zoom for constant screen px).
  */
-export function getResizeHandles(bounds, handleSize) {
+export function getResizeHandles(bounds, handleSize, padding = 0) {
   if (!bounds) return [];
   const hs = handleSize / 2;
   const { x, y, width, height } = bounds;
-  const cx = x + width / 2;
-  const cy = y + height / 2;
-  const r = x + width;
-  const b = y + height;
+  // Use padded bounds so handles sit centered on the selection outline
+  const px = x - padding;
+  const py = y - padding;
+  const pw = width + padding * 2;
+  const ph = height + padding * 2;
+  const cx = px + pw / 2;
+  const cy = py + ph / 2;
+  const r = px + pw;
+  const b = py + ph;
 
   return [
-    { position: "nw", x: x - hs, y: y - hs, width: handleSize, height: handleSize, cursor: HANDLE_CURSORS.nw },
-    { position: "n",  x: cx - hs, y: y - hs, width: handleSize, height: handleSize, cursor: HANDLE_CURSORS.n },
-    { position: "ne", x: r - hs, y: y - hs, width: handleSize, height: handleSize, cursor: HANDLE_CURSORS.ne },
+    { position: "nw", x: px - hs, y: py - hs, width: handleSize, height: handleSize, cursor: HANDLE_CURSORS.nw },
+    { position: "n",  x: cx - hs, y: py - hs, width: handleSize, height: handleSize, cursor: HANDLE_CURSORS.n },
+    { position: "ne", x: r - hs, y: py - hs, width: handleSize, height: handleSize, cursor: HANDLE_CURSORS.ne },
     { position: "e",  x: r - hs, y: cy - hs, width: handleSize, height: handleSize, cursor: HANDLE_CURSORS.e },
     { position: "se", x: r - hs, y: b - hs, width: handleSize, height: handleSize, cursor: HANDLE_CURSORS.se },
     { position: "s",  x: cx - hs, y: b - hs, width: handleSize, height: handleSize, cursor: HANDLE_CURSORS.s },
-    { position: "sw", x: x - hs, y: b - hs, width: handleSize, height: handleSize, cursor: HANDLE_CURSORS.sw },
-    { position: "w",  x: x - hs, y: cy - hs, width: handleSize, height: handleSize, cursor: HANDLE_CURSORS.w },
+    { position: "sw", x: px - hs, y: b - hs, width: handleSize, height: handleSize, cursor: HANDLE_CURSORS.sw },
+    { position: "w",  x: px - hs, y: cy - hs, width: handleSize, height: handleSize, cursor: HANDLE_CURSORS.w },
   ];
 }
 
 /**
  * Hit-test resize handles. Returns handle position string or null.
+ * `padding` expands the interactive area around each handle in world-space.
  */
-export function hitTestHandle(handles, worldPoint) {
+export function hitTestHandle(handles, worldPoint, padding = 0) {
   for (const h of handles) {
     if (
-      worldPoint.x >= h.x &&
-      worldPoint.x <= h.x + h.width &&
-      worldPoint.y >= h.y &&
-      worldPoint.y <= h.y + h.height
+      worldPoint.x >= h.x - padding &&
+      worldPoint.x <= h.x + h.width + padding &&
+      worldPoint.y >= h.y - padding &&
+      worldPoint.y <= h.y + h.height + padding
     ) {
       return h.position;
     }

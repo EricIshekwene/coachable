@@ -6,7 +6,8 @@ import AdvancedSettings from "../../components/AdvancedSettings";
 import KonvaCanvasRoot from "../../canvas/KonvaCanvasRoot";
 import DrawToolsPill from "../../components/DrawToolsPill";
 import PlayerEditPanel from "../../components/rightPanel/PlayerEditPanel";
-import { buildPlayExport, downloadPlayExport } from "../../utils/exportPlay";
+import { buildPlayExport, downloadPlayExport, downloadScreenshot } from "../../utils/exportPlay";
+import ScreenshotConfirmBar from "../../components/ScreenshotConfirmBar";
 import { IMPORT_FILE_SIZE_LIMIT_BYTES, validatePlayImport } from "../../utils/importPlay";
 import { DEFAULT_ADVANCED_SETTINGS, useAdvancedSettings } from "./hooks/useAdvancedSettings";
 import { useFieldViewport } from "./hooks/useFieldViewport";
@@ -70,6 +71,9 @@ function Slate({ onShowMessage }) {
   const [selectedDrawingIds, setSelectedDrawingIds] = useState([]);
   const drawingSelectionRef = useRef(null);
   const [textEditing, setTextEditing] = useState(null);
+  const [screenshotMode, setScreenshotMode] = useState(false);
+  const [screenshotRegion, setScreenshotRegion] = useState(null);
+  const screenshotApiRef = useRef(null);
   const [playName, setPlayName] = useState("Name");
   const [speedMultiplier, setSpeedMultiplier] = useState(DEFAULT_SPEED_MULTIPLIER);
   const [autoplayEnabled, setAutoplayEnabled] = useState(true);
@@ -412,6 +416,57 @@ function Slate({ onShowMessage }) {
     logAnimDebug(`export bytes=${exportBytes}`);
     downloadPlayExport(exportPayload, playName);
   };
+
+  const handleScreenshotStart = useCallback(() => {
+    setScreenshotMode(true);
+    setScreenshotRegion(null);
+    logDrawDebug("screenshot mode started");
+  }, []);
+
+  const handleScreenshotConfirm = useCallback(async () => {
+    if (!screenshotRegion || !screenshotApiRef.current?.captureRegion) {
+      onShowMessage?.("Screenshot failed", "No region selected.", "error");
+      return;
+    }
+    try {
+      // Clear selections so they don't appear in the screenshot
+      const prevSelectedDrawingIds = [...selectedDrawingIds];
+      const prevSelectedPlayerIds = entities.selectedPlayerIds ? [...entities.selectedPlayerIds] : [];
+      setSelectedDrawingIds([]);
+      entities.handleSelectItem?.(null, null, { mode: "clear" });
+
+      // Wait one frame for React to re-render without selection overlays
+      await new Promise((r) => requestAnimationFrame(r));
+
+      const dataUrl = screenshotApiRef.current.captureRegion(screenshotRegion);
+      await downloadScreenshot(dataUrl, playName);
+      onShowMessage?.("Screenshot saved", "Download starting...", "success");
+      logDrawDebug("screenshot captured and downloaded");
+
+      // Restore selections
+      setSelectedDrawingIds(prevSelectedDrawingIds);
+      if (prevSelectedPlayerIds.length > 0) {
+        prevSelectedPlayerIds.forEach((id) =>
+          entities.handleSelectItem?.(id, null, { mode: "add" })
+        );
+      }
+    } catch (err) {
+      onShowMessage?.("Screenshot failed", String(err), "error");
+      logDrawDebug(`screenshot error: ${err}`);
+    }
+    setScreenshotMode(false);
+    setScreenshotRegion(null);
+  }, [screenshotRegion, playName, onShowMessage, selectedDrawingIds, entities]);
+
+  const handleScreenshotCancel = useCallback(() => {
+    setScreenshotMode(false);
+    setScreenshotRegion(null);
+    logDrawDebug("screenshot mode cancelled");
+  }, []);
+
+  const handleScreenshotRegionChange = useCallback((region) => {
+    setScreenshotRegion(region);
+  }, []);
 
   const handleDrawSubToolChange = useCallback((nextSubTool, opts) => {
     setDrawSubTool((prevSubTool) => {
@@ -868,6 +923,11 @@ function Slate({ onShowMessage }) {
         tagName === "INPUT" || tagName === "TEXTAREA" || e.target?.isContentEditable;
 
       if (e.key === "Escape") {
+        // Cancel screenshot mode
+        if (screenshotMode) {
+          handleScreenshotCancel();
+          return;
+        }
         // Cancel custom shape in progress
         if (canvasTool === "pen" && drawSubTool === "shape") {
           drawingHookRef.current?.cancelCustomShape?.();
@@ -1006,10 +1066,21 @@ function Slate({ onShowMessage }) {
           onTextEditingChange={setTextEditing}
           drawingHookRef={drawingHookRef}
           onDrawSubToolChange={handleDrawSubToolChange}
+          screenshotMode={screenshotMode}
+          screenshotRegion={screenshotRegion}
+          onScreenshotRegionChange={handleScreenshotRegionChange}
+          screenshotApiRef={screenshotApiRef}
         />
         {/* Text editing is now handled via right panel textarea */}
       </div>
-      {canvasTool === "pen" && (
+      {screenshotMode && (
+        <ScreenshotConfirmBar
+          hasRegion={Boolean(screenshotRegion)}
+          onConfirm={handleScreenshotConfirm}
+          onCancel={handleScreenshotCancel}
+        />
+      )}
+      {canvasTool === "pen" && !screenshotMode && (
         <DrawToolsPill
           activeSubTool={drawSubTool}
           onSubToolChange={handleDrawSubToolChange}
@@ -1098,6 +1169,7 @@ function Slate({ onShowMessage }) {
         onSaveToPlaybook={onSaveToPlaybook}
         onDownload={onDownload}
         onImport={handleImportClick}
+        onScreenshot={handleScreenshotStart}
       />
       <input
         ref={importInputRef}

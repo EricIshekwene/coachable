@@ -20,6 +20,7 @@ import { log as logDrawDebug } from "../drawDebugLogger";
 
 const MOVE_THRESHOLD = 2; // px in world coords
 const MARQUEE_THRESHOLD = 3;
+const RESIZE_HANDLE_HIT_PADDING_PX = 16;
 
 /**
  * Manages multi-selection, marquee, move, resize, and rotate gestures for drawings.
@@ -34,6 +35,11 @@ export function useDrawingSelection({
   onUpdateMultipleNoHistory,
   historyApiRef,
   zoom,
+  // Snap support
+  fieldBounds,
+  drawGuides,
+  clearGuides,
+  guidelineOffsetWorld,
 }) {
   // --- Refs for gesture state (no re-renders per frame) ---
   const gestureRef = useRef(null);
@@ -49,10 +55,12 @@ export function useDrawingSelection({
   );
 
   const handleSize = 8 / (zoom || 1);
+  const selectionPadding = 4 / (zoom || 1);
+  const handleHitPadding = RESIZE_HANDLE_HIT_PADDING_PX / (zoom || 1);
 
   const handles = useMemo(
-    () => (selectionBounds ? getResizeHandles(selectionBounds, handleSize) : []),
-    [selectionBounds, handleSize]
+    () => (selectionBounds ? getResizeHandles(selectionBounds, handleSize, selectionPadding) : []),
+    [selectionBounds, handleSize, selectionPadding]
   );
 
   const rotateHandlePos = useMemo(
@@ -79,6 +87,65 @@ export function useDrawingSelection({
     }
     return map;
   }, [drawings, selectedDrawingIds]);
+
+  // --- Snap helpers for drawing move ---
+  const getDrawingSnapStops = useCallback(() => {
+    const vertical = [0]; // world center
+    const horizontal = [0];
+    if (fieldBounds) {
+      vertical.push(fieldBounds.left, fieldBounds.right, fieldBounds.centerX);
+      horizontal.push(fieldBounds.top, fieldBounds.bottom, fieldBounds.centerY);
+    }
+    return {
+      vertical: [...new Set(vertical)],
+      horizontal: [...new Set(horizontal)],
+    };
+  }, [fieldBounds]);
+
+  const getDrawingSnapEdges = useCallback((bounds) => {
+    if (!bounds) return { vertical: [], horizontal: [] };
+    const cx = bounds.x + bounds.width / 2;
+    const cy = bounds.y + bounds.height / 2;
+    return {
+      vertical: [
+        { guide: bounds.x, offset: bounds.x - cx, snap: "left" },
+        { guide: cx, offset: 0, snap: "center" },
+        { guide: bounds.x + bounds.width, offset: bounds.x + bounds.width - cx, snap: "right" },
+      ],
+      horizontal: [
+        { guide: bounds.y, offset: bounds.y - cy, snap: "top" },
+        { guide: cy, offset: 0, snap: "center" },
+        { guide: bounds.y + bounds.height, offset: bounds.y + bounds.height - cy, snap: "bottom" },
+      ],
+    };
+  }, []);
+
+  const findSnapGuides = useCallback((stops, edges, tolerance) => {
+    const result = [];
+    let closestV = null;
+    stops.vertical.forEach((lineGuide) => {
+      edges.vertical.forEach((edge) => {
+        const diff = Math.abs(lineGuide - edge.guide);
+        if (diff > tolerance) return;
+        if (!closestV || diff < closestV.diff) {
+          closestV = { lineGuide, diff, offset: edge.offset, snap: edge.snap };
+        }
+      });
+    });
+    let closestH = null;
+    stops.horizontal.forEach((lineGuide) => {
+      edges.horizontal.forEach((edge) => {
+        const diff = Math.abs(lineGuide - edge.guide);
+        if (diff > tolerance) return;
+        if (!closestH || diff < closestH.diff) {
+          closestH = { lineGuide, diff, offset: edge.offset, snap: edge.snap };
+        }
+      });
+    });
+    if (closestV) result.push({ orientation: "V", lineGuide: closestV.lineGuide, offset: closestV.offset, snap: closestV.snap });
+    if (closestH) result.push({ orientation: "H", lineGuide: closestH.lineGuide, offset: closestH.offset, snap: closestH.snap });
+    return result;
+  }, []);
 
   // --- Pointer Handlers ---
 
@@ -111,7 +178,7 @@ export function useDrawingSelection({
 
       // 1. Hit-test resize handles
       if (selectedDrawingIds.length > 0 && selectionBounds) {
-        const hitHandle = hitTestHandle(handles, world);
+        const hitHandle = hitTestHandle(handles, world, handleHitPadding);
         if (hitHandle) {
           historyApiRef.current?.pushHistory?.();
           gestureRef.current = {
@@ -174,11 +241,14 @@ export function useDrawingSelection({
             snap.set(d.id, { ...d, points: d.points ? [...d.points] : undefined });
           }
         }
+        // Compute initial bounds from snapshot for snap
+        const moveBounds = getSelectionBounds(Array.from(snap.values()), moveIds);
         gestureRef.current = {
           type: "move",
           startWorld: { ...world },
           startDrawingsSnapshot: snap,
           ids: moveIds,
+          startBoundsForSnap: moveBounds ? { ...moveBounds } : null,
         };
         logDrawDebug(`selection move start hitId=${hitId} count=${moveIds.length}`);
         return true;
@@ -195,7 +265,7 @@ export function useDrawingSelection({
     [
       stageRef, toWorldCoords, drawings, selectedDrawingIds, selectionBounds,
       handles, rotateHandlePos, arrowEndpointHandles, zoom, historyApiRef,
-      onSelectedDrawingIdsChange, snapshotSelected,
+      onSelectedDrawingIdsChange, snapshotSelected, handleHitPadding,
     ]
   );
 
@@ -239,10 +309,44 @@ export function useDrawingSelection({
         return true;
       }
 
-      // Move
+      // Move (with snap)
       if (gestureRef.current?.type === "move") {
-        const dx = world.x - gestureRef.current.startWorld.x;
-        const dy = world.y - gestureRef.current.startWorld.y;
+        let dx = world.x - gestureRef.current.startWorld.x;
+        let dy = world.y - gestureRef.current.startWorld.y;
+
+        // Compute tentative bounds for snap detection
+        if (drawGuides && clearGuides && guidelineOffsetWorld && selectionBounds) {
+          const tentBounds = {
+            x: selectionBounds.x + dx,
+            y: selectionBounds.y + dy,
+            width: selectionBounds.width,
+            height: selectionBounds.height,
+          };
+          // Use start bounds shifted by current delta for snapping
+          const startSnap = gestureRef.current.startBoundsForSnap;
+          if (startSnap) {
+            tentBounds.x = startSnap.x + dx;
+            tentBounds.y = startSnap.y + dy;
+            tentBounds.width = startSnap.width;
+            tentBounds.height = startSnap.height;
+          }
+          const stops = getDrawingSnapStops();
+          const edges = getDrawingSnapEdges(tentBounds);
+          const guides = findSnapGuides(stops, edges, guidelineOffsetWorld);
+
+          if (guides.length) {
+            const cx = tentBounds.x + tentBounds.width / 2;
+            const cy = tentBounds.y + tentBounds.height / 2;
+            guides.forEach((g) => {
+              if (g.orientation === "V") dx += (g.lineGuide - g.offset) - cx;
+              if (g.orientation === "H") dy += (g.lineGuide - g.offset) - cy;
+            });
+            drawGuides(guides);
+          } else {
+            clearGuides();
+          }
+        }
+
         const changes = applyTranslation(
           Array.from(gestureRef.current.startDrawingsSnapshot.values()),
           gestureRef.current.ids,
@@ -328,6 +432,7 @@ export function useDrawingSelection({
       if (gestureRef.current) {
         const gesture = gestureRef.current;
         gestureRef.current = null;
+        clearGuides?.();
 
         // For move: check if movement was below threshold
         if (gesture.type === "move") {
@@ -373,6 +478,7 @@ export function useDrawingSelection({
       // Restore drawings to pre-gesture state
       onUpdateMultipleNoHistory(gestureRef.current.startDrawingsSnapshot);
       gestureRef.current = null;
+      clearGuides?.();
       logDrawDebug("selection gesture cancelled");
     }
     if (marqueeRef.current) {
@@ -387,7 +493,10 @@ export function useDrawingSelection({
     (worldPoint) => {
       if (!worldPoint) return null;
       if (gestureRef.current?.type === "move") return "grabbing";
-      if (gestureRef.current?.type === "resize") return "grabbing";
+      if (gestureRef.current?.type === "resize") {
+        const pos = gestureRef.current.handlePosition;
+        return HANDLE_CURSORS[pos] || "grabbing";
+      }
       if (gestureRef.current?.type === "rotate") return "grabbing";
       if (gestureRef.current?.type === "endpoint") return "grabbing";
       if (marqueeRef.current) return "crosshair";
@@ -400,14 +509,14 @@ export function useDrawingSelection({
 
       if (selectedDrawingIds.length > 0 && selectionBounds) {
         if (hitTestRotateHandle(rotateHandlePos, worldPoint, zoom)) return "grab";
-        const hitHandle = hitTestHandle(handles, worldPoint);
+        const hitHandle = hitTestHandle(handles, worldPoint, handleHitPadding);
         if (hitHandle) return HANDLE_CURSORS[hitHandle];
       }
       const hitId = hitTestDrawings(drawings, worldPoint, 10);
       if (hitId) return "pointer";
       return null;
     },
-    [drawings, selectedDrawingIds, selectionBounds, handles, rotateHandlePos, arrowEndpointHandles, zoom]
+    [drawings, selectedDrawingIds, selectionBounds, handles, rotateHandlePos, arrowEndpointHandles, zoom, handleHitPadding]
   );
 
   return {

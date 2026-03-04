@@ -42,6 +42,11 @@ export function useCanvasDrawing({
   onTextEditingChange,
   onSelectedDrawingIdsChange,
   onDrawSubToolChange,
+  // Snap support
+  fieldBounds,
+  drawGuides,
+  clearGuides,
+  guidelineOffsetWorld,
 }) {
   const drawingRef = useRef(null);
   const eraseRef = useRef({ active: false, removedIds: new Set() });
@@ -322,10 +327,87 @@ export function useCanvasDrawing({
       if (drawingRef.current.type === "shape") {
         const startX = drawingRef.current._startX;
         const startY = drawingRef.current._startY;
-        drawingRef.current.x = Math.min(startX, world.x);
-        drawingRef.current.y = Math.min(startY, world.y);
-        drawingRef.current.width = Math.abs(world.x - startX);
-        drawingRef.current.height = Math.abs(world.y - startY);
+        let endX = world.x;
+        let endY = world.y;
+
+        // Snap shape edges/center to field bounds
+        if (drawGuides && clearGuides && guidelineOffsetWorld && fieldBounds) {
+          const tentBounds = {
+            x: Math.min(startX, endX),
+            y: Math.min(startY, endY),
+            width: Math.abs(endX - startX),
+            height: Math.abs(endY - startY),
+          };
+          const cx = tentBounds.x + tentBounds.width / 2;
+          const cy = tentBounds.y + tentBounds.height / 2;
+          const vStops = [0, fieldBounds.left, fieldBounds.right, fieldBounds.centerX];
+          const hStops = [0, fieldBounds.top, fieldBounds.bottom, fieldBounds.centerY];
+          const vEdges = [
+            { guide: tentBounds.x, offset: tentBounds.x - cx, snap: "left" },
+            { guide: cx, offset: 0, snap: "center" },
+            { guide: tentBounds.x + tentBounds.width, offset: tentBounds.x + tentBounds.width - cx, snap: "right" },
+          ];
+          const hEdges = [
+            { guide: tentBounds.y, offset: tentBounds.y - cy, snap: "top" },
+            { guide: cy, offset: 0, snap: "center" },
+            { guide: tentBounds.y + tentBounds.height, offset: tentBounds.y + tentBounds.height - cy, snap: "bottom" },
+          ];
+          // Find closest snap
+          let closestV = null;
+          vStops.forEach((stop) => {
+            vEdges.forEach((edge) => {
+              const diff = Math.abs(stop - edge.guide);
+              if (diff <= guidelineOffsetWorld && (!closestV || diff < closestV.diff)) {
+                closestV = { lineGuide: stop, diff, offset: edge.offset, snap: edge.snap };
+              }
+            });
+          });
+          let closestH = null;
+          hStops.forEach((stop) => {
+            hEdges.forEach((edge) => {
+              const diff = Math.abs(stop - edge.guide);
+              if (diff <= guidelineOffsetWorld && (!closestH || diff < closestH.diff)) {
+                closestH = { lineGuide: stop, diff, offset: edge.offset, snap: edge.snap };
+              }
+            });
+          });
+          const guides = [];
+          if (closestV) {
+            // Adjust the moving end to snap
+            const snapTarget = closestV.lineGuide;
+            const edgeSnap = closestV.snap;
+            if (edgeSnap === "left" || edgeSnap === "right") {
+              // Snap the edge that's being dragged
+              endX = world.x + (snapTarget - (edgeSnap === "left" ? Math.min(startX, world.x) : Math.max(startX, world.x)));
+            } else {
+              // Center snap: adjust end so center aligns
+              const mid = (startX + endX) / 2;
+              endX += (snapTarget - mid);
+            }
+            guides.push({ orientation: "V", lineGuide: snapTarget, offset: closestV.offset, snap: closestV.snap });
+          }
+          if (closestH) {
+            const snapTarget = closestH.lineGuide;
+            const edgeSnap = closestH.snap;
+            if (edgeSnap === "top" || edgeSnap === "bottom") {
+              endY = world.y + (snapTarget - (edgeSnap === "top" ? Math.min(startY, world.y) : Math.max(startY, world.y)));
+            } else {
+              const mid = (startY + endY) / 2;
+              endY += (snapTarget - mid);
+            }
+            guides.push({ orientation: "H", lineGuide: snapTarget, offset: closestH.offset, snap: closestH.snap });
+          }
+          if (guides.length) {
+            drawGuides(guides);
+          } else {
+            clearGuides();
+          }
+        }
+
+        drawingRef.current.x = Math.min(startX, endX);
+        drawingRef.current.y = Math.min(startY, endY);
+        drawingRef.current.width = Math.abs(endX - startX);
+        drawingRef.current.height = Math.abs(endY - startY);
         setActiveDrawing({ ...drawingRef.current });
         maybeLogMove(
           `shape move w=${round2(drawingRef.current.width)} h=${round2(drawingRef.current.height)}`
@@ -354,6 +436,7 @@ export function useCanvasDrawing({
     }
 
     if (!drawingRef.current) return false;
+    clearGuides?.();
     const drawing = drawingRef.current;
     drawingRef.current = null;
     setActiveDrawing(null);

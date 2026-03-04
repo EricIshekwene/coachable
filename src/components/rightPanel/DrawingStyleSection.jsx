@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { FiAlignLeft, FiAlignCenter, FiAlignRight } from "react-icons/fi";
+import { PiPenNib } from "react-icons/pi";
 import { Slider } from "@mui/material";
 
 const PRESET_COLORS = [
@@ -92,14 +93,24 @@ const DRAW_SLIDER_SX = {
 
 const roundToOneDecimal = (value) => Math.round(value * 10) / 10;
 
-function SliderControl({ label, value, onChange, min, max, step = 1 }) {
+function SliderControl({ label, value, onChange, min, max, step = 1, isPercentage = false }) {
   const isDecimalStep = !Number.isInteger(step);
-  const rawSliderValue = typeof value === "number" ? value : min;
-  const sliderValue = isDecimalStep ? roundToOneDecimal(rawSliderValue) : rawSliderValue;
-  const displayValue = Number.isFinite(sliderValue) ? roundToOneDecimal(sliderValue) : min;
+  const rawValue = typeof value === "number" ? value : min;
+  const normalizedValue = isPercentage ? rawValue * 100 : rawValue;
+  const roundedValue = isDecimalStep ? roundToOneDecimal(normalizedValue) : normalizedValue;
+  const sliderValue = Number.isFinite(roundedValue)
+    ? Math.min(max, Math.max(min, roundedValue))
+    : min;
+  const displayValue = isPercentage
+    ? `${Math.round(sliderValue)}%`
+    : (isDecimalStep ? roundToOneDecimal(sliderValue) : sliderValue);
   const handleChange = (_, newValue) => {
     const numericValue = Array.isArray(newValue) ? newValue[0] : newValue;
     if (!Number.isFinite(numericValue)) return;
+    if (isPercentage) {
+      onChange?.(roundToOneDecimal(numericValue / 100));
+      return;
+    }
     onChange?.(isDecimalStep ? roundToOneDecimal(numericValue) : numericValue);
   };
 
@@ -118,7 +129,7 @@ function SliderControl({ label, value, onChange, min, max, step = 1 }) {
             aria-label={label}
           />
         </div>
-        <span className="text-BrandWhite text-[10px] sm:text-xs font-DmSans w-8 text-right">
+        <span className={`text-BrandWhite text-[10px] sm:text-xs font-DmSans ${isPercentage ? "w-12" : "w-8"} text-right`}>
           {displayValue}
         </span>
       </div>
@@ -223,7 +234,7 @@ function DrawSubToolStyle({
     <>
       <SectionLabel>Color</SectionLabel>
       <ColorSwatches value={drawColor} onChange={onColorChange} />
-      <SliderControl label="Opacity" value={drawOpacity} onChange={onOpacityChange} min={0} max={1} step={0.1} />
+      <SliderControl label="Opacity" value={drawOpacity} onChange={onOpacityChange} min={0} max={100} step={10} isPercentage />
       <SliderControl label="Brush Size" value={drawStrokeWidth} onChange={onStrokeWidthChange} min={1} max={20} step={1} />
       <SliderControl label="Stabilization" value={drawTension} onChange={onTensionChange} min={0} max={1} step={0.1} />
     </>
@@ -238,7 +249,7 @@ function ArrowSubToolStyle({
     <>
       <SectionLabel>Color</SectionLabel>
       <ColorSwatches value={drawColor} onChange={onColorChange} />
-      <SliderControl label="Opacity" value={drawOpacity} onChange={onOpacityChange} min={0} max={1} step={0.1} />
+      <SliderControl label="Opacity" value={drawOpacity} onChange={onOpacityChange} min={0} max={100} step={10} isPercentage />
       <SliderControl label="Stroke Width" value={drawStrokeWidth} onChange={onStrokeWidthChange} min={1} max={20} step={1} />
       <SectionLabel>Arrow Head</SectionLabel>
       <div className="flex gap-1 flex-wrap">
@@ -271,7 +282,7 @@ function TextSubToolStyle({
     <>
       <SectionLabel>Color</SectionLabel>
       <ColorSwatches value={drawColor} onChange={onColorChange} />
-      <SliderControl label="Opacity" value={drawOpacity} onChange={onOpacityChange} min={0} max={1} step={0.1} />
+      <SliderControl label="Opacity" value={drawOpacity} onChange={onOpacityChange} min={0} max={100} step={10} isPercentage />
       <SectionLabel>Font Size</SectionLabel>
       <FontSizeDropdown value={drawFontSize} onChange={onFontSizeChange} />
       <SectionLabel>Alignment</SectionLabel>
@@ -330,6 +341,13 @@ function TextContentEditor({ text, drawingId, onUpdate }) {
 /** Small SVG preview of a shape type */
 function ShapeTypePreview({ type, isActive }) {
   const color = isActive ? "#1a1a1a" : "#FF7A18";
+  if (type === "custom") {
+    return (
+      <span className="w-6 h-6 flex items-center justify-center">
+        <PiPenNib className="text-lg" style={{ color, transform: "rotate(90deg)" }} />
+      </span>
+    );
+  }
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" className="block">
       {type === "rect" && (
@@ -340,9 +358,6 @@ function ShapeTypePreview({ type, isActive }) {
       )}
       {type === "ellipse" && (
         <ellipse cx="12" cy="12" rx="9" ry="9" fill="none" stroke={color} strokeWidth="2" />
-      )}
-      {type === "custom" && (
-        <polygon points="12,2 22,8 19,20 5,20 2,8" fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" />
       )}
     </svg>
   );
@@ -407,7 +422,7 @@ function ShapeSubToolStyle({
       </div>
       <SectionLabel>Stroke Color</SectionLabel>
       <ShapeColorPicker value={drawShapeStrokeColor} onChange={onShapeStrokeColorChange} noneTitle="No stroke" />
-      <SliderControl label="Opacity" value={drawOpacity} onChange={onOpacityChange} min={0} max={1} step={0.1} />
+      <SliderControl label="Opacity" value={drawOpacity} onChange={onOpacityChange} min={0} max={100} step={10} isPercentage />
       <SectionLabel>Fill Color</SectionLabel>
       <ShapeColorPicker value={drawShapeFill} onChange={onShapeFillChange} noneTitle="No fill" />
       {hasStroke && (
@@ -435,7 +450,7 @@ function SelectedDrawingStyle({ selectedDrawing, onUpdateDrawing }) {
       <>
         <SectionLabel>Color</SectionLabel>
         <ColorSwatches value={d.color} onChange={(c) => update({ color: c })} />
-        <SliderControl label="Opacity" value={d.opacity ?? 1} onChange={(o) => update({ opacity: o })} min={0} max={1} step={0.1} />
+        <SliderControl label="Opacity" value={d.opacity ?? 1} onChange={(o) => update({ opacity: o })} min={0} max={100} step={10} isPercentage />
         <SliderControl label="Brush Size" value={d.strokeWidth || 3} onChange={(w) => update({ strokeWidth: w })} min={1} max={20} step={1} />
         <SliderControl label="Stabilization" value={d.tension ?? 0.3} onChange={(t) => update({ tension: t })} min={0} max={1} step={0.1} />
       </>
@@ -447,7 +462,7 @@ function SelectedDrawingStyle({ selectedDrawing, onUpdateDrawing }) {
       <>
         <SectionLabel>Color</SectionLabel>
         <ColorSwatches value={d.color} onChange={(c) => update({ color: c })} />
-        <SliderControl label="Opacity" value={d.opacity ?? 1} onChange={(o) => update({ opacity: o })} min={0} max={1} step={0.1} />
+        <SliderControl label="Opacity" value={d.opacity ?? 1} onChange={(o) => update({ opacity: o })} min={0} max={100} step={10} isPercentage />
         <SliderControl label="Stroke Width" value={d.strokeWidth || 3} onChange={(w) => update({ strokeWidth: w })} min={1} max={20} step={1} />
         <SectionLabel>Arrow Head</SectionLabel>
         <div className="flex gap-1 flex-wrap">
@@ -479,7 +494,7 @@ function SelectedDrawingStyle({ selectedDrawing, onUpdateDrawing }) {
         <TextContentEditor text={d.text || ""} drawingId={d.id} onUpdate={update} />
         <SectionLabel>Color</SectionLabel>
         <ColorSwatches value={d.color} onChange={(c) => update({ color: c })} />
-        <SliderControl label="Opacity" value={d.opacity ?? 1} onChange={(o) => update({ opacity: o })} min={0} max={1} step={0.1} />
+        <SliderControl label="Opacity" value={d.opacity ?? 1} onChange={(o) => update({ opacity: o })} min={0} max={100} step={10} isPercentage />
         <SectionLabel>Font Size</SectionLabel>
         <FontSizeDropdown value={d.fontSize || 18} onChange={(s) => update({ fontSize: s })} />
         <SectionLabel>Alignment</SectionLabel>
@@ -514,7 +529,7 @@ function SelectedDrawingStyle({ selectedDrawing, onUpdateDrawing }) {
         <p className="text-BrandGray text-[10px] sm:text-xs font-DmSans">{shapeLabel[d.shapeType] || "Shape"}</p>
         <SectionLabel>Stroke Color</SectionLabel>
         <ShapeColorPicker value={strokeColor} onChange={(c) => update({ color: c })} noneTitle="No stroke" />
-        <SliderControl label="Opacity" value={d.opacity ?? 1} onChange={(o) => update({ opacity: o })} min={0} max={1} step={0.1} />
+        <SliderControl label="Opacity" value={d.opacity ?? 1} onChange={(o) => update({ opacity: o })} min={0} max={100} step={10} isPercentage />
         <SectionLabel>Fill Color</SectionLabel>
         <ShapeColorPicker value={d.fill || "transparent"} onChange={(f) => update({ fill: f })} noneTitle="No fill" />
         {hasStroke && (
@@ -549,7 +564,7 @@ function MultiSelectedStyle({ selectedDrawings, onUpdateMultipleDrawings }) {
     <>
       <SectionLabel>Color</SectionLabel>
       <ColorSwatches value={currentColor} onChange={handleColorChange} />
-      <SliderControl label="Opacity" value={currentOpacity} onChange={handleOpacityChange} min={0} max={1} step={0.1} />
+      <SliderControl label="Opacity" value={currentOpacity} onChange={handleOpacityChange} min={0} max={100} step={10} isPercentage />
     </>
   );
 }

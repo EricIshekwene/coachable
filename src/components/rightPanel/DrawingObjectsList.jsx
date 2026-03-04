@@ -1,4 +1,5 @@
 import { FiTrash2 } from "react-icons/fi";
+import { PiPenNib } from "react-icons/pi";
 
 function getDrawingLabel(drawing, index, drawings) {
   if (drawing.type === "text") {
@@ -17,11 +18,16 @@ function getDrawingLabel(drawing, index, drawings) {
   return `Object ${typeIndex}`;
 }
 
-function getTypeIcon(type) {
-  if (type === "text") return "T";
-  if (type === "arrow") return "\u2192";
-  if (type === "stroke") return "\u270E";
-  if (type === "shape") return "\u25A1";
+function getTypeIcon(drawing) {
+  if (drawing.type === "text") return "T";
+  if (drawing.type === "arrow") return "\u2192";
+  if (drawing.type === "stroke") return "\u270E";
+  if (drawing.type === "shape") {
+    if (drawing.shapeType === "custom") {
+      return <PiPenNib style={{ transform: "rotate(90deg)" }} />;
+    }
+    return "\u25A1";
+  }
   return "\u25CF";
 }
 
@@ -57,7 +63,7 @@ export default function DrawingObjectsList({
               `}
             >
               <span className="text-BrandOrange text-xs font-DmSans font-bold w-4 text-center shrink-0">
-                {getTypeIcon(d.type)}
+                {getTypeIcon(d)}
               </span>
               <span
                 className={`text-[10px] sm:text-xs font-DmSans flex-1 truncate ${

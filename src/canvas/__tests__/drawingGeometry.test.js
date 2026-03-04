@@ -194,6 +194,12 @@ describe("hitTestHandle", () => {
     expect(hitTestHandle(handles, { x: 0, y: 0 })).toBe("nw");
   });
 
+  it("supports expanded hit padding", () => {
+    const bounds = { x: 0, y: 0, width: 100, height: 100 };
+    const handles = getResizeHandles(bounds, 10);
+    expect(hitTestHandle(handles, { x: -10, y: -10 }, 5)).toBe("nw");
+  });
+
   it("returns null when missing", () => {
     const bounds = { x: 0, y: 0, width: 100, height: 100 };
     const handles = getResizeHandles(bounds, 10);

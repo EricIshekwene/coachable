@@ -102,6 +102,10 @@ function KonvaCanvasRoot({
   onTextEditingChange,
   drawingHookRef,
   onDrawSubToolChange,
+  screenshotMode = false,
+  screenshotRegion,
+  onScreenshotRegionChange,
+  screenshotApiRef,
 }) {
   const viewportRef = useRef(null);
   const stageRef = useRef(null);
@@ -117,6 +121,8 @@ function KonvaCanvasRoot({
     pointerId: null,
     last: { x: 0, y: 0 },
   });
+  const screenshotDragRef = useRef(null); // { startWorld: {x,y} }
+  const overlayLayerRef = useRef(null);
 
   const [size, setSize] = useState({ width: 1, height: 1 });
   const [isPanning, setIsPanning] = useState(false);
@@ -206,6 +212,44 @@ function KonvaCanvasRoot({
     };
   };
 
+  const clearGuides = () => {
+    const layer = guidesLayerRef.current;
+    if (!layer) return;
+    layer.destroyChildren();
+    layer.batchDraw();
+  };
+
+  const drawGuides = (guides) => {
+    const layer = guidesLayerRef.current;
+    if (!layer) return;
+    layer.destroyChildren();
+    if (!guides?.length) {
+      layer.batchDraw();
+      return;
+    }
+
+    guides.forEach((guide) => {
+      const isVertical = guide.orientation === "V";
+      const screenCoord =
+        guide.lineGuide * worldOrigin.scale + (isVertical ? worldOrigin.x : worldOrigin.y);
+      const points = isVertical
+        ? [screenCoord, 0, screenCoord, size.height]
+        : [0, screenCoord, size.width, screenCoord];
+
+      layer.add(
+        new Konva.Line({
+          points,
+          stroke: "#FF7A18",
+          strokeWidth: 1,
+          dash: [4, 4],
+          listening: false,
+        }),
+      );
+    });
+
+    layer.batchDraw();
+  };
+
   const canvasDrawing = useCanvasDrawing({
     tool,
     subTool: drawSubTool,
@@ -230,6 +274,10 @@ function KonvaCanvasRoot({
     onTextEditingChange,
     onSelectedDrawingIdsChange,
     onDrawSubToolChange,
+    fieldBounds,
+    drawGuides,
+    clearGuides,
+    guidelineOffsetWorld,
   });
 
   const drawingSelection = useDrawingSelection({
@@ -241,6 +289,10 @@ function KonvaCanvasRoot({
     onUpdateMultipleNoHistory: onUpdateMultipleDrawingsNoHistory,
     historyApiRef,
     zoom: camera?.zoom || 1,
+    fieldBounds,
+    drawGuides,
+    clearGuides,
+    guidelineOffsetWorld,
   });
 
   // Expose selection hook to parent via ref (for cancelGesture on Escape)
@@ -329,43 +381,49 @@ function KonvaCanvasRoot({
     };
   }, [animationRendererRef, applyPoseMapToNodes, onAnimationRendererReady]);
 
-  const clearGuides = () => {
-    const layer = guidesLayerRef.current;
-    if (!layer) return;
-    layer.destroyChildren();
-    layer.batchDraw();
-  };
+  // Screenshot capture API
+  useEffect(() => {
+    if (!screenshotApiRef) return;
+    screenshotApiRef.current = {
+      captureRegion: (worldRect) => {
+        const stage = stageRef.current;
+        if (!stage) return null;
+        const scale = worldOrigin.scale;
 
-  const drawGuides = (guides) => {
-    const layer = guidesLayerRef.current;
-    if (!layer) return;
-    layer.destroyChildren();
-    if (!guides?.length) {
-      layer.batchDraw();
-      return;
-    }
+        // Inset by the screenshot border stroke width so the green rect isn't captured
+        const inset = 3 / scale; // 3 screen px → world coords
+        const insetRect = {
+          x: worldRect.x + inset,
+          y: worldRect.y + inset,
+          width: Math.max(1, worldRect.width - inset * 2),
+          height: Math.max(1, worldRect.height - inset * 2),
+        };
 
-    guides.forEach((guide) => {
-      const isVertical = guide.orientation === "V";
-      const screenCoord =
-        guide.lineGuide * worldOrigin.scale + (isVertical ? worldOrigin.x : worldOrigin.y);
-      const points = isVertical
-        ? [screenCoord, 0, screenCoord, size.height]
-        : [0, screenCoord, size.width, screenCoord];
+        // Hide overlay layers (screenshot rect, marquee, selection handles, guides)
+        const overlay = overlayLayerRef.current;
+        const guides = guidesLayerRef.current;
+        if (overlay) { overlay.visible(false); stage.batchDraw(); }
+        if (guides) { guides.visible(false); stage.batchDraw(); }
 
-      layer.add(
-        new Konva.Line({
-          points,
-          stroke: "#FF7A18",
-          strokeWidth: 1,
-          dash: [4, 4],
-          listening: false,
-        }),
-      );
-    });
+        const dataUrl = stage.toDataURL({
+          x: worldOrigin.x + insetRect.x * scale,
+          y: worldOrigin.y + insetRect.y * scale,
+          width: insetRect.width * scale,
+          height: insetRect.height * scale,
+          pixelRatio: 2,
+        });
 
-    layer.batchDraw();
-  };
+        // Restore overlay layers
+        if (overlay) { overlay.visible(true); stage.batchDraw(); }
+        if (guides) { guides.visible(true); stage.batchDraw(); }
+
+        return dataUrl;
+      },
+    };
+    return () => {
+      if (screenshotApiRef.current) screenshotApiRef.current = null;
+    };
+  }, [screenshotApiRef, worldOrigin]);
 
   const getLineGuideStops = (skipId) => {
     const centerScreenWorld = toWorldCoords({ x: size.width / 2, y: size.height / 2 });
@@ -520,6 +578,17 @@ function KonvaCanvasRoot({
     const stage = stageRef.current;
     const target = e.target;
 
+    // Screenshot region selection — takes priority over everything
+    if (screenshotMode && isPrimaryButton && !isMiddleMouse) {
+      const pointer = stage?.getPointerPosition?.();
+      if (pointer) {
+        const world = toWorldCoords(pointer);
+        screenshotDragRef.current = { startWorld: { ...world } };
+        onScreenshotRegionChange?.(null);
+      }
+      return;
+    }
+
     // Drawing tools — handle before pan/select/add
     if (tool === "pen" && !isMiddleMouse && isPrimaryButton) {
       // Select sub-tool routes to the selection hook
@@ -574,6 +643,23 @@ function KonvaCanvasRoot({
   };
 
   const handleStagePointerMove = (e) => {
+    // Screenshot region drag
+    if (screenshotMode && screenshotDragRef.current) {
+      const stage = stageRef.current;
+      const pointer = stage?.getPointerPosition?.();
+      if (pointer) {
+        const world = toWorldCoords(pointer);
+        const start = screenshotDragRef.current.startWorld;
+        onScreenshotRegionChange?.({
+          x: Math.min(start.x, world.x),
+          y: Math.min(start.y, world.y),
+          width: Math.abs(world.x - start.x),
+          height: Math.abs(world.y - start.y),
+        });
+      }
+      return;
+    }
+
     // Track eraser cursor position
     if (tool === "pen" && drawSubTool === "erase") {
       const stage = stageRef.current;
@@ -583,6 +669,21 @@ function KonvaCanvasRoot({
       }
     } else if (eraserCursorWorld) {
       setEraserCursorWorld(null);
+    }
+
+    // Imperatively update cursor for drawing selection handles
+    if (!screenshotMode && tool === "pen" && drawSubTool === "select" && containerRef.current) {
+      const stage = stageRef.current;
+      const pointer = stage?.getPointerPosition?.();
+      if (pointer) {
+        const world = toWorldCoords(pointer);
+        const selCur = drawingSelection.getSelectionCursor(world);
+        if (selCur) {
+          containerRef.current.style.cursor = selCur;
+        } else {
+          containerRef.current.style.cursor = "default";
+        }
+      }
     }
 
     // Drawing tools — handle before marquee/pan
@@ -620,6 +721,12 @@ function KonvaCanvasRoot({
   };
 
   const handleStagePointerUp = (e) => {
+    // Screenshot region commit
+    if (screenshotMode && screenshotDragRef.current) {
+      screenshotDragRef.current = null;
+      return;
+    }
+
     // Drawing tools
     if (tool === "pen") {
       if (drawSubTool === "select") {
@@ -756,16 +863,6 @@ function KonvaCanvasRoot({
 
   const isDragging = draggingIdsRef.current.size > 0;
 
-  // Selection cursor: check if pointer is over handles/drawings in pen+select mode
-  const getDrawingSelectionCursorNow = () => {
-    if (tool !== "pen" || drawSubTool !== "select") return null;
-    const stage = stageRef.current;
-    const pointer = stage?.getPointerPosition?.();
-    if (!pointer) return null;
-    const world = toWorldCoords(pointer);
-    return drawingSelection.getSelectionCursor(world);
-  };
-
   const drawCursor =
     drawSubTool === "select" ? "default" : drawSubTool === "text" ? "text" : drawSubTool === "erase" ? "crosshair" : "crosshair";
   const baseCursor =
@@ -777,12 +874,11 @@ function KonvaCanvasRoot({
           ? "copy"
           : "default";
   const hoverAllowed = !isMarqueeActive && !isPanning && !isDragging;
-  const selCursor = getDrawingSelectionCursorNow();
   const derivedCursor =
-    isPanning || isDragging
-      ? "grabbing"
-      : selCursor
-        ? selCursor
+    screenshotMode
+      ? "crosshair"
+      : isPanning || isDragging
+        ? "grabbing"
         : hoverAllowed && isHoveringItem
           ? "pointer"
           : baseCursor;
@@ -969,6 +1065,15 @@ function KonvaCanvasRoot({
           onWheel={handleStageWheel}
         >
           <Layer ref={itemsLayerRef}>
+            {/* Background fill so screenshots capture the pitch color instead of transparency */}
+            <Rect
+              x={0}
+              y={0}
+              width={size.width}
+              height={size.height}
+              fill={pitchColor || "#4FA85D"}
+              listening={false}
+            />
             <Group x={worldOrigin.x} y={worldOrigin.y} scaleX={worldOrigin.scale} scaleY={worldOrigin.scale}>
               {fieldImage.image && (
                 // Rotation model: rotate only the field image so world coordinates stay axis-aligned.
@@ -1147,7 +1252,7 @@ function KonvaCanvasRoot({
               {/* Multi-selection bounds box */}
               {drawingSelection.selectionBounds && selectedDrawingIds.length > 0 && (() => {
                 const sb = drawingSelection.selectionBounds;
-                const pad = 4;
+                const pad = 4 / (camera?.zoom || 1);
                 const sw = 1.5 / (camera?.zoom || 1);
                 return (
                   <React.Fragment>
@@ -1262,7 +1367,7 @@ function KonvaCanvasRoot({
             </Group>
           </Layer>
           <Layer listening={false} name="guidesLayer" ref={guidesLayerRef} />
-          <Layer listening={false}>
+          <Layer listening={false} ref={overlayLayerRef}>
             <Group x={worldOrigin.x} y={worldOrigin.y} scaleX={worldOrigin.scale} scaleY={worldOrigin.scale}>
               {marquee && (
                 <Rect
@@ -1273,6 +1378,19 @@ function KonvaCanvasRoot({
                   fill="rgba(255, 122, 24, 0.15)"
                   stroke="#FF7A18"
                   strokeWidth={1.5}
+                  listening={false}
+                />
+              )}
+              {screenshotMode && screenshotRegion && screenshotRegion.width > 0 && screenshotRegion.height > 0 && (
+                <Rect
+                  x={screenshotRegion.x}
+                  y={screenshotRegion.y}
+                  width={screenshotRegion.width}
+                  height={screenshotRegion.height}
+                  fill="rgba(255, 255, 255, 0.08)"
+                  stroke="#22c55e"
+                  strokeWidth={2 / (camera?.zoom || 1)}
+                  dash={[6, 4]}
                   listening={false}
                 />
               )}
