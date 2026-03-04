@@ -350,8 +350,9 @@ function KonvaCanvasRoot({
     itemNodeMapRef.current.set(itemId, node);
   }, []);
 
-  const applyPoseMapToNodes = useCallback((poseMap = {}) => {
+  const applyPoseMapToNodes = useCallback((poseMap = {}, options = {}) => {
     if (!poseMap || typeof poseMap !== "object") return;
+    const flush = Boolean(options?.flush);
     Object.entries(poseMap).forEach(([itemId, pose]) => {
       if (!itemId || !pose) return;
       poseOverridesRef.current[itemId] = {
@@ -369,15 +370,27 @@ function KonvaCanvasRoot({
         node.rotation(pose.r);
       }
     });
-    itemsLayerRef.current?.batchDraw?.();
+    const itemsLayer = itemsLayerRef.current;
+    if (flush) {
+      itemsLayer?.draw?.();
+      stageRef.current?.draw?.();
+      return;
+    }
+    itemsLayer?.batchDraw?.();
   }, []);
 
   useEffect(() => {
     if (!animationRendererRef) return undefined;
     const api = {
-      setPoses: (poses) => applyPoseMapToNodes(poses),
-      clearPoses: () => {
+      setPoses: (poses, options) => applyPoseMapToNodes(poses, options),
+      clearPoses: (options = {}) => {
+        const flush = Boolean(options?.flush);
         poseOverridesRef.current = {};
+        if (flush) {
+          itemsLayerRef.current?.draw?.();
+          stageRef.current?.draw?.();
+          return;
+        }
         itemsLayerRef.current?.batchDraw?.();
       },
       getCurrentPose: (itemId) => {
@@ -406,7 +419,7 @@ function KonvaCanvasRoot({
       const guides = guidesLayerRef.current;
       if (overlay) { overlay.visible(false); }
       if (guides) { guides.visible(false); }
-      if (stage) stage.batchDraw();
+      if (stage) stage.draw();
     };
 
     const showOverlays = () => {
@@ -415,7 +428,7 @@ function KonvaCanvasRoot({
       const guides = guidesLayerRef.current;
       if (overlay) { overlay.visible(true); }
       if (guides) { guides.visible(true); }
-      if (stage) stage.batchDraw();
+      if (stage) stage.draw();
     };
 
     const worldToScreen = (worldRect) => {
@@ -450,9 +463,10 @@ function KonvaCanvasRoot({
       },
 
       /** Returns a Canvas element for the given world rect (faster than dataURL for video). */
-      captureFrameCanvas: (worldRect, { pixelRatio = 2 } = {}) => {
+      captureFrameCanvas: (worldRect, { pixelRatio = 2, flush = false } = {}) => {
         const stage = stageRef.current;
         if (!stage) return null;
+        if (flush) stage.draw();
         return stage.toCanvas({ ...worldToScreen(worldRect), pixelRatio });
       },
 
@@ -469,6 +483,10 @@ function KonvaCanvasRoot({
 
       hideOverlays,
       showOverlays,
+      flushRender: () => {
+        const stage = stageRef.current;
+        if (stage) stage.draw();
+      },
     };
     return () => {
       if (screenshotApiRef.current) screenshotApiRef.current = null;

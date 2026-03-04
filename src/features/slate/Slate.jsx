@@ -42,6 +42,22 @@ const LOOP_SECONDS = 30;
 const DEFAULT_SPEED_MULTIPLIER = 50;
 const UI_TIME_UPDATE_INTERVAL_MS = 100;
 const TICK_LOG_INTERVAL_MS = 100;
+const POSE_UPDATE_EPSILON = 0.001;
+const VIDEO_EXPORT_TIMESLICE_MS = 1000;
+const VIDEO_EXPORT_HIGH_LOAD_PIXELS = 2_500_000;
+const VIDEO_EXPORT_MAX_FPS_HIGH_LOAD = 24;
+const VIDEO_EXPORT_MAX_BITRATE_HIGH_LOAD = 8_000_000;
+
+const waitForAnimationFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const resolveRecorderMimeType = ({ preferRealtimeCodec = false } = {}) => {
+  if (typeof MediaRecorder === "undefined") return null;
+  const candidates = preferRealtimeCodec
+    ? ["video/webm;codecs=vp8", "video/webm;codecs=vp9", "video/webm"]
+    : ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+  return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || null;
+};
 
 const speedToPlaybackRate = (speedMultiplier) => (0.25 + (speedMultiplier / 100) * 3.75) * 3;
 
@@ -226,7 +242,8 @@ function Slate({ onShowMessage }) {
     return null;
   }, []);
 
-  const renderPoseAtTime = useCallback((timeMs) => {
+  const renderPoseAtTime = useCallback((timeMs, options = {}) => {
+    const flushRenderer = Boolean(options?.flushRenderer);
     const allPlayers = playersByIdRef.current || {};
     const represented = representedPlayerIdsRef.current || [];
     const ball = ballRef.current;
@@ -261,16 +278,19 @@ function Slate({ onShowMessage }) {
         return;
       }
       const moved =
-        Math.abs((previous.x ?? 0) - (pose.x ?? 0)) > 0.01 ||
-        Math.abs((previous.y ?? 0) - (pose.y ?? 0)) > 0.01 ||
-        Math.abs((previous.r ?? 0) - (pose.r ?? 0)) > 0.01;
+        Math.abs((previous.x ?? 0) - (pose.x ?? 0)) > POSE_UPDATE_EPSILON ||
+        Math.abs((previous.y ?? 0) - (pose.y ?? 0)) > POSE_UPDATE_EPSILON ||
+        Math.abs((previous.r ?? 0) - (pose.r ?? 0)) > POSE_UPDATE_EPSILON;
       if (moved) {
         patch[itemId] = pose;
       }
     });
     latestPosesRef.current = sampledPoses;
     if (Object.keys(patch).length) {
-      animationRendererRef.current?.setPoses?.(patch);
+      animationRendererRef.current?.setPoses?.(
+        patch,
+        flushRenderer ? { flush: true } : undefined
+      );
     }
     return Object.keys(sampledPoses || {}).length;
   }, []);
@@ -482,20 +502,29 @@ function Slate({ onShowMessage }) {
     const api = screenshotApiRef.current;
     if (!api?.captureFrameCanvas || !api?.hideOverlays || !api?.showOverlays) {
       const reason = "Capture API not ready";
-      logVideoExport(`ABORT: ${reason} — captureFrameCanvas=${!!api?.captureFrameCanvas} hideOverlays=${!!api?.hideOverlays} showOverlays=${!!api?.showOverlays}`);
+      logVideoExport(
+        `ABORT: ${reason} - captureFrameCanvas=${!!api?.captureFrameCanvas} hideOverlays=${!!api?.hideOverlays} showOverlays=${!!api?.showOverlays}`
+      );
       onShowMessage?.("Export failed", reason, "error");
       setExportError(reason);
       return;
     }
-    const engine = engineRef.current;
-    const playDurationMs = LOOP_SECONDS * 1000;
-    const fps = quality.fps || 30;
-    const pixelRatio = quality.pixelRatio || 2;
-    const bitrate = quality.bitrate || 5_000_000;
-    const totalFrames = Math.ceil(fps * durationSec);
-    const frameDurationMs = 1000 / fps;
 
-    logVideoExport(`playDurationMs=${playDurationMs} fps=${fps} pixelRatio=${pixelRatio} bitrate=${bitrate} totalFrames=${totalFrames}`);
+    const engine = engineRef.current;
+    const playDurationMs = Math.max(
+      1,
+      Number(animationDataRef.current?.durationMs) || LOOP_SECONDS * 1000
+    );
+    const requestedDurationSec = Math.max(1, Number(durationSec) || 1);
+    const requestedFps = Math.max(1, Number(quality.fps) || 30);
+    const pixelRatio = Math.max(0.5, Number(quality.pixelRatio) || 2);
+    const requestedBitrate = Math.max(250_000, Number(quality.bitrate) || 5_000_000);
+    let fps = requestedFps;
+    let bitrate = requestedBitrate;
+
+    logVideoExport(
+      `requested playDurationMs=${playDurationMs} durationSec=${requestedDurationSec} fps=${requestedFps} pixelRatio=${pixelRatio} bitrate=${requestedBitrate}`
+    );
 
     setIsExporting(true);
     setExportProgress(0);
@@ -503,23 +532,45 @@ function Slate({ onShowMessage }) {
 
     let saved = null;
     let wasPlaying = false;
+    let stream = null;
+    let recorder = null;
 
     try {
       saved = clearSelectionsForCapture();
       wasPlaying = engine.playing;
       engine.pause({ shouldLog: false });
       logVideoExport(`engine paused, wasPlaying=${wasPlaying}`);
-      await new Promise((r) => requestAnimationFrame(r));
+      await waitForAnimationFrame();
 
       api.hideOverlays();
+      api.flushRender?.();
       logVideoExport(`overlays hidden`);
 
-      // Set up offscreen canvas + MediaRecorder
-      const firstCanvas = api.captureFrameCanvas(worldRect, { pixelRatio });
+      const firstCanvas = api.captureFrameCanvas(worldRect, { pixelRatio, flush: true });
       if (!firstCanvas) {
-        throw new Error("captureFrameCanvas returned null on first frame — stage may not be mounted");
+        throw new Error("captureFrameCanvas returned null on first frame - stage may not be mounted");
       }
+      const framePixels = firstCanvas.width * firstCanvas.height;
       logVideoExport(`firstCanvas: ${firstCanvas.width}x${firstCanvas.height}`);
+
+      if (framePixels >= VIDEO_EXPORT_HIGH_LOAD_PIXELS && fps > VIDEO_EXPORT_MAX_FPS_HIGH_LOAD) {
+        logVideoExport(
+          `high-load capture (${framePixels} px) - clamping fps ${fps} -> ${VIDEO_EXPORT_MAX_FPS_HIGH_LOAD}`
+        );
+        fps = VIDEO_EXPORT_MAX_FPS_HIGH_LOAD;
+      }
+      if (framePixels >= VIDEO_EXPORT_HIGH_LOAD_PIXELS && bitrate > VIDEO_EXPORT_MAX_BITRATE_HIGH_LOAD) {
+        logVideoExport(
+          `high-load capture (${framePixels} px) - clamping bitrate ${bitrate} -> ${VIDEO_EXPORT_MAX_BITRATE_HIGH_LOAD}`
+        );
+        bitrate = VIDEO_EXPORT_MAX_BITRATE_HIGH_LOAD;
+      }
+
+      const totalFrames = Math.max(1, Math.ceil(fps * requestedDurationSec));
+      const frameDurationMs = 1000 / fps;
+      logVideoExport(
+        `effective fps=${fps} pixelRatio=${pixelRatio} bitrate=${bitrate} totalFrames=${totalFrames} framePixels=${framePixels}`
+      );
 
       const offscreen = document.createElement("canvas");
       offscreen.width = firstCanvas.width;
@@ -528,26 +579,33 @@ function Slate({ onShowMessage }) {
       if (!ctx) {
         throw new Error("Failed to get 2D context from offscreen canvas");
       }
+      ctx.clearRect(0, 0, offscreen.width, offscreen.height);
+      ctx.drawImage(firstCanvas, 0, 0);
 
-      const stream = offscreen.captureStream(0);
-      const videoTrack = stream.getVideoTracks()[0];
+      stream = offscreen.captureStream(0);
+      let videoTrack = stream.getVideoTracks()[0];
       if (!videoTrack) {
         throw new Error("captureStream produced no video track");
       }
+      if (!videoTrack.requestFrame) {
+        stream.getTracks().forEach((track) => track.stop());
+        stream = offscreen.captureStream(fps);
+        videoTrack = stream.getVideoTracks()[0];
+        if (!videoTrack) {
+          throw new Error("captureStream(fps) produced no video track");
+        }
+      }
       logVideoExport(`stream created, track=${videoTrack.label}, requestFrame=${typeof videoTrack.requestFrame}`);
 
-      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
-        ? "video/webm;codecs=vp9"
-        : MediaRecorder.isTypeSupported("video/webm")
-          ? "video/webm"
-          : null;
+      const preferRealtimeCodec = framePixels >= VIDEO_EXPORT_HIGH_LOAD_PIXELS || fps >= 30;
+      const mimeType = resolveRecorderMimeType({ preferRealtimeCodec });
       if (!mimeType) {
         throw new Error("Browser does not support WebM video recording (MediaRecorder)");
       }
       logVideoExport(`mimeType=${mimeType}`);
 
       let recorderError = null;
-      const recorder = new MediaRecorder(stream, {
+      recorder = new MediaRecorder(stream, {
         mimeType,
         videoBitsPerSecond: bitrate,
       });
@@ -561,9 +619,12 @@ function Slate({ onShowMessage }) {
         logVideoExport(`MediaRecorder error`, recorderError);
       };
 
-      const recorderStopped = new Promise((resolve) => { recorder.onstop = resolve; });
-      recorder.start();
-      logVideoExport(`recorder started, state=${recorder.state}`);
+      const recorderStopped = new Promise((resolve) => {
+        recorder.onstop = resolve;
+      });
+      recorder.start(VIDEO_EXPORT_TIMESLICE_MS);
+      logVideoExport(`recorder started, state=${recorder.state}, timesliceMs=${VIDEO_EXPORT_TIMESLICE_MS}`);
+      const exportStartWallMs = performance.now();
 
       let lastLoggedFrame = -1;
       for (let i = 0; i < totalFrames; i++) {
@@ -572,28 +633,37 @@ function Slate({ onShowMessage }) {
         }
 
         const playTimeMs = (i / totalFrames) * playDurationMs;
-        renderPoseAtTime(playTimeMs);
+        renderPoseAtTime(playTimeMs, { flushRenderer: true });
+        api.flushRender?.();
 
-        const frameCanvas = api.captureFrameCanvas(worldRect, { pixelRatio });
+        const frameCanvas = api.captureFrameCanvas(worldRect, { pixelRatio, flush: false });
         if (!frameCanvas) {
-          throw new Error(`captureFrameCanvas returned null at frame ${i}/${totalFrames} (playTimeMs=${playTimeMs.toFixed(1)})`);
+          throw new Error(
+            `captureFrameCanvas returned null at frame ${i}/${totalFrames} (playTimeMs=${playTimeMs.toFixed(1)})`
+          );
         }
 
         ctx.clearRect(0, 0, offscreen.width, offscreen.height);
         ctx.drawImage(frameCanvas, 0, 0);
-
         if (videoTrack.requestFrame) videoTrack.requestFrame();
 
-        // Pace recording — MediaRecorder uses wall-clock timing
-        await new Promise((r) => setTimeout(r, Math.max(1, frameDurationMs - 5)));
-
-        // Log every 30 frames (~1s of video)
-        if (i - lastLoggedFrame >= 30 || i === totalFrames - 1) {
-          logVideoExport(`frame ${i + 1}/${totalFrames} playTimeMs=${playTimeMs.toFixed(1)} recorderState=${recorder.state}`);
-          lastLoggedFrame = i;
+        await waitForAnimationFrame();
+        const targetNextFrameAt = exportStartWallMs + (i + 1) * frameDurationMs;
+        const remainingMs = targetNextFrameAt - performance.now();
+        if (remainingMs > 1) {
+          await sleep(remainingMs);
         }
 
-        // Update progress every 10 frames
+        if ((i + 1) % Math.max(1, Math.round(fps)) === 0 && recorder.state === "recording") {
+          recorder.requestData?.();
+        }
+
+        if (i - lastLoggedFrame >= 30 || i === totalFrames - 1) {
+          logVideoExport(
+            `frame ${i + 1}/${totalFrames} playTimeMs=${playTimeMs.toFixed(1)} recorderState=${recorder.state}`
+          );
+          lastLoggedFrame = i;
+        }
         if (i % 10 === 0) {
           setExportProgress((i + 1) / totalFrames);
         }
@@ -609,7 +679,7 @@ function Slate({ onShowMessage }) {
         throw recorderError;
       }
       if (chunks.length === 0) {
-        throw new Error("MediaRecorder produced 0 data chunks — video is empty");
+        throw new Error("MediaRecorder produced 0 data chunks - video is empty");
       }
 
       const blob = new Blob(chunks, { type: mimeType });
@@ -633,11 +703,18 @@ function Slate({ onShowMessage }) {
       if (saved) restoreSelections(saved);
       if (wasPlaying) engineRef.current?.play?.();
     } finally {
+      try {
+        if (recorder?.state === "recording") {
+          recorder.stop();
+        }
+      } catch {
+        // no-op: recorder already stopped
+      }
+      stream?.getTracks?.().forEach((track) => track.stop());
       setIsExporting(false);
       setExportProgress(null);
     }
   }, [playName, onShowMessage, clearSelectionsForCapture, restoreSelections, renderPoseAtTime]);
-
   const handleExportModalSubmit = useCallback(({ format, region, durationSec, quality }) => {
     setExportModalOpen(false);
     const config = { format, region, durationSec, quality };
