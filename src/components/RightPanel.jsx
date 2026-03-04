@@ -41,7 +41,6 @@ export default function RightPanel({
   onOpenAdvancedSettings,
 
   onSaveToPlaybook,
-  onDownload,
   onImport,
   onScreenshot,
   onVideoExport,
@@ -180,7 +179,6 @@ export default function RightPanel({
       <div className="shrink-0 pt-1.5 sm:pt-2 border-t border-BrandGray2/60">
         <ExportActions
           onSaveToPlaybook={onSaveToPlaybook}
-          onDownload={onDownload}
           onImport={onImport}
           onScreenshot={onScreenshot}
           onVideoExport={onVideoExport}

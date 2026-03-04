@@ -1,6 +1,5 @@
 import React from "react";
 import { BsBookmarkPlus } from "react-icons/bs";
-import { IoMdDownload } from "react-icons/io";
 import { FiUpload } from "react-icons/fi";
 import { MdCameraAlt, MdVideocam } from "react-icons/md";
 
@@ -18,7 +17,6 @@ const actionButtonClass = `
 `;
 
 const fullWidthActionButtonClass = `${actionButtonClass} w-full`;
-const splitActionButtonClass = `${actionButtonClass} w-full min-w-0 px-2 sm:px-2.5`;
 
 const iconWrapClass = `
   shrink-0 flex items-center justify-center
@@ -31,7 +29,7 @@ const iconWrapClass = `
 
 const iconClass = "text-sm sm:text-base";
 
-export default function ExportActions({ onSaveToPlaybook, onDownload, onImport, onScreenshot, onVideoExport }) {
+export default function ExportActions({ onSaveToPlaybook, onImport, onScreenshot, onVideoExport }) {
   return (
     <div className="w-full flex flex-col gap-2">
       <button
@@ -47,17 +45,6 @@ export default function ExportActions({ onSaveToPlaybook, onDownload, onImport, 
 
       <button
         type="button"
-        onClick={() => onDownload?.()}
-        className={fullWidthActionButtonClass}
-      >
-        <span className={iconWrapClass}>
-          <IoMdDownload className={iconClass} aria-hidden />
-        </span>
-        <span className="min-w-0 flex-1 truncate">Download</span>
-      </button>
-
-      <button
-        type="button"
         onClick={() => onImport?.()}
         className={fullWidthActionButtonClass}
       >
@@ -67,29 +54,27 @@ export default function ExportActions({ onSaveToPlaybook, onDownload, onImport, 
         <span className="min-w-0 flex-1 truncate">Import</span>
       </button>
 
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={() => onScreenshot?.()}
-          className={splitActionButtonClass}
-        >
-          <span className={iconWrapClass}>
-            <MdCameraAlt className={iconClass} aria-hidden />
-          </span>
-          <span className="min-w-0 flex-1 truncate">Screenshot</span>
-        </button>
+      <button
+        type="button"
+        onClick={() => onScreenshot?.()}
+        className={fullWidthActionButtonClass}
+      >
+        <span className={iconWrapClass}>
+          <MdCameraAlt className={iconClass} aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1 truncate">Screenshot</span>
+      </button>
 
-        <button
-          type="button"
-          onClick={() => onVideoExport?.()}
-          className={splitActionButtonClass}
-        >
-          <span className={iconWrapClass}>
-            <MdVideocam className={iconClass} aria-hidden />
-          </span>
-          <span className="min-w-0 flex-1 truncate">Video</span>
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={() => onVideoExport?.()}
+        className={fullWidthActionButtonClass}
+      >
+        <span className={iconWrapClass}>
+          <MdVideocam className={iconClass} aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1 truncate">Video</span>
+      </button>
     </div>
   );
 }

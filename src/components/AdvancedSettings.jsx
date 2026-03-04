@@ -1,5 +1,6 @@
 import React from 'react';
 import { FaTimes } from "react-icons/fa";
+import { IoMdDownload } from "react-icons/io";
 import PitchSettingsSection from "./advancedSettings/PitchSettingsSection";
 import PlayerSettingsSection from "./advancedSettings/PlayerSettingsSection";
 import BallSettingsSection from "./advancedSettings/BallSettingsSection";
@@ -16,6 +17,7 @@ export default function AdvancedSettings({
     onCopyDebug,
     onCopyDrawDebug,
     onCopyKeyToolDebug,
+    onDownload,
 }) {
     const settings = value ?? {};
     const pitch = settings.pitch ?? {};
@@ -58,6 +60,21 @@ export default function AdvancedSettings({
                 <PlayerSettingsSection value={players} onChange={updatePlayers} />
                 <BallSettingsSection value={ball} onChange={updateBall} />
                 <ExportVideoSettingsSection value={exportVideo} onChange={updateExportVideo} />
+                <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1 sm:gap-2">
+                    <div className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans">
+                        Export
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => onDownload?.()}
+                        className="group w-full h-6 sm:h-7 bg-BrandBlack2 border-[0.625px] border-BrandGray rounded-md px-2 flex items-center gap-2 cursor-pointer transition-colors hover:bg-BrandBlack"
+                    >
+                        <IoMdDownload className="text-BrandOrange text-sm shrink-0" aria-hidden />
+                        <span className="text-BrandWhite text-xs sm:text-sm font-DmSans truncate">
+                            Download
+                        </span>
+                    </button>
+                </div>
                 <AnimationSettingsSection value={animation} onChange={updateAnimation} />
                 <LoggerSettingsSection
                     onCopyDebug={onCopyDebug}

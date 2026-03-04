@@ -77,15 +77,9 @@ function Slate({ onShowMessage }) {
   const [screenshotRegion, setScreenshotRegion] = useState(null);
   const screenshotApiRef = useRef(null);
   const [exportModalOpen, setExportModalOpen] = useState(false);
-  const [exportModalFormat, setExportModalFormat] = useState("photo");
   const [exportConfig, setExportConfig] = useState(null);
   const [exportProgress, setExportProgress] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
-  const [previewRegion, setPreviewRegion] = useState(null);
-  const previewCanvasRef = useRef(null);
-  const previewRafRef = useRef(null);
-  const previewDurationSecRef = useRef(30);
-  const previewStartWallRef = useRef(0);
   const [playName, setPlayName] = useState("Name");
   const [speedMultiplier, setSpeedMultiplier] = useState(DEFAULT_SPEED_MULTIPLIER);
   const [autoplayEnabled, setAutoplayEnabled] = useState(true);
@@ -567,147 +561,53 @@ function Slate({ onShowMessage }) {
     }
   }, [playName, onShowMessage, clearSelectionsForCapture, restoreSelections, renderPoseAtTime]);
 
-  // --- Live preview animation loop for export modal ---
-  const PREVIEW_FPS = 15;
-  const PREVIEW_FRAME_MS = 1000 / PREVIEW_FPS;
-
-  useEffect(() => {
-    if (!exportModalOpen || exportModalFormat !== "video") {
-      if (previewRafRef.current) {
-        cancelAnimationFrame(previewRafRef.current);
-        previewRafRef.current = null;
-      }
-      return;
-    }
-
-    const api = screenshotApiRef.current;
-    if (!api?.captureFrameCanvas || !api?.getFieldWorldBounds || !api?.hideOverlays || !api?.showOverlays) {
-      return;
-    }
-
-    const engine = engineRef.current;
-    const wasPlaying = engine.playing;
-    const savedTimeMs = currentTimeRef.current;
-    engine.pause({ shouldLog: false });
-
-    const captureBounds = previewRegion || api.getFieldWorldBounds();
-    if (!captureBounds) return;
-
-    api.hideOverlays();
-
-    const playDurationMs = LOOP_SECONDS * 1000;
-    previewStartWallRef.current = performance.now();
-    let lastFrameTime = 0;
-
-    const tick = () => {
-      previewRafRef.current = requestAnimationFrame(tick);
-
-      const now = performance.now();
-      if (now - lastFrameTime < PREVIEW_FRAME_MS) return;
-      lastFrameTime = now;
-
-      const canvas = previewCanvasRef.current;
-      if (!canvas) return;
-
-      const elapsed = now - previewStartWallRef.current;
-      const durationSec = previewDurationSecRef.current || 30;
-      const loopMs = durationSec * 1000;
-      const loopTime = elapsed % loopMs;
-      const playTimeMs = (loopTime / loopMs) * playDurationMs;
-
-      renderPoseAtTime(playTimeMs);
-
-      const frameCanvas = api.captureFrameCanvas(captureBounds, { pixelRatio: 0.5 });
-      if (frameCanvas) {
-        if (canvas.width !== frameCanvas.width || canvas.height !== frameCanvas.height) {
-          canvas.width = frameCanvas.width;
-          canvas.height = frameCanvas.height;
-        }
-        const ctx = canvas.getContext("2d");
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(frameCanvas, 0, 0);
-      }
-    };
-
-    previewRafRef.current = requestAnimationFrame(tick);
-
-    return () => {
-      if (previewRafRef.current) {
-        cancelAnimationFrame(previewRafRef.current);
-        previewRafRef.current = null;
-      }
-      api.showOverlays();
-      renderPoseAtTime(savedTimeMs);
-      if (wasPlaying) engine.play();
-    };
-  }, [exportModalOpen, exportModalFormat, previewRegion, renderPoseAtTime]);
-
-  const handlePreviewFormatChange = useCallback((fmt) => {
-    setExportModalFormat(fmt);
-  }, []);
-
-  const handlePreviewDurationChange = useCallback((sec) => {
-    previewDurationSecRef.current = sec;
-    previewStartWallRef.current = performance.now();
-  }, []);
-
-  const handleCustomRegionRequest = useCallback(() => {
-    setExportModalOpen(false);
-    setPreviewRegion(null);
-    setScreenshotMode(true);
-    setScreenshotRegion(null);
-    logDrawDebug("custom region selection requested from export modal");
-  }, []);
-
   const handleExportModalSubmit = useCallback(({ format, region, durationSec, quality }) => {
     setExportModalOpen(false);
+    const config = { format, region, durationSec, quality };
+    setExportConfig(config);
 
-    let bounds;
-    if (region === "custom" && previewRegion) {
-      bounds = previewRegion;
-    } else {
-      bounds = screenshotApiRef.current?.getFieldWorldBounds?.();
+    if (region === "custom") {
+      setScreenshotMode(true);
+      setScreenshotRegion(null);
+      logDrawDebug(`export custom region mode format=${format}`);
+      return;
     }
 
+    // Full field — execute immediately
+    const bounds = screenshotApiRef.current?.getFieldWorldBounds?.();
     if (!bounds) {
       onShowMessage?.("Export failed", "Field bounds not available.", "error");
       setExportConfig(null);
-      setPreviewRegion(null);
       return;
     }
 
     if (format === "photo") {
-      capturePhoto(bounds, quality).then(() => { setExportConfig(null); setPreviewRegion(null); });
+      capturePhoto(bounds, quality).then(() => setExportConfig(null));
     } else {
-      recordVideoExport(bounds, durationSec, quality).then(() => { setExportConfig(null); setPreviewRegion(null); });
+      recordVideoExport(bounds, durationSec, quality).then(() => setExportConfig(null));
     }
-  }, [onShowMessage, capturePhoto, recordVideoExport, previewRegion]);
+  }, [onShowMessage, capturePhoto, recordVideoExport]);
 
   const handleScreenshotConfirm = useCallback(async () => {
     if (!screenshotRegion) {
       onShowMessage?.("Export failed", "No region selected.", "error");
       return;
     }
-
-    // If we came from the export modal Custom button, reopen modal with the region
-    if (exportConfig) {
-      setScreenshotMode(false);
-      setPreviewRegion(screenshotRegion);
-      setScreenshotRegion(null);
-      setExportModalOpen(true);
-      return;
-    }
-
-    // Legacy direct export path
+    const config = exportConfig || { format: "photo" };
     setScreenshotMode(false);
     setScreenshotRegion(null);
-    await capturePhoto(screenshotRegion, {});
-  }, [screenshotRegion, exportConfig, onShowMessage, capturePhoto]);
+
+    if (config.format === "video") {
+      await recordVideoExport(screenshotRegion, config.durationSec || 30, config.quality);
+    } else {
+      await capturePhoto(screenshotRegion, config.quality);
+    }
+    setExportConfig(null);
+  }, [screenshotRegion, exportConfig, onShowMessage, capturePhoto, recordVideoExport]);
 
   const handleScreenshotCancel = useCallback(() => {
     setScreenshotMode(false);
     setScreenshotRegion(null);
-    setPreviewRegion(null);
     setExportConfig(null);
     logDrawDebug("export region selection cancelled");
   }, []);
@@ -1338,13 +1238,8 @@ function Slate({ onShowMessage }) {
       <ExportModal
         open={exportModalOpen}
         initialFormat={exportInitialFormat}
-        onClose={() => { setExportModalOpen(false); setPreviewRegion(null); setExportConfig(null); }}
+        onClose={() => setExportModalOpen(false)}
         onExport={handleExportModalSubmit}
-        previewCanvasRef={previewCanvasRef}
-        onFormatChange={handlePreviewFormatChange}
-        onDurationChange={handlePreviewDurationChange}
-        onCustomRegionRequest={handleCustomRegionRequest}
-        hasCustomRegion={Boolean(previewRegion)}
       />
       <ExportOverlay
         visible={isExporting}
@@ -1437,7 +1332,6 @@ function Slate({ onShowMessage }) {
         advancedSettingsOpen={showAdvancedSettings}
         onOpenAdvancedSettings={() => setShowAdvancedSettings(true)}
         onSaveToPlaybook={onSaveToPlaybook}
-        onDownload={onDownload}
         onImport={handleImportClick}
         onScreenshot={handleScreenshotExportClick}
         onVideoExport={handleVideoExportClick}
@@ -1465,6 +1359,7 @@ function Slate({ onShowMessage }) {
           onCopyDebug={handleCopyDebug}
           onCopyDrawDebug={handleCopyDrawDebug}
           onCopyKeyToolDebug={handleCopyKeyToolDebug}
+          onDownload={onDownload}
           onClose={() => setShowAdvancedSettings(false)}
         />
       )}
