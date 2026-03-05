@@ -4,6 +4,7 @@ import { IoSaveOutline } from "react-icons/io5";
 
 export default function SelectedPlayersSection({
   selectedPlayerIds = [],
+  selectedItemIds = [],
   selectedPlayers = [],
   allPlayersDisplay,
   onAllPlayersDisplayChange,
@@ -20,6 +21,7 @@ export default function SelectedPlayersSection({
   );
 
   const [selectedForBulk, setSelectedForBulk] = useState(() => new Set(selectedPlayerIds));
+  const hasSelectedBall = (selectedItemIds || []).some((itemId) => String(itemId).startsWith("ball-"));
   const COLOR_OPTIONS = [
     { label: "Red", value: "#ef4444" },
     { label: "Blue", value: "#3b82f6" },
@@ -148,7 +150,7 @@ export default function SelectedPlayersSection({
         })}
       </div>
 
-      {selectedPlayerIds.length >= 2 && onSavePrefab && (
+      {(selectedPlayerIds.length >= 2 || (selectedPlayerIds.length >= 1 && hasSelectedBall)) && onSavePrefab && (
         <button
           type="button"
           onClick={onSavePrefab}

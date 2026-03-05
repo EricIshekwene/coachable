@@ -4,15 +4,19 @@ export default function LoggerSettingsSection({
   onCopyDebug,
   onCopyDrawDebug,
   onCopyKeyToolDebug,
+  onCopyPlaceBallDebug,
   onCopyVideoExportDebug,
+  onDebugRotate,
 }) {
   const [copyAnimationState, setCopyAnimationState] = useState("idle");
   const [copyDrawState, setCopyDrawState] = useState("idle");
   const [copyKeyToolState, setCopyKeyToolState] = useState("idle");
+  const [copyPlaceBallState, setCopyPlaceBallState] = useState("idle");
   const [copyVideoExportState, setCopyVideoExportState] = useState("idle");
   const copyAnimationResetRef = useRef(null);
   const copyDrawResetRef = useRef(null);
   const copyKeyToolResetRef = useRef(null);
+  const copyPlaceBallResetRef = useRef(null);
   const copyVideoExportResetRef = useRef(null);
 
   useEffect(
@@ -28,6 +32,10 @@ export default function LoggerSettingsSection({
       if (copyKeyToolResetRef.current) {
         clearTimeout(copyKeyToolResetRef.current);
         copyKeyToolResetRef.current = null;
+      }
+      if (copyPlaceBallResetRef.current) {
+        clearTimeout(copyPlaceBallResetRef.current);
+        copyPlaceBallResetRef.current = null;
       }
       if (copyVideoExportResetRef.current) {
         clearTimeout(copyVideoExportResetRef.current);
@@ -109,6 +117,24 @@ export default function LoggerSettingsSection({
     }, 1500);
   };
 
+  const handleCopyPlaceBallDebug = async (event) => {
+    event.stopPropagation();
+    if (!onCopyPlaceBallDebug) return;
+    try {
+      const ok = await onCopyPlaceBallDebug();
+      setCopyPlaceBallState(ok ? "copied" : "error");
+    } catch {
+      setCopyPlaceBallState("error");
+    }
+    if (copyPlaceBallResetRef.current) {
+      clearTimeout(copyPlaceBallResetRef.current);
+    }
+    copyPlaceBallResetRef.current = setTimeout(() => {
+      setCopyPlaceBallState("idle");
+      copyPlaceBallResetRef.current = null;
+    }, 1500);
+  };
+
   return (
     <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1 sm:gap-2">
       <div className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans">Debug Logs</div>
@@ -155,6 +181,27 @@ export default function LoggerSettingsSection({
           : copyVideoExportState === "error"
             ? "Copy Failed"
             : "Copy Video Export Debug"}
+      </button>
+      <button
+        type="button"
+        onClick={handleCopyPlaceBallDebug}
+        className="h-6 sm:h-7 w-full bg-BrandBlack2 border-[0.625px] border-BrandGray text-BrandOrange rounded-md px-2 text-[10px] sm:text-[11px] md:text-[12px] font-DmSans cursor-pointer"
+      >
+        {copyPlaceBallState === "copied"
+          ? "Copied"
+          : copyPlaceBallState === "error"
+            ? "Copy Failed"
+            : "Copy Place Ball Debug"}
+      </button>
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onDebugRotate?.();
+        }}
+        className="h-6 sm:h-7 w-full bg-BrandBlack2 border-[0.625px] border-BrandGray text-BrandOrange rounded-md px-2 text-[10px] sm:text-[11px] md:text-[12px] font-DmSans cursor-pointer"
+      >
+        Debug Rotate
       </button>
     </div>
   );

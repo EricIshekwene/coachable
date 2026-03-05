@@ -26,18 +26,38 @@ export function pointToSegmentDist(px, py, ax, ay, bx, by) {
  * Compute axis-aligned bounding box for a drawing, with optional strokeWidth padding.
  * Returns { x, y, width, height }.
  */
+export function getTextDrawingLayout(d) {
+  const fontSize = d?.fontSize || 18;
+  const text = d?.text || "";
+  const lines = text.split("\n");
+  const maxLineLen = Math.max(...lines.map((l) => l.length), 1);
+  const intrinsicWidth = maxLineLen * fontSize * 0.6;
+  const intrinsicHeight = lines.length * fontSize * 1.3;
+  const hasFixedWidth = Number.isFinite(d?.width) && d.width > 0;
+  const hasFixedHeight = Number.isFinite(d?.height) && d.height > 0;
+  const width = hasFixedWidth ? d.width : intrinsicWidth;
+  const height = hasFixedHeight ? d.height : intrinsicHeight;
+
+  // For point text (no explicit width), align is anchored at d.x.
+  let x = Number.isFinite(d?.x) ? d.x : 0;
+  if (!hasFixedWidth) {
+    if (d?.align === "center") x -= width / 2;
+    else if (d?.align === "right") x -= width;
+  }
+
+  return {
+    x,
+    y: Number.isFinite(d?.y) ? d.y : 0,
+    width,
+    height,
+    hasFixedWidth,
+  };
+}
+
 export function getDrawingWorldBounds(d) {
   if (d.type === "text") {
-    if (d.width && d.height) {
-      return { x: d.x, y: d.y, width: d.width, height: d.height };
-    }
-    const fontSize = d.fontSize || 18;
-    const text = d.text || "";
-    const lines = text.split("\n");
-    const maxLineLen = Math.max(...lines.map((l) => l.length), 1);
-    const w = maxLineLen * fontSize * 0.6;
-    const h = lines.length * fontSize * 1.3;
-    return { x: d.x, y: d.y, width: w, height: h };
+    const layout = getTextDrawingLayout(d);
+    return { x: layout.x, y: layout.y, width: layout.width, height: layout.height };
   }
   if (d.type === "shape") {
     if (d.shapeType === "custom" && d.points?.length >= 4) {

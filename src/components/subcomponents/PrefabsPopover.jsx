@@ -146,7 +146,7 @@ const PrefabItem = ({ prefab, onSelect, isOpen, onToggle, onClose, onDelete }) =
                     )}
                     {isCustom && prefab.players && (
                         <p className="text-BrandGray text-[10px] sm:text-xs truncate font-DmSans">
-                            {prefab.players.length} players
+                            {prefab.players.length} player{prefab.players.length !== 1 ? "s" : ""}{prefab.ball ? " + ball" : ""}
                         </p>
                     )}
                 </div>

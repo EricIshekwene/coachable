@@ -18,17 +18,20 @@ export function saveCustomPrefabs(prefabs) {
 }
 
 /**
- * Build a custom prefab from selected players.
- * Computes centroid and stores each player as offset from center.
+ * Build a custom prefab from selected players and optionally the ball.
+ * Computes centroid and stores each item as offset from center.
  * @param {string} label - User-provided name
  * @param {Object[]} players - Array of player objects {x, y, number, name, assignment, color}
+ * @param {Object|null} ball - Ball object {x, y} or null
  * @returns {Object} prefab object with relative offsets
  */
-export function buildCustomPrefab(label, players) {
-  const cx = players.reduce((s, p) => s + (p.x ?? 0), 0) / players.length;
-  const cy = players.reduce((s, p) => s + (p.y ?? 0), 0) / players.length;
+export function buildCustomPrefab(label, players, ball = null) {
+  // Include ball in centroid calculation if present
+  const allPoints = [...players, ...(ball ? [ball] : [])];
+  const cx = allPoints.reduce((s, p) => s + (p.x ?? 0), 0) / allPoints.length;
+  const cy = allPoints.reduce((s, p) => s + (p.y ?? 0), 0) / allPoints.length;
 
-  return {
+  const result = {
     id: `custom-${Date.now()}`,
     label,
     mode: "custom",
@@ -42,6 +45,15 @@ export function buildCustomPrefab(label, players) {
     })),
     createdAt: new Date().toISOString(),
   };
+
+  if (ball) {
+    result.ball = {
+      dx: (ball.x ?? 0) - cx,
+      dy: (ball.y ?? 0) - cy,
+    };
+  }
+
+  return result;
 }
 
 /** Delete a custom prefab by id. Returns updated array. */

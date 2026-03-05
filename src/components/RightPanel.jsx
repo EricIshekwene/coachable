@@ -79,6 +79,7 @@ export default function RightPanel({
   onDrawShapeTypeChange,
   onDrawShapeStrokeColorChange,
   onDrawShapeFillChange,
+  selectedItemIds,
   onSavePrefab,
 }) {
   return (
@@ -163,6 +164,7 @@ export default function RightPanel({
           {selectedPlayerIds?.length > 0 ? (
             <SelectedPlayersSection
               selectedPlayerIds={selectedPlayerIds}
+              selectedItemIds={selectedItemIds}
               selectedPlayers={selectedPlayers}
               allPlayersDisplay={allPlayersDisplay}
               onAllPlayersDisplayChange={onAllPlayersDisplayChange}

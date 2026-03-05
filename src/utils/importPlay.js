@@ -38,7 +38,7 @@ export const validatePlayImport = (input) => {
           name: "Imported Play",
           settings: {},
           canvas: {},
-          entities: { playersById: {}, representedPlayerIds: [], ball: null },
+          entities: { playersById: {}, representedPlayerIds: [], ball: null, ballsById: null },
           animation,
           playback: {},
           meta: {},
@@ -72,6 +72,18 @@ export const validatePlayImport = (input) => {
   const representedPlayerIds = Array.isArray(entities.representedPlayerIds)
     ? [...entities.representedPlayerIds]
     : Object.keys(playersById);
+  const importedBallsById = asObject(entities.ballsById);
+  const normalizedBallsById = importedBallsById
+    ? { ...importedBallsById }
+    : entities.ball && typeof entities.ball === "object"
+      ? {
+          [typeof entities.ball.id === "string" ? entities.ball.id : "ball-1"]: {
+            ...entities.ball,
+            id: typeof entities.ball.id === "string" ? entities.ball.id : "ball-1",
+          },
+        }
+      : null;
+  const primaryBall = entities.ball ?? (normalizedBallsById ? Object.values(normalizedBallsById)[0] : null);
 
   return {
     ok: true,
@@ -82,7 +94,8 @@ export const validatePlayImport = (input) => {
       entities: {
         playersById,
         representedPlayerIds,
-        ball: entities.ball ?? null,
+        ball: primaryBall ?? null,
+        ballsById: normalizedBallsById,
       },
       animation,
       drawings: Array.isArray(play.drawings) ? play.drawings : [],

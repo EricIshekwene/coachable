@@ -17,7 +17,9 @@ export default function AdvancedSettings({
     onCopyDebug,
     onCopyDrawDebug,
     onCopyKeyToolDebug,
+    onCopyPlaceBallDebug,
     onCopyVideoExportDebug,
+    onDebugRotate,
     onDownload,
 }) {
     const settings = value ?? {};
@@ -33,7 +35,6 @@ export default function AdvancedSettings({
     const updateBall = (patch) => update({ ball: { ...ball, ...patch } });
     const updateExportVideo = (patch) => update({ exportVideo: { ...exportVideo, ...patch } });
     const updateAnimation = (patch) => update({ animation: { ...animation, ...patch } });
-
     return (
         <div className="absolute right-0 top-0 h-screen z-50 flex flex-col">
             <aside
@@ -81,7 +82,9 @@ export default function AdvancedSettings({
                     onCopyDebug={onCopyDebug}
                     onCopyDrawDebug={onCopyDrawDebug}
                     onCopyKeyToolDebug={onCopyKeyToolDebug}
+                    onCopyPlaceBallDebug={onCopyPlaceBallDebug}
                     onCopyVideoExportDebug={onCopyVideoExportDebug}
+                    onDebugRotate={onDebugRotate}
                 />
                 <SavePrefabButton />
             </aside>

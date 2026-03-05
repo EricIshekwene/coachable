@@ -18,6 +18,7 @@ export const INITIAL_PLAYERS_BY_ID = {
 
 /** Initial ball object with default position. */
 export const INITIAL_BALL = { id: "ball-1", x: 40, y: 0 };
+export const INITIAL_BALLS_BY_ID = { [INITIAL_BALL.id]: { ...INITIAL_BALL } };
 
 const EMPTY_EDITOR = {
   open: false,
@@ -51,6 +52,51 @@ export const getNextPlayerId = (byId) => {
   return `player-${maxId + 1}`;
 };
 
+export const getNextBallId = (byId) => {
+  let maxId = 0;
+  Object.keys(byId || {}).forEach((id) => {
+    const match = id.match(/ball-(\d+)/);
+    if (match) {
+      const n = Number(match[1]);
+      if (!Number.isNaN(n)) maxId = Math.max(maxId, n);
+    }
+  });
+  return `ball-${maxId + 1}`;
+};
+
+const toFiniteNumber = (value, fallback = 0) => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+};
+
+const normalizeBall = (id, value) => ({
+  id: String(value?.id || id || INITIAL_BALL.id),
+  x: toFiniteNumber(value?.x, 0),
+  y: toFiniteNumber(value?.y, 0),
+});
+
+const cloneBallsById = (byId) =>
+  Object.fromEntries(
+    Object.entries(byId || {}).map(([id, value]) => {
+      const normalized = normalizeBall(id, value);
+      return [normalized.id, normalized];
+    })
+  );
+
+const getPrimaryBallId = (byId) => Object.keys(byId || {})[0] || null;
+
+const normalizeBallsSnapshot = ({ ballsById, ball } = {}) => {
+  const normalizedById = cloneBallsById(ballsById);
+  if (Object.keys(normalizedById).length) {
+    return normalizedById;
+  }
+  if (ball && typeof ball === "object") {
+    const normalized = normalizeBall(ball.id || INITIAL_BALL.id, ball);
+    return { [normalized.id]: normalized };
+  }
+  return cloneBallsById(INITIAL_BALLS_BY_ID);
+};
+
 const getRandomNearbyPosition = (base) => {
   const jitter = 30;
   const dx = (Math.random() * 2 - 1) * jitter;
@@ -59,7 +105,7 @@ const getRandomNearbyPosition = (base) => {
 };
 
 /**
- * Manages all slate entity state: players, ball, selection, drag, and editing.
+ * Manages all slate entity state: players, balls, selection, drag, and editing.
  * Provides CRUD handlers, snapshot/restore helpers, and multi-select support.
  * @param {Object} params
  * @param {React.MutableRefObject} params.historyApiRef - Ref to history API for undo/redo push.
@@ -74,15 +120,37 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
   const [currentPlayerColor, setCurrentPlayerColor] = useState(DEFAULT_PLAYER_COLOR);
   const [playerEditor, setPlayerEditor] = useState(EMPTY_EDITOR);
   const [allPlayersDisplay, setAllPlayersDisplay] = useState(() => DEFAULT_ALL_PLAYERS_DISPLAY);
-  const [ball, setBall] = useState(() => INITIAL_BALL);
+  const [ballsById, setBallsById] = useState(() => cloneBallsById(INITIAL_BALLS_BY_ID));
 
   const isRestoringRef = useRef(false);
   const isItemDraggingRef = useRef(false);
 
+  const ballIds = useMemo(() => Object.keys(ballsById || {}), [ballsById]);
+  const primaryBallId = useMemo(() => getPrimaryBallId(ballsById), [ballsById]);
+  const primaryBall = useMemo(() => {
+    if (primaryBallId && ballsById?.[primaryBallId]) return ballsById[primaryBallId];
+    return INITIAL_BALL;
+  }, [ballsById, primaryBallId]);
+
+  const setBall = (updater) => {
+    setBallsById((prev) => {
+      const next = cloneBallsById(prev);
+      const targetId = getPrimaryBallId(next) || INITIAL_BALL.id;
+      const base = next[targetId] || normalizeBall(targetId, INITIAL_BALL);
+      const resolved = typeof updater === "function" ? updater(base) : updater;
+      if (!resolved || typeof resolved !== "object") return next;
+      const normalized = normalizeBall(resolved.id || targetId, resolved);
+      if (normalized.id !== targetId) delete next[targetId];
+      next[normalized.id] = normalized;
+      return next;
+    });
+  };
+
   const snapshotSlate = () => ({
     playersById: { ...playersById },
     representedPlayerIds: [...representedPlayerIds],
-    ball: { ...ball },
+    ball: { ...primaryBall },
+    ballsById: cloneBallsById(ballsById),
   });
 
   const snapshotSlateState = () => ({
@@ -90,18 +158,20 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
       Object.entries(playersById || {}).map(([id, player]) => [id, { ...player }])
     ),
     representedPlayerIds: [...(representedPlayerIds || [])],
-    ball: { ...(ball || INITIAL_BALL) },
+    ball: { ...primaryBall },
+    ballsById: cloneBallsById(ballsById),
   });
 
   const applySlate = (snapshot) => {
     if (!snapshot) return;
+    const nextBallsById = normalizeBallsSnapshot(snapshot);
     isRestoringRef.current = true;
     setPlayersById(snapshot.playersById || {});
     setRepresentedPlayerIds(snapshot.representedPlayerIds || []);
-    setBall(snapshot.ball || INITIAL_BALL);
+    setBallsById(nextBallsById);
     setSelectedPlayerIds((prev) => (prev || []).filter((playerId) => snapshot.playersById?.[playerId]));
     setSelectedItemIds((prev) =>
-      (prev || []).filter((itemId) => snapshot.playersById?.[itemId] || itemId === snapshot.ball?.id)
+      (prev || []).filter((itemId) => snapshot.playersById?.[itemId] || nextBallsById?.[itemId])
     );
     isRestoringRef.current = false;
   };
@@ -253,9 +323,18 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
   };
 
   const handleDeleteSelected = () => {
-    if (!selectedPlayerIds?.length) return;
+    const selectedBallIds = (selectedItemIds || []).filter((itemId) => ballsById?.[itemId]);
+    const allBallIds = Object.keys(ballsById || {});
+    const canDeleteAllSelectedBalls = selectedBallIds.length < allBallIds.length;
+    const ballIdsToDelete = canDeleteAllSelectedBalls
+      ? selectedBallIds
+      : selectedBallIds.slice(1);
+    if (!selectedPlayerIds?.length && !ballIdsToDelete.length) return;
     historyApiRef.current?.pushHistory?.();
-    logEvent?.("slate", "deleteSelected", { ids: selectedPlayerIds });
+    logEvent?.("slate", "deleteSelected", {
+      playerIds: selectedPlayerIds,
+      ballIds: ballIdsToDelete,
+    });
     setPlayersById((prev) => {
       const next = { ...prev };
       selectedPlayerIds.forEach((id) => {
@@ -263,9 +342,20 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
       });
       return next;
     });
+    if (ballIdsToDelete.length) {
+      setBallsById((prev) => {
+        const next = cloneBallsById(prev);
+        ballIdsToDelete.forEach((id) => {
+          if (next[id]) delete next[id];
+        });
+        return next;
+      });
+    }
     setRepresentedPlayerIds((prev) => prev.filter((playerId) => !selectedPlayerIds.includes(playerId)));
     setSelectedPlayerIds([]);
-    setSelectedItemIds((prev) => (prev || []).filter((itemId) => !selectedPlayerIds.includes(itemId)));
+    setSelectedItemIds((prev) =>
+      (prev || []).filter((itemId) => !selectedPlayerIds.includes(itemId) && !ballIdsToDelete.includes(itemId))
+    );
     if (playerEditor.open && selectedPlayerIds.includes(playerEditor.id)) {
       handleCloseEditPlayer();
     }
@@ -305,6 +395,10 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
         }
         return [id];
       });
+      return;
+    }
+    if (mode !== "toggle") {
+      setSelectedPlayerIds([]);
     }
   };
 
@@ -324,58 +418,66 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
   };
 
   const handleItemChange = (id, next, meta) => {
+    const moveSelectedItemsByDelta = (dx, dy) => {
+      setPlayersById((prev) => {
+        const updated = { ...prev };
+        selectedItemIds.forEach((itemId) => {
+          const existing = updated[itemId];
+          if (!existing) return;
+          updated[itemId] = {
+            ...existing,
+            x: (existing.x ?? 0) + dx,
+            y: (existing.y ?? 0) + dy,
+          };
+        });
+        return updated;
+      });
+      setBallsById((prev) => {
+        const updated = cloneBallsById(prev);
+        selectedItemIds.forEach((itemId) => {
+          const existing = updated[itemId];
+          if (!existing) return;
+          updated[itemId] = {
+            ...existing,
+            x: (existing.x ?? 0) + dx,
+            y: (existing.y ?? 0) + dy,
+          };
+        });
+        return updated;
+      });
+    };
+
     if (meta?.delta) {
       logEvent?.("slate", "itemMove", { id, delta: meta.delta });
     }
     if (playersById[id]) {
       if (meta?.delta && selectedItemIds?.includes(id) && selectedItemIds.length > 1) {
         const { x: dx = 0, y: dy = 0 } = meta.delta || {};
-        setPlayersById((prev) => {
-          const updated = { ...prev };
-          selectedItemIds.forEach((itemId) => {
-            const existing = updated[itemId];
-            if (!existing) return;
-            updated[itemId] = {
-              ...existing,
-              x: (existing.x ?? 0) + dx,
-              y: (existing.y ?? 0) + dy,
-            };
-          });
-          return updated;
-        });
-        if (selectedItemIds.includes(ball.id)) {
-          setBall((prev) => ({ ...prev, x: (prev.x ?? 0) + dx, y: (prev.y ?? 0) + dy }));
-        }
+        moveSelectedItemsByDelta(dx, dy);
         return;
       }
       setPlayersById((prev) => ({ ...prev, [id]: { ...prev[id], ...next } }));
       return;
     }
-    if (id === ball.id) {
+    if (ballsById[id]) {
       if (meta?.delta && selectedItemIds?.includes(id) && selectedItemIds.length > 1) {
         const { x: dx = 0, y: dy = 0 } = meta.delta || {};
-        setPlayersById((prev) => {
-          const updated = { ...prev };
-          selectedItemIds.forEach((itemId) => {
-            const existing = updated[itemId];
-            if (!existing) return;
-            updated[itemId] = {
-              ...existing,
-              x: (existing.x ?? 0) + dx,
-              y: (existing.y ?? 0) + dy,
-            };
-          });
-          return updated;
-        });
-        setBall((prev) => ({ ...prev, x: (prev.x ?? 0) + dx, y: (prev.y ?? 0) + dy }));
+        moveSelectedItemsByDelta(dx, dy);
         return;
       }
-      setBall((prev) => ({ ...prev, ...next }));
+      setBallsById((prev) => ({
+        ...prev,
+        [id]: {
+          ...prev[id],
+          ...next,
+          id,
+        },
+      }));
     }
   };
 
   const onMarqueeSelect = (ids, { mode = "replace" } = {}) => {
-    const nextIds = (ids || []).filter((id) => playersById?.[id] || id === ball.id);
+    const nextIds = (ids || []).filter((id) => playersById?.[id] || ballsById?.[id]);
     if (mode === "add") {
       setSelectedItemIds((prev) => Array.from(new Set([...(prev || []), ...nextIds])));
       setSelectedPlayerIds((prev) =>
@@ -387,11 +489,39 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
     setSelectedPlayerIds(nextIds.filter((id) => playersById?.[id]));
   };
 
-  const loadEntitiesState = ({ nextPlayers, nextRepresented, nextBall }) => {
+  const handleAddBall = ({ x = 0, y = 0, id, select = true, source = "manual" } = {}) => {
+    let created = null;
+    setBallsById((prev) => {
+      const next = cloneBallsById(prev);
+      const requestedId =
+        typeof id === "string" && id.trim() !== "" && !next[id] ? id.trim() : null;
+      const nextId = requestedId || getNextBallId(next);
+      created = normalizeBall(nextId, { x, y });
+      next[created.id] = created;
+      return next;
+    });
+    if (select && created?.id) {
+      setSelectedPlayerIds([]);
+      setSelectedItemIds([created.id]);
+    }
+    logEvent?.("slate", "addBall", {
+      id: created?.id ?? null,
+      x: created?.x ?? 0,
+      y: created?.y ?? 0,
+      source,
+    });
+    return created;
+  };
+
+  const loadEntitiesState = ({ nextPlayers, nextRepresented, nextBall, nextBallsById }) => {
+    const normalizedBallsById = normalizeBallsSnapshot({
+      ballsById: nextBallsById,
+      ball: nextBall,
+    });
     isRestoringRef.current = true;
     setPlayersById(nextPlayers || {});
     setRepresentedPlayerIds(nextRepresented || []);
-    setBall(nextBall || INITIAL_BALL);
+    setBallsById(normalizedBallsById);
     setSelectedPlayerIds([]);
     setSelectedItemIds([]);
     setPlayerEditor(EMPTY_EDITOR);
@@ -402,7 +532,7 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
     isRestoringRef.current = true;
     setPlayersById(INITIAL_PLAYERS_BY_ID);
     setRepresentedPlayerIds(["player-1"]);
-    setBall(INITIAL_BALL);
+    setBallsById(cloneBallsById(INITIAL_BALLS_BY_ID));
     setSelectedPlayerIds([]);
     setSelectedItemIds([]);
     setPlayerEditor(EMPTY_EDITOR);
@@ -421,9 +551,14 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
         assignment: p.assignment,
         color: p.color || allPlayersDisplay.color,
       })),
-      { id: ball.id, type: "ball", x: ball.x, y: ball.y },
+      ...Object.values(ballsById || {}).map((ball) => ({
+        id: ball.id,
+        type: "ball",
+        x: ball.x,
+        y: ball.y,
+      })),
     ],
-    [playersById, allPlayersDisplay.color, ball]
+    [playersById, allPlayersDisplay.color, ballsById]
   );
 
   const selectedPlayers = useMemo(
@@ -446,8 +581,11 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
     setPlayerEditor,
     allPlayersDisplay,
     setAllPlayersDisplay,
-    ball,
+    ball: primaryBall,
     setBall,
+    ballIds,
+    ballsById,
+    setBallsById,
     items,
     selectedPlayers,
     isRestoringRef,
@@ -465,6 +603,7 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
     handleSaveEditPlayer,
     handleDeletePlayer,
     handleDeleteSelected,
+    handleAddBall,
     handleSelectPlayer,
     handleSelectItem,
     handleItemDragStart,

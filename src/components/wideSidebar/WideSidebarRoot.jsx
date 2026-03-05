@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { FaUsers } from "react-icons/fa";
+import { IoFootball } from "react-icons/io5";
 import rugbyScrum from "../../assets/prefabIcons/Rugby Scrum.png";
 import rugbyLineout from "../../assets/prefabIcons/Rugby Lineout.png";
 import rugbyKickoff from "../../assets/prefabIcons/Rugby KickOff.png";
@@ -12,8 +13,10 @@ import PlayerColorSection, { PLAYER_COLORS } from "../sidebar/PlayerColorSection
 import PrefabsSection from "../sidebar/PrefabsSection";
 import PresetSection from "../sidebar/PresetSection";
 import HistoryActionsSection from "../sidebar/HistoryActionsSection";
+import { WideSidebarRowButton } from "../subcomponents/Buttons";
 
 const iconClass = "text-BrandOrange text-xl sm:text-2xl md:text-3xl";
+const selectedIconClass = "text-BrandBlack text-xl sm:text-2xl md:text-3xl";
 
 const DEFAULT_PLAYERS = [
     "Tommy Kilbane", "Tristan Arndt", "Tommy Graham", "Trenton Bui", "Ty Johnson",
@@ -306,6 +309,14 @@ export default function WideSidebarRoot({
                 onHoverTooltip={setHoveredTooltip}
                 onAddPlayer={handleAddPlayer}
                 onQuickAdd={handleQuickAddPlayer}
+            />
+
+            <WideSidebarRowButton
+                Icon={<IoFootball className={selectedToolForUi === "addBall" ? selectedIconClass : iconClass} />}
+                label="Add Ball"
+                onHover={() => {}}
+                isSelected={selectedToolForUi === "addBall"}
+                onRowClick={() => setTool("addBall")}
             />
             {hr}
 

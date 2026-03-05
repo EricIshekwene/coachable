@@ -113,6 +113,7 @@ export function useFieldViewport() {
     camera,
     setCamera,
     fieldRotation,
+    setFieldRotation,
     zoomPercent,
     setZoomPercent,
     zoomIn,

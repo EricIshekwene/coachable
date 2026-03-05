@@ -31,6 +31,7 @@ import { getLogs as getAnimDebugLogs, log as logAnimDebug } from "../../animatio
 import { getLogs as getDrawDebugLogs, log as logDrawDebug } from "../../canvas/drawDebugLogger";
 import { getLogs as getKeyToolDebugLogs, log as logKeyToolDebug } from "../../canvas/keyboardToolDebugLogger";
 import { getLogs as getVideoExportDebugLogs, log as logVideoExport } from "../../utils/videoExportDebugLogger";
+import { getLogs as getPlaceBallDebugLogs, log as logPlaceBallDebug } from "./placeBallDebugLogger";
 import { useDrawings } from "./hooks/useDrawings";
 
 /**
@@ -120,7 +121,7 @@ function Slate({ onShowMessage }) {
   const drawingHookRef = useRef(null);
   const animationDataRef = useRef(animationData);
   const playersByIdRef = useRef({});
-  const ballRef = useRef(INITIAL_BALL);
+  const ballsByIdRef = useRef({ [INITIAL_BALL.id]: { ...INITIAL_BALL } });
   const representedPlayerIdsRef = useRef([]);
   const activeTrackIdsRef = useRef([]);
   const latestPosesRef = useRef({});
@@ -203,8 +204,8 @@ function Slate({ onShowMessage }) {
   }, [entities.playersById]);
 
   useEffect(() => {
-    ballRef.current = entities.ball ?? INITIAL_BALL;
-  }, [entities.ball]);
+    ballsByIdRef.current = entities.ballsById ?? { [INITIAL_BALL.id]: { ...INITIAL_BALL } };
+  }, [entities.ballsById]);
 
   useEffect(() => {
     representedPlayerIdsRef.current = entities.representedPlayerIds;
@@ -212,18 +213,16 @@ function Slate({ onShowMessage }) {
 
   const representedTrackIds = useMemo(() => {
     const ids = [...(entities.representedPlayerIds || [])];
-    const ballId = entities.ball?.id;
-    if (ballId) ids.push(ballId);
+    ids.push(...Object.keys(entities.ballsById || {}));
     return Array.from(new Set(ids));
-  }, [entities.representedPlayerIds, entities.ball?.id]);
+  }, [entities.representedPlayerIds, entities.ballsById]);
 
   const activeTrackIds = useMemo(() => {
-    const ballId = entities.ball?.id;
     const selectedTrackIds = (entities.selectedItemIds || []).filter(
-      (itemId) => Boolean(entities.playersById?.[itemId]) || itemId === ballId
+      (itemId) => Boolean(entities.playersById?.[itemId]) || Boolean(entities.ballsById?.[itemId])
     );
     return selectedTrackIds.length ? selectedTrackIds : representedTrackIds;
-  }, [entities.selectedItemIds, entities.playersById, entities.ball?.id, representedTrackIds]);
+  }, [entities.selectedItemIds, entities.playersById, entities.ballsById, representedTrackIds]);
 
   useEffect(() => {
     activeTrackIdsRef.current = activeTrackIds;
@@ -242,8 +241,9 @@ function Slate({ onShowMessage }) {
     if (player) {
       return { x: player.x ?? 0, y: player.y ?? 0, r: 0 };
     }
-    if (itemId === ballRef.current?.id) {
-      return { x: ballRef.current?.x ?? 0, y: ballRef.current?.y ?? 0, r: 0 };
+    const ball = ballsByIdRef.current?.[itemId];
+    if (ball) {
+      return { x: ball.x ?? 0, y: ball.y ?? 0, r: 0 };
     }
     return null;
   }, []);
@@ -251,17 +251,21 @@ function Slate({ onShowMessage }) {
   const renderPoseAtTime = useCallback((timeMs, options = {}) => {
     const flushRenderer = Boolean(options?.flushRenderer);
     const allPlayers = playersByIdRef.current || {};
+    const ballsById = ballsByIdRef.current || {};
     const represented = representedPlayerIdsRef.current || [];
-    const ball = ballRef.current;
     const baseIds = represented.length ? represented : Object.keys(allPlayers);
     const trackIds = Array.from(
-      new Set([...(baseIds || []), ...(ball?.id ? [ball.id] : [])])
+      new Set([...(baseIds || []), ...Object.keys(ballsById)])
     );
     const fallbackPoses = {};
 
     trackIds.forEach((itemId) => {
-      if (itemId === ball?.id) {
-        fallbackPoses[itemId] = { x: ball.x ?? 0, y: ball.y ?? 0, r: 0 };
+      if (ballsById[itemId]) {
+        fallbackPoses[itemId] = {
+          x: ballsById[itemId].x ?? 0,
+          y: ballsById[itemId].y ?? 0,
+          r: 0,
+        };
         return;
       }
       const player = allPlayers[itemId];
@@ -304,8 +308,8 @@ function Slate({ onShowMessage }) {
   useEffect(() => {
     setAnimationDataWithMeta((base) => {
       const playerIds = Object.keys(entities.playersById || {});
-      const ballId = entities.ball?.id;
-      const validIds = new Set([...playerIds, ...(ballId ? [ballId] : [])]);
+      const ballIds = Object.keys(entities.ballsById || {});
+      const validIds = new Set([...playerIds, ...ballIds]);
       const nextTracks = {};
       let changed = false;
 
@@ -326,7 +330,7 @@ function Slate({ onShowMessage }) {
       if (!changed) return null;
       return { ...base, tracks: nextTracks };
     });
-  }, [entities.playersById, entities.ball?.id, setAnimationDataWithMeta]);
+  }, [entities.playersById, entities.ballsById, setAnimationDataWithMeta]);
 
   useEffect(() => {
     if (entities.isItemDraggingRef.current) return;
@@ -334,7 +338,7 @@ function Slate({ onShowMessage }) {
   }, [
     animationData,
     entities.representedPlayerIds,
-    entities.ball?.id,
+    entities.ballsById,
     entities.isItemDraggingRef,
     renderPoseAtTime,
   ]);
@@ -395,6 +399,80 @@ function Slate({ onShowMessage }) {
   }, [speedMultiplier]);
 
 
+  const rotateEntitiesByDelta = useCallback((delta) => {
+    if (delta === 0) return;
+
+    historyApiRef.current?.pushHistory?.();
+
+    entities.setPlayersById((prev) => {
+      const updated = {};
+      for (const [id, player] of Object.entries(prev)) {
+        const { x, y } = rotatePoint(player.x ?? 0, player.y ?? 0, delta);
+        updated[id] = { ...player, x, y };
+      }
+      return updated;
+    });
+
+    entities.setBallsById((prev) => {
+      const next = { ...(prev || {}) };
+      Object.entries(next).forEach(([id, ball]) => {
+        const { x, y } = rotatePoint(ball?.x ?? 0, ball?.y ?? 0, delta);
+        next[id] = { ...ball, x, y };
+      });
+      return next;
+    });
+
+    setAnimationDataWithMeta((base) => {
+      const nextTracks = {};
+      let changed = false;
+      for (const [trackId, track] of Object.entries(base.tracks || {})) {
+        const nextKeyframes = (track.keyframes || []).map((kf) => {
+          const { x, y } = rotatePoint(kf.x ?? 0, kf.y ?? 0, delta);
+          changed = true;
+          return { ...kf, x, y };
+        });
+        nextTracks[trackId] = { ...track, keyframes: nextKeyframes };
+      }
+      if (!changed) return null;
+      return { ...base, tracks: nextTracks };
+    });
+  }, [entities.setPlayersById, entities.setBallsById, setAnimationDataWithMeta]);
+
+  const handleRotateLeft = useCallback(() => {
+    rotateEntitiesByDelta(-90);
+    fieldViewport.pushFieldHistory();
+    fieldViewport.setFieldRotation((prev) => prev - 90);
+  }, [rotateEntitiesByDelta, fieldViewport.pushFieldHistory, fieldViewport.setFieldRotation]);
+
+  const handleRotateCenter = useCallback(() => {
+    rotateEntitiesByDelta(180);
+    fieldViewport.pushFieldHistory();
+    fieldViewport.setFieldRotation((prev) => prev + 180);
+  }, [rotateEntitiesByDelta, fieldViewport.pushFieldHistory, fieldViewport.setFieldRotation]);
+
+  const handleRotateRight = useCallback(() => {
+    rotateEntitiesByDelta(90);
+    fieldViewport.pushFieldHistory();
+    fieldViewport.setFieldRotation((prev) => prev + 90);
+  }, [rotateEntitiesByDelta, fieldViewport.pushFieldHistory, fieldViewport.setFieldRotation]);
+
+  const handleDebugRotate = useCallback(() => {
+    const rotateOrder = [-90, 180, 90];
+    const current = fieldViewport.fieldRotation;
+    const currentIndex = rotateOrder.indexOf(current);
+    const nextRotation = currentIndex >= 0 ? rotateOrder[(currentIndex + 1) % rotateOrder.length] : 180;
+    logAnimDebug(`debugRotate current=${current} next=${nextRotation}`);
+    if (nextRotation === -90) {
+      handleRotateLeft();
+      return;
+    }
+    if (nextRotation === 180) {
+      handleRotateCenter();
+      return;
+    }
+    handleRotateRight();
+  }, [fieldViewport.fieldRotation, handleRotateCenter, handleRotateLeft, handleRotateRight]);
+
   const onReset = () => {
     logEvent("slate", "reset");
     logDrawDebug("reset slate+drawings");
@@ -433,6 +511,7 @@ function Slate({ onShowMessage }) {
       playersById: entities.playersById,
       representedPlayerIds: entities.representedPlayerIds,
       ball: entities.ball,
+      ballsById: entities.ballsById,
       animationData,
       playback: {
         speedMultiplier,
@@ -887,7 +966,7 @@ function Slate({ onShowMessage }) {
   const handleToolChange = useCallback((tool) => {
     logDrawDebug(`toolChange request=${tool}`);
     logKeyToolDebug(`toolChange request=${tool}`);
-    if (tool === "hand" || tool === "select" || tool === "pen" || tool === "addPlayer" || tool === "color" || tool === "prefab") {
+    if (tool === "hand" || tool === "select" || tool === "pen" || tool === "addPlayer" || tool === "addBall" || tool === "color" || tool === "prefab") {
       setCanvasTool((prev) => {
         if (prev === tool) {
           logKeyToolDebug(`toolChange noop current=${prev}`);
@@ -969,6 +1048,49 @@ function Slate({ onShowMessage }) {
     }
   }, [onShowMessage]);
 
+  const handleCopyPlaceBallDebug = useCallback(async () => {
+    const ballIds = Object.keys(entities.ballsById || {});
+    const placeBallLines = getPlaceBallDebugLogs(600);
+    const payloadParts = [
+      `[PLACEBALL] snapshot ${new Date().toISOString()}`,
+      JSON.stringify(
+        {
+          tool: canvasTool,
+          selectedItemIds: entities.selectedItemIds || [],
+          playerCount: Object.keys(entities.playersById || {}).length,
+          ballCount: ballIds.length,
+          ballIds,
+          balls: ballIds.map((id) => entities.ballsById[id]),
+        },
+        null,
+        2
+      ),
+      "",
+      ...(placeBallLines.length ? placeBallLines : ["[PLACEBALL] no logs captured yet"]),
+    ];
+    try {
+      await navigator.clipboard.writeText(payloadParts.join("\n"));
+      return true;
+    } catch (error) {
+      logPlaceBallDebug(`copyPlaceBallDebug failed err=${error?.message || "clipboard unavailable"}`);
+      onShowMessage("Copy place ball debug failed", "Clipboard access was denied.", "error");
+      return false;
+    }
+  }, [canvasTool, entities.ballsById, entities.playersById, entities.selectedItemIds, onShowMessage]);
+
+  const handleCanvasAddBall = useCallback(({ x, y }) => {
+    const existingBallIds = Object.keys(entities.ballsById || {});
+    logPlaceBallDebug(
+      `canvasAddBall click x=${Math.round(x)} y=${Math.round(y)} existingCount=${existingBallIds.length} existingIds=[${existingBallIds.join(",")}]`
+    );
+    historyApiRef.current?.pushHistory?.();
+    const created = entities.handleAddBall({ x, y, source: "canvasAddBall" });
+    logPlaceBallDebug(
+      `canvasAddBall created id=${created?.id || "unknown"} x=${Math.round(created?.x ?? x)} y=${Math.round(created?.y ?? y)} nextCount=${Object.keys(entities.ballsById || {}).length + 1}`
+    );
+    setCanvasTool("select");
+  }, [entities]);
+
   // --- Prefab handlers ---
 
   const handlePrefabSelect = useCallback((prefab) => {
@@ -978,7 +1100,7 @@ function Slate({ onShowMessage }) {
 
   const handleCanvasPlacePrefab = useCallback(({ x, y }) => {
     const prefab = pendingPrefabRef.current;
-    if (!prefab?.players?.length) return;
+    if (!prefab?.players?.length && !prefab?.ball) return;
 
     historyApiRef.current?.pushHistory?.();
 
@@ -986,16 +1108,36 @@ function Slate({ onShowMessage }) {
     let currentRepresented = [...(entities.representedPlayerIds || [])];
     const newIds = [];
 
-    prefab.players.forEach((p) => {
+    // Build a set of taken numbers per color for dedup
+    const takenByColor = {};
+    Object.values(currentById).forEach((p) => {
+      const c = (p.color ?? "#ef4444").toLowerCase();
+      if (!takenByColor[c]) takenByColor[c] = new Set();
+      const n = Number(p.number);
+      if (!Number.isNaN(n)) takenByColor[c].add(n);
+    });
+
+    const getNextAvailableNumber = (color, desiredNumber) => {
+      const c = (color ?? "#ef4444").toLowerCase();
+      if (!takenByColor[c]) takenByColor[c] = new Set();
+      let num = Number(desiredNumber);
+      if (Number.isNaN(num)) num = 1;
+      while (takenByColor[c].has(num)) num++;
+      takenByColor[c].add(num);
+      return num;
+    };
+
+    (prefab.players || []).forEach((p) => {
       const newId = getNextPlayerId(currentById);
+      const color = p.color ?? "#ef4444";
       currentById[newId] = {
         id: newId,
         x: x + (p.dx ?? 0),
         y: y + (p.dy ?? 0),
-        number: p.number,
+        number: getNextAvailableNumber(color, p.number),
         name: p.name ?? "",
         assignment: p.assignment ?? "",
-        color: p.color ?? "#ef4444",
+        color,
       };
       currentRepresented.push(newId);
       newIds.push(newId);
@@ -1003,22 +1145,58 @@ function Slate({ onShowMessage }) {
 
     entities.setPlayersById(currentById);
     entities.setRepresentedPlayerIds(currentRepresented);
-    entities.setSelectedPlayerIds(newIds);
+
+    // Place ball if prefab includes one
+    if (prefab.ball) {
+      const createdBall = entities.handleAddBall({
+        x: x + (prefab.ball.dx ?? 0),
+        y: y + (prefab.ball.dy ?? 0),
+        select: false,
+        source: "prefab",
+      });
+      if (createdBall?.id) {
+        newIds.push(createdBall.id);
+      }
+      logPlaceBallDebug(
+        `prefabPlace ballAdded id=${createdBall?.id || "unknown"} x=${Math.round(
+          createdBall?.x ?? (x + (prefab.ball.dx ?? 0))
+        )} y=${Math.round(createdBall?.y ?? (y + (prefab.ball.dy ?? 0)))}`
+      );
+    }
+
     entities.setSelectedItemIds(newIds);
+    entities.setSelectedPlayerIds(newIds.filter((id) => Boolean(currentById[id])));
+
+    // One-shot: return to select tool after placing
+    pendingPrefabRef.current = null;
+    setCanvasTool("select");
   }, [entities]);
 
   const handleSavePrefab = useCallback((name) => {
     const selectedPlayers = (entities.selectedPlayerIds || [])
       .map((id) => entities.playersById[id])
       .filter(Boolean);
-    if (selectedPlayers.length < 2) return;
-    const prefab = buildCustomPrefab(name, selectedPlayers);
+    const selectedBallId = (entities.selectedItemIds || []).find((id) => entities.ballsById?.[id]);
+    const ball = selectedBallId ? entities.ballsById[selectedBallId] : null;
+    const ballSelected = Boolean(ball);
+    if (selectedPlayers.length < 2 && !ballSelected) return;
+    const prefab = buildCustomPrefab(name, selectedPlayers, ball);
     const updated = [...customPrefabs, prefab];
     saveCustomPrefabs(updated);
     setCustomPrefabs(updated);
     setSavePrefabModalOpen(false);
-    onShowMessage?.("Prefab saved", `"${name}" saved with ${selectedPlayers.length} players`, "success");
-  }, [entities.selectedPlayerIds, entities.playersById, customPrefabs, onShowMessage]);
+    const parts = [];
+    if (selectedPlayers.length) parts.push(`${selectedPlayers.length} player${selectedPlayers.length > 1 ? "s" : ""}`);
+    if (ballSelected) parts.push("ball");
+    onShowMessage?.("Prefab saved", `"${name}" saved with ${parts.join(" + ")}`, "success");
+  }, [
+    entities.selectedPlayerIds,
+    entities.selectedItemIds,
+    entities.playersById,
+    entities.ballsById,
+    customPrefabs,
+    onShowMessage,
+  ]);
 
   const handleDeleteCustomPrefab = useCallback((id) => {
     const updated = deleteCustomPrefab(id);
@@ -1109,10 +1287,10 @@ function Slate({ onShowMessage }) {
       setAnimationDataWithMeta((base) => {
         const nextTracks = { ...base.tracks };
         let changed = false;
-        const ballId = ballRef.current?.id;
+        const ballsById = ballsByIdRef.current || {};
 
         uniqueIds.forEach((itemId) => {
-          if (!playersByIdRef.current?.[itemId] && itemId !== ballId) return;
+          if (!playersByIdRef.current?.[itemId] && !ballsById[itemId]) return;
           const pose = resolveTrackPose(itemId);
           if (!pose) return;
           nextTracks[itemId] = upsertKeyframe(nextTracks[itemId], {
@@ -1147,15 +1325,15 @@ function Slate({ onShowMessage }) {
       entities.handleItemDragEnd(id);
       if (engineRef.current.isPlaying()) return;
 
-      const ballId = ballRef.current?.id;
+      const ballsById = ballsByIdRef.current || {};
       const selectedIds = entities.selectedItemIds || [];
       const selectedTrackIds = selectedIds.filter(
-        (itemId) => Boolean(playersByIdRef.current?.[itemId]) || itemId === ballId
+        (itemId) => Boolean(playersByIdRef.current?.[itemId]) || Boolean(ballsById[itemId])
       );
       const targetTrackIds =
         selectedTrackIds.length && selectedTrackIds.includes(id)
           ? selectedTrackIds
-          : playersByIdRef.current?.[id] || id === ballId
+          : playersByIdRef.current?.[id] || ballsById[id]
             ? [id]
             : [];
       upsertKeyframesAtCurrentTime(targetTrackIds, { source: "dragEnd" });
@@ -1167,8 +1345,8 @@ function Slate({ onShowMessage }) {
     (id, next, meta) => {
       entities.handleItemChange(id, next, meta);
 
-      const ballId = ballRef.current?.id;
-      const isTrackable = Boolean(playersByIdRef.current?.[id]) || id === ballId;
+      const ballsById = ballsByIdRef.current || {};
+      const isTrackable = Boolean(playersByIdRef.current?.[id]) || Boolean(ballsById[id]);
       if (!isTrackable) return;
       const patch = {};
 
@@ -1178,7 +1356,7 @@ function Slate({ onShowMessage }) {
         entities.selectedItemIds.length > 1
       ) {
         entities.selectedItemIds.forEach((itemId) => {
-          const selectedTrackable = Boolean(playersByIdRef.current?.[itemId]) || itemId === ballId;
+          const selectedTrackable = Boolean(playersByIdRef.current?.[itemId]) || Boolean(ballsById[itemId]);
           if (!selectedTrackable) return;
           const currentPose = resolveTrackPose(itemId);
           if (!currentPose) return;
@@ -1214,6 +1392,7 @@ function Slate({ onShowMessage }) {
       const nextPlayers = play.entities?.playersById || {};
       const nextRepresented = play.entities?.representedPlayerIds || Object.keys(nextPlayers);
       const nextBall = play.entities?.ball ?? INITIAL_BALL;
+      const nextBallsById = play.entities?.ballsById ?? null;
       const nextCamera = play.canvas?.camera ?? { x: 0, y: 0, zoom: 1 };
       const nextFieldRotation = play.canvas?.fieldRotation ?? 0;
       const nextSettings = play.settings?.advancedSettings ?? DEFAULT_ADVANCED_SETTINGS;
@@ -1246,6 +1425,7 @@ function Slate({ onShowMessage }) {
         nextPlayers,
         nextRepresented,
         nextBall,
+        nextBallsById,
       });
       fieldViewport.loadFieldViewport({ nextCamera, nextFieldRotation });
       slateHistory.clearSlateHistory();
@@ -1382,7 +1562,7 @@ function Slate({ onShowMessage }) {
         return;
       }
 
-      if (!entities.selectedPlayerIds?.length) return;
+      if (!entities.selectedItemIds?.length) return;
       e.preventDefault();
       entities.handleDeleteSelected();
       setSelectedKeyframeMs(null);
@@ -1422,6 +1602,7 @@ function Slate({ onShowMessage }) {
           onItemDragStart={handleItemDragStart}
           onItemDragEnd={handleItemDragEnd}
           onCanvasAddPlayer={entities.handleCanvasAddPlayer}
+          onCanvasAddBall={handleCanvasAddBall}
           onCanvasPlacePrefab={handleCanvasPlacePrefab}
           selectedPlayerIds={entities.selectedPlayerIds}
           selectedItemIds={entities.selectedItemIds}
@@ -1500,7 +1681,7 @@ function Slate({ onShowMessage }) {
         isPlaying={isPlaying}
         speedMultiplier={speedMultiplier}
         autoplayEnabled={autoplayEnabled}
-        selectedObjectCount={entities.selectedPlayerIds?.length ?? 0}
+        selectedObjectCount={entities.selectedItemIds?.length ?? 0}
         keyframesMs={visibleKeyframesMs}
         selectedKeyframeMs={selectedKeyframeMs}
         onSeek={seekTimeline}
@@ -1556,15 +1737,16 @@ function Slate({ onShowMessage }) {
         onZoomIn={fieldViewport.zoomIn}
         onZoomOut={fieldViewport.zoomOut}
         onZoomPercentChange={fieldViewport.setZoomPercent}
-        onRotateLeft={fieldViewport.onRotateLeft}
-        onRotateCenter={fieldViewport.onRotateCenter}
-        onRotateRight={fieldViewport.onRotateRight}
+        onRotateLeft={handleRotateLeft}
+        onRotateCenter={handleRotateCenter}
+        onRotateRight={handleRotateRight}
         onFieldUndo={fieldViewport.onFieldUndo}
         onFieldRedo={fieldViewport.onFieldRedo}
         onReset={onReset}
         playersById={entities.playersById}
         representedPlayerIds={entities.representedPlayerIds}
         selectedPlayerIds={entities.selectedPlayerIds}
+        selectedItemIds={entities.selectedItemIds}
         selectedPlayers={entities.selectedPlayers}
         onSelectPlayer={entities.handleSelectPlayer}
         onEditPlayer={entities.handleEditPlayer}
@@ -1603,7 +1785,9 @@ function Slate({ onShowMessage }) {
           onCopyDebug={handleCopyDebug}
           onCopyDrawDebug={handleCopyDrawDebug}
           onCopyKeyToolDebug={handleCopyKeyToolDebug}
+          onCopyPlaceBallDebug={handleCopyPlaceBallDebug}
           onCopyVideoExportDebug={handleCopyVideoExportDebug}
+          onDebugRotate={handleDebugRotate}
           onDownload={onDownload}
           onClose={() => setShowAdvancedSettings(false)}
         />

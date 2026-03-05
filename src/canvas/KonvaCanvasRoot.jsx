@@ -6,6 +6,7 @@ import { useCanvasDrawing } from "./hooks/useCanvasDrawing";
 import { useDrawingSelection } from "./hooks/useDrawingSelection";
 import {
   getDrawingWorldBounds,
+  getTextDrawingLayout,
   getTrianglePoints,
   getResizeHandles,
   hitTestHandle,
@@ -77,6 +78,7 @@ function KonvaCanvasRoot({
   onItemDragStart,
   onItemDragEnd,
   onCanvasAddPlayer,
+  onCanvasAddBall,
   onCanvasPlacePrefab,
   onMarqueeSelect,
   selectedPlayerIds,
@@ -657,7 +659,7 @@ function KonvaCanvasRoot({
     const evt = e.evt;
     const isMiddleMouse = evt?.button === 1;
     const isPrimaryButton = evt?.button === 0 || evt?.button === undefined;
-    const isAddTool = tool === "addPlayer" || tool === "color";
+    const isAddTool = tool === "addPlayer" || tool === "color" || tool === "addBall";
     const stage = stageRef.current;
     const target = e.target;
 
@@ -703,7 +705,11 @@ function KonvaCanvasRoot({
       const pointer = stage?.getPointerPosition?.();
       if (!pointer) return;
       const world = toWorldCoords(pointer);
-      onCanvasAddPlayer?.({ x: world.x, y: world.y, source: tool });
+      if (tool === "addBall") {
+        onCanvasAddBall?.({ x: world.x, y: world.y });
+      } else {
+        onCanvasAddPlayer?.({ x: world.x, y: world.y, source: tool });
+      }
       return;
     }
 
@@ -1298,20 +1304,21 @@ function KonvaCanvasRoot({
     }
     if (d.type === "text") {
       const isTextSelected = selectedDrawingIds.includes(d.id);
+      const textLayout = getTextDrawingLayout(d);
       return (
         <React.Fragment key={key}>
           <Text
-            x={d.x}
-            y={d.y}
+            x={textLayout.x}
+            y={textLayout.y}
             rotation={d.rotation || 0}
             text={d.text || ""}
             fill={d.color || "#FFFFFF"}
             fontSize={d.fontSize || 18}
             fontFamily="DmSans"
             align={d.align || "left"}
-            width={d.width || undefined}
-            wrap={d.width ? "word" : "none"}
-            padding={d.width ? 4 : 0}
+            width={textLayout.width}
+            wrap={textLayout.hasFixedWidth ? "word" : "none"}
+            padding={textLayout.hasFixedWidth ? 4 : 0}
             opacity={opacity}
             listening={false}
           />
