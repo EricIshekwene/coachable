@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { IoChevronDownOutline } from "react-icons/io5";
+import { FaTrash } from "react-icons/fa";
 
 // Dropdown Item Component (matches Add Player dropdown styling)
 const DropdownItem = ({ dropdown }) => {
@@ -66,11 +67,12 @@ const DropdownItem = ({ dropdown }) => {
 };
 
 // Individual Prefab Item Component
-const PrefabItem = ({ prefab, onSelect, isOpen, onToggle, onClose }) => {
+const PrefabItem = ({ prefab, onSelect, isOpen, onToggle, onClose, onDelete }) => {
     const prefabRef = useRef(null);
     const dropdownRef = useRef(null);
 
     const hasDropdowns = prefab.dropdowns && prefab.dropdowns.length > 0;
+    const isCustom = !!prefab.isCustom;
 
     useEffect(() => {
         if (!isOpen) return;
@@ -94,6 +96,11 @@ const PrefabItem = ({ prefab, onSelect, isOpen, onToggle, onClose }) => {
         e.stopPropagation();
         if (!hasDropdowns) return;
         onToggle();
+    };
+
+    const handleDeleteClick = (e) => {
+        e.stopPropagation();
+        onDelete?.(prefab.id);
     };
 
     return (
@@ -137,12 +144,26 @@ const PrefabItem = ({ prefab, onSelect, isOpen, onToggle, onClose }) => {
                             {prefab.subLabel}
                         </p>
                     )}
+                    {isCustom && prefab.players && (
+                        <p className="text-BrandGray text-[10px] sm:text-xs truncate font-DmSans">
+                            {prefab.players.length} players
+                        </p>
+                    )}
                 </div>
 
-                {/* Chevron (always shown) */}
-                <button
-                    onClick={handleChevronClick}
-                    className={`
+                {/* Delete button for custom prefabs, Chevron for built-in */}
+                {isCustom ? (
+                    <button
+                        onClick={handleDeleteClick}
+                        className="w-8 h-8 shrink-0 flex items-center justify-center rounded-md border-[0.5px] border-BrandGray bg-BrandBlack transition-colors hover:bg-red-900/40 hover:border-red-500/40"
+                        aria-label="Delete prefab"
+                    >
+                        <FaTrash className="text-red-400 text-xs" />
+                    </button>
+                ) : (
+                    <button
+                        onClick={handleChevronClick}
+                        className={`
                                   w-8 h-8 shrink-0
                                   flex items-center justify-center rounded-md
                                   border-[0.5px] border-BrandGray
@@ -150,15 +171,16 @@ const PrefabItem = ({ prefab, onSelect, isOpen, onToggle, onClose }) => {
                                   transition-colors
                                   ${hasDropdowns ? "hover:bg-BrandBlack/80" : "opacity-40 cursor-not-allowed"}
                                 `}
-                    aria-label="Prefab options"
-                >
-                    <IoChevronDownOutline
-                        className={`
+                        aria-label="Prefab options"
+                    >
+                        <IoChevronDownOutline
+                            className={`
               text-base transition-transform
               ${isOpen ? "rotate-180 text-BrandOrange" : "text-BrandOrange/80"}
             `}
-                    />
-                </button>
+                        />
+                    </button>
+                )}
             </div>
 
             {/* Dropdown popover */}
@@ -167,7 +189,7 @@ const PrefabItem = ({ prefab, onSelect, isOpen, onToggle, onClose }) => {
                     ref={dropdownRef}
                     className="
             absolute left-full ml-5 top-0 z-50
-            bg-BrandBlack 
+            bg-BrandBlack
             rounded-md p-3 shadow-lg
             min-w-[200px]
           "
@@ -184,14 +206,20 @@ const PrefabItem = ({ prefab, onSelect, isOpen, onToggle, onClose }) => {
     );
 };
 
+const MODE_TABS = [
+    { key: "offense", label: "Offense" },
+    { key: "defense", label: "Defense" },
+    { key: "custom", label: "Custom" },
+];
+
 // Main Prefabs Popover Component
-export const PrefabsPopover = ({ prefabs = [], onPrefabSelect }) => {
+export const PrefabsPopover = ({ prefabs = [], onPrefabSelect, onDeleteCustomPrefab }) => {
     const [mode, setMode] = useState("offense");
     const [openPrefabId, setOpenPrefabId] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
 
     const filteredPrefabs = prefabs.filter((p) => {
-        const matchesMode = p.mode === mode || !p.mode;
+        const matchesMode = p.mode === mode || (!p.mode && mode !== "custom");
         const matchesSearch = searchQuery === "" ||
             p.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (p.subLabel && p.subLabel.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -205,7 +233,7 @@ export const PrefabsPopover = ({ prefabs = [], onPrefabSelect }) => {
         <div
             className="
         ml-2 rounded-md
-        bg-BrandBlack 
+        bg-BrandBlack
         p-3 sm:p-4
         w-[260px]
         shadow-lg
@@ -215,24 +243,18 @@ export const PrefabsPopover = ({ prefabs = [], onPrefabSelect }) => {
             {/* Toggle pill */}
             <div className="flex items-center justify-center">
                 <div className="flex bg-BrandBlack2 rounded-full p-1 border-[0.5px] border-BrandGray font-DmSans">
-                    <button
-                        onClick={() => { setMode("offense"); setOpenPrefabId(null); }}
-                        className={`
-              px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition-all font-DmSans
-              ${mode === "offense" ? "bg-BrandOrange text-BrandBlack" : "text-BrandGray hover:text-BrandWhite"}
-            `}
-                    >
-                        Offense
-                    </button>
-                    <button
-                        onClick={() => { setMode("defense"); setOpenPrefabId(null); }}
-                        className={`
-              px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition-all font-DmSans
-              ${mode === "defense" ? "bg-BrandOrange text-BrandBlack" : "text-BrandGray hover:text-BrandWhite"}
-            `}
-                    >
-                        Defense
-                    </button>
+                    {MODE_TABS.map((tab) => (
+                        <button
+                            key={tab.key}
+                            onClick={() => { setMode(tab.key); setOpenPrefabId(null); }}
+                            className={`
+                px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition-all font-DmSans
+                ${mode === tab.key ? "bg-BrandOrange text-BrandBlack" : "text-BrandGray hover:text-BrandWhite"}
+              `}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
                 </div>
             </div>
 
@@ -260,12 +282,17 @@ export const PrefabsPopover = ({ prefabs = [], onPrefabSelect }) => {
                                 isOpen={openPrefabId === id}
                                 onToggle={() => handlePrefabToggle(id)}
                                 onClose={handlePrefabClose}
+                                onDelete={onDeleteCustomPrefab}
                             />
                         );
                     })
                 ) : (
                     <div className="text-BrandGray text-xs text-center py-4">
-                        {searchQuery ? "No prefabs found" : "No prefabs available"}
+                        {searchQuery
+                            ? "No prefabs found"
+                            : mode === "custom"
+                                ? "No custom prefabs saved yet"
+                                : "No prefabs available"}
                     </div>
                 )}
             </div>

@@ -11,9 +11,12 @@ import ScreenshotConfirmBar from "../../components/ScreenshotConfirmBar";
 import ExportModal from "../../components/ExportModal";
 import ExportOverlay from "../../components/ExportOverlay";
 import { IMPORT_FILE_SIZE_LIMIT_BYTES, validatePlayImport } from "../../utils/importPlay";
+import { rotatePoint } from "../../utils/rotatePoint";
 import { DEFAULT_ADVANCED_SETTINGS, useAdvancedSettings } from "./hooks/useAdvancedSettings";
 import { useFieldViewport } from "./hooks/useFieldViewport";
-import { INITIAL_BALL, useSlateEntities } from "./hooks/useSlateEntities";
+import { INITIAL_BALL, useSlateEntities, getNextPlayerId } from "./hooks/useSlateEntities";
+import SavePrefabModal from "../../components/SavePrefabModal";
+import { loadCustomPrefabs, saveCustomPrefabs, buildCustomPrefab, deleteCustomPrefab } from "../../utils/customPrefabs";
 import { useSlateHistory } from "./hooks/useSlateHistory";
 import {
   AnimationEngine,
@@ -99,6 +102,9 @@ function Slate({ onShowMessage }) {
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState(null);
   const [playName, setPlayName] = useState("Name");
+  const [customPrefabs, setCustomPrefabs] = useState(() => loadCustomPrefabs());
+  const [savePrefabModalOpen, setSavePrefabModalOpen] = useState(false);
+  const pendingPrefabRef = useRef(null);
   const [speedMultiplier, setSpeedMultiplier] = useState(DEFAULT_SPEED_MULTIPLIER);
   const [autoplayEnabled, setAutoplayEnabled] = useState(true);
   const [selectedKeyframeMs, setSelectedKeyframeMs] = useState(null);
@@ -881,7 +887,7 @@ function Slate({ onShowMessage }) {
   const handleToolChange = useCallback((tool) => {
     logDrawDebug(`toolChange request=${tool}`);
     logKeyToolDebug(`toolChange request=${tool}`);
-    if (tool === "hand" || tool === "select" || tool === "pen" || tool === "addPlayer" || tool === "color") {
+    if (tool === "hand" || tool === "select" || tool === "pen" || tool === "addPlayer" || tool === "color" || tool === "prefab") {
       setCanvasTool((prev) => {
         if (prev === tool) {
           logKeyToolDebug(`toolChange noop current=${prev}`);
@@ -889,6 +895,9 @@ function Slate({ onShowMessage }) {
         }
         logDrawDebug(`toolChange applied prev=${prev} next=${tool}`);
         logKeyToolDebug(`toolChange applied prev=${prev} next=${tool}`);
+        if (prev === "prefab" && tool !== "prefab") {
+          pendingPrefabRef.current = null;
+        }
         return tool;
       });
       setSelectedDrawingIds([]);
@@ -959,6 +968,62 @@ function Slate({ onShowMessage }) {
       return false;
     }
   }, [onShowMessage]);
+
+  // --- Prefab handlers ---
+
+  const handlePrefabSelect = useCallback((prefab) => {
+    pendingPrefabRef.current = prefab;
+    setCanvasTool("prefab");
+  }, []);
+
+  const handleCanvasPlacePrefab = useCallback(({ x, y }) => {
+    const prefab = pendingPrefabRef.current;
+    if (!prefab?.players?.length) return;
+
+    historyApiRef.current?.pushHistory?.();
+
+    let currentById = { ...entities.playersById };
+    let currentRepresented = [...(entities.representedPlayerIds || [])];
+    const newIds = [];
+
+    prefab.players.forEach((p) => {
+      const newId = getNextPlayerId(currentById);
+      currentById[newId] = {
+        id: newId,
+        x: x + (p.dx ?? 0),
+        y: y + (p.dy ?? 0),
+        number: p.number,
+        name: p.name ?? "",
+        assignment: p.assignment ?? "",
+        color: p.color ?? "#ef4444",
+      };
+      currentRepresented.push(newId);
+      newIds.push(newId);
+    });
+
+    entities.setPlayersById(currentById);
+    entities.setRepresentedPlayerIds(currentRepresented);
+    entities.setSelectedPlayerIds(newIds);
+    entities.setSelectedItemIds(newIds);
+  }, [entities]);
+
+  const handleSavePrefab = useCallback((name) => {
+    const selectedPlayers = (entities.selectedPlayerIds || [])
+      .map((id) => entities.playersById[id])
+      .filter(Boolean);
+    if (selectedPlayers.length < 2) return;
+    const prefab = buildCustomPrefab(name, selectedPlayers);
+    const updated = [...customPrefabs, prefab];
+    saveCustomPrefabs(updated);
+    setCustomPrefabs(updated);
+    setSavePrefabModalOpen(false);
+    onShowMessage?.("Prefab saved", `"${name}" saved with ${selectedPlayers.length} players`, "success");
+  }, [entities.selectedPlayerIds, entities.playersById, customPrefabs, onShowMessage]);
+
+  const handleDeleteCustomPrefab = useCallback((id) => {
+    const updated = deleteCustomPrefab(id);
+    setCustomPrefabs(updated);
+  }, []);
 
   const seekTimeline = useCallback((timeMs, meta = {}) => {
     const source = typeof meta?.source === "string" ? meta.source : "engine";
@@ -1341,6 +1406,9 @@ function Slate({ onShowMessage }) {
         onAddPlayer={entities.handleAddPlayer}
         onPlayerColorChange={entities.handlePlayerColorChange}
         onDeleteSelected={entities.handleDeleteSelected}
+        onPrefabSelect={handlePrefabSelect}
+        onDeleteCustomPrefab={handleDeleteCustomPrefab}
+        customPrefabs={customPrefabs}
       />
       <div className="flex-1 flex relative">
         <KonvaCanvasRoot
@@ -1354,6 +1422,7 @@ function Slate({ onShowMessage }) {
           onItemDragStart={handleItemDragStart}
           onItemDragEnd={handleItemDragEnd}
           onCanvasAddPlayer={entities.handleCanvasAddPlayer}
+          onCanvasPlacePrefab={handleCanvasPlacePrefab}
           selectedPlayerIds={entities.selectedPlayerIds}
           selectedItemIds={entities.selectedItemIds}
           onSelectItem={entities.handleSelectItem}
@@ -1407,6 +1476,11 @@ function Slate({ onShowMessage }) {
         initialFormat={exportInitialFormat}
         onClose={() => setExportModalOpen(false)}
         onExport={handleExportModalSubmit}
+      />
+      <SavePrefabModal
+        open={savePrefabModalOpen}
+        onClose={() => setSavePrefabModalOpen(false)}
+        onSave={handleSavePrefab}
       />
       <ExportOverlay
         visible={isExporting || !!exportError}
@@ -1504,6 +1578,7 @@ function Slate({ onShowMessage }) {
         onImport={handleImportClick}
         onScreenshot={handleScreenshotExportClick}
         onVideoExport={handleVideoExportClick}
+        onSavePrefab={() => setSavePrefabModalOpen(true)}
       />
       <input
         ref={importInputRef}

@@ -1,5 +1,6 @@
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { FaUsers } from "react-icons/fa";
 import rugbyScrum from "../../assets/prefabIcons/Rugby Scrum.png";
 import rugbyLineout from "../../assets/prefabIcons/Rugby Lineout.png";
 import rugbyKickoff from "../../assets/prefabIcons/Rugby KickOff.png";
@@ -85,9 +86,11 @@ export default function WideSidebarRoot({
     onReset,
     onDeleteSelected,
     onPrefabSelect,
+    onDeleteCustomPrefab,
     onAddPlayer,
     players: playersProp,
     prefabs: prefabsProp,
+    customPrefabs,
 }) {
     const [selectedTool, setSelectedTool] = useState("select");
     const [selectToolType, setSelectToolType] = useState("select");
@@ -111,7 +114,15 @@ export default function WideSidebarRoot({
     const playerDropdownRef = useRef(null);
 
     const players = playersProp ?? DEFAULT_PLAYERS;
-    const prefabs = prefabsProp ?? buildDefaultPrefabs();
+    const defaultPrefabs = prefabsProp ?? buildDefaultPrefabs();
+    const prefabs = useMemo(() => {
+        const customForPopover = (customPrefabs || []).map((cp) => ({
+            ...cp,
+            isCustom: true,
+            icon: <FaUsers className={iconClass} />,
+        }));
+        return [...defaultPrefabs, ...customForPopover];
+    }, [defaultPrefabs, customPrefabs]);
     const filteredPlayers = players.filter((p) =>
         String(p).toLowerCase().includes(playerSearch.toLowerCase())
     );
@@ -323,6 +334,7 @@ export default function WideSidebarRoot({
                 onPopoverToggle={togglePopover}
                 onPopoverClose={closePopover}
                 onPrefabSelect={handlePrefabSelect}
+                onDeleteCustomPrefab={onDeleteCustomPrefab}
                 onHoverTooltip={setHoveredTooltip}
             />
             {hr}

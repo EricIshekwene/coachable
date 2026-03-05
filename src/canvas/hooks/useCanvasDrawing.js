@@ -66,6 +66,154 @@ export function useCanvasDrawing({
     }
   };
 
+  const getDrawingSnapStops = useCallback(() => {
+    if (!fieldBounds) return null;
+    return {
+      vertical: [0, fieldBounds.left, fieldBounds.right, fieldBounds.centerX],
+      horizontal: [0, fieldBounds.top, fieldBounds.bottom, fieldBounds.centerY],
+    };
+  }, [fieldBounds]);
+
+  const findClosestSnapGuide = useCallback((stops = [], guide, tolerance) => {
+    let closest = null;
+    stops.forEach((lineGuide) => {
+      const diff = Math.abs(lineGuide - guide);
+      if (diff <= tolerance && (!closest || diff < closest.diff)) {
+        closest = { lineGuide, diff };
+      }
+    });
+    return closest;
+  }, []);
+
+  const snapDrawingPoint = useCallback(
+    (x, y, { showGuides = true } = {}) => {
+      if (!drawGuides || !clearGuides || !guidelineOffsetWorld) {
+        return { x, y, guides: [] };
+      }
+      const stops = getDrawingSnapStops();
+      if (!stops) {
+        if (showGuides) clearGuides();
+        return { x, y, guides: [] };
+      }
+
+      const closestV = findClosestSnapGuide(stops.vertical, x, guidelineOffsetWorld);
+      const closestH = findClosestSnapGuide(stops.horizontal, y, guidelineOffsetWorld);
+
+      let snappedX = x;
+      let snappedY = y;
+      const guides = [];
+
+      if (closestV) {
+        snappedX = closestV.lineGuide;
+        guides.push({ orientation: "V", lineGuide: closestV.lineGuide, offset: 0, snap: "center" });
+      }
+      if (closestH) {
+        snappedY = closestH.lineGuide;
+        guides.push({ orientation: "H", lineGuide: closestH.lineGuide, offset: 0, snap: "center" });
+      }
+
+      if (showGuides) {
+        if (guides.length) {
+          drawGuides(guides);
+        } else {
+          clearGuides();
+        }
+      }
+
+      return { x: snappedX, y: snappedY, guides };
+    },
+    [drawGuides, clearGuides, guidelineOffsetWorld, getDrawingSnapStops, findClosestSnapGuide]
+  );
+
+  const snapDrawingBoundsFromStart = useCallback(
+    (startX, startY, endX, endY, { showGuides = true } = {}) => {
+      if (!drawGuides || !clearGuides || !guidelineOffsetWorld) {
+        return { endX, endY, guides: [] };
+      }
+      const stops = getDrawingSnapStops();
+      if (!stops) {
+        if (showGuides) clearGuides();
+        return { endX, endY, guides: [] };
+      }
+
+      const tentBounds = {
+        x: Math.min(startX, endX),
+        y: Math.min(startY, endY),
+        width: Math.abs(endX - startX),
+        height: Math.abs(endY - startY),
+      };
+      const cx = tentBounds.x + tentBounds.width / 2;
+      const cy = tentBounds.y + tentBounds.height / 2;
+      const vEdges = [
+        { guide: tentBounds.x, offset: tentBounds.x - cx, snap: "left" },
+        { guide: cx, offset: 0, snap: "center" },
+        { guide: tentBounds.x + tentBounds.width, offset: tentBounds.x + tentBounds.width - cx, snap: "right" },
+      ];
+      const hEdges = [
+        { guide: tentBounds.y, offset: tentBounds.y - cy, snap: "top" },
+        { guide: cy, offset: 0, snap: "center" },
+        { guide: tentBounds.y + tentBounds.height, offset: tentBounds.y + tentBounds.height - cy, snap: "bottom" },
+      ];
+
+      let snappedEndX = endX;
+      let snappedEndY = endY;
+      let closestV = null;
+      stops.vertical.forEach((stop) => {
+        vEdges.forEach((edge) => {
+          const diff = Math.abs(stop - edge.guide);
+          if (diff <= guidelineOffsetWorld && (!closestV || diff < closestV.diff)) {
+            closestV = { lineGuide: stop, diff, offset: edge.offset, snap: edge.snap };
+          }
+        });
+      });
+
+      let closestH = null;
+      stops.horizontal.forEach((stop) => {
+        hEdges.forEach((edge) => {
+          const diff = Math.abs(stop - edge.guide);
+          if (diff <= guidelineOffsetWorld && (!closestH || diff < closestH.diff)) {
+            closestH = { lineGuide: stop, diff, offset: edge.offset, snap: edge.snap };
+          }
+        });
+      });
+
+      const guides = [];
+      if (closestV) {
+        const snapTarget = closestV.lineGuide;
+        const edgeSnap = closestV.snap;
+        if (edgeSnap === "left" || edgeSnap === "right") {
+          snappedEndX = endX + (snapTarget - (edgeSnap === "left" ? Math.min(startX, endX) : Math.max(startX, endX)));
+        } else {
+          const mid = (startX + snappedEndX) / 2;
+          snappedEndX += (snapTarget - mid);
+        }
+        guides.push({ orientation: "V", lineGuide: snapTarget, offset: closestV.offset, snap: closestV.snap });
+      }
+      if (closestH) {
+        const snapTarget = closestH.lineGuide;
+        const edgeSnap = closestH.snap;
+        if (edgeSnap === "top" || edgeSnap === "bottom") {
+          snappedEndY = endY + (snapTarget - (edgeSnap === "top" ? Math.min(startY, endY) : Math.max(startY, endY)));
+        } else {
+          const mid = (startY + snappedEndY) / 2;
+          snappedEndY += (snapTarget - mid);
+        }
+        guides.push({ orientation: "H", lineGuide: snapTarget, offset: closestH.offset, snap: closestH.snap });
+      }
+
+      if (showGuides) {
+        if (guides.length) {
+          drawGuides(guides);
+        } else {
+          clearGuides();
+        }
+      }
+
+      return { endX: snappedEndX, endY: snappedEndY, guides };
+    },
+    [drawGuides, clearGuides, guidelineOffsetWorld, getDrawingSnapStops]
+  );
+
   const commitCustomShape = useCallback(() => {
     const shape = customShapeRef.current;
     if (!shape || !shape.points || shape.points.length < 6) {
@@ -73,17 +221,19 @@ export function useCanvasDrawing({
       customShapeRef.current = null;
       setActiveDrawing(null);
       setCustomPreviewLine(null);
+      clearGuides?.();
       return;
     }
     customShapeRef.current = null;
     setActiveDrawing(null);
     setCustomPreviewLine(null);
+    clearGuides?.();
     const newId = onAddDrawing?.(shape);
     if (newId) {
       onDrawSubToolChange?.("select", { selectIds: [newId] });
     }
     logDrawDebug(`customShape commit points=${shape.points.length / 2}`);
-  }, [onAddDrawing, onDrawSubToolChange]);
+  }, [onAddDrawing, onDrawSubToolChange, clearGuides]);
 
   const cancelCustomShape = useCallback(() => {
     if (customShapeRef.current) {
@@ -92,7 +242,8 @@ export function useCanvasDrawing({
     customShapeRef.current = null;
     setActiveDrawing(null);
     setCustomPreviewLine(null);
-  }, []);
+    clearGuides?.();
+  }, [clearGuides]);
 
   const handlePointerDown = useCallback(
     (e) => {
@@ -113,9 +264,10 @@ export function useCanvasDrawing({
       const world = toWorldCoords(pointer);
 
       if (subTool === "draw") {
+        const snapped = snapDrawingPoint(world.x, world.y, { showGuides: false });
         drawingRef.current = {
           type: "stroke",
-          points: [world.x, world.y],
+          points: [snapped.x, snapped.y],
           color: drawColor,
           opacity: drawOpacity,
           strokeWidth: drawStrokeWidth,
@@ -129,9 +281,10 @@ export function useCanvasDrawing({
       }
 
       if (subTool === "arrow") {
+        const snapped = snapDrawingPoint(world.x, world.y, { showGuides: false });
         drawingRef.current = {
           type: "arrow",
-          points: [world.x, world.y, world.x, world.y],
+          points: [snapped.x, snapped.y, snapped.x, snapped.y],
           color: drawColor,
           opacity: drawOpacity,
           strokeWidth: drawStrokeWidth,
@@ -149,8 +302,9 @@ export function useCanvasDrawing({
           // Custom polygon: click to add points
           const isDoubleClick = evt?.detail >= 2;
           if (customShapeRef.current) {
+            const snapped = snapDrawingPoint(world.x, world.y, { showGuides: false });
             // Add point to existing polygon
-            customShapeRef.current.points.push(world.x, world.y);
+            customShapeRef.current.points.push(snapped.x, snapped.y);
             setActiveDrawing({ ...customShapeRef.current, points: [...customShapeRef.current.points] });
             logDrawDebug(`customShape addPoint points=${customShapeRef.current.points.length / 2}`);
             if (isDoubleClick) {
@@ -158,15 +312,16 @@ export function useCanvasDrawing({
             }
             return true;
           }
+          const snapped = snapDrawingPoint(world.x, world.y, { showGuides: false });
           // Start new custom polygon
           customShapeRef.current = {
             type: "shape",
             shapeType: "custom",
-            x: world.x,
-            y: world.y,
+            x: snapped.x,
+            y: snapped.y,
             width: 0,
             height: 0,
-            points: [world.x, world.y],
+            points: [snapped.x, snapped.y],
             color: drawShapeStrokeColor,
             opacity: drawOpacity,
             fill: drawShapeFill,
@@ -178,19 +333,20 @@ export function useCanvasDrawing({
         }
 
         // Rect / Triangle / Ellipse: click-drag
+        const snapped = snapDrawingPoint(world.x, world.y, { showGuides: false });
         drawingRef.current = {
           type: "shape",
           shapeType: drawShapeType,
-          x: world.x,
-          y: world.y,
+          x: snapped.x,
+          y: snapped.y,
           width: 0,
           height: 0,
           color: drawShapeStrokeColor,
           opacity: drawOpacity,
           fill: drawShapeFill,
           strokeWidth: drawStrokeWidth,
-          _startX: world.x,
-          _startY: world.y,
+          _startX: snapped.x,
+          _startY: snapped.y,
         };
         setActiveDrawing({ ...drawingRef.current });
         logDrawDebug(
@@ -200,11 +356,12 @@ export function useCanvasDrawing({
       }
 
       if (subTool === "text") {
+        const snapped = snapDrawingPoint(world.x, world.y, { showGuides: false });
         // Create text drawing immediately and auto-select it
         const textDrawing = {
           type: "text",
-          x: world.x,
-          y: world.y,
+          x: snapped.x,
+          y: snapped.y,
           text: "Text",
           color: drawColor,
           opacity: drawOpacity,
@@ -258,6 +415,7 @@ export function useCanvasDrawing({
       onSelectedDrawingIdsChange,
       onDrawSubToolChange,
       commitCustomShape,
+      snapDrawingPoint,
     ]
   );
 
@@ -286,10 +444,11 @@ export function useCanvasDrawing({
         const pointer = stage?.getPointerPosition?.();
         if (!pointer) return false;
         const world = toWorldCoords(pointer);
+        const snapped = snapDrawingPoint(world.x, world.y);
         const pts = customShapeRef.current.points;
         const lastX = pts[pts.length - 2];
         const lastY = pts[pts.length - 1];
-        setCustomPreviewLine({ x1: lastX, y1: lastY, x2: world.x, y2: world.y });
+        setCustomPreviewLine({ x1: lastX, y1: lastY, x2: snapped.x, y2: snapped.y });
         return true;
       }
 
@@ -300,7 +459,8 @@ export function useCanvasDrawing({
       const world = toWorldCoords(pointer);
 
       if (drawingRef.current.type === "stroke") {
-        drawingRef.current.points.push(world.x, world.y);
+        const snapped = snapDrawingPoint(world.x, world.y);
+        drawingRef.current.points.push(snapped.x, snapped.y);
         setActiveDrawing({
           ...drawingRef.current,
           points: [...drawingRef.current.points],
@@ -312,8 +472,11 @@ export function useCanvasDrawing({
       }
 
       if (drawingRef.current.type === "arrow") {
-        drawingRef.current.points[2] = world.x;
-        drawingRef.current.points[3] = world.y;
+        const startX = drawingRef.current.points[0];
+        const startY = drawingRef.current.points[1];
+        const snapped = snapDrawingBoundsFromStart(startX, startY, world.x, world.y);
+        drawingRef.current.points[2] = snapped.endX;
+        drawingRef.current.points[3] = snapped.endY;
         setActiveDrawing({
           ...drawingRef.current,
           points: [...drawingRef.current.points],
@@ -327,82 +490,9 @@ export function useCanvasDrawing({
       if (drawingRef.current.type === "shape") {
         const startX = drawingRef.current._startX;
         const startY = drawingRef.current._startY;
-        let endX = world.x;
-        let endY = world.y;
-
-        // Snap shape edges/center to field bounds
-        if (drawGuides && clearGuides && guidelineOffsetWorld && fieldBounds) {
-          const tentBounds = {
-            x: Math.min(startX, endX),
-            y: Math.min(startY, endY),
-            width: Math.abs(endX - startX),
-            height: Math.abs(endY - startY),
-          };
-          const cx = tentBounds.x + tentBounds.width / 2;
-          const cy = tentBounds.y + tentBounds.height / 2;
-          const vStops = [0, fieldBounds.left, fieldBounds.right, fieldBounds.centerX];
-          const hStops = [0, fieldBounds.top, fieldBounds.bottom, fieldBounds.centerY];
-          const vEdges = [
-            { guide: tentBounds.x, offset: tentBounds.x - cx, snap: "left" },
-            { guide: cx, offset: 0, snap: "center" },
-            { guide: tentBounds.x + tentBounds.width, offset: tentBounds.x + tentBounds.width - cx, snap: "right" },
-          ];
-          const hEdges = [
-            { guide: tentBounds.y, offset: tentBounds.y - cy, snap: "top" },
-            { guide: cy, offset: 0, snap: "center" },
-            { guide: tentBounds.y + tentBounds.height, offset: tentBounds.y + tentBounds.height - cy, snap: "bottom" },
-          ];
-          // Find closest snap
-          let closestV = null;
-          vStops.forEach((stop) => {
-            vEdges.forEach((edge) => {
-              const diff = Math.abs(stop - edge.guide);
-              if (diff <= guidelineOffsetWorld && (!closestV || diff < closestV.diff)) {
-                closestV = { lineGuide: stop, diff, offset: edge.offset, snap: edge.snap };
-              }
-            });
-          });
-          let closestH = null;
-          hStops.forEach((stop) => {
-            hEdges.forEach((edge) => {
-              const diff = Math.abs(stop - edge.guide);
-              if (diff <= guidelineOffsetWorld && (!closestH || diff < closestH.diff)) {
-                closestH = { lineGuide: stop, diff, offset: edge.offset, snap: edge.snap };
-              }
-            });
-          });
-          const guides = [];
-          if (closestV) {
-            // Adjust the moving end to snap
-            const snapTarget = closestV.lineGuide;
-            const edgeSnap = closestV.snap;
-            if (edgeSnap === "left" || edgeSnap === "right") {
-              // Snap the edge that's being dragged
-              endX = world.x + (snapTarget - (edgeSnap === "left" ? Math.min(startX, world.x) : Math.max(startX, world.x)));
-            } else {
-              // Center snap: adjust end so center aligns
-              const mid = (startX + endX) / 2;
-              endX += (snapTarget - mid);
-            }
-            guides.push({ orientation: "V", lineGuide: snapTarget, offset: closestV.offset, snap: closestV.snap });
-          }
-          if (closestH) {
-            const snapTarget = closestH.lineGuide;
-            const edgeSnap = closestH.snap;
-            if (edgeSnap === "top" || edgeSnap === "bottom") {
-              endY = world.y + (snapTarget - (edgeSnap === "top" ? Math.min(startY, world.y) : Math.max(startY, world.y)));
-            } else {
-              const mid = (startY + endY) / 2;
-              endY += (snapTarget - mid);
-            }
-            guides.push({ orientation: "H", lineGuide: snapTarget, offset: closestH.offset, snap: closestH.snap });
-          }
-          if (guides.length) {
-            drawGuides(guides);
-          } else {
-            clearGuides();
-          }
-        }
+        const snapped = snapDrawingBoundsFromStart(startX, startY, world.x, world.y);
+        const endX = snapped.endX;
+        const endY = snapped.endY;
 
         drawingRef.current.x = Math.min(startX, endX);
         drawingRef.current.y = Math.min(startY, endY);
@@ -417,7 +507,7 @@ export function useCanvasDrawing({
 
       return false;
     },
-    [stageRef, toWorldCoords, drawings, eraserSize]
+    [stageRef, toWorldCoords, drawings, eraserSize, snapDrawingPoint, snapDrawingBoundsFromStart]
   );
 
   const handlePointerUp = useCallback(() => {
@@ -476,7 +566,7 @@ export function useCanvasDrawing({
       onDrawSubToolChange?.("select", { selectIds: [newId] });
     }
     return true;
-  }, [onAddDrawing, onRemoveDrawing, onRemoveMultipleDrawings, onDrawSubToolChange]);
+  }, [onAddDrawing, onRemoveDrawing, onRemoveMultipleDrawings, onDrawSubToolChange, clearGuides]);
 
   const commitText = useCallback(
     (text) => {

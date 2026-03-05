@@ -38,13 +38,13 @@ const SHAPE_COLORS = [
 
 function ColorSwatches({ value, onChange }) {
   return (
-    <div className="flex gap-1.5 flex-wrap">
+    <div className="w-full min-w-0 flex gap-1.5 flex-wrap px-0.5">
       {PRESET_COLORS.map((c) => (
         <button
           key={c}
           onClick={() => onChange?.(c)}
           className={`
-            w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 transition-all duration-100
+            w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 transition-all duration-100 shrink-0
             ${value === c ? "border-BrandOrange scale-110" : "border-transparent hover:border-BrandGray"}
           `}
           style={{ backgroundColor: c }}
@@ -365,7 +365,7 @@ function ShapeTypePreview({ type, isActive }) {
 
 function ShapeColorPicker({ value, onChange, noneTitle = "No color" }) {
   return (
-    <div className="flex gap-1.5 flex-wrap">
+    <div className="w-full min-w-0 flex gap-1.5 flex-wrap px-0.5">
       {SHAPE_COLORS.map((c) => {
         const isTransparent = c === "transparent";
         const isSelected = value === c;
@@ -374,7 +374,7 @@ function ShapeColorPicker({ value, onChange, noneTitle = "No color" }) {
             key={c}
             onClick={() => onChange?.(c)}
             className={`
-              w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 transition-all duration-100 relative overflow-hidden
+              w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 transition-all duration-100 relative overflow-hidden shrink-0
               ${isSelected ? "border-BrandOrange scale-110" : "border-transparent hover:border-BrandGray"}
             `}
             style={isTransparent ? undefined : { backgroundColor: c }}

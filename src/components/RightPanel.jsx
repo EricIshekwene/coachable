@@ -79,6 +79,7 @@ export default function RightPanel({
   onDrawShapeTypeChange,
   onDrawShapeStrokeColorChange,
   onDrawShapeFillChange,
+  onSavePrefab,
 }) {
   return (
     <aside
@@ -166,6 +167,7 @@ export default function RightPanel({
               allPlayersDisplay={allPlayersDisplay}
               onAllPlayersDisplayChange={onAllPlayersDisplayChange}
               onSelectedPlayersColorChange={onSelectedPlayersColorChange}
+              onSavePrefab={onSavePrefab}
             />
           ) : (
             <AllPlayersSection value={allPlayersDisplay} onChange={onAllPlayersDisplayChange} />

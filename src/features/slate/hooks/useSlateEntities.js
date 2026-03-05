@@ -39,7 +39,7 @@ const normalizeNumber = (value) => {
   return Number.isNaN(asNumber) ? trimmed : asNumber;
 };
 
-const getNextPlayerId = (byId) => {
+export const getNextPlayerId = (byId) => {
   let maxId = 0;
   Object.keys(byId || {}).forEach((id) => {
     const match = id.match(/player-(\d+)/);

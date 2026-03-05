@@ -12,9 +12,11 @@ export default function WideSidebar({
     onReset,
     onDeleteSelected,
     onPrefabSelect,
+    onDeleteCustomPrefab,
     onAddPlayer,
     players,
     prefabs,
+    customPrefabs,
 }) {
     return (
         <WideSidebarRoot
@@ -29,9 +31,11 @@ export default function WideSidebar({
             onReset={onReset}
             onDeleteSelected={onDeleteSelected}
             onPrefabSelect={onPrefabSelect}
+            onDeleteCustomPrefab={onDeleteCustomPrefab}
             onAddPlayer={onAddPlayer}
             players={players}
             prefabs={prefabs}
+            customPrefabs={customPrefabs}
         />
     );
 }

@@ -13,6 +13,7 @@ export default function PrefabsSection({
     onPopoverToggle,
     onPopoverClose,
     onPrefabSelect,
+    onDeleteCustomPrefab,
     onHoverTooltip,
     wide = false,
 }) {
@@ -44,7 +45,7 @@ export default function PrefabsSection({
             />
             <Tooltip isOpen={hoveredTooltip === "prefabs" && !isOpen} text="Prefabs" />
             <Popover isOpen={isOpen} onClose={onPopoverClose} anchorRef={anchorRef} topOffset="top-[-150px]">
-                <PrefabsPopover prefabs={prefabs} onPrefabSelect={handlePrefabSelect} />
+                <PrefabsPopover prefabs={prefabs} onPrefabSelect={handlePrefabSelect} onDeleteCustomPrefab={onDeleteCustomPrefab} />
             </Popover>
         </div>
     );

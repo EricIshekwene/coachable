@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { ImCheckboxChecked, ImCheckboxUnchecked } from "react-icons/im";
+import { IoSaveOutline } from "react-icons/io5";
 
 export default function SelectedPlayersSection({
   selectedPlayerIds = [],
@@ -7,6 +8,7 @@ export default function SelectedPlayersSection({
   allPlayersDisplay,
   onAllPlayersDisplayChange,
   onSelectedPlayersColorChange,
+  onSavePrefab,
 }) {
   const selectedCount = selectedPlayerIds.length;
   const baseColor = allPlayersDisplay?.color ?? "#ef4444";
@@ -55,7 +57,7 @@ export default function SelectedPlayersSection({
 
       <div className="flex flex-col w-full items-start justify-between gap-0.5 sm:gap-1 relative">
         <p className="text-BrandOrange text-[10px] sm:text-xs md:text-sm font-DmSans">Change Color:</p>
-        <div className="w-full flex flex-row gap-1 sm:gap-1.5">
+        <div className="w-full min-w-0 flex flex-row gap-1 sm:gap-1.5 px-0.5">
           {COLOR_OPTIONS.map((option) => {
             const isActive = !hasMixedSelectedColors && selectedBaseColor.toLowerCase() === option.value;
             return (
@@ -63,14 +65,14 @@ export default function SelectedPlayersSection({
                 key={option.value}
                 type="button"
                 onClick={() => applyBulkColor(option.value)}
-                className={`flex-1 flex items-center justify-center gap-1 py-1 sm:py-1.5 rounded-md border transition-colors
+                className={`flex-1 min-w-0 flex items-center justify-center gap-1 px-1 sm:px-1.5 py-1 sm:py-1.5 rounded-md border transition-colors
                   ${isActive ? "border-BrandOrange bg-BrandBlack" : "border-BrandGray2 bg-BrandBlack2 hover:bg-BrandBlack2/90"}`}
               >
                 <span
-                  className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full"
+                  className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shrink-0"
                   style={{ backgroundColor: option.value }}
                 />
-                <span className={`text-[10px] sm:text-xs font-DmSans ${isActive ? "text-BrandWhite" : "text-BrandGray"}`}>
+                <span className={`truncate text-[10px] sm:text-xs font-DmSans ${isActive ? "text-BrandWhite" : "text-BrandGray"}`}>
                   {option.label}
                 </span>
               </button>
@@ -145,6 +147,17 @@ export default function SelectedPlayersSection({
           );
         })}
       </div>
+
+      {selectedPlayerIds.length >= 2 && onSavePrefab && (
+        <button
+          type="button"
+          onClick={onSavePrefab}
+          className="w-full mt-1.5 flex items-center justify-center gap-1.5 py-1.5 rounded-md border border-BrandOrange/60 bg-BrandBlack2 text-BrandOrange text-[10px] sm:text-xs font-DmSans font-semibold hover:bg-BrandBlack transition-colors cursor-pointer"
+        >
+          <IoSaveOutline className="text-sm shrink-0" aria-hidden />
+          Save as Prefab
+        </button>
+      )}
     </div>
   );
 }

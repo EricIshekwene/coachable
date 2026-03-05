@@ -77,6 +77,7 @@ function KonvaCanvasRoot({
   onItemDragStart,
   onItemDragEnd,
   onCanvasAddPlayer,
+  onCanvasPlacePrefab,
   onMarqueeSelect,
   selectedPlayerIds,
   selectedItemIds,
@@ -503,7 +504,11 @@ function KonvaCanvasRoot({
     layer.batchDraw();
   }, [screenshotMode]);
 
-  const getLineGuideStops = (skipId) => {
+  const getLineGuideStops = (skipIdsInput) => {
+    const skipIds =
+      skipIdsInput instanceof Set
+        ? skipIdsInput
+        : new Set(skipIdsInput ? [skipIdsInput] : []);
     const centerScreenWorld = toWorldCoords({ x: size.width / 2, y: size.height / 2 });
 
     const vertical = [0, centerScreenWorld.x];
@@ -514,7 +519,7 @@ function KonvaCanvasRoot({
     }
 
     items.forEach((item) => {
-      if (!item || item.id === skipId) return;
+      if (!item || skipIds.has(item.id)) return;
       if (item.type !== "player" && item.type !== "ball") return;
       const rendered = getRenderedPose(item);
       vertical.push(rendered.x);
@@ -699,6 +704,14 @@ function KonvaCanvasRoot({
       if (!pointer) return;
       const world = toWorldCoords(pointer);
       onCanvasAddPlayer?.({ x: world.x, y: world.y, source: tool });
+      return;
+    }
+
+    if (tool === "prefab" && !isMiddleMouse && isPrimaryButton) {
+      const pointer = stage?.getPointerPosition?.();
+      if (!pointer) return;
+      const world = toWorldCoords(pointer);
+      onCanvasPlacePrefab?.({ x: world.x, y: world.y });
       return;
     }
 
@@ -1155,7 +1168,12 @@ function KonvaCanvasRoot({
     const node = e.target;
     const canSnap = tool === "select" && !marqueeRef.current.active && !panRef.current.active;
     if (canSnap) {
-      const lineGuideStops = getLineGuideStops(item.id);
+      const isMultiSelectDrag =
+        selectedItemIds?.length > 1 && selectedItemIds.includes(item.id);
+      const excludedSnapIds = isMultiSelectDrag
+        ? new Set(selectedItemIds)
+        : new Set([item.id]);
+      const lineGuideStops = getLineGuideStops(excludedSnapIds);
       const itemBounds = getObjectSnappingEdges(item, node);
       const guides = getGuides(lineGuideStops, itemBounds, guidelineOffsetWorld);
       if (guides.length) {
