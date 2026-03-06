@@ -36,6 +36,8 @@ import { getLogs as getRecordingDebugLogs, log as logRecordingDebug } from "./re
 import { useDrawings } from "./hooks/useDrawings";
 import { useRecordingMode } from "./hooks/useRecordingMode";
 import RecordingControlBar from "../../components/RecordingControlBar";
+import RecordingCountdown from "../../components/RecordingCountdown";
+import SaveToPlaybookModal from "../../components/SaveToPlaybookModal";
 
 /**
  * Top-level feature component for the play editor. Wires together entities, history,
@@ -118,6 +120,8 @@ function Slate({ onShowMessage }) {
   const [playName, setPlayName] = useState("Name");
   const [customPrefabs, setCustomPrefabs] = useState(() => loadCustomPrefabs());
   const [savePrefabModalOpen, setSavePrefabModalOpen] = useState(false);
+  const [saveToPlaybookOpen, setSaveToPlaybookOpen] = useState(false);
+  const [playbookThumbnail, setPlaybookThumbnail] = useState(null);
   const pendingPrefabRef = useRef(null);
   const [speedMultiplier, setSpeedMultiplier] = useState(DEFAULT_SPEED_MULTIPLIER);
   const [autoplayEnabled, setAutoplayEnabled] = useState(true);
@@ -323,19 +327,20 @@ function Slate({ onShowMessage }) {
     setAnimationDataWithMeta,
     animationDataRef,
     playersByIdRef,
+    ballsByIdRef,
   });
 
-  // Sync recording player states only when player IDs change (not positions).
-  const playerIdKeysStr = useMemo(
-    () => Object.keys(entities.playersById || {}).sort().join(","),
-    [entities.playersById]
+  // Sync recording states only when player/ball IDs change (not positions).
+  const recordableIdKeysStr = useMemo(
+    () => [...Object.keys(entities.playersById || {}), ...Object.keys(entities.ballsById || {})].sort().join(","),
+    [entities.playersById, entities.ballsById]
   );
   useEffect(() => {
     if (recording.recordingModeEnabled) {
-      recording.syncPlayerStates(entities.playersById);
+      recording.syncPlayerStates(entities.playersById, entities.ballsById);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playerIdKeysStr, recording.recordingModeEnabled, recording.syncPlayerStates]);
+  }, [recordableIdKeysStr, recording.recordingModeEnabled, recording.syncPlayerStates]);
 
   useEffect(() => {
     setAnimationDataWithMeta((base) => {
@@ -515,7 +520,50 @@ function Slate({ onShowMessage }) {
     animationRendererRef.current?.clearPoses?.();
   };
 
-  const onSaveToPlaybook = () => {};
+  const onSaveToPlaybook = useCallback(() => {
+    // Generate a thumbnail preview of the current canvas.
+    const bounds = screenshotApiRef.current?.getFieldWorldBounds?.();
+    if (bounds) {
+      try {
+        const dataUrl = screenshotApiRef.current.captureRegion(bounds, { pixelRatio: 1 });
+        setPlaybookThumbnail(dataUrl);
+      } catch {
+        setPlaybookThumbnail(null);
+      }
+    } else {
+      setPlaybookThumbnail(null);
+    }
+    setSaveToPlaybookOpen(true);
+  }, []);
+
+  const playbookPlayData = useMemo(() => {
+    const appVersion = import.meta?.env?.VITE_APP_VERSION ?? null;
+    return buildPlayExport({
+      playName,
+      appVersion,
+      advancedSettings,
+      allPlayersDisplay: entities.allPlayersDisplay,
+      currentPlayerColor: entities.currentPlayerColor,
+      camera: fieldViewport.camera,
+      fieldRotation: fieldViewport.fieldRotation,
+      playersById: entities.playersById,
+      representedPlayerIds: entities.representedPlayerIds,
+      ball: entities.ball,
+      ballsById: entities.ballsById,
+      animationData,
+      playback: { speedMultiplier, autoplayEnabled },
+      coordinateSystem: {
+        origin: "center",
+        units: "px",
+        notes: "World coordinates are centered; +x right, +y down.",
+      },
+      drawings: drawingsState.drawings,
+    });
+  }, [playName, advancedSettings, entities, fieldViewport, animationData, speedMultiplier, autoplayEnabled, drawingsState.drawings]);
+
+  const handlePlaybookSaved = useCallback((entry) => {
+    onShowMessage?.("Saved to Playbook", `"${entry.playName}" saved successfully.`, "success");
+  }, [onShowMessage]);
 
   const onDownload = () => {
     const appVersion = import.meta?.env?.VITE_APP_VERSION ?? null;
@@ -1914,8 +1962,20 @@ function Slate({ onShowMessage }) {
           screenshotRegion={screenshotRegion}
           onScreenshotRegionChange={handleScreenshotRegionChange}
           screenshotApiRef={screenshotApiRef}
+          lockDrag={recording.globalState === "countdown"}
         />
         {/* Text editing is now handled via right panel textarea */}
+        {recording.countdownValue != null && (
+          <RecordingCountdown
+            value={recording.countdownValue}
+            playerName={
+              recording.recordingPlayerId
+                ? entities.playersById[recording.recordingPlayerId]?.name || "Player"
+                : null
+            }
+            onCancel={recording.cancelRecording}
+          />
+        )}
       </div>
       {screenshotMode && (
         <ScreenshotConfirmBar
@@ -1934,6 +1994,14 @@ function Slate({ onShowMessage }) {
         open={savePrefabModalOpen}
         onClose={() => setSavePrefabModalOpen(false)}
         onSave={handleSavePrefab}
+      />
+      <SaveToPlaybookModal
+        open={saveToPlaybookOpen}
+        playName={playName}
+        thumbnailDataUrl={playbookThumbnail}
+        playData={playbookPlayData}
+        onClose={() => setSaveToPlaybookOpen(false)}
+        onSaved={handlePlaybookSaved}
       />
       <ExportOverlay
         visible={isExporting || !!exportError}
@@ -2039,6 +2107,7 @@ function Slate({ onShowMessage }) {
         onFieldRedo={fieldViewport.onFieldRedo}
         onReset={onReset}
         playersById={entities.playersById}
+        ballsById={entities.ballsById}
         representedPlayerIds={entities.representedPlayerIds}
         selectedPlayerIds={entities.selectedPlayerIds}
         selectedItemIds={entities.selectedItemIds}

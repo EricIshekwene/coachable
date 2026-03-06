@@ -28,6 +28,7 @@ export default function RightPanel({
   onReset,
 
   playersById,
+  ballsById,
   representedPlayerIds,
   selectedPlayerIds,
   selectedPlayers,
@@ -170,9 +171,10 @@ export default function RightPanel({
             isBusy={recordingGlobalState === "recording" || recordingGlobalState === "previewing"}
           />
 
-          {recordingModeEnabled ? (
+          {recordingModeEnabled && (
             <RecordingPlayerList
               playersById={playersById}
+              ballsById={ballsById}
               representedPlayerIds={representedPlayerIds}
               playerStates={recordingPlayerStates}
               recordingPlayerId={recordingPlayerId}
@@ -181,16 +183,16 @@ export default function RightPanel({
               onClearPlayerRecording={onClearPlayerRecording}
               onClearAllRecordings={onClearAllRecordings}
             />
-          ) : (
-            <PlayersSection
-              playersById={playersById}
-              representedPlayerIds={representedPlayerIds}
-              selectedPlayerIds={selectedPlayerIds}
-              onSelectPlayer={onSelectPlayer}
-              onEditPlayer={onEditPlayer}
-              onDeletePlayer={onDeletePlayer}
-            />
           )}
+
+          <PlayersSection
+            playersById={playersById}
+            representedPlayerIds={representedPlayerIds}
+            selectedPlayerIds={selectedPlayerIds}
+            onSelectPlayer={onSelectPlayer}
+            onEditPlayer={onEditPlayer}
+            onDeletePlayer={onDeletePlayer}
+          />
 
           <DrawingObjectsList
             drawings={drawings}

@@ -56,15 +56,19 @@ export function useRecordingMode({
   setAnimationDataWithMeta,
   animationDataRef,
   playersByIdRef,
+  ballsByIdRef,
 }) {
   const [recordingModeEnabled, setRecordingModeEnabledRaw] = useState(false);
   const [recordingPlayerId, setRecordingPlayerId] = useState(null);
   const [globalState, setGlobalState] = useState("idle");
   const [playerStates, setPlayerStates] = useState({});
   const [recordingTimeMs, setRecordingTimeMs] = useState(0);
+  const [countdownValue, setCountdownValue] = useState(null); // 3,2,1,null
   const [previewTimeMs, setPreviewTimeMs] = useState(0);
   const [recordingDurationMs, setRecordingDurationMs] = useState(10000);
 
+  const countdownTimerRef = useRef(null);
+  const pendingCountdownPlayerIdRef = useRef(null);
   const recordingPlayerIdRef = useRef(null);
   const latestPosRef = useRef({ x: 0, y: 0 });
   const recordingStartRef = useRef(null); // performance.now() at start
@@ -264,20 +268,15 @@ export function useRecordingMode({
     rafIdRef.current = requestAnimationFrame(() => recordingTickRef.current?.());
   };
 
-  const startRecording = useCallback(
+  // Internal: actually begin recording (called after countdown).
+  const beginRecordingInternal = useCallback(
     (playerId) => {
-      if (!playerId) {
-        logRecordingDebug("start ignored reason=missingPlayerId");
-        return;
-      }
-
       // If already recording, stop first.
       if (rafIdRef.current) {
         cancelAnimationFrame(rafIdRef.current);
         rafIdRef.current = null;
       }
 
-      // Read duration from animation data.
       durationMsRef.current = recordingDurationMs;
 
       // Save existing track for cancel/restore.
@@ -287,13 +286,15 @@ export function useRecordingMode({
         : null;
       const existingKeyframes = preRecordingTrackRef.current?.keyframes?.length || 0;
 
-      // Get player's current visual position for initial frame.
+      // Get item's current visual position for initial frame.
       const renderer = animationRendererRef.current;
       const rendererPose = renderer?.getCurrentPose?.(playerId);
       const player = playersByIdRef.current?.[playerId];
-      const initialX = rendererPose?.x ?? player?.x ?? 0;
-      const initialY = rendererPose?.y ?? player?.y ?? 0;
-      const initialSource = rendererPose ? "renderer" : player ? "player" : "fallback";
+      const ball = ballsByIdRef?.current?.[playerId];
+      const entity = player || ball;
+      const initialX = rendererPose?.x ?? entity?.x ?? 0;
+      const initialY = rendererPose?.y ?? entity?.y ?? 0;
+      const initialSource = rendererPose ? "renderer" : entity ? "entity" : "fallback";
 
       latestPosRef.current = { x: initialX, y: initialY };
       recordingSessionStartIsoRef.current = new Date().toISOString();
@@ -312,6 +313,7 @@ export function useRecordingMode({
       setRecordingPlayerId(playerId);
       recordingPlayerIdRef.current = playerId;
       setGlobalState("recording");
+      globalStateRef.current = "recording"; // sync ref immediately for RAF tick
       setRecordingTimeMs(0);
       setPlayerStates((prev) => ({ ...prev, [playerId]: "recording" }));
 
@@ -329,7 +331,53 @@ export function useRecordingMode({
 
       rafIdRef.current = requestAnimationFrame(() => recordingTickRef.current?.());
     },
-    [animationDataRef, animationRendererRef, playersByIdRef, setAnimationDataWithMeta, recordingDurationMs]
+    [animationDataRef, animationRendererRef, playersByIdRef, ballsByIdRef, setAnimationDataWithMeta, recordingDurationMs]
+  );
+
+  // Ref to avoid stale closure in setInterval callback.
+  const beginRecordingInternalRef = useRef(beginRecordingInternal);
+  beginRecordingInternalRef.current = beginRecordingInternal;
+
+  // Public: starts a 3-2-1 countdown, then begins recording.
+  const startRecording = useCallback(
+    (playerId) => {
+      if (!playerId) {
+        logRecordingDebug("start ignored reason=missingPlayerId");
+        return;
+      }
+
+      // Cancel any existing countdown.
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
+      }
+
+      pendingCountdownPlayerIdRef.current = playerId;
+      setGlobalState("countdown");
+      setRecordingPlayerId(playerId);
+      recordingPlayerIdRef.current = playerId;
+
+      let remaining = 3;
+      setCountdownValue(remaining);
+      logRecordingDebug(`countdown start pid=${playerId} from=${remaining}`);
+
+      countdownTimerRef.current = setInterval(() => {
+        remaining -= 1;
+        if (remaining > 0) {
+          setCountdownValue(remaining);
+          logRecordingDebug(`countdown tick pid=${playerId} remaining=${remaining}`);
+        } else {
+          // Countdown finished — begin recording.
+          clearInterval(countdownTimerRef.current);
+          countdownTimerRef.current = null;
+          setCountdownValue(null);
+          pendingCountdownPlayerIdRef.current = null;
+          logRecordingDebug(`countdown done pid=${playerId} — starting recording`);
+          beginRecordingInternalRef.current(playerId);
+        }
+      }, 1000);
+    },
+    []
   );
 
   const stopRecording = useCallback(() => {
@@ -341,6 +389,20 @@ export function useRecordingMode({
 
   const cancelRecording = useCallback(() => {
     const pid = recordingPlayerIdRef.current;
+
+    // Cancel countdown if active.
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+      setCountdownValue(null);
+      pendingCountdownPlayerIdRef.current = null;
+      logRecordingDebug(`cancel countdown pid=${pid || "none"}`);
+      setGlobalState("idle");
+      setRecordingPlayerId(null);
+      setRecordingTimeMs(0);
+      return;
+    }
+
     const restoreKeyframes = preRecordingTrackRef.current?.keyframes?.length || 0;
     logRecordingDebug(
       `cancel begin pid=${pid || "none"} bufferedFrames=${recordingBufferRef.current.length} restoreKeyframes=${restoreKeyframes}`
@@ -492,11 +554,13 @@ export function useRecordingMode({
     });
   }, [animationDataRef, setAnimationDataWithMeta]);
 
-  const syncPlayerStates = useCallback((playersById) => {
-    logRecordingDebug(`syncPlayerStates incomingPlayers=${Object.keys(playersById || {}).length}`);
+  const syncPlayerStates = useCallback((playersById, ballsById) => {
+    const playerIds = Object.keys(playersById || {});
+    const ballIds = Object.keys(ballsById || {});
+    logRecordingDebug(`syncPlayerStates incomingPlayers=${playerIds.length} balls=${ballIds.length}`);
     setPlayerStates((prev) => {
       const next = {};
-      Object.keys(playersById || {}).forEach((id) => {
+      [...playerIds, ...ballIds].forEach((id) => {
         next[id] = prev[id] || "idle";
       });
       return next;
@@ -512,6 +576,12 @@ export function useRecordingMode({
 
       if (!nextEnabled) {
         // Cleanup on disable.
+        if (countdownTimerRef.current) {
+          clearInterval(countdownTimerRef.current);
+          countdownTimerRef.current = null;
+        }
+        setCountdownValue(null);
+        pendingCountdownPlayerIdRef.current = null;
         const droppedFrames = recordingBufferRef.current.length;
         if (rafIdRef.current) {
           cancelAnimationFrame(rafIdRef.current);
@@ -589,6 +659,7 @@ export function useRecordingMode({
     return () => {
       if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
       if (previewRafIdRef.current) cancelAnimationFrame(previewRafIdRef.current);
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
       logRecordingDebug("cleanup unmount");
     };
   }, []);
@@ -597,6 +668,7 @@ export function useRecordingMode({
     recordingModeEnabled,
     setRecordingModeEnabled,
     globalState,
+    countdownValue,
     recordingPlayerId,
     playerStates,
     recordingTimeMs,

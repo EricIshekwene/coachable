@@ -1,13 +1,14 @@
 import React from "react";
-import { FaCircle, FaCheck, FaPlay, FaTrash } from "react-icons/fa";
+import { FaCircle, FaCheck, FaPlay, FaTrash, FaFootballBall } from "react-icons/fa";
 
 /**
  * Right panel section shown in recording mode.
- * Lists all players with their recording status (idle/recording/recorded).
- * Allows selecting a player to record, re-recording, and clearing recordings.
+ * Lists all players and the ball with their recording status.
+ * Allows selecting an item to record, re-recording, and clearing recordings.
  */
 export default function RecordingPlayerList({
   playersById,
+  ballsById,
   representedPlayerIds,
   playerStates,
   recordingPlayerId,
@@ -16,10 +17,13 @@ export default function RecordingPlayerList({
   onClearPlayerRecording,
   onClearAllRecordings,
 }) {
-  const ids = representedPlayerIds || [];
+  const playerIds = representedPlayerIds || [];
+  const ballIds = Object.keys(ballsById || {});
+  const allIds = [...playerIds, ...ballIds];
   const isRecording = globalState === "recording";
   const isPreviewing = globalState === "previewing";
-  const isBusy = isRecording || isPreviewing;
+  const isCountdown = globalState === "countdown";
+  const isBusy = isRecording || isPreviewing || isCountdown;
 
   const recordedCount = Object.values(playerStates).filter((s) => s === "recorded").length;
 
@@ -27,7 +31,7 @@ export default function RecordingPlayerList({
     <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4">
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-BrandOrange text-xs sm:text-sm font-DmSans font-medium">
-          Record Players
+          Record
         </span>
         {recordedCount > 0 && !isBusy && (
           <button
@@ -41,9 +45,11 @@ export default function RecordingPlayerList({
       </div>
 
       <div className="flex flex-col gap-0.5 max-h-[300px] overflow-y-auto hide-scroll">
-        {ids.map((id) => {
-          const player = playersById?.[id];
-          if (!player) return null;
+        {allIds.map((id) => {
+          const isBall = id.startsWith("ball-");
+          const player = isBall ? null : playersById?.[id];
+          const ball = isBall ? ballsById?.[id] : null;
+          if (!player && !ball) return null;
 
           const state = playerStates[id] || "idle";
           const isCurrentlyRecording = recordingPlayerId === id;
@@ -73,19 +79,29 @@ export default function RecordingPlayerList({
                 )}
               </div>
 
-              {/* Player color dot + name */}
-              <div
-                className="w-3 h-3 rounded-full shrink-0 border border-white/20"
-                style={{ backgroundColor: player.color || "#ef4444" }}
-              />
-              <span className="text-white text-xs font-DmSans truncate flex-1">
-                {player.number != null ? `#${player.number} ` : ""}
-                {player.name || `Player`}
-              </span>
+              {/* Item indicator + name */}
+              {isBall ? (
+                <>
+                  <FaFootballBall className="text-BrandOrange text-[10px] shrink-0" />
+                  <span className="text-white text-xs font-DmSans truncate flex-1">
+                    Ball
+                  </span>
+                </>
+              ) : (
+                <>
+                  <div
+                    className="w-3 h-3 rounded-full shrink-0 border border-white/20"
+                    style={{ backgroundColor: player.color || "#ef4444" }}
+                  />
+                  <span className="text-white text-xs font-DmSans truncate flex-1">
+                    {player.number != null ? `#${player.number} ` : ""}
+                    {player.name || `Player`}
+                  </span>
+                </>
+              )}
 
               {/* Action buttons */}
               <div className="flex items-center gap-1 shrink-0">
-                {/* Record / Re-record button */}
                 {!isBusy && (
                   <button
                     onClick={() => onStartRecording(id)}
@@ -106,7 +122,6 @@ export default function RecordingPlayerList({
                   </button>
                 )}
 
-                {/* Clear recording */}
                 {isRecorded && !isBusy && (
                   <button
                     onClick={() => onClearPlayerRecording(id)}
@@ -122,7 +137,7 @@ export default function RecordingPlayerList({
         })}
       </div>
 
-      {ids.length === 0 && (
+      {allIds.length === 0 && (
         <p className="text-BrandGray text-[10px] font-DmSans mt-1">
           Add players to the canvas first, then record their movements one at a time.
         </p>

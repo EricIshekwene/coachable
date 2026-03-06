@@ -15,6 +15,14 @@ import {
 } from "./drawingGeometry";
 import { log as logKeyToolDebug } from "./keyboardToolDebugLogger";
 import RugbyField from "../assets/objects/Field Vectors/Rugby_Field.png";
+import SoccerField from "../assets/objects/Field Vectors/Soccer_Field.png";
+import FootballField from "../assets/objects/Field Vectors/Football_Field.png";
+
+const FIELD_TYPE_TO_IMAGE_SRC = {
+  Rugby: RugbyField,
+  Soccer: SoccerField,
+  Football: FootballField,
+};
 
 /** Loads an HTML Image from a URL and tracks loading status. */
 const useImage = (src) => {
@@ -119,6 +127,7 @@ function KonvaCanvasRoot({
   screenshotRegion,
   onScreenshotRegionChange,
   screenshotApiRef,
+  lockDrag = false,
 }) {
   const viewportRef = useRef(null);
   const stageRef = useRef(null);
@@ -153,6 +162,10 @@ function KonvaCanvasRoot({
   const players = advancedSettings?.players ?? {};
   const ball = advancedSettings?.ball ?? {};
 
+  const fieldType = pitch.fieldType ?? "Rugby";
+  const resolvedFieldType = FIELD_TYPE_TO_IMAGE_SRC[fieldType] ? fieldType : "Rugby";
+  const fieldOpacityPercent = clamp(Number(pitch.fieldOpacity ?? 100), 0, 100);
+  const fieldOpacity = fieldOpacityPercent / 100;
   const pitchColor = pitch.pitchColor ?? undefined;
   const showMarkings = pitch.showMarkings ?? true;
   const playerBaseSizePx = players.baseSizePx ?? 30;
@@ -169,7 +182,7 @@ function KonvaCanvasRoot({
   const ballRadius = ballSizePx / 2;
 
   const ballImageSrc = new URL("../assets/objects/balls/white_ball.png", import.meta.url).href;
-  const fieldImage = useImage(showMarkings ? RugbyField : null);
+  const fieldImage = useImage(showMarkings ? FIELD_TYPE_TO_IMAGE_SRC[resolvedFieldType] : null);
   const ballImage = useImage(ballImageSrc);
   const ballImageElement = ballImage.image;
 
@@ -1526,6 +1539,7 @@ function KonvaCanvasRoot({
                   offsetX={fieldImage.image.width / 2}
                   offsetY={fieldImage.image.height / 2}
                   rotation={fieldRotation}
+                  opacity={fieldOpacity}
                   listening={false}
                 />
               )}
@@ -1535,7 +1549,7 @@ function KonvaCanvasRoot({
                   item.type === "player"
                     ? selectedPlayerIds?.includes(item.id)
                     : selectedItemIds?.includes(item.id);
-                const draggable = tool === "select" && item.draggable !== false && !isMarqueeActive;
+                const draggable = tool === "select" && item.draggable !== false && !isMarqueeActive && !lockDrag;
 
                 if (item.type === "ball") {
                   return (

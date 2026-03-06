@@ -3,6 +3,8 @@ import { useMemo, useState } from "react";
 /** Default values for all advanced settings (pitch, players, ball, export, animation, logging). */
 export const DEFAULT_ADVANCED_SETTINGS = {
   pitch: {
+    fieldType: "Rugby",
+    fieldOpacity: 100,
     showMarkings: true,
     pitchSize: "Full Field",
     pitchColor: "#4FA85D",
