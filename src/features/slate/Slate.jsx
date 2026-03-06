@@ -32,7 +32,10 @@ import { getLogs as getDrawDebugLogs, log as logDrawDebug } from "../../canvas/d
 import { getLogs as getKeyToolDebugLogs, log as logKeyToolDebug } from "../../canvas/keyboardToolDebugLogger";
 import { getLogs as getVideoExportDebugLogs, log as logVideoExport } from "../../utils/videoExportDebugLogger";
 import { getLogs as getPlaceBallDebugLogs, log as logPlaceBallDebug } from "./placeBallDebugLogger";
+import { getLogs as getRecordingDebugLogs, log as logRecordingDebug } from "./recordingDebugLogger";
 import { useDrawings } from "./hooks/useDrawings";
+import { useRecordingMode } from "./hooks/useRecordingMode";
+import RecordingControlBar from "../../components/RecordingControlBar";
 
 /**
  * Top-level feature component for the play editor. Wires together entities, history,
@@ -314,6 +317,25 @@ function Slate({ onShowMessage }) {
     }
     return Object.keys(sampledPoses || {}).length;
   }, []);
+
+  const recording = useRecordingMode({
+    animationRendererRef,
+    setAnimationDataWithMeta,
+    animationDataRef,
+    playersByIdRef,
+  });
+
+  // Sync recording player states only when player IDs change (not positions).
+  const playerIdKeysStr = useMemo(
+    () => Object.keys(entities.playersById || {}).sort().join(","),
+    [entities.playersById]
+  );
+  useEffect(() => {
+    if (recording.recordingModeEnabled) {
+      recording.syncPlayerStates(entities.playersById);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playerIdKeysStr, recording.recordingModeEnabled, recording.syncPlayerStates]);
 
   useEffect(() => {
     setAnimationDataWithMeta((base) => {
@@ -1045,6 +1067,81 @@ function Slate({ onShowMessage }) {
     }
   }, [onShowMessage]);
 
+  const handleCopyRecordingDebug = useCallback(async () => {
+    const recordingLines = getRecordingDebugLogs(900);
+    const recordingPlayer = recording.recordingPlayerId
+      ? entities.playersById?.[recording.recordingPlayerId]
+      : null;
+    const recordingPlayerPose = recording.recordingPlayerId
+      ? resolveTrackPose(recording.recordingPlayerId)
+      : null;
+    const recordingTrackKeyframes = recording.recordingPlayerId
+      ? animationDataRef.current?.tracks?.[recording.recordingPlayerId]?.keyframes?.length || 0
+      : 0;
+    const recordingSnapshot = recording.getDebugSnapshot?.() || null;
+    const tracksWithFrames = Object.entries(animationDataRef.current?.tracks || {})
+      .map(([id, track]) => ({ id, keyframes: track?.keyframes?.length || 0 }))
+      .filter((entry) => entry.keyframes > 0)
+      .sort((a, b) => b.keyframes - a.keyframes);
+    const payloadParts = [
+      `[RECDBG] snapshot ${new Date().toISOString()}`,
+      JSON.stringify(
+        {
+          tool: canvasTool,
+          recordingArchitecture: "raf+feedPosition",
+          recordingModeEnabled: recording.recordingModeEnabled,
+          recordingGlobalState: recording.globalState,
+          recordingPlayerId: recording.recordingPlayerId,
+          recordingPlayerName: recordingPlayer?.name || null,
+          recordingPlayerPose,
+          recordingTimeMs: Math.round(recording.recordingTimeMs || 0),
+          previewTimeMs: Math.round(recording.previewTimeMs || 0),
+          timelineDisplayTimeMs: Math.round(timelineDisplayTimeMs || 0),
+          engineTimeMs: Math.round(currentTimeRef.current || 0),
+          enginePlaying: Boolean(engineRef.current?.isPlaying?.()),
+          recordedCount: recording.recordedCount,
+          totalCount: recording.totalCount,
+          recordingTrackKeyframes,
+          tracksWithFrames,
+          recordingSnapshot,
+          selectedItemIds: entities.selectedItemIds || [],
+          isItemDragging: Boolean(entities.isItemDraggingRef?.current),
+          playerStates: recording.playerStates || {},
+        },
+        null,
+        2
+      ),
+      "",
+      ...(recordingLines.length ? recordingLines : ["[RECDBG] no logs captured yet"]),
+    ];
+    try {
+      await navigator.clipboard.writeText(payloadParts.join("\n"));
+      return true;
+    } catch (error) {
+      logRecordingDebug(`copyRecordingDebug failed err=${error?.message || "clipboard unavailable"}`);
+      onShowMessage("Copy recording debug failed", "Clipboard access was denied.", "error");
+      return false;
+    }
+  }, [
+    animationDataRef,
+    canvasTool,
+    entities.isItemDraggingRef,
+    entities.playersById,
+    entities.selectedItemIds,
+    onShowMessage,
+    recording.globalState,
+    recording.getDebugSnapshot,
+    recording.playerStates,
+    recording.previewTimeMs,
+    recording.recordedCount,
+    recording.recordingModeEnabled,
+    recording.recordingPlayerId,
+    recording.recordingTimeMs,
+    recording.totalCount,
+    resolveTrackPose,
+    timelineDisplayTimeMs,
+  ]);
+
   const handleCopyPlaceBallDebug = useCallback(async () => {
     const ballIds = Object.keys(entities.ballsById || {});
     const placeBallLines = getPlaceBallDebugLogs(600);
@@ -1319,16 +1416,25 @@ function Slate({ onShowMessage }) {
 
   const handleItemDragStart = useCallback(
     (id) => {
-      engineRef.current.pause();
+      const enginePlayingBefore = Boolean(engineRef.current?.isPlaying?.());
+      if (recording.recordingModeEnabled) {
+        logRecordingDebug(
+          `itemDragStart id=${id} global=${recording.globalState} recordingPid=${recording.recordingPlayerId || "none"} selected=[${(entities.selectedItemIds || []).join(",")}] enginePlayingBefore=${enginePlayingBefore} pauseSuppressed=true`
+        );
+      }
+      // Don't pause engine during recording - recording uses its own timer.
+      if (!recording.recordingModeEnabled) {
+        engineRef.current.pause();
+      }
       entities.handleItemDragStart(id);
     },
-    [entities]
+    [entities, recording.globalState, recording.recordingModeEnabled, recording.recordingPlayerId]
   );
 
   const handleItemDragEnd = useCallback(
     (id) => {
       entities.handleItemDragEnd(id);
-      if (engineRef.current.isPlaying()) return;
+      const isPlayingNow = engineRef.current.isPlaying();
 
       const ballsById = ballsByIdRef.current || {};
       const selectedIds = entities.selectedItemIds || [];
@@ -1341,13 +1447,33 @@ function Slate({ onShowMessage }) {
           : playersByIdRef.current?.[id] || ballsById[id]
             ? [id]
             : [];
+      if (recording.recordingModeEnabled) {
+        logRecordingDebug(
+          `itemDragEnd id=${id} global=${recording.globalState} recordingPid=${recording.recordingPlayerId || "none"} enginePlaying=${isPlayingNow} targetTrackIds=[${targetTrackIds.join(",")}] recordedKeyframes=${recording.recordingPlayerId ? animationDataRef.current?.tracks?.[recording.recordingPlayerId]?.keyframes?.length || 0 : 0}`
+        );
+        // Don't upsert keyframes during recording mode - recording manages its own tracks.
+        return;
+      }
+      if (isPlayingNow) return;
       upsertKeyframesAtCurrentTime(targetTrackIds, { source: "dragEnd" });
     },
-    [entities, upsertKeyframesAtCurrentTime]
+    [
+      entities,
+      recording.globalState,
+      recording.recordingModeEnabled,
+      recording.recordingPlayerId,
+      upsertKeyframesAtCurrentTime,
+    ]
   );
 
   const handleItemChange = useCallback(
     (id, next, meta) => {
+      if (recording.recordingModeEnabled && recording.globalState === "recording") {
+        // Feed position to recording hook for the player being recorded.
+        if (id === recording.recordingPlayerId && next) {
+          recording.feedPosition(next.x ?? 0, next.y ?? 0);
+        }
+      }
       entities.handleItemChange(id, next, meta);
 
       const ballsById = ballsByIdRef.current || {};
@@ -1382,7 +1508,14 @@ function Slate({ onShowMessage }) {
       });
       animationRendererRef.current?.setPoses?.(patch);
     },
-    [entities, resolveTrackPose]
+    [
+      entities,
+      recording.globalState,
+      recording.recordingModeEnabled,
+      recording.recordingPlayerId,
+      recording.feedPosition,
+      resolveTrackPose,
+    ]
   );
 
   const handleNudgeSelectedItems = useCallback(
@@ -1814,28 +1947,49 @@ function Slate({ onShowMessage }) {
           onSubToolChange={handleDrawSubToolChange}
         />
       )}
-      <ControlPill
-        durationMs={animationData.durationMs}
-        currentTimeMs={timelineDisplayTimeMs}
-        isPlaying={isPlaying}
-        speedMultiplier={speedMultiplier}
-        autoplayEnabled={autoplayEnabled}
-        selectedObjectCount={entities.selectedItemIds?.length ?? 0}
-        keyframesMs={visibleKeyframesMs}
-        selectedKeyframeMs={selectedKeyframeMs}
-        onSeek={seekTimeline}
-        onPause={pauseTimeline}
-        onPlayToggle={togglePlayback}
-        onSpeedChange={setSpeedMultiplier}
-        onAddKeyframe={handleAddKeyframe}
-        onDeleteKeyframe={handleDeleteKeyframe}
-        onDeleteAllKeyframes={handleDeleteAllKeyframes}
-        onDeleteSelectedObjects={entities.handleDeleteSelected}
-        onSelectKeyframe={setSelectedKeyframeMs}
-        onAutoplayChange={setAutoplayEnabled}
-        getAuthoritativeTimeMs={getAuthoritativeTimeMs}
-        onDragStateChange={handleTimelineDragStateChange}
-      />
+      {recording.recordingModeEnabled ? (
+        <RecordingControlBar
+          globalState={recording.globalState}
+          recordingPlayerId={recording.recordingPlayerId}
+          recordingTimeMs={recording.recordingTimeMs}
+          previewTimeMs={recording.previewTimeMs}
+          durationMs={recording.recordingDurationMs}
+          recordedCount={recording.recordedCount}
+          totalCount={recording.totalCount}
+          playerName={
+            recording.recordingPlayerId
+              ? entities.playersById[recording.recordingPlayerId]?.name || "Player"
+              : null
+          }
+          onStartPreview={recording.startPreview}
+          onStopPreview={recording.stopPreview}
+          onStopRecording={recording.stopRecording}
+          onCancelRecording={recording.cancelRecording}
+        />
+      ) : (
+        <ControlPill
+          durationMs={animationData.durationMs}
+          currentTimeMs={timelineDisplayTimeMs}
+          isPlaying={isPlaying}
+          speedMultiplier={speedMultiplier}
+          autoplayEnabled={autoplayEnabled}
+          selectedObjectCount={entities.selectedItemIds?.length ?? 0}
+          keyframesMs={visibleKeyframesMs}
+          selectedKeyframeMs={selectedKeyframeMs}
+          onSeek={seekTimeline}
+          onPause={pauseTimeline}
+          onPlayToggle={togglePlayback}
+          onSpeedChange={setSpeedMultiplier}
+          onAddKeyframe={handleAddKeyframe}
+          onDeleteKeyframe={handleDeleteKeyframe}
+          onDeleteAllKeyframes={handleDeleteAllKeyframes}
+          onDeleteSelectedObjects={entities.handleDeleteSelected}
+          onSelectKeyframe={setSelectedKeyframeMs}
+          onAutoplayChange={setAutoplayEnabled}
+          getAuthoritativeTimeMs={getAuthoritativeTimeMs}
+          onDragStateChange={handleTimelineDragStateChange}
+        />
+      )}
 
       <RightPanel
         canvasTool={canvasTool}
@@ -1902,6 +2056,16 @@ function Slate({ onShowMessage }) {
         onScreenshot={handleScreenshotExportClick}
         onVideoExport={handleVideoExportClick}
         onSavePrefab={() => setSavePrefabModalOpen(true)}
+        recordingModeEnabled={recording.recordingModeEnabled}
+        onRecordingModeChange={recording.setRecordingModeEnabled}
+        recordingDurationMs={recording.recordingDurationMs}
+        onRecordingDurationChange={recording.setRecordingDurationMs}
+        recordingGlobalState={recording.globalState}
+        recordingPlayerId={recording.recordingPlayerId}
+        recordingPlayerStates={recording.playerStates}
+        onStartRecording={recording.startRecording}
+        onClearPlayerRecording={recording.clearPlayerRecording}
+        onClearAllRecordings={recording.clearAllRecordings}
       />
       <input
         ref={importInputRef}
@@ -1928,6 +2092,7 @@ function Slate({ onShowMessage }) {
           onCopyKeyToolDebug={handleCopyKeyToolDebug}
           onCopyPlaceBallDebug={handleCopyPlaceBallDebug}
           onCopyVideoExportDebug={handleCopyVideoExportDebug}
+          onCopyRecordingDebug={handleCopyRecordingDebug}
           onDebugRotate={handleDebugRotate}
           onDownload={onDownload}
           onClose={() => setShowAdvancedSettings(false)}

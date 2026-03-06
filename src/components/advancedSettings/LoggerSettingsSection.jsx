@@ -6,6 +6,7 @@ export default function LoggerSettingsSection({
   onCopyKeyToolDebug,
   onCopyPlaceBallDebug,
   onCopyVideoExportDebug,
+  onCopyRecordingDebug,
   onDebugRotate,
 }) {
   const [copyAnimationState, setCopyAnimationState] = useState("idle");
@@ -13,11 +14,13 @@ export default function LoggerSettingsSection({
   const [copyKeyToolState, setCopyKeyToolState] = useState("idle");
   const [copyPlaceBallState, setCopyPlaceBallState] = useState("idle");
   const [copyVideoExportState, setCopyVideoExportState] = useState("idle");
+  const [copyRecordingState, setCopyRecordingState] = useState("idle");
   const copyAnimationResetRef = useRef(null);
   const copyDrawResetRef = useRef(null);
   const copyKeyToolResetRef = useRef(null);
   const copyPlaceBallResetRef = useRef(null);
   const copyVideoExportResetRef = useRef(null);
+  const copyRecordingResetRef = useRef(null);
 
   useEffect(
     () => () => {
@@ -40,6 +43,10 @@ export default function LoggerSettingsSection({
       if (copyVideoExportResetRef.current) {
         clearTimeout(copyVideoExportResetRef.current);
         copyVideoExportResetRef.current = null;
+      }
+      if (copyRecordingResetRef.current) {
+        clearTimeout(copyRecordingResetRef.current);
+        copyRecordingResetRef.current = null;
       }
     },
     []
@@ -135,6 +142,24 @@ export default function LoggerSettingsSection({
     }, 1500);
   };
 
+  const handleCopyRecordingDebug = async (event) => {
+    event.stopPropagation();
+    if (!onCopyRecordingDebug) return;
+    try {
+      const ok = await onCopyRecordingDebug();
+      setCopyRecordingState(ok ? "copied" : "error");
+    } catch {
+      setCopyRecordingState("error");
+    }
+    if (copyRecordingResetRef.current) {
+      clearTimeout(copyRecordingResetRef.current);
+    }
+    copyRecordingResetRef.current = setTimeout(() => {
+      setCopyRecordingState("idle");
+      copyRecordingResetRef.current = null;
+    }, 1500);
+  };
+
   return (
     <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1 sm:gap-2">
       <div className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans">Debug Logs</div>
@@ -181,6 +206,17 @@ export default function LoggerSettingsSection({
           : copyVideoExportState === "error"
             ? "Copy Failed"
             : "Copy Video Export Debug"}
+      </button>
+      <button
+        type="button"
+        onClick={handleCopyRecordingDebug}
+        className="h-6 sm:h-7 w-full bg-BrandBlack2 border border-BrandGray text-BrandOrange rounded-md px-2 text-[10px] sm:text-[11px] md:text-[12px] font-DmSans cursor-pointer"
+      >
+        {copyRecordingState === "copied"
+          ? "Copied"
+          : copyRecordingState === "error"
+            ? "Copy Failed"
+            : "Copy Recording Debug"}
       </button>
       <button
         type="button"

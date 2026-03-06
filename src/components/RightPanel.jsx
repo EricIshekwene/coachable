@@ -8,6 +8,8 @@ import AdvancedSettingsButton from "./rightPanel/AdvancedSettingsButton";
 import AllPlayersSection from "./rightPanel/AllPlayersSection";
 import SelectedPlayersSection from "./rightPanel/SelectedPlayersSection";
 import ExportActions from "./rightPanel/ExportActions";
+import RecordingModeToggle from "./rightPanel/RecordingModeToggle";
+import RecordingPlayerList from "./rightPanel/RecordingPlayerList";
 
 export default function RightPanel({
   playName,
@@ -83,6 +85,17 @@ export default function RightPanel({
   onDrawShapeFillChange,
   selectedItemIds,
   onSavePrefab,
+  // Recording mode props
+  recordingModeEnabled,
+  onRecordingModeChange,
+  recordingDurationMs,
+  onRecordingDurationChange,
+  recordingGlobalState,
+  recordingPlayerId,
+  recordingPlayerStates,
+  onStartRecording,
+  onClearPlayerRecording,
+  onClearAllRecordings,
 }) {
   return (
     <aside
@@ -149,14 +162,35 @@ export default function RightPanel({
             />
           )}
 
-          <PlayersSection
-            playersById={playersById}
-            representedPlayerIds={representedPlayerIds}
-            selectedPlayerIds={selectedPlayerIds}
-            onSelectPlayer={onSelectPlayer}
-            onEditPlayer={onEditPlayer}
-            onDeletePlayer={onDeletePlayer}
+          <RecordingModeToggle
+            enabled={recordingModeEnabled}
+            onChange={onRecordingModeChange}
+            durationMs={recordingDurationMs}
+            onDurationChange={onRecordingDurationChange}
+            isBusy={recordingGlobalState === "recording" || recordingGlobalState === "previewing"}
           />
+
+          {recordingModeEnabled ? (
+            <RecordingPlayerList
+              playersById={playersById}
+              representedPlayerIds={representedPlayerIds}
+              playerStates={recordingPlayerStates}
+              recordingPlayerId={recordingPlayerId}
+              globalState={recordingGlobalState}
+              onStartRecording={onStartRecording}
+              onClearPlayerRecording={onClearPlayerRecording}
+              onClearAllRecordings={onClearAllRecordings}
+            />
+          ) : (
+            <PlayersSection
+              playersById={playersById}
+              representedPlayerIds={representedPlayerIds}
+              selectedPlayerIds={selectedPlayerIds}
+              onSelectPlayer={onSelectPlayer}
+              onEditPlayer={onEditPlayer}
+              onDeletePlayer={onDeletePlayer}
+            />
+          )}
 
           <DrawingObjectsList
             drawings={drawings}
