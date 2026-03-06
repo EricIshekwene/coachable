@@ -1,6 +1,7 @@
 import { TbTemplate } from "react-icons/tb";
 import { SidebarChevronButton, WideSidebarRowButton } from "../subcomponents/Buttons";
 import { Popover, Tooltip } from "../subcomponents/Popovers";
+import { POPUP_POPOVER_SURFACE_CLASS } from "../subcomponents/popupStyles";
 
 const iconClass = "text-BrandOrange text-xl sm:text-2xl md:text-3xl";
 
@@ -36,7 +37,7 @@ export default function PresetSection({
             />
             <Tooltip isOpen={hoveredTooltip === "presets" && !isOpen} text="Presets" />
             <Popover isOpen={isOpen} onClose={onPopoverClose} anchorRef={anchorRef}>
-                <div className="px-4 py-3 min-w-[140px]">
+                <div className={`ml-2 px-4 py-3 min-w-[140px] ${POPUP_POPOVER_SURFACE_CLASS}`}>
                     <p className="text-BrandGray2 text-xs font-DmSans text-center">
                         No presets yet
                     </p>

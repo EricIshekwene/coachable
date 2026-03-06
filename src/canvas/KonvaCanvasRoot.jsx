@@ -97,6 +97,7 @@ function KonvaCanvasRoot({
   drawFontSize,
   drawTextAlign,
   drawArrowHeadType,
+  drawStabilization = 0,
   eraserSize = 10,
   drawShapeType = "rect",
   drawShapeStrokeColor = "#FFFFFF",
@@ -282,6 +283,7 @@ function KonvaCanvasRoot({
     drawFontSize,
     drawTextAlign,
     drawArrowHeadType,
+    drawStabilization,
     eraserSize,
     drawShapeType,
     drawShapeStrokeColor,
@@ -299,6 +301,12 @@ function KonvaCanvasRoot({
     guidelineOffsetWorld,
   });
 
+  const [inlineEdit, setInlineEdit] = useState(null);
+
+  const handleEditText = useCallback((drawing) => {
+    setInlineEdit({ id: drawing.id, text: drawing.text || "" });
+  }, []);
+
   const drawingSelection = useDrawingSelection({
     drawings,
     toWorldCoords,
@@ -308,6 +316,7 @@ function KonvaCanvasRoot({
     onUpdateMultipleNoHistory: onUpdateMultipleDrawingsNoHistory,
     historyApiRef,
     zoom: camera?.zoom || 1,
+    onEditText: handleEditText,
     fieldBounds,
     drawGuides,
     clearGuides,
@@ -1241,7 +1250,7 @@ function KonvaCanvasRoot({
       ? "grab"
       : tool === "pen"
         ? drawCursor
-        : tool === "addPlayer" || tool === "color"
+        : tool === "addPlayer" || tool === "color" || tool === "prefab"
           ? "copy"
           : "default";
   const hoverAllowed = !isMarqueeActive && !isPanning && !isDragging;
@@ -1260,6 +1269,36 @@ function KonvaCanvasRoot({
     wide: { pointerLength: 8, pointerWidth: 14 },
     chevron: { pointerLength: 14, pointerWidth: 18 },
     none: { pointerLength: 0, pointerWidth: 0 },
+  };
+
+  const getChevronHeadPoints = (points, pointerLength, pointerWidth) => {
+    if (!Array.isArray(points) || points.length < 4) return null;
+    const tipX = points[points.length - 2];
+    const tipY = points[points.length - 1];
+    const prevX = points[points.length - 4];
+    const prevY = points[points.length - 3];
+    const dx = tipX - prevX;
+    const dy = tipY - prevY;
+    const segmentLength = Math.hypot(dx, dy);
+    if (segmentLength < 0.001) return null;
+
+    const ux = dx / segmentLength;
+    const uy = dy / segmentLength;
+    const normalX = -uy;
+    const normalY = ux;
+    const headLength = Math.min(pointerLength, segmentLength);
+    const halfHeadWidth = pointerWidth / 2;
+    const baseX = tipX - ux * headLength;
+    const baseY = tipY - uy * headLength;
+
+    return [
+      baseX + normalX * halfHeadWidth,
+      baseY + normalY * halfHeadWidth,
+      tipX,
+      tipY,
+      baseX - normalX * halfHeadWidth,
+      baseY - normalY * halfHeadWidth,
+    ];
   };
 
   const erasingIds = canvasDrawing.erasingIds;
@@ -1286,13 +1325,42 @@ function KonvaCanvasRoot({
     }
     if (d.type === "arrow") {
       const headStyle = ARROW_HEAD_STYLES[d.arrowHeadType] || ARROW_HEAD_STYLES.standard;
+      const strokeColor = d.color || "#FFFFFF";
+      const strokeWidth = d.strokeWidth || 3;
+      if (d.arrowHeadType === "chevron") {
+        const chevronHeadPoints = getChevronHeadPoints(d.points, headStyle.pointerLength, headStyle.pointerWidth);
+        return (
+          <React.Fragment key={key}>
+            <Line
+              points={d.points}
+              stroke={strokeColor}
+              strokeWidth={strokeWidth}
+              lineCap="round"
+              lineJoin="round"
+              opacity={opacity}
+              listening={false}
+            />
+            {chevronHeadPoints && (
+              <Line
+                points={chevronHeadPoints}
+                stroke={strokeColor}
+                strokeWidth={strokeWidth}
+                lineCap="round"
+                lineJoin="round"
+                opacity={opacity}
+                listening={false}
+              />
+            )}
+          </React.Fragment>
+        );
+      }
       return (
         <Arrow
           key={key}
           points={d.points}
-          stroke={d.color || "#FFFFFF"}
-          fill={d.color || "#FFFFFF"}
-          strokeWidth={d.strokeWidth || 3}
+          stroke={strokeColor}
+          fill={strokeColor}
+          strokeWidth={strokeWidth}
           pointerLength={headStyle.pointerLength}
           pointerWidth={headStyle.pointerWidth}
           lineCap="round"
@@ -1304,25 +1372,26 @@ function KonvaCanvasRoot({
     }
     if (d.type === "text") {
       const isTextSelected = selectedDrawingIds.includes(d.id);
+      const isInlineEditing = inlineEdit?.id === d.id;
       const textLayout = getTextDrawingLayout(d);
       return (
         <React.Fragment key={key}>
-          <Text
+          {!isInlineEditing && <Text
             x={textLayout.x}
             y={textLayout.y}
             rotation={d.rotation || 0}
             text={d.text || ""}
             fill={d.color || "#FFFFFF"}
             fontSize={d.fontSize || 18}
-            fontFamily="DmSans"
+            fontFamily="DmSans, sans-serif"
             align={d.align || "left"}
             width={textLayout.width}
             wrap={textLayout.hasFixedWidth ? "word" : "none"}
             padding={textLayout.hasFixedWidth ? 4 : 0}
             opacity={opacity}
             listening={false}
-          />
-          {isTextSelected && (() => {
+          />}
+          {isTextSelected && !isInlineEditing && (() => {
             const b = getDrawingWorldBounds(d);
             const sw = 1 / (camera?.zoom || 1);
             return (
@@ -1785,6 +1854,66 @@ function KonvaCanvasRoot({
           </Layer>
         </Stage>
       </div>
+      {inlineEdit && (() => {
+        const d = drawings.find((dd) => dd.id === inlineEdit.id);
+        if (!d) return null;
+        const layout = getTextDrawingLayout(d);
+        const zoom = camera?.zoom || 1;
+        const screenX = worldOrigin.x + layout.x * zoom;
+        const screenY = worldOrigin.y + layout.y * zoom;
+        const fontSize = (d.fontSize || 18) * zoom;
+        return (
+          <textarea
+            autoFocus
+            value={inlineEdit.text}
+            onChange={(e) => setInlineEdit((prev) => ({ ...prev, text: e.target.value }))}
+            onBlur={() => {
+              if (inlineEdit.text !== (d.text || "")) {
+                historyApiRef.current?.pushHistory?.();
+                onUpdateDrawing?.(d.id, { text: inlineEdit.text });
+              }
+              setInlineEdit(null);
+            }}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === "Escape") {
+                setInlineEdit(null);
+              }
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (inlineEdit.text !== (d.text || "")) {
+                  historyApiRef.current?.pushHistory?.();
+                  onUpdateDrawing?.(d.id, { text: inlineEdit.text });
+                }
+                setInlineEdit(null);
+              }
+            }}
+            style={{
+              position: "absolute",
+              left: screenX,
+              top: screenY,
+              fontSize,
+              lineHeight: 1.3,
+              fontFamily: "DmSans, sans-serif",
+              color: d.color || "#FFFFFF",
+              background: "rgba(0,0,0,0.6)",
+              border: "1px solid #FF7A18",
+              borderRadius: 3,
+              padding: 2,
+              outline: "none",
+              resize: "none",
+              minWidth: Math.max(60, layout.width * zoom),
+              minHeight: Math.max(fontSize * 1.3, layout.height * zoom),
+              textAlign: d.align || "left",
+              zIndex: 100,
+              transform: d.rotation ? `rotate(${d.rotation}deg)` : undefined,
+              transformOrigin: "top left",
+              whiteSpace: "pre-wrap",
+              overflow: "hidden",
+            }}
+          />
+        );
+      })()}
     </BoardViewport>
   );
 }

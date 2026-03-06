@@ -1,18 +1,13 @@
 import React from "react";
 import { SketchPicker } from "react-color";
+import { POPUP_POPOVER_SURFACE_CLASS } from "./popupStyles";
 
 export const ColorPickerPopover = ({ color, onChange }) => {
   const presetColors = ["#0033FF", "#FF0000"];
 
   return (
     <div
-      className="
-        ml-2 rounded-md
-        bg-BrandBlack
-        p-3 sm:p-4
-        w-[160px] sm:w-[180px] md:w-[200px] lg:w-[220px] xl:w-[240px]
-        shadow-lg
-      "
+      className={`ml-2 p-3 sm:p-4 w-[160px] sm:w-[180px] md:w-[200px] lg:w-[220px] xl:w-[240px] ${POPUP_POPOVER_SURFACE_CLASS}`}
     >
       <style>{`
         /* ===== Root picker panel ===== */

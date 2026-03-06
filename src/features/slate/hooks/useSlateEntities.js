@@ -417,43 +417,88 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
     logEvent?.("slate", "dragEnd", { id });
   };
 
-  const handleItemChange = (id, next, meta) => {
-    const moveSelectedItemsByDelta = (dx, dy) => {
-      setPlayersById((prev) => {
-        const updated = { ...prev };
-        selectedItemIds.forEach((itemId) => {
-          const existing = updated[itemId];
-          if (!existing) return;
-          updated[itemId] = {
-            ...existing,
-            x: (existing.x ?? 0) + dx,
-            y: (existing.y ?? 0) + dy,
-          };
-        });
-        return updated;
-      });
-      setBallsById((prev) => {
-        const updated = cloneBallsById(prev);
-        selectedItemIds.forEach((itemId) => {
-          const existing = updated[itemId];
-          if (!existing) return;
-          updated[itemId] = {
-            ...existing,
-            x: (existing.x ?? 0) + dx,
-            y: (existing.y ?? 0) + dy,
-          };
-        });
-        return updated;
-      });
-    };
+  const moveItemsByDelta = (itemIds, dx, dy) => {
+    if (!Array.isArray(itemIds) || !itemIds.length) return;
+    if (!Number.isFinite(dx) || !Number.isFinite(dy)) return;
+    if (dx === 0 && dy === 0) return;
 
+    setPlayersById((prev) => {
+      const updated = { ...prev };
+      let changed = false;
+      itemIds.forEach((itemId) => {
+        const existing = updated[itemId];
+        if (!existing) return;
+        changed = true;
+        updated[itemId] = {
+          ...existing,
+          x: (existing.x ?? 0) + dx,
+          y: (existing.y ?? 0) + dy,
+        };
+      });
+      return changed ? updated : prev;
+    });
+
+    setBallsById((prev) => {
+      const updated = cloneBallsById(prev);
+      let changed = false;
+      itemIds.forEach((itemId) => {
+        const existing = updated[itemId];
+        if (!existing) return;
+        changed = true;
+        updated[itemId] = {
+          ...existing,
+          x: (existing.x ?? 0) + dx,
+          y: (existing.y ?? 0) + dy,
+        };
+      });
+      return changed ? updated : prev;
+    });
+  };
+
+  const handleMoveSelectedPlayersByDelta = (dx, dy, { pushHistory = true, source = "unknown" } = {}) => {
+    if (!Number.isFinite(dx) || !Number.isFinite(dy)) return [];
+    if (dx === 0 && dy === 0) return [];
+
+    const targetPlayerIds = (selectedPlayerIds || []).filter((playerId) => Boolean(playersById?.[playerId]));
+    if (!targetPlayerIds.length) return [];
+
+    if (pushHistory) {
+      historyApiRef.current?.pushHistory?.();
+    }
+
+    setPlayersById((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      targetPlayerIds.forEach((playerId) => {
+        const existing = next[playerId];
+        if (!existing) return;
+        changed = true;
+        next[playerId] = {
+          ...existing,
+          x: (existing.x ?? 0) + dx,
+          y: (existing.y ?? 0) + dy,
+        };
+      });
+      return changed ? next : prev;
+    });
+
+    logEvent?.("slate", "playersMove", {
+      playerIds: targetPlayerIds,
+      delta: { x: dx, y: dy },
+      source,
+    });
+
+    return targetPlayerIds;
+  };
+
+  const handleItemChange = (id, next, meta) => {
     if (meta?.delta) {
       logEvent?.("slate", "itemMove", { id, delta: meta.delta });
     }
     if (playersById[id]) {
       if (meta?.delta && selectedItemIds?.includes(id) && selectedItemIds.length > 1) {
         const { x: dx = 0, y: dy = 0 } = meta.delta || {};
-        moveSelectedItemsByDelta(dx, dy);
+        moveItemsByDelta(selectedItemIds, dx, dy);
         return;
       }
       setPlayersById((prev) => ({ ...prev, [id]: { ...prev[id], ...next } }));
@@ -462,7 +507,7 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
     if (ballsById[id]) {
       if (meta?.delta && selectedItemIds?.includes(id) && selectedItemIds.length > 1) {
         const { x: dx = 0, y: dy = 0 } = meta.delta || {};
-        moveSelectedItemsByDelta(dx, dy);
+        moveItemsByDelta(selectedItemIds, dx, dy);
         return;
       }
       setBallsById((prev) => ({
@@ -609,6 +654,7 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
     handleItemDragStart,
     handleItemDragEnd,
     handleItemChange,
+    handleMoveSelectedPlayersByDelta,
     onMarqueeSelect,
     loadEntitiesState,
     resetSlateEntities,

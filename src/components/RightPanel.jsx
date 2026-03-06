@@ -62,6 +62,8 @@ export default function RightPanel({
   onDrawFontSizeChange,
   onDrawTextAlignChange,
   onDrawArrowHeadTypeChange,
+  drawStabilization,
+  onDrawStabilizationChange,
   selectedDrawing,
   selectedDrawings,
   onUpdateDrawing,
@@ -130,6 +132,8 @@ export default function RightPanel({
               onFontSizeChange={onDrawFontSizeChange}
               onTextAlignChange={onDrawTextAlignChange}
               onArrowHeadTypeChange={onDrawArrowHeadTypeChange}
+              drawStabilization={drawStabilization}
+              onStabilizationChange={onDrawStabilizationChange}
               selectedDrawing={selectedDrawing}
               selectedDrawings={selectedDrawings}
               onUpdateDrawing={onUpdateDrawing}

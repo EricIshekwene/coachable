@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { IoChevronDownOutline } from "react-icons/io5";
 import { FaTrash } from "react-icons/fa";
+import { POPUP_DENSE_INPUT_CLASS, POPUP_POPOVER_SURFACE_CLASS } from "./popupStyles";
 
 // Dropdown Item Component (matches Add Player dropdown styling)
 const DropdownItem = ({ dropdown }) => {
@@ -23,13 +24,13 @@ const DropdownItem = ({ dropdown }) => {
         <div className="flex flex-col gap-0.5 sm:gap-1 relative" ref={dropdownItemRef}>
             <p className="text-BrandOrange text-xs sm:text-sm">{dropdown.label}:</p>
             <div className="relative">
-                <div className="w-full h-8 sm:h-9 bg-BrandBlack2 border-[0.5px] border-BrandGray rounded-md flex items-center overflow-hidden">
-                    <div className="flex-1 min-w-0 h-8 sm:h-9 bg-transparent border-r-[0.5px] border-BrandGray text-BrandWhite px-2 text-xs sm:text-sm flex items-center rounded-l-md">
+                <div className="w-full h-8 sm:h-9 bg-BrandBlack2 border border-BrandGray rounded-md flex items-center overflow-hidden">
+                    <div className="flex-1 min-w-0 h-8 sm:h-9 bg-transparent border-r border-BrandGray text-BrandWhite px-2 text-xs sm:text-sm flex items-center rounded-l-md">
                         {selectedValue}
                     </div>
                     <button
                         onClick={() => setIsOpen(!isOpen)}
-                        className="h-8 sm:h-9 w-8 sm:w-9 flex items-center justify-center border-l-[0.5px] border-BrandGray transition-colors rounded-r-md shrink-0 hover:bg-BrandBlack2"
+                        className="h-8 sm:h-9 w-8 sm:w-9 flex items-center justify-center border-l border-BrandGray transition-colors rounded-r-md shrink-0 hover:bg-BrandBlack"
                     >
                         <IoChevronDownOutline
                             className={`text-BrandOrange text-base sm:text-lg transition-transform ${isOpen ? "rotate-180" : ""}`}
@@ -37,7 +38,7 @@ const DropdownItem = ({ dropdown }) => {
                     </button>
                 </div>
                 {isOpen && (
-                    <div className="absolute left-0 top-full w-full bg-BrandBlack border border-BrandGray rounded-md mt-1 max-h-40 overflow-y-auto z-10 shadow-lg">
+                    <div className="absolute left-0 top-full w-full bg-BrandBlack border border-BrandGray2/80 rounded-md mt-1 max-h-40 overflow-y-auto z-10 shadow-[0_12px_24px_-18px_rgba(0,0,0,0.95)]">
                         {dropdown.options.length > 0 ? (
                             dropdown.options.map((option, optIdx) => (
                                 <div
@@ -109,7 +110,7 @@ const PrefabItem = ({ prefab, onSelect, isOpen, onToggle, onClose, onDelete }) =
             <div
                 className="
           w-full flex items-center gap-2
-          rounded-md border-[0.5px] border-BrandGray
+          rounded-md border border-BrandGray
           bg-BrandBlack2 hover:bg-BrandBlack2/80
           transition-all duration-100
           px-2 py-2
@@ -120,7 +121,7 @@ const PrefabItem = ({ prefab, onSelect, isOpen, onToggle, onClose, onDelete }) =
                     onClick={onSelect}
                     className="
             w-10 h-10 shrink-0
-            rounded-md border-[0.5px] border-BrandGray
+            rounded-md border border-BrandGray
             bg-BrandOrange
             flex items-center justify-center
             hover:bg-BrandOrange/80
@@ -155,7 +156,7 @@ const PrefabItem = ({ prefab, onSelect, isOpen, onToggle, onClose, onDelete }) =
                 {isCustom ? (
                     <button
                         onClick={handleDeleteClick}
-                        className="w-8 h-8 shrink-0 flex items-center justify-center rounded-md border-[0.5px] border-BrandGray bg-BrandBlack transition-colors hover:bg-red-900/40 hover:border-red-500/40"
+                        className="w-8 h-8 shrink-0 flex items-center justify-center rounded-md border border-BrandGray bg-BrandBlack transition-colors hover:bg-red-900/40 hover:border-red-500/40"
                         aria-label="Delete prefab"
                     >
                         <FaTrash className="text-red-400 text-xs" />
@@ -166,7 +167,7 @@ const PrefabItem = ({ prefab, onSelect, isOpen, onToggle, onClose, onDelete }) =
                         className={`
                                   w-8 h-8 shrink-0
                                   flex items-center justify-center rounded-md
-                                  border-[0.5px] border-BrandGray
+                                  border border-BrandGray
                                   bg-BrandBlack
                                   transition-colors
                                   ${hasDropdowns ? "hover:bg-BrandBlack/80" : "opacity-40 cursor-not-allowed"}
@@ -187,12 +188,7 @@ const PrefabItem = ({ prefab, onSelect, isOpen, onToggle, onClose, onDelete }) =
             {isOpen && hasDropdowns && (
                 <div
                     ref={dropdownRef}
-                    className="
-            absolute left-full ml-5 top-0 z-50
-            bg-BrandBlack
-            rounded-md p-3 shadow-lg
-            min-w-[200px]
-          "
+                    className={`absolute left-full ml-5 top-0 z-50 p-3 min-w-[200px] ${POPUP_POPOVER_SURFACE_CLASS}`}
                     onClick={(e) => e.stopPropagation()}
                 >
                     <div className="flex flex-col gap-2">
@@ -231,14 +227,7 @@ export const PrefabsPopover = ({ prefabs = [], onPrefabSelect, onDeleteCustomPre
 
     return (
         <div
-            className="
-        ml-2 rounded-md
-        bg-BrandBlack
-        p-3 sm:p-4
-        w-[260px]
-        shadow-lg
-        flex flex-col gap-3
-      "
+            className={`ml-2 p-3 sm:p-4 w-[260px] flex flex-col gap-3 ${POPUP_POPOVER_SURFACE_CLASS}`}
         >
             {/* Toggle pill */}
             <div className="flex items-center justify-center">
@@ -265,7 +254,7 @@ export const PrefabsPopover = ({ prefabs = [], onPrefabSelect, onDeleteCustomPre
                     placeholder="Search prefabs..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full h-8 sm:h-9 bg-BrandBlack border-[0.5px] border-BrandGray text-BrandWhite rounded-md px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors font-DmSans"
+                    className={POPUP_DENSE_INPUT_CLASS}
                 />
             </div>
 

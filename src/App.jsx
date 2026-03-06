@@ -14,6 +14,7 @@ function App() {
           subtitle={messagePopup.subtitle}
           visible={messagePopup.visible}
           type={messagePopup.type}
+          autoHideDuration={messagePopup.autoHideDuration}
           onClose={hideMessage}
         />
         <Slate onShowMessage={showMessage} />

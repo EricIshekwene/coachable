@@ -1,5 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { FaTimes } from "react-icons/fa";
+import {
+  POPUP_CLOSE_BUTTON_CLASS,
+  POPUP_INPUT_CLASS,
+  POPUP_LABEL_CLASS,
+  POPUP_MODAL_OVERLAY_CLASS,
+  POPUP_PRIMARY_BUTTON_CLASS,
+  POPUP_SURFACE_CLASS,
+  POPUP_TITLE_CLASS,
+} from "./subcomponents/popupStyles";
 
 export default function SavePrefabModal({ open, onClose, onSave }) {
   const [name, setName] = useState("");
@@ -26,28 +35,26 @@ export default function SavePrefabModal({ open, onClose, onSave }) {
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60"
+      className={POPUP_MODAL_OVERLAY_CLASS}
       onClick={onClose}
     >
       <div
-        className="relative bg-BrandBlack border border-BrandGray2 rounded-xl w-72 sm:w-80 p-5 flex flex-col gap-4 shadow-2xl"
+        className={`relative w-72 sm:w-80 p-5 sm:p-6 flex flex-col gap-4 ${POPUP_SURFACE_CLASS}`}
         onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-3 right-3 text-BrandGray hover:text-BrandWhite transition-colors"
+          className={POPUP_CLOSE_BUTTON_CLASS}
           aria-label="Close"
         >
           <FaTimes className="text-sm" />
         </button>
 
-        <h2 className="text-BrandWhite font-DmSans font-bold text-sm sm:text-base">
-          Save as Prefab
-        </h2>
+        <h2 className={POPUP_TITLE_CLASS}>Save as Prefab</h2>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-BrandGray text-xs font-DmSans">Prefab Name</label>
+          <label className={POPUP_LABEL_CLASS}>Prefab Name</label>
           <input
             ref={inputRef}
             type="text"
@@ -55,7 +62,7 @@ export default function SavePrefabModal({ open, onClose, onSave }) {
             onChange={(e) => setName(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="e.g. My Lineout"
-            className="w-full h-9 bg-BrandBlack2 border border-BrandGray rounded-md px-3 text-BrandWhite text-sm font-DmSans focus:outline-none focus:border-BrandOrange transition-colors"
+            className={POPUP_INPUT_CLASS}
             maxLength={50}
           />
         </div>
@@ -64,7 +71,7 @@ export default function SavePrefabModal({ open, onClose, onSave }) {
           type="button"
           onClick={handleSave}
           disabled={!name.trim()}
-          className="w-full py-2 rounded-lg bg-BrandOrange text-BrandBlack font-DmSans font-semibold text-sm hover:bg-BrandOrange/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className={`${POPUP_PRIMARY_BUTTON_CLASS} disabled:opacity-40 disabled:cursor-not-allowed`}
         >
           Save Prefab
         </button>

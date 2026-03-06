@@ -227,8 +227,8 @@ function FontSizeDropdown({ value, onChange }) {
 }
 
 function DrawSubToolStyle({
-  drawColor, drawOpacity, drawStrokeWidth, drawTension,
-  onColorChange, onOpacityChange, onStrokeWidthChange, onTensionChange,
+  drawColor, drawOpacity, drawStrokeWidth, drawTension, drawStabilization,
+  onColorChange, onOpacityChange, onStrokeWidthChange, onTensionChange, onStabilizationChange,
 }) {
   return (
     <>
@@ -236,7 +236,8 @@ function DrawSubToolStyle({
       <ColorSwatches value={drawColor} onChange={onColorChange} />
       <SliderControl label="Opacity" value={drawOpacity} onChange={onOpacityChange} min={0} max={100} step={10} isPercentage />
       <SliderControl label="Brush Size" value={drawStrokeWidth} onChange={onStrokeWidthChange} min={1} max={20} step={1} />
-      <SliderControl label="Stabilization" value={drawTension} onChange={onTensionChange} min={0} max={1} step={0.1} />
+      <SliderControl label="Smoothing" value={drawTension} onChange={onTensionChange} min={0} max={1} step={0.1} />
+      <SliderControl label="Stabilization" value={drawStabilization} onChange={onStabilizationChange} min={0} max={100} step={5} />
     </>
   );
 }
@@ -578,6 +579,7 @@ export default function DrawingStyleSection({
   drawFontSize,
   drawTextAlign,
   drawArrowHeadType,
+  drawStabilization = 0,
   drawShapeStrokeColor = "#FFFFFF",
   onColorChange,
   onOpacityChange,
@@ -586,6 +588,7 @@ export default function DrawingStyleSection({
   onFontSizeChange,
   onTextAlignChange,
   onArrowHeadTypeChange,
+  onStabilizationChange,
   onShapeStrokeColorChange,
   selectedDrawing,
   selectedDrawings = [],
@@ -637,10 +640,12 @@ export default function DrawingStyleSection({
           drawOpacity={drawOpacity}
           drawStrokeWidth={drawStrokeWidth}
           drawTension={drawTension}
+          drawStabilization={drawStabilization}
           onColorChange={onColorChange}
           onOpacityChange={onOpacityChange}
           onStrokeWidthChange={onStrokeWidthChange}
           onTensionChange={onTensionChange}
+          onStabilizationChange={onStabilizationChange}
         />
       )}
 

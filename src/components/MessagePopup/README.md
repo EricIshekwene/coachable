@@ -4,7 +4,7 @@ This folder contains the MessagePopup component, a notification/toast-style popu
 
 ## Component Overview
 
-The MessagePopup is a notification component that appears at the top center of the screen. It supports three message types (error, success, standard) with distinct styling, and automatically dismisses after a configurable duration.
+The MessagePopup is a notification component that appears at the top center of the screen. It supports four message types (error, success, warning, standard) with distinct styling, and automatically dismisses after a configurable duration.
 
 ## Usage
 
@@ -21,7 +21,7 @@ import MessagePopup from "./components/messagePopup/MessagePopup";
 | `message` | `string` | Required | The main message text to display |
 | `subtitle` | `string` | `""` | Optional subtitle text displayed below the message |
 | `visible` | `boolean` | `false` | Controls whether the popup is visible |
-| `type` | `"error" \| "success" \| "standard"` | `"standard"` | Message type that determines styling |
+| `type` | `"error" \| "success" \| "warning" \| "standard"` | `"standard"` | Message type that determines styling |
 | `onClose` | `function` | `undefined` | Callback function called when popup closes (auto-dismiss or manual) |
 | `autoHideDuration` | `number` | `3000` | Duration in milliseconds before auto-dismissing (0 to disable) |
 
@@ -70,6 +70,9 @@ function App() {
       <button onClick={() => showMessage("Error", "Something went wrong", "error")}>
         Show Error
       </button>
+      <button onClick={() => showMessage("Warning", "Please check your inputs", "warning")}>
+        Show Warning
+      </button>
       <button onClick={() => showMessage("Info", "This is a message", "standard")}>
         Show Standard
       </button>
@@ -93,6 +96,13 @@ function App() {
 - **Text**: Light green (`text-green-200`)
 - **Title**: Medium green (`text-green-300`)
 - **Use case**: Display success messages, confirmations, or positive feedback
+
+### Warning (`type="warning"`)
+- **Background**: Dark amber (`bg-amber-500/15` over dark base)
+- **Border**: Amber (`border-amber-300/45`)
+- **Text**: Light amber (`text-amber-100/80`)
+- **Title**: Amber (`text-amber-100`)
+- **Use case**: Display cautionary states that are not hard failures
 
 ### Standard (`type="standard"`)
 - **Background**: Brand black (`bg-BrandBlack2`)
@@ -146,7 +156,7 @@ function App() {
 ## Best Practices
 
 1. **Keep messages concise**: The popup has limited space, especially on mobile devices
-2. **Use appropriate types**: Match the message type to the content (error for errors, success for successes)
+2. **Use appropriate types**: Match the message type to the content (error, success, warning, or standard)
 3. **Provide subtitles for context**: Use the subtitle prop to add additional context without cluttering the main message
 4. **Handle multiple messages**: If showing multiple messages in sequence, ensure proper state management to avoid overlapping popups
 5. **Accessibility**: The component uses semantic HTML (`h2` for message, `p` for subtitle) for screen readers

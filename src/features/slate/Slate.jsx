@@ -47,10 +47,19 @@ const DEFAULT_SPEED_MULTIPLIER = 50;
 const UI_TIME_UPDATE_INTERVAL_MS = 100;
 const TICK_LOG_INTERVAL_MS = 100;
 const POSE_UPDATE_EPSILON = 0.001;
+const KEYBOARD_NUDGE_STEP = 2;
+const KEYBOARD_NUDGE_FAST_STEP = 8;
+const KEYBOARD_NUDGE_SNAP_THRESHOLD_PX = 5;
 const VIDEO_EXPORT_TIMESLICE_MS = 1000;
 const VIDEO_EXPORT_HIGH_LOAD_PIXELS = 2_500_000;
 const VIDEO_EXPORT_MAX_FPS_HIGH_LOAD = 24;
 const VIDEO_EXPORT_MAX_BITRATE_HIGH_LOAD = 8_000_000;
+const KEYBOARD_NUDGE_BY_KEY = {
+  ArrowLeft: { x: -1, y: 0 },
+  ArrowRight: { x: 1, y: 0 },
+  ArrowUp: { x: 0, y: -1 },
+  ArrowDown: { x: 0, y: 1 },
+};
 
 const waitForAnimationFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -87,6 +96,7 @@ function Slate({ onShowMessage }) {
   const [drawFontSize, setDrawFontSize] = useState(18);
   const [drawTextAlign, setDrawTextAlign] = useState("left");
   const [drawArrowHeadType, setDrawArrowHeadType] = useState("standard");
+  const [drawStabilization, setDrawStabilization] = useState(0);
   const [eraserSize, setEraserSize] = useState(10);
   const [drawShapeType, setDrawShapeType] = useState("rect");
   const [drawShapeStrokeColor, setDrawShapeStrokeColor] = useState("#FFFFFF");
@@ -398,7 +408,6 @@ function Slate({ onShowMessage }) {
     engineRef.current.setPlaybackRate(speedToPlaybackRate(speedMultiplier));
   }, [speedMultiplier]);
 
-
   const rotateEntitiesByDelta = useCallback((delta) => {
     if (delta === 0) return;
 
@@ -457,21 +466,9 @@ function Slate({ onShowMessage }) {
   }, [rotateEntitiesByDelta, fieldViewport.pushFieldHistory, fieldViewport.setFieldRotation]);
 
   const handleDebugRotate = useCallback(() => {
-    const rotateOrder = [-90, 180, 90];
-    const current = fieldViewport.fieldRotation;
-    const currentIndex = rotateOrder.indexOf(current);
-    const nextRotation = currentIndex >= 0 ? rotateOrder[(currentIndex + 1) % rotateOrder.length] : 180;
-    logAnimDebug(`debugRotate current=${current} next=${nextRotation}`);
-    if (nextRotation === -90) {
-      handleRotateLeft();
-      return;
-    }
-    if (nextRotation === 180) {
-      handleRotateCenter();
-      return;
-    }
+    logAnimDebug(`debugRotate current=${fieldViewport.fieldRotation} rotating +90`);
     handleRotateRight();
-  }, [fieldViewport.fieldRotation, handleRotateCenter, handleRotateLeft, handleRotateRight]);
+  }, [fieldViewport.fieldRotation, handleRotateRight]);
 
   const onReset = () => {
     logEvent("slate", "reset");
@@ -1180,6 +1177,14 @@ function Slate({ onShowMessage }) {
     const ball = selectedBallId ? entities.ballsById[selectedBallId] : null;
     const ballSelected = Boolean(ball);
     if (selectedPlayers.length < 2 && !ballSelected) return;
+    const normalizedName = String(name ?? "").trim().toLowerCase();
+    const duplicateExists = customPrefabs.some(
+      (prefab) => String(prefab?.label ?? "").trim().toLowerCase() === normalizedName
+    );
+    if (duplicateExists) {
+      onShowMessage?.("Prefab not saved", `A prefab named "${name}" already exists.`, "error");
+      return;
+    }
     const prefab = buildCustomPrefab(name, selectedPlayers, ball);
     const updated = [...customPrefabs, prefab];
     saveCustomPrefabs(updated);
@@ -1380,6 +1385,102 @@ function Slate({ onShowMessage }) {
     [entities, resolveTrackPose]
   );
 
+  const handleNudgeSelectedPlayers = useCallback(
+    ({ dx = 0, dy = 0, pushHistory = true, source = "keyboard" } = {}) => {
+      if (!Number.isFinite(dx) || !Number.isFinite(dy)) {
+        return { moved: false, dx: 0, dy: 0, snappedX: false, snappedY: false };
+      }
+      if (dx === 0 && dy === 0) {
+        return { moved: false, dx: 0, dy: 0, snappedX: false, snappedY: false };
+      }
+
+      const selectedPlayerIds = entities.selectedPlayerIds || [];
+      if (!selectedPlayerIds.length) {
+        return { moved: false, dx: 0, dy: 0, snappedX: false, snappedY: false };
+      }
+
+      let nextDx = dx;
+      let nextDy = dy;
+      let snappedX = false;
+      let snappedY = false;
+      const anchorId = selectedPlayerIds[0];
+      const anchorPose = resolveTrackPose(anchorId) || entities.playersById?.[anchorId];
+      if (anchorPose) {
+        const zoom = Math.max(0.0001, fieldViewport.camera?.zoom || 1);
+        const snapThresholdWorld = KEYBOARD_NUDGE_SNAP_THRESHOLD_PX / zoom;
+        const targetX = (anchorPose.x ?? 0) + dx;
+        const targetY = (anchorPose.y ?? 0) + dy;
+        const excludedIds = new Set(selectedPlayerIds);
+        let closestX = null;
+        let closestY = null;
+
+        (entities.items || []).forEach((item) => {
+          if (!item || excludedIds.has(item.id)) return;
+          if (item.type !== "player" && item.type !== "ball") return;
+
+          const itemPose = resolveTrackPose(item.id);
+          const itemX = Number.isFinite(itemPose?.x) ? itemPose.x : (item.x ?? 0);
+          const itemY = Number.isFinite(itemPose?.y) ? itemPose.y : (item.y ?? 0);
+          const diffX = Math.abs(itemX - targetX);
+          const diffY = Math.abs(itemY - targetY);
+
+          if (diffX <= snapThresholdWorld && (!closestX || diffX < closestX.diff)) {
+            closestX = { value: itemX, diff: diffX };
+          }
+          if (diffY <= snapThresholdWorld && (!closestY || diffY < closestY.diff)) {
+            closestY = { value: itemY, diff: diffY };
+          }
+        });
+
+        if (closestX) {
+          nextDx += closestX.value - targetX;
+          snappedX = true;
+        }
+        if (closestY) {
+          nextDy += closestY.value - targetY;
+          snappedY = true;
+        }
+      }
+
+      if (nextDx === 0 && nextDy === 0) {
+        return { moved: false, dx: nextDx, dy: nextDy, snappedX, snappedY };
+      }
+
+      engineRef.current.pause();
+      const movedPlayerIds = entities.handleMoveSelectedPlayersByDelta(nextDx, nextDy, {
+        pushHistory,
+        source,
+      });
+      if (!movedPlayerIds.length) {
+        return { moved: false, dx: nextDx, dy: nextDy, snappedX, snappedY };
+      }
+
+      const patch = {};
+      movedPlayerIds.forEach((itemId) => {
+        const currentPose = resolveTrackPose(itemId);
+        if (!currentPose) return;
+        patch[itemId] = {
+          ...currentPose,
+          x: (currentPose.x ?? 0) + nextDx,
+          y: (currentPose.y ?? 0) + nextDy,
+        };
+      });
+
+      if (Object.keys(patch).length) {
+        Object.entries(patch).forEach(([itemId, pose]) => {
+          latestPosesRef.current[itemId] = pose;
+        });
+        animationRendererRef.current?.setPoses?.(patch);
+      }
+
+      if (!engineRef.current.isPlaying()) {
+        upsertKeyframesAtCurrentTime(movedPlayerIds, { source });
+      }
+      return { moved: true, dx: nextDx, dy: nextDy, snappedX, snappedY };
+    },
+    [entities, fieldViewport.camera?.zoom, resolveTrackPose, upsertKeyframesAtCurrentTime]
+  );
+
   const loadPlayFromImport = useCallback(
     (importObj) => {
       const { ok, error, play } = validatePlayImport(importObj);
@@ -1551,6 +1652,30 @@ function Slate({ onShowMessage }) {
         return;
       }
 
+      const nudgeDirection = KEYBOARD_NUDGE_BY_KEY[e.key];
+      if (nudgeDirection) {
+        if (exportModalOpen || isExporting || screenshotMode) return;
+        const selectedPlayerCount = entities.selectedPlayerIds?.length || 0;
+        if (!selectedPlayerCount) return;
+
+        const step = e.shiftKey ? KEYBOARD_NUDGE_FAST_STEP : KEYBOARD_NUDGE_STEP;
+        const dx = nudgeDirection.x * step;
+        const dy = nudgeDirection.y * step;
+        e.preventDefault();
+
+        const nudgeResult = handleNudgeSelectedPlayers({
+          dx,
+          dy,
+          pushHistory: !e.repeat,
+          source: e.repeat ? "keyboardNudgeRepeat" : "keyboardNudge",
+        });
+
+        logKeyToolDebug(
+          `keydown ${e.key} action=${nudgeResult.moved ? "nudgePlayers" : "nudgeNoop"} selectedPlayers=${selectedPlayerCount} dx=${nudgeResult.dx} dy=${nudgeResult.dy} snapX=${nudgeResult.snappedX} snapY=${nudgeResult.snappedY} shift=${Boolean(e.shiftKey)} repeat=${Boolean(e.repeat)}`
+        );
+        return;
+      }
+
       const isDeleteKey = e.key === "Delete" || e.key === "Backspace";
       if (!isDeleteKey) return;
 
@@ -1569,7 +1694,17 @@ function Slate({ onShowMessage }) {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [entities, selectedDrawingIds, canvasTool, drawSubTool, drawingsState]);
+  }, [
+    entities,
+    selectedDrawingIds,
+    canvasTool,
+    drawSubTool,
+    drawingsState,
+    exportModalOpen,
+    isExporting,
+    screenshotMode,
+    handleNudgeSelectedPlayers,
+  ]);
 
   const handleAnimationRendererReady = useCallback(() => {
     renderPoseAtTime(currentTimeRef.current);
@@ -1621,6 +1756,7 @@ function Slate({ onShowMessage }) {
           drawFontSize={drawFontSize}
           drawTextAlign={drawTextAlign}
           drawArrowHeadType={drawArrowHeadType}
+          drawStabilization={drawStabilization}
           eraserSize={eraserSize}
           drawShapeType={drawShapeType}
           drawShapeStrokeColor={drawShapeStrokeColor}
@@ -1715,6 +1851,8 @@ function Slate({ onShowMessage }) {
         onDrawFontSizeChange={handleDrawFontSizeChange}
         onDrawTextAlignChange={handleDrawTextAlignChange}
         onDrawArrowHeadTypeChange={handleDrawArrowHeadTypeChange}
+        drawStabilization={drawStabilization}
+        onDrawStabilizationChange={setDrawStabilization}
         selectedDrawing={selectedDrawing}
         selectedDrawings={selectedDrawings}
         onUpdateDrawing={drawingsState.updateDrawing}

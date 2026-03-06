@@ -10,6 +10,12 @@ const MIN_ARROW_LENGTH = 5; // px in world coords
 const MIN_SHAPE_SIZE = 5; // px in world coords
 const MOVE_LOG_INTERVAL_MS = 120;
 
+// Stroke stabilization: pull-string algorithm
+// stabilization 0 = off, 100 = maximum smoothing
+// Maps to a "string length" (dead zone radius) and moving average window
+const STAB_MAX_STRING_LEN = 30; // max dead zone radius in world px
+const STAB_MAX_WINDOW = 8; // max moving average window size
+
 const round2 = (value) => (Number.isFinite(value) ? Number(value).toFixed(2) : "nan");
 
 /**
@@ -31,6 +37,7 @@ export function useCanvasDrawing({
   drawFontSize,
   drawTextAlign,
   drawArrowHeadType,
+  drawStabilization = 0,
   eraserSize = 10,
   drawShapeType = "rect",
   drawShapeStrokeColor = drawColor,
@@ -52,6 +59,7 @@ export function useCanvasDrawing({
   const eraseRef = useRef({ active: false, removedIds: new Set() });
   const customShapeRef = useRef(null); // for custom polygon click-to-place
   const lastMoveLogAtRef = useRef(0);
+  const stabRef = useRef(null); // stroke stabilization state
   const [activeDrawing, setActiveDrawing] = useState(null);
   const [erasingIds, setErasingIds] = useState(null);
   const [customPreviewLine, setCustomPreviewLine] = useState(null);
@@ -273,9 +281,21 @@ export function useCanvasDrawing({
           strokeWidth: drawStrokeWidth,
           tension: drawTension,
         };
+        // Initialize stabilization state
+        const level = drawStabilization / 100;
+        const stringLen = level * STAB_MAX_STRING_LEN;
+        const windowSize = Math.max(1, Math.round(1 + level * (STAB_MAX_WINDOW - 1)));
+        stabRef.current = {
+          enabled: drawStabilization > 0,
+          stringLen,
+          windowSize,
+          brushX: snapped.x,
+          brushY: snapped.y,
+          rawBuffer: [{ x: snapped.x, y: snapped.y }],
+        };
         setActiveDrawing({ ...drawingRef.current });
         logDrawDebug(
-          `draw start x=${round2(world.x)} y=${round2(world.y)} color=${drawColor} width=${drawStrokeWidth} tension=${drawTension}`
+          `draw start x=${round2(world.x)} y=${round2(world.y)} color=${drawColor} width=${drawStrokeWidth} tension=${drawTension} stab=${drawStabilization}`
         );
         return true;
       }
@@ -404,6 +424,7 @@ export function useCanvasDrawing({
       drawStrokeWidth,
       drawTension,
       drawArrowHeadType,
+      drawStabilization,
       drawShapeType,
       drawShapeStrokeColor,
       drawShapeFill,
@@ -460,7 +481,43 @@ export function useCanvasDrawing({
 
       if (drawingRef.current.type === "stroke") {
         const snapped = snapDrawingPoint(world.x, world.y);
-        drawingRef.current.points.push(snapped.x, snapped.y);
+        const stab = stabRef.current;
+
+        if (stab?.enabled) {
+          // Pull-string: only move brush when cursor exceeds string length from brush
+          const dx = snapped.x - stab.brushX;
+          const dy = snapped.y - stab.brushY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < stab.stringLen) {
+            // Cursor within dead zone — don't add point
+            return true;
+          }
+
+          // Move brush toward cursor, leaving stringLen gap
+          const moveDist = dist - stab.stringLen;
+          const ratio = moveDist / dist;
+          stab.brushX += dx * ratio;
+          stab.brushY += dy * ratio;
+
+          // Moving average smoothing
+          stab.rawBuffer.push({ x: stab.brushX, y: stab.brushY });
+          if (stab.rawBuffer.length > stab.windowSize) {
+            stab.rawBuffer.shift();
+          }
+          let avgX = 0, avgY = 0;
+          for (const pt of stab.rawBuffer) {
+            avgX += pt.x;
+            avgY += pt.y;
+          }
+          avgX /= stab.rawBuffer.length;
+          avgY /= stab.rawBuffer.length;
+
+          drawingRef.current.points.push(avgX, avgY);
+        } else {
+          drawingRef.current.points.push(snapped.x, snapped.y);
+        }
+
         setActiveDrawing({
           ...drawingRef.current,
           points: [...drawingRef.current.points],
@@ -527,6 +584,7 @@ export function useCanvasDrawing({
 
     if (!drawingRef.current) return false;
     clearGuides?.();
+    stabRef.current = null;
     const drawing = drawingRef.current;
     drawingRef.current = null;
     setActiveDrawing(null);

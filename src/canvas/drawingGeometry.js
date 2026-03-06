@@ -26,13 +26,33 @@ export function pointToSegmentDist(px, py, ax, ay, bx, by) {
  * Compute axis-aligned bounding box for a drawing, with optional strokeWidth padding.
  * Returns { x, y, width, height }.
  */
+// Shared offscreen canvas for text measurement
+let _measureCtx = null;
+function getMeasureCtx() {
+  if (!_measureCtx) {
+    const c = document.createElement("canvas");
+    _measureCtx = c.getContext("2d");
+  }
+  return _measureCtx;
+}
+
+export function measureTextWidth(text, fontSize, fontFamily = "DmSans, sans-serif") {
+  const ctx = getMeasureCtx();
+  ctx.font = `${fontSize}px ${fontFamily}`;
+  return ctx.measureText(text).width;
+}
+
 export function getTextDrawingLayout(d) {
   const fontSize = d?.fontSize || 18;
   const text = d?.text || "";
   const lines = text.split("\n");
-  const maxLineLen = Math.max(...lines.map((l) => l.length), 1);
-  const intrinsicWidth = maxLineLen * fontSize * 0.6;
-  const intrinsicHeight = lines.length * fontSize * 1.3;
+  const lineHeight = fontSize * 1.3;
+  const maxLineWidth = Math.max(
+    ...lines.map((l) => (l.length > 0 ? measureTextWidth(l, fontSize) : 0)),
+    fontSize // minimum width
+  );
+  const intrinsicWidth = maxLineWidth;
+  const intrinsicHeight = lines.length * lineHeight;
   const hasFixedWidth = Number.isFinite(d?.width) && d.width > 0;
   const hasFixedHeight = Number.isFinite(d?.height) && d.height > 0;
   const width = hasFixedWidth ? d.width : intrinsicWidth;

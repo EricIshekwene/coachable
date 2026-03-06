@@ -5,6 +5,7 @@ const INITIAL_MESSAGE_POPUP = {
   message: "",
   subtitle: "",
   type: "standard",
+  autoHideDuration: 3000,
 };
 
 export function useMessagePopup() {
@@ -12,12 +13,12 @@ export function useMessagePopup() {
 
   const showMessage = useCallback(
     (message, subtitle = "", type = "standard", duration = 3000) => {
-      void duration;
       setMessagePopup({
         visible: true,
         message,
         subtitle,
         type,
+        autoHideDuration: Number.isFinite(duration) ? duration : 3000,
       });
     },
     []

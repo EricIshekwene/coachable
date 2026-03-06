@@ -1,6 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { FaTimes } from "react-icons/fa";
 import { Slider } from "@mui/material";
+import {
+  POPUP_CLOSE_BUTTON_CLASS,
+  POPUP_LABEL_CLASS,
+  POPUP_MODAL_OVERLAY_CLASS,
+  POPUP_PRIMARY_BUTTON_CLASS,
+  POPUP_SURFACE_CLASS,
+  POPUP_TITLE_CLASS,
+} from "./subcomponents/popupStyles";
 
 const toggleBtnClass = (active) =>
   `px-3 py-1.5 rounded-full text-xs sm:text-sm font-DmSans font-semibold transition-colors ${
@@ -63,34 +71,28 @@ export default function ExportModal({ open, initialFormat = "photo", onClose, on
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60"
+      className={POPUP_MODAL_OVERLAY_CLASS}
       onClick={onClose}
     >
       <div
-        className="
-          relative bg-BrandBlack border border-BrandGray2 rounded-xl
-          w-72 sm:w-80 p-5 sm:p-6
-          flex flex-col gap-5
-          shadow-2xl
-        "
+        className={`relative w-72 sm:w-80 p-5 sm:p-6 flex flex-col gap-5 ${POPUP_SURFACE_CLASS}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close button */}
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-3 right-3 text-white/60 hover:text-white transition-colors"
+          className={POPUP_CLOSE_BUTTON_CLASS}
+          aria-label="Close export popup"
         >
           <FaTimes className="text-sm" />
         </button>
 
-        <h2 className="text-white font-DmSans font-semibold text-sm sm:text-base">
-          Export
-        </h2>
+        <h2 className={POPUP_TITLE_CLASS}>Export</h2>
 
         {/* Format toggle */}
         <div className="flex flex-col gap-1.5">
-          <span className="text-white/60 text-[10px] sm:text-xs font-DmSans">Format</span>
+          <span className={POPUP_LABEL_CLASS}>Format</span>
           <div className="flex gap-2">
             <button type="button" className={toggleBtnClass(format === "photo")} onClick={() => setFormat("photo")}>
               Photo
@@ -103,7 +105,7 @@ export default function ExportModal({ open, initialFormat = "photo", onClose, on
 
         {/* Region toggle */}
         <div className="flex flex-col gap-1.5">
-          <span className="text-white/60 text-[10px] sm:text-xs font-DmSans">Region</span>
+          <span className={POPUP_LABEL_CLASS}>Region</span>
           <div className="flex gap-2">
             <button type="button" className={toggleBtnClass(region === "full")} onClick={() => setRegion("full")}>
               Full Field
@@ -117,7 +119,7 @@ export default function ExportModal({ open, initialFormat = "photo", onClose, on
         {/* Duration slider (video only) */}
         {format === "video" && (
           <div className="flex flex-col gap-1.5">
-            <span className="text-white/60 text-[10px] sm:text-xs font-DmSans">
+            <span className={POPUP_LABEL_CLASS}>
               Duration: {durationSec}s
             </span>
             <div className="w-full min-w-0 overflow-x-hidden overflow-y-hidden flex items-center justify-start px-2">
@@ -140,7 +142,7 @@ export default function ExportModal({ open, initialFormat = "photo", onClose, on
 
         {/* Quality selector */}
         <div className="flex flex-col gap-1.5">
-          <span className="text-white/60 text-[10px] sm:text-xs font-DmSans">Quality</span>
+          <span className={POPUP_LABEL_CLASS}>Quality</span>
           <div className="flex gap-2">
             {Object.entries(QUALITY_PRESETS).map(([key, preset]) => (
               <button key={key} type="button" className={toggleBtnClass(quality === key)} onClick={() => setQuality(key)}>
@@ -155,15 +157,7 @@ export default function ExportModal({ open, initialFormat = "photo", onClose, on
         <button
           type="button"
           onClick={handleExport}
-          className="
-            w-full py-2.5 rounded-lg
-            bg-BrandOrange text-BrandBlack font-DmSans font-semibold
-            text-xs sm:text-sm
-            border border-BrandOrange/80
-            transition-all duration-200
-            hover:bg-BrandOrange/95 hover:border-BrandOrange
-            active:scale-[0.98] active:bg-BrandOrange/90
-          "
+          className={POPUP_PRIMARY_BUTTON_CLASS}
         >
           Export
         </button>

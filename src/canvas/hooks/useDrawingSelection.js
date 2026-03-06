@@ -26,6 +26,8 @@ const RESIZE_HANDLE_HIT_PADDING_PX = 16;
  * Manages multi-selection, marquee, move, resize, and rotate gestures for drawings.
  * Replaces the single-select logic that was previously in useCanvasDrawing.
  */
+const DBLCLICK_MS = 400;
+
 export function useDrawingSelection({
   drawings,
   toWorldCoords,
@@ -35,6 +37,7 @@ export function useDrawingSelection({
   onUpdateMultipleNoHistory,
   historyApiRef,
   zoom,
+  onEditText,
   // Snap support
   fieldBounds,
   drawGuides,
@@ -44,6 +47,7 @@ export function useDrawingSelection({
   // --- Refs for gesture state (no re-renders per frame) ---
   const gestureRef = useRef(null);
   const marqueeRef = useRef(null);
+  const lastClickRef = useRef({ id: null, time: 0 });
 
   // --- React state for rendering ---
   const [drawingMarquee, setDrawingMarquee] = useState(null);
@@ -219,6 +223,22 @@ export function useDrawingSelection({
       const hitId = hitTestDrawings(drawings, world, 10);
 
       if (hitId) {
+        // Double-click detection for inline text editing
+        const now = Date.now();
+        const last = lastClickRef.current;
+        if (
+          hitId === last.id &&
+          now - last.time < DBLCLICK_MS
+        ) {
+          const hitDrawing = drawings.find((dd) => dd.id === hitId);
+          if (hitDrawing?.type === "text" && onEditText) {
+            onEditText(hitDrawing);
+            lastClickRef.current = { id: null, time: 0 };
+            return true;
+          }
+        }
+        lastClickRef.current = { id: hitId, time: now };
+
         let nextIds;
         if (shiftKey) {
           nextIds = selectedDrawingIds.includes(hitId)

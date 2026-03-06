@@ -2,6 +2,7 @@ import { BsPersonAdd } from "react-icons/bs";
 import { IoChevronDownOutline } from "react-icons/io5";
 import { SidebarChevronButton, WideSidebarRowButton } from "../subcomponents/Buttons";
 import { Popover, PopoverForm, Tooltip } from "../subcomponents/Popovers";
+import { POPUP_DENSE_INPUT_CLASS } from "../subcomponents/popupStyles";
 
 const iconClass = "text-BrandOrange text-xl sm:text-2xl md:text-3xl";
 const selectedIconClass = "text-BrandBlack text-xl sm:text-2xl md:text-3xl";
@@ -71,7 +72,7 @@ export default function AddPlayerSection({
                             <p className="text-BrandOrange text-xs sm:text-sm">Number:</p>
                             <input
                                 type="text"
-                                className="w-full h-8 sm:h-9 bg-BrandBlack border-[0.5px] border-BrandGray text-BrandWhite rounded-md px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors"
+                                className={POPUP_DENSE_INPUT_CLASS}
                                 value={numberValue ?? ""}
                                 onChange={(e) => onNumberChange?.(e.target.value)}
                                 onKeyDown={handleKeyDown}
@@ -81,7 +82,7 @@ export default function AddPlayerSection({
                             <p className="text-BrandOrange text-xs sm:text-sm">Name:</p>
                             <input
                                 type="text"
-                                className="w-full h-8 sm:h-9 bg-BrandBlack border-[0.5px] border-BrandGray text-BrandWhite rounded-md px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors"
+                                className={POPUP_DENSE_INPUT_CLASS}
                                 value={nameValue ?? ""}
                                 onChange={(e) => onNameChange?.(e.target.value)}
                                 onKeyDown={handleKeyDown}
@@ -90,10 +91,10 @@ export default function AddPlayerSection({
                         <div className="flex flex-col gap-0.5 sm:gap-1 relative">
                             <p className="text-BrandOrange text-xs sm:text-sm">Assign To:</p>
                             <div className="relative">
-                                <div className="w-full h-8 sm:h-9 bg-BrandBlack border-[0.5px] border-BrandGray rounded-md flex items-center overflow-hidden">
+                                <div className="w-full h-8 sm:h-9 bg-BrandBlack2 border border-BrandGray rounded-md flex items-center overflow-hidden">
                                     <input
                                         type="text"
-                                        className="flex-1 min-w-0 h-8 sm:h-9 bg-transparent border-r-[0.5px] border-BrandGray text-BrandWhite px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors rounded-l-md"
+                                        className="flex-1 min-w-0 h-8 sm:h-9 bg-transparent border-r border-BrandGray text-BrandWhite px-2 text-xs sm:text-sm font-DmSans focus:outline-none rounded-l-md"
                                         placeholder="Search player"
                                         value={playerSearch}
                                         onChange={(e) => onPlayerSearchChange?.(e.target.value)}
@@ -112,7 +113,7 @@ export default function AddPlayerSection({
                                 {showPlayerDropdown && (
                                     <div
                                         ref={dropdownRef}
-                                        className="absolute left-0 top-full w-full bg-BrandBlack border border-BrandGray rounded-md mt-1 max-h-40 overflow-y-auto z-10 shadow-lg"
+                                        className="absolute left-0 top-full w-full bg-BrandBlack border border-BrandGray2/80 rounded-md mt-1 max-h-40 overflow-y-auto z-10 shadow-[0_12px_24px_-18px_rgba(0,0,0,0.95)]"
                                     >
                                         {filteredPlayers?.length > 0 ? (
                                             filteredPlayers.map((player, idx) => (

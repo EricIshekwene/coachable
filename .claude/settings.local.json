@@ -10,7 +10,8 @@
       "Bash(grep -n \"export.*AnimationEngine\" /c/Users/ericl/Desktop/coachable/src/animation/*.js)",
       "Bash(grep -n \"export.*createEmptyAnimation\\\\|export.*buildInterpolatedSlate\\\\|export.*samplePosesAtTime\" /c/Users/ericl/Desktop/coachable/src/animation/*.js)",
       "Bash(node -e \":*)",
-      "Bash(grep -r \"rotate\\\\|Math.cos\\\\|Math.sin\\\\|transform\" \"c:\\\\Users\\\\ericl\\\\Desktop\\\\coachable\\\\src\\\\features\\\\slate\"\" --include=\"*.js \")"
+      "Bash(grep -r \"rotate\\\\|Math.cos\\\\|Math.sin\\\\|transform\" \"c:\\\\Users\\\\ericl\\\\Desktop\\\\coachable\\\\src\\\\features\\\\slate\"\" --include=\"*.js \")",
+      "WebFetch(domain:tldraw.dev)"
     ]
   }
 }
