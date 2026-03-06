@@ -138,14 +138,12 @@ export const PopoverGrid = ({ cols = 2, children }) => {
 export const PopoverForm = ({ children }) => {
     return (
         <div
-            className="
-                bg-BrandBlack z-50 ml-2 p-3 sm:p-4
-                border border-BrandGray2/80 rounded-lg
+            className={`
+                ${POPUP_POPOVER_SURFACE_CLASS} ml-2 p-3 sm:p-4
                 flex flex-col gap-1.5 sm:gap-2
                 w-[150px] sm:w-[150px] md:w-[150px] lg:w-[175px] xl:w-[200px]
-                shadow-[0_16px_30px_-20px_rgba(0,0,0,0.95)]
                 font-DmSans
-            "
+            `}
         >
             {children}
         </div>
@@ -158,14 +156,14 @@ export const Tooltip = ({ children, text, isOpen }) => {
 
     return (
         <div
-            className="
+            className={`
                 absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50
-                bg-BrandBlack z-50 rounded-md px-2 py-1.5
+                ${POPUP_POPOVER_SURFACE_CLASS}
+                px-2 py-1.5
                 text-BrandWhite text-xs font-DmSans
-                whitespace-nowrap shadow-[0_16px_30px_-20px_rgba(0,0,0,0.95)]
-                border border-BrandGray2/70
+                whitespace-nowrap
                 pointer-events-none
-            "
+            `}
         >
             {text}
             {children}

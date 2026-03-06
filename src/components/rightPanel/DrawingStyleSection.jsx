@@ -199,7 +199,7 @@ function FontSizeDropdown({ value, onChange }) {
             if (e.key === "Escape") setIsCustom(false);
           }}
           autoFocus
-          className="w-16 bg-BrandBlack2 border border-BrandGray2 text-BrandWhite text-xs font-DmSans rounded px-1.5 py-0.5 outline-none focus:border-BrandOrange"
+          className="w-16 bg-BrandBlack2 border border-BrandGray text-BrandWhite text-xs font-DmSans rounded px-1.5 py-0.5 outline-none focus:border-BrandOrange transition-colors"
         />
         <button
           onClick={() => setIsCustom(false)}
@@ -216,7 +216,7 @@ function FontSizeDropdown({ value, onChange }) {
     <select
       value={isPreset ? value : "custom"}
       onChange={handleSelectChange}
-      className="w-full bg-BrandBlack2 border border-BrandGray2 text-BrandWhite text-xs font-DmSans rounded px-1.5 py-1 outline-none focus:border-BrandOrange cursor-pointer"
+      className="w-full bg-BrandBlack2 border border-BrandGray text-BrandWhite text-xs font-DmSans rounded px-1.5 py-1 outline-none focus:border-BrandOrange transition-colors cursor-pointer"
     >
       {FONT_SIZE_OPTIONS.map((s) => (
         <option key={s} value={s}>{s}px</option>

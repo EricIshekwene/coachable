@@ -69,7 +69,7 @@ export default function AdvancedSettings({
                     <button
                         type="button"
                         onClick={() => onDownload?.()}
-                        className="group w-full h-6 sm:h-7 bg-BrandBlack2 border-[0.625px] border-BrandGray rounded-md px-2 flex items-center gap-2 cursor-pointer transition-colors hover:bg-BrandBlack"
+                        className="group w-full h-6 sm:h-7 bg-BrandBlack2 border border-BrandGray rounded-md px-2 flex items-center gap-2 cursor-pointer transition-colors hover:bg-BrandBlack"
                     >
                         <IoMdDownload className="text-BrandOrange text-sm shrink-0" aria-hidden />
                         <span className="text-BrandWhite text-xs sm:text-sm font-DmSans truncate">
@@ -102,7 +102,7 @@ export default function AdvancedSettings({
                 onClick={() => {
                     onClose?.();
                 }}
-                className="absolute left-[-45px] top-1/2 transform -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 bg-BrandBlack border-[0.5px] border-BrandGray rounded-full z-50 shadow-lg flex items-center justify-center cursor-pointer hover:bg-BrandBlack2 transition-colors duration-200 hover:border-BrandOrange"
+                className="absolute left-[-45px] top-1/2 transform -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 bg-BrandBlack border border-BrandGray2/80 rounded-full z-50 shadow-[0_16px_30px_-20px_rgba(0,0,0,0.95)] flex items-center justify-center cursor-pointer hover:bg-BrandBlack2 transition-colors duration-200 hover:border-BrandOrange"
                 aria-label="Close advanced settings"
             >
                 <FaTimes className="text-BrandOrange text-sm sm:text-base md:text-lg hover:text-BrandOrange transition-colors" />

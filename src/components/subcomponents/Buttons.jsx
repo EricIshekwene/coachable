@@ -23,8 +23,8 @@ export const SidebarChevronButton = forwardRef(({
             <button
                 className={`
                     w-full aspect-square
-                    rounded-md border-[0.5px] border-BrandGray
-                    transition-all duration-100
+                    rounded-md border border-BrandGray
+                    transition-all duration-200
                     flex items-center justify-center
                     ${isSelected ? "bg-BrandOrange" : "bg-BrandBlack2"}
                 `}
@@ -148,8 +148,8 @@ export const Button = ({ Icon, onHover, onClick, isSelected }) => {
             <button
                 className={`
              w-full aspect-square
-             rounded-md border-[0.5px] border-BrandGray
-             transition-all duration-300
+             rounded-md border border-BrandGray
+             transition-all duration-200
              flex items-center justify-center
              ${isSelected ? "bg-BrandOrange " : "bg-BrandBlack2 "}
            `}

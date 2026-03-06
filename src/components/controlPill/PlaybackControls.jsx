@@ -15,7 +15,7 @@ export default function PlaybackControls({
     <div className="flex flex-row items-center gap-[3.125px] sm:gap-[6.25px] justify-between">
       <div 
         onClick={onSkipBack}
-        className="h-[16px] sm:h-[22px] md:h-[24px] lg:h-[32px] w-[16px] sm:w-[22px] md:w-[24px] lg:w-[32px] bg-BrandBlack2 border-[0.625px] border-BrandGray flex items-center justify-center rounded-sm cursor-pointer"
+        className="h-[16px] sm:h-[22px] md:h-[24px] lg:h-[32px] w-[16px] sm:w-[22px] md:w-[24px] lg:w-[32px] bg-BrandBlack2 border border-BrandGray flex items-center justify-center rounded-sm cursor-pointer"
       >
         <IoPlaySkipBackOutline className="text-BrandOrange text-[17.5px] sm:text-[20px] md:text-[22.5px] lg:text-[25px]" />
       </div>
@@ -40,7 +40,7 @@ export default function PlaybackControls({
       </div>
       <div 
         onClick={onSkipForward}
-        className="h-[16px] sm:h-[22px] md:h-[24px] lg:h-[32px] w-[16px] sm:w-[22px] md:w-[24px] lg:w-[32px] bg-BrandBlack2 border-[0.625px] border-BrandGray flex items-center justify-center rounded-sm cursor-pointer"
+        className="h-[16px] sm:h-[22px] md:h-[24px] lg:h-[32px] w-[16px] sm:w-[22px] md:w-[24px] lg:w-[32px] bg-BrandBlack2 border border-BrandGray flex items-center justify-center rounded-sm cursor-pointer"
       >
         <IoPlaySkipForwardOutline className="text-BrandOrange text-[17.5px] sm:text-[20px] md:text-[22.5px] lg:text-[25px]" />
       </div>

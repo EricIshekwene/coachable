@@ -231,7 +231,7 @@ export const PrefabsPopover = ({ prefabs = [], onPrefabSelect, onDeleteCustomPre
         >
             {/* Toggle pill */}
             <div className="flex items-center justify-center">
-                <div className="flex bg-BrandBlack2 rounded-full p-1 border-[0.5px] border-BrandGray font-DmSans">
+                <div className="flex bg-BrandBlack2 rounded-full p-1 border border-BrandGray font-DmSans">
                     {MODE_TABS.map((tab) => (
                         <button
                             key={tab.key}

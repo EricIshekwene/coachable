@@ -455,40 +455,28 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
     });
   };
 
-  const handleMoveSelectedPlayersByDelta = (dx, dy, { pushHistory = true, source = "unknown" } = {}) => {
+  const handleMoveSelectedItemsByDelta = (dx, dy, { pushHistory = true, source = "unknown" } = {}) => {
     if (!Number.isFinite(dx) || !Number.isFinite(dy)) return [];
     if (dx === 0 && dy === 0) return [];
 
-    const targetPlayerIds = (selectedPlayerIds || []).filter((playerId) => Boolean(playersById?.[playerId]));
-    if (!targetPlayerIds.length) return [];
+    const targetItemIds = (selectedItemIds || []).filter(
+      (itemId) => Boolean(playersById?.[itemId]) || Boolean(ballsById?.[itemId])
+    );
+    if (!targetItemIds.length) return [];
 
     if (pushHistory) {
       historyApiRef.current?.pushHistory?.();
     }
 
-    setPlayersById((prev) => {
-      const next = { ...prev };
-      let changed = false;
-      targetPlayerIds.forEach((playerId) => {
-        const existing = next[playerId];
-        if (!existing) return;
-        changed = true;
-        next[playerId] = {
-          ...existing,
-          x: (existing.x ?? 0) + dx,
-          y: (existing.y ?? 0) + dy,
-        };
-      });
-      return changed ? next : prev;
-    });
+    moveItemsByDelta(targetItemIds, dx, dy);
 
-    logEvent?.("slate", "playersMove", {
-      playerIds: targetPlayerIds,
+    logEvent?.("slate", "itemsMove", {
+      itemIds: targetItemIds,
       delta: { x: dx, y: dy },
       source,
     });
 
-    return targetPlayerIds;
+    return targetItemIds;
   };
 
   const handleItemChange = (id, next, meta) => {
@@ -654,7 +642,7 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
     handleItemDragStart,
     handleItemDragEnd,
     handleItemChange,
-    handleMoveSelectedPlayersByDelta,
+    handleMoveSelectedItemsByDelta,
     onMarqueeSelect,
     loadEntitiesState,
     resetSlateEntities,

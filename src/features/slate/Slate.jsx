@@ -1385,7 +1385,7 @@ function Slate({ onShowMessage }) {
     [entities, resolveTrackPose]
   );
 
-  const handleNudgeSelectedPlayers = useCallback(
+  const handleNudgeSelectedItems = useCallback(
     ({ dx = 0, dy = 0, pushHistory = true, source = "keyboard" } = {}) => {
       if (!Number.isFinite(dx) || !Number.isFinite(dy)) {
         return { moved: false, dx: 0, dy: 0, snappedX: false, snappedY: false };
@@ -1394,8 +1394,8 @@ function Slate({ onShowMessage }) {
         return { moved: false, dx: 0, dy: 0, snappedX: false, snappedY: false };
       }
 
-      const selectedPlayerIds = entities.selectedPlayerIds || [];
-      if (!selectedPlayerIds.length) {
+      const selectedItemIds = entities.selectedItemIds || [];
+      if (!selectedItemIds.length) {
         return { moved: false, dx: 0, dy: 0, snappedX: false, snappedY: false };
       }
 
@@ -1403,14 +1403,17 @@ function Slate({ onShowMessage }) {
       let nextDy = dy;
       let snappedX = false;
       let snappedY = false;
-      const anchorId = selectedPlayerIds[0];
-      const anchorPose = resolveTrackPose(anchorId) || entities.playersById?.[anchorId];
+      const anchorId = selectedItemIds[0];
+      const anchorPose =
+        resolveTrackPose(anchorId) ||
+        entities.playersById?.[anchorId] ||
+        entities.ballsById?.[anchorId];
       if (anchorPose) {
         const zoom = Math.max(0.0001, fieldViewport.camera?.zoom || 1);
         const snapThresholdWorld = KEYBOARD_NUDGE_SNAP_THRESHOLD_PX / zoom;
         const targetX = (anchorPose.x ?? 0) + dx;
         const targetY = (anchorPose.y ?? 0) + dy;
-        const excludedIds = new Set(selectedPlayerIds);
+        const excludedIds = new Set(selectedItemIds);
         let closestX = null;
         let closestY = null;
 
@@ -1447,16 +1450,16 @@ function Slate({ onShowMessage }) {
       }
 
       engineRef.current.pause();
-      const movedPlayerIds = entities.handleMoveSelectedPlayersByDelta(nextDx, nextDy, {
+      const movedItemIds = entities.handleMoveSelectedItemsByDelta(nextDx, nextDy, {
         pushHistory,
         source,
       });
-      if (!movedPlayerIds.length) {
+      if (!movedItemIds.length) {
         return { moved: false, dx: nextDx, dy: nextDy, snappedX, snappedY };
       }
 
       const patch = {};
-      movedPlayerIds.forEach((itemId) => {
+      movedItemIds.forEach((itemId) => {
         const currentPose = resolveTrackPose(itemId);
         if (!currentPose) return;
         patch[itemId] = {
@@ -1474,7 +1477,7 @@ function Slate({ onShowMessage }) {
       }
 
       if (!engineRef.current.isPlaying()) {
-        upsertKeyframesAtCurrentTime(movedPlayerIds, { source });
+        upsertKeyframesAtCurrentTime(movedItemIds, { source });
       }
       return { moved: true, dx: nextDx, dy: nextDy, snappedX, snappedY };
     },
@@ -1655,15 +1658,15 @@ function Slate({ onShowMessage }) {
       const nudgeDirection = KEYBOARD_NUDGE_BY_KEY[e.key];
       if (nudgeDirection) {
         if (exportModalOpen || isExporting || screenshotMode) return;
-        const selectedPlayerCount = entities.selectedPlayerIds?.length || 0;
-        if (!selectedPlayerCount) return;
+        const selectedItemCount = entities.selectedItemIds?.length || 0;
+        if (!selectedItemCount) return;
 
         const step = e.shiftKey ? KEYBOARD_NUDGE_FAST_STEP : KEYBOARD_NUDGE_STEP;
         const dx = nudgeDirection.x * step;
         const dy = nudgeDirection.y * step;
         e.preventDefault();
 
-        const nudgeResult = handleNudgeSelectedPlayers({
+        const nudgeResult = handleNudgeSelectedItems({
           dx,
           dy,
           pushHistory: !e.repeat,
@@ -1671,7 +1674,7 @@ function Slate({ onShowMessage }) {
         });
 
         logKeyToolDebug(
-          `keydown ${e.key} action=${nudgeResult.moved ? "nudgePlayers" : "nudgeNoop"} selectedPlayers=${selectedPlayerCount} dx=${nudgeResult.dx} dy=${nudgeResult.dy} snapX=${nudgeResult.snappedX} snapY=${nudgeResult.snappedY} shift=${Boolean(e.shiftKey)} repeat=${Boolean(e.repeat)}`
+          `keydown ${e.key} action=${nudgeResult.moved ? "nudgeItems" : "nudgeNoop"} selectedItems=${selectedItemCount} dx=${nudgeResult.dx} dy=${nudgeResult.dy} snapX=${nudgeResult.snappedX} snapY=${nudgeResult.snappedY} shift=${Boolean(e.shiftKey)} repeat=${Boolean(e.repeat)}`
         );
         return;
       }
@@ -1703,7 +1706,7 @@ function Slate({ onShowMessage }) {
     exportModalOpen,
     isExporting,
     screenshotMode,
-    handleNudgeSelectedPlayers,
+    handleNudgeSelectedItems,
   ]);
 
   const handleAnimationRendererReady = useCallback(() => {

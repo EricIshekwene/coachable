@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { IoClose } from "react-icons/io5";
+import { POPUP_DENSE_INPUT_CLASS } from "../subcomponents/popupStyles";
 
 export default function PlayerEditPanel({
   isOpen,
@@ -24,11 +25,11 @@ export default function PlayerEditPanel({
 
   return (
     <aside
-      className="absolute right-0 top-0 h-screen w-48 sm:w-56 md:w-64 bg-BrandBlack border-l border-BrandGray2/60 shadow-2xl z-[60] flex flex-col"
+      className="absolute right-0 top-0 h-screen w-48 sm:w-56 md:w-64 bg-BrandBlack border-l border-BrandGray2/80 shadow-[0_18px_38px_-18px_rgba(0,0,0,0.95)] z-[60] flex flex-col"
       role="dialog"
       aria-label="Edit player"
     >
-      <div className="flex items-center justify-between px-3 py-3 border-b border-BrandGray2/60">
+      <div className="flex items-center justify-between px-3 py-3 border-b border-BrandGray2/80">
         <p className="text-BrandOrange text-sm sm:text-base font-DmSans font-semibold">Edit Player</p>
         <button
           type="button"
@@ -42,7 +43,7 @@ export default function PlayerEditPanel({
 
       <div className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-2">
         <label className="flex flex-col gap-1">
-          <span className="text-BrandOrange text-xs sm:text-sm">Number</span>
+          <span className="text-BrandOrange text-xs sm:text-sm font-DmSans">Number</span>
           <input
             ref={firstInputRef}
             type="text"
@@ -52,11 +53,11 @@ export default function PlayerEditPanel({
               if (e.key === "Enter") onSave?.();
               if (e.key === "Escape") onClose?.();
             }}
-            className="w-full h-8 sm:h-9 bg-BrandBlack border-[0.5px] border-BrandGray text-BrandWhite rounded-md px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors"
+            className={POPUP_DENSE_INPUT_CLASS}
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-BrandOrange text-xs sm:text-sm">Name</span>
+          <span className="text-BrandOrange text-xs sm:text-sm font-DmSans">Name</span>
           <input
             type="text"
             value={nameValue}
@@ -65,11 +66,11 @@ export default function PlayerEditPanel({
               if (e.key === "Enter") onSave?.();
               if (e.key === "Escape") onClose?.();
             }}
-            className="w-full h-8 sm:h-9 bg-BrandBlack border-[0.5px] border-BrandGray text-BrandWhite rounded-md px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors"
+            className={POPUP_DENSE_INPUT_CLASS}
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-BrandOrange text-xs sm:text-sm">Assignment</span>
+          <span className="text-BrandOrange text-xs sm:text-sm font-DmSans">Assignment</span>
           <input
             type="text"
             value={assignmentValue}
@@ -78,7 +79,7 @@ export default function PlayerEditPanel({
               if (e.key === "Enter") onSave?.();
               if (e.key === "Escape") onClose?.();
             }}
-            className="w-full h-8 sm:h-9 bg-BrandBlack border-[0.5px] border-BrandGray text-BrandWhite rounded-md px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors"
+            className={POPUP_DENSE_INPUT_CLASS}
           />
         </label>
       </div>
@@ -87,7 +88,7 @@ export default function PlayerEditPanel({
         <button
           type="button"
           onClick={onClose}
-          className="flex-1 h-8 sm:h-9 border border-BrandGray text-BrandWhite rounded-md text-xs sm:text-sm font-DmSans"
+          className="flex-1 h-8 sm:h-9 border border-BrandGray text-BrandWhite rounded-md text-xs sm:text-sm font-DmSans transition-colors hover:bg-BrandBlack2"
         >
           Cancel
         </button>

@@ -141,7 +141,7 @@ export default function LoggerSettingsSection({
       <button
         type="button"
         onClick={handleCopyAnimationDebug}
-        className="mt-1 h-6 sm:h-7 w-full bg-BrandBlack2 border-[0.625px] border-BrandGray text-BrandOrange rounded-md px-2 text-[10px] sm:text-[11px] md:text-[12px] font-DmSans cursor-pointer"
+        className="mt-1 h-6 sm:h-7 w-full bg-BrandBlack2 border border-BrandGray text-BrandOrange rounded-md px-2 text-[10px] sm:text-[11px] md:text-[12px] font-DmSans cursor-pointer"
       >
         {copyAnimationState === "copied"
           ? "Copied"
@@ -152,7 +152,7 @@ export default function LoggerSettingsSection({
       <button
         type="button"
         onClick={handleCopyDrawDebug}
-        className="h-6 sm:h-7 w-full bg-BrandBlack2 border-[0.625px] border-BrandGray text-BrandOrange rounded-md px-2 text-[10px] sm:text-[11px] md:text-[12px] font-DmSans cursor-pointer"
+        className="h-6 sm:h-7 w-full bg-BrandBlack2 border border-BrandGray text-BrandOrange rounded-md px-2 text-[10px] sm:text-[11px] md:text-[12px] font-DmSans cursor-pointer"
       >
         {copyDrawState === "copied"
           ? "Copied"
@@ -163,7 +163,7 @@ export default function LoggerSettingsSection({
       <button
         type="button"
         onClick={handleCopyKeyToolDebug}
-        className="h-6 sm:h-7 w-full bg-BrandBlack2 border-[0.625px] border-BrandGray text-BrandOrange rounded-md px-2 text-[10px] sm:text-[11px] md:text-[12px] font-DmSans cursor-pointer"
+        className="h-6 sm:h-7 w-full bg-BrandBlack2 border border-BrandGray text-BrandOrange rounded-md px-2 text-[10px] sm:text-[11px] md:text-[12px] font-DmSans cursor-pointer"
       >
         {copyKeyToolState === "copied"
           ? "Copied"
@@ -174,7 +174,7 @@ export default function LoggerSettingsSection({
       <button
         type="button"
         onClick={handleCopyVideoExportDebug}
-        className="h-6 sm:h-7 w-full bg-BrandBlack2 border-[0.625px] border-BrandGray text-BrandOrange rounded-md px-2 text-[10px] sm:text-[11px] md:text-[12px] font-DmSans cursor-pointer"
+        className="h-6 sm:h-7 w-full bg-BrandBlack2 border border-BrandGray text-BrandOrange rounded-md px-2 text-[10px] sm:text-[11px] md:text-[12px] font-DmSans cursor-pointer"
       >
         {copyVideoExportState === "copied"
           ? "Copied"
@@ -185,7 +185,7 @@ export default function LoggerSettingsSection({
       <button
         type="button"
         onClick={handleCopyPlaceBallDebug}
-        className="h-6 sm:h-7 w-full bg-BrandBlack2 border-[0.625px] border-BrandGray text-BrandOrange rounded-md px-2 text-[10px] sm:text-[11px] md:text-[12px] font-DmSans cursor-pointer"
+        className="h-6 sm:h-7 w-full bg-BrandBlack2 border border-BrandGray text-BrandOrange rounded-md px-2 text-[10px] sm:text-[11px] md:text-[12px] font-DmSans cursor-pointer"
       >
         {copyPlaceBallState === "copied"
           ? "Copied"
@@ -199,7 +199,7 @@ export default function LoggerSettingsSection({
           event.stopPropagation();
           onDebugRotate?.();
         }}
-        className="h-6 sm:h-7 w-full bg-BrandBlack2 border-[0.625px] border-BrandGray text-BrandOrange rounded-md px-2 text-[10px] sm:text-[11px] md:text-[12px] font-DmSans cursor-pointer"
+        className="h-6 sm:h-7 w-full bg-BrandBlack2 border border-BrandGray text-BrandOrange rounded-md px-2 text-[10px] sm:text-[11px] md:text-[12px] font-DmSans cursor-pointer"
       >
         Debug Rotate
       </button>

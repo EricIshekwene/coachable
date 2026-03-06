@@ -181,7 +181,7 @@ export default function PitchSettingsSection({ value = {}, onChange }) {
                     onChange={(e) => {
                         update({ pitchColor: e.target.value });
                     }}
-                    className="w-full h-6 sm:h-7 bg-BrandBlack2 border-[0.5px] border-BrandGray text-BrandWhite rounded-md px-2 text-xs sm:text-sm focus:outline-none focus:border-BrandOrange transition-colors"
+                    className="w-full h-6 sm:h-7 bg-BrandBlack2 border border-BrandGray text-BrandWhite rounded-md px-2 text-xs sm:text-sm font-DmSans focus:outline-none focus:border-BrandOrange transition-colors"
                     placeholder="#4FA85D"
                 />
             </div>
