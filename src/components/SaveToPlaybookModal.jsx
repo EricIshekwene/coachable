@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { FaTimes, FaFolder, FaFolderOpen, FaPlus, FaChevronDown } from "react-icons/fa";
+import PlayPreviewCard from "./PlayPreviewCard";
 import {
   POPUP_CLOSE_BUTTON_CLASS,
   POPUP_INPUT_CLASS,
@@ -11,7 +12,6 @@ import {
 } from "./subcomponents/popupStyles";
 import {
   loadTeams,
-  saveTeams,
   addTeam,
   loadActiveTeamId,
   saveActiveTeamId,
@@ -42,6 +42,7 @@ export default function SaveToPlaybookModal({
   const [newFolderName, setNewFolderName] = useState("");
   const [teamDropdownOpen, setTeamDropdownOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [previewShape, setPreviewShape] = useState("wide");
 
   // Initialize state when modal opens.
   useEffect(() => {
@@ -60,6 +61,7 @@ export default function SaveToPlaybookModal({
     setNewFolderName("");
     setTeamDropdownOpen(false);
     setSaving(false);
+    setPreviewShape("wide");
   }, [open, initialPlayName]);
 
   // Load folders when team changes.
@@ -151,19 +153,44 @@ export default function SaveToPlaybookModal({
         <div className="flex flex-col lg:flex-row gap-4 min-h-0 flex-1 overflow-hidden">
           {/* Left panel: preview + metadata */}
           <section className="lg:w-[38%] flex flex-col gap-3 min-h-0">
-            <div className="w-full rounded-xl overflow-hidden border border-BrandGray2/60 bg-BrandBlack2 aspect-video flex items-center justify-center">
-              {thumbnailDataUrl ? (
-                <img
-                  src={thumbnailDataUrl}
-                  alt="Play preview"
-                  className="w-full h-full object-contain"
-                />
-              ) : (
-                <p className="text-BrandGray text-xs sm:text-sm font-DmSans">
-                  No preview available
-                </p>
-              )}
+            <div className="flex items-center justify-between">
+              <label className={POPUP_LABEL_CLASS}>Preview Shape</label>
+              <div className="inline-flex rounded-md border border-BrandGray2/50 bg-BrandBlack2 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setPreviewShape("square")}
+                  className={`h-7 px-2.5 rounded text-[11px] font-DmSans transition-colors ${
+                    previewShape === "square"
+                      ? "bg-BrandOrange/20 text-BrandOrange"
+                      : "text-BrandGray hover:text-BrandWhite"
+                  }`}
+                >
+                  Square
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewShape("wide")}
+                  className={`h-7 px-2.5 rounded text-[11px] font-DmSans transition-colors ${
+                    previewShape === "wide"
+                      ? "bg-BrandOrange/20 text-BrandOrange"
+                      : "text-BrandGray hover:text-BrandWhite"
+                  }`}
+                >
+                  Wide
+                </button>
+              </div>
             </div>
+
+            <PlayPreviewCard
+              playData={playData}
+              fallbackImageSrc={thumbnailDataUrl}
+              autoplay="always"
+              cameraMode="fit-distribution"
+              background="none"
+              paddingPx={26}
+              minSpanPx={150}
+              shape={previewShape}
+            />
 
             <div className="flex flex-col gap-1.5">
               <label className={POPUP_LABEL_CLASS}>Play Name</label>
