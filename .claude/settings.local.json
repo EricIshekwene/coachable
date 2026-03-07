@@ -4,7 +4,8 @@
       "Bash(npm run build)",
       "Bash(npx vite build)",
       "Bash(npm install react-router-dom)",
-      "Bash(npx vite build --logLevel error)"
+      "Bash(npx vite build --logLevel error)",
+      "Bash(cat \"c:/Users/ericl/Desktop/coachable/src/assets/fonts\"/*.ttf)"
     ]
   }
 }

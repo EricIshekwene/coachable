@@ -9,6 +9,23 @@
     --color-BrandOrange: #FF7A18;
     --color-BrandOrange2: #75492a;
     --color-BrandGreen: #4FA85D;
+    --color-BrandText: #ffffff;
+    --color-BrandCardBg: rgba(42, 46, 52, 0.3);
+    --color-BrandBorder: rgba(75, 81, 87, 0.2);
+    --color-BrandInputBg: rgba(42, 46, 52, 0.5);
+}
+
+/* Light mode — scoped to app shell only, public pages stay dark */
+[data-theme="light"] .app-themed {
+    --color-BrandBlack: #ffffff;
+    --color-BrandBlack2: #f0f1f3;
+    --color-BrandGray: #6b7280;
+    --color-BrandGray2: #9ca3af;
+    --color-BrandWhite: #121212;
+    --color-BrandText: #121212;
+    --color-BrandCardBg: rgba(240, 241, 243, 0.5);
+    --color-BrandBorder: rgba(0, 0, 0, 0.1);
+    --color-BrandInputBg: rgba(240, 241, 243, 0.6);
 }
 
 @font-face {
@@ -90,4 +107,9 @@ input[type="number"] {
     width: 0;
     height: 0;
     display: none; /* Chrome/Safari/Edge */
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
 }
