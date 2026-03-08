@@ -1,5 +1,7 @@
 import React from "react";
 import { FaCircle } from "react-icons/fa";
+import { Slider } from "@mui/material";
+import { BRAND_SLIDER_SX } from "../subcomponents/sliderStyles";
 
 const DURATION_OPTIONS = [
   { label: "5s", ms: 5000 },
@@ -18,8 +20,15 @@ export default function RecordingModeToggle({
   onChange,
   durationMs,
   onDurationChange,
+  stabilization,
+  onStabilizationChange,
   isBusy,
 }) {
+  const stabilizationValue = Number.isFinite(stabilization)
+    ? Math.min(1, Math.max(0, stabilization))
+    : 0.5;
+  const stabilizationPercent = Math.round(stabilizationValue * 100);
+
   return (
     <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3">
       <button
@@ -45,30 +54,57 @@ export default function RecordingModeToggle({
       </button>
 
       {enabled && (
-        <div className="flex items-center gap-1.5 mt-1.5 px-1">
-          <span className="text-BrandGray text-[10px] font-DmSans shrink-0">
-            Duration:
-          </span>
-          <div className="flex gap-0.5 flex-wrap">
-            {DURATION_OPTIONS.map((opt) => (
-              <button
-                key={opt.ms}
-                onClick={() => onDurationChange?.(opt.ms)}
-                disabled={isBusy}
-                className={`
-                  px-1.5 py-0.5 rounded text-[10px] font-DmSans transition-colors
-                  ${durationMs === opt.ms
-                    ? "bg-red-500/30 text-red-300 border border-red-500/40"
-                    : "bg-BrandGray2/20 text-BrandGray hover:bg-BrandGray2/40 border border-transparent"
-                  }
-                  ${isBusy ? "opacity-50 cursor-not-allowed" : ""}
-                `}
-              >
-                {opt.label}
-              </button>
-            ))}
+        <>
+          <div className="flex items-center gap-1.5 mt-1.5 px-1">
+            <span className="text-BrandGray text-[10px] font-DmSans shrink-0">
+              Duration:
+            </span>
+            <div className="flex gap-0.5 flex-wrap">
+              {DURATION_OPTIONS.map((opt) => (
+                <button
+                  key={opt.ms}
+                  onClick={() => onDurationChange?.(opt.ms)}
+                  disabled={isBusy}
+                  className={`
+                    px-1.5 py-0.5 rounded text-[10px] font-DmSans transition-colors
+                    ${durationMs === opt.ms
+                      ? "bg-red-500/30 text-red-300 border border-red-500/40"
+                      : "bg-BrandGray2/20 text-BrandGray hover:bg-BrandGray2/40 border border-transparent"
+                    }
+                    ${isBusy ? "opacity-50 cursor-not-allowed" : ""}
+                  `}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+
+          <div className="flex flex-col gap-1 mt-1.5 px-1">
+            <div className="flex items-center justify-between">
+              <span className="text-BrandGray text-[10px] font-DmSans">
+                Stabilization
+              </span>
+              <span className="text-BrandGray text-[10px] font-DmSans tabular-nums">
+                {stabilizationPercent}%
+              </span>
+            </div>
+            <Slider
+              min={0}
+              max={100}
+              step={5}
+              value={stabilizationPercent}
+              onChange={(_, newValue) => {
+                const numericValue = Array.isArray(newValue) ? newValue[0] : newValue;
+                if (!Number.isFinite(numericValue)) return;
+                onStabilizationChange?.(numericValue / 100);
+              }}
+              disabled={isBusy}
+              sx={BRAND_SLIDER_SX}
+              aria-label="Recording stabilization"
+            />
+          </div>
+        </>
       )}
 
       {!enabled && (

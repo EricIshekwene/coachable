@@ -1,6 +1,7 @@
 import React from 'react';
 import { IoTimeOutline } from "react-icons/io5";
 import { Slider } from '@mui/material';
+import { BRAND_SLIDER_SX } from "../subcomponents/sliderStyles";
 
 /**
  * SpeedSlider - Speed control slider with time display
@@ -28,33 +29,7 @@ export default function SpeedSlider({
         value={speedMultiplier}
         onChange={(e, newValue) => onSpeedChange(newValue)}
         className="flex-1"
-        sx={{
-          color: '#FF7A18',
-          height: '6.25px',
-          '& .MuiSlider-thumb': {
-            width: '12.5px',
-            height: '12.5px',
-            backgroundColor: '#FF7A18',
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-            '&:hover': {
-              boxShadow: '0 4px 8px rgba(0, 0, 0, 0.3)',
-            },
-            '&:focus, &:active, &.Mui-focusVisible': {
-              outline: 'none',
-              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-            },
-          },
-          '& .MuiSlider-track': {
-            backgroundColor: '#FF7A18',
-            height: '6.25px',
-            border: 'none',
-          },
-          '& .MuiSlider-rail': {
-            backgroundColor: '#75492a',
-            height: '6.25px',
-            opacity: 1,
-          },
-        }}
+        sx={BRAND_SLIDER_SX}
       />
       <div className="sm:py-[6.25px] font-DmSans rounded-md text-[10.9375px] sm:text-[12.5px] md:text-[14.0625px] text-BrandGray flex items-center justify-center">
         {calculateDuration()}

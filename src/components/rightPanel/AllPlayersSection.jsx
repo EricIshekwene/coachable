@@ -1,6 +1,7 @@
 import React from "react";
 import { ImCheckboxChecked, ImCheckboxUnchecked } from "react-icons/im";
 import { Slider } from "@mui/material";
+import { BRAND_SLIDER_SX } from "../subcomponents/sliderStyles";
 
 export default function AllPlayersSection({ value, onChange }) {
   const playerSize = value?.sizePercent ?? 100;
@@ -27,34 +28,7 @@ export default function AllPlayersSection({ value, onChange }) {
           step={5}
           value={playerSize}
           onChange={(_, newValue) => update({ sizePercent: Array.isArray(newValue) ? newValue[0] : newValue })}
-          sx={{
-            width: "100%",
-            color: "#FF7A18",
-            height: "6.25px",
-            "& .MuiSlider-thumb": {
-              width: "12.5px",
-              height: "12.5px",
-              backgroundColor: "#FF7A18",
-              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
-              "&:hover": {
-                boxShadow: "0 4px 8px rgba(0, 0, 0, 0.3)",
-              },
-              "&:focus, &:active, &.Mui-focusVisible": {
-                outline: "none",
-                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
-              },
-            },
-            "& .MuiSlider-track": {
-              backgroundColor: "#FF7A18",
-              height: "6.25px",
-              border: "none",
-            },
-            "& .MuiSlider-rail": {
-              backgroundColor: "#75492a",
-              height: "6.25px",
-              opacity: 1,
-            },
-          }}
+          sx={BRAND_SLIDER_SX}
           aria-label="Player size percent"
         />
       </div>

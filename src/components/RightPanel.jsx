@@ -10,6 +10,7 @@ import SelectedPlayersSection from "./rightPanel/SelectedPlayersSection";
 import ExportActions from "./rightPanel/ExportActions";
 import RecordingModeToggle from "./rightPanel/RecordingModeToggle";
 import RecordingPlayerList from "./rightPanel/RecordingPlayerList";
+import ObjectsSection from "./rightPanel/ObjectsSection";
 
 export default function RightPanel({
   playName,
@@ -85,12 +86,16 @@ export default function RightPanel({
   onDrawShapeStrokeColorChange,
   onDrawShapeFillChange,
   selectedItemIds,
+  onSelectItem,
+  onDeleteBall,
   onSavePrefab,
   // Recording mode props
   recordingModeEnabled,
   onRecordingModeChange,
   recordingDurationMs,
   onRecordingDurationChange,
+  recordingStabilization,
+  onRecordingStabilizationChange,
   recordingGlobalState,
   recordingPlayerId,
   recordingPlayerStates,
@@ -112,7 +117,7 @@ export default function RightPanel({
       "
     >
       {/* Scrollable content area (everything except export actions) */}
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-0.5 hide-scroll">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-0.5 hide-scroll" style={{ touchAction: "pan-y" }}>
         <div className="flex flex-col gap-0.5 sm:gap-0.5 md:gap-1 lg:gap-1.5">
           <PlayNameEditor value={playName} onChange={onPlayNameChange} maxLength={10} />
 
@@ -168,7 +173,9 @@ export default function RightPanel({
             onChange={onRecordingModeChange}
             durationMs={recordingDurationMs}
             onDurationChange={onRecordingDurationChange}
-            isBusy={recordingGlobalState === "recording" || recordingGlobalState === "previewing"}
+            stabilization={recordingStabilization}
+            onStabilizationChange={onRecordingStabilizationChange}
+            isBusy={recordingGlobalState === "recording" || recordingGlobalState === "previewing" || recordingGlobalState === "paused"}
           />
 
           {recordingModeEnabled && (
@@ -192,6 +199,13 @@ export default function RightPanel({
             onSelectPlayer={onSelectPlayer}
             onEditPlayer={onEditPlayer}
             onDeletePlayer={onDeletePlayer}
+          />
+
+          <ObjectsSection
+            ballsById={ballsById}
+            selectedItemIds={selectedItemIds}
+            onSelectItem={onSelectItem}
+            onDeleteBall={onDeleteBall}
           />
 
           <DrawingObjectsList

@@ -17,7 +17,7 @@ export const INITIAL_PLAYERS_BY_ID = {
 };
 
 /** Initial ball object with default position. */
-export const INITIAL_BALL = { id: "ball-1", x: 40, y: 0 };
+export const INITIAL_BALL = { id: "ball-1", x: 40, y: 0, objectType: "ball" };
 export const INITIAL_BALLS_BY_ID = { [INITIAL_BALL.id]: { ...INITIAL_BALL } };
 
 const EMPTY_EDITOR = {
@@ -69,10 +69,13 @@ const toFiniteNumber = (value, fallback = 0) => {
   return Number.isFinite(numeric) ? numeric : fallback;
 };
 
+const normalizeObjectType = (value) => (value === "cone" ? "cone" : "ball");
+
 const normalizeBall = (id, value) => ({
   id: String(value?.id || id || INITIAL_BALL.id),
   x: toFiniteNumber(value?.x, 0),
   y: toFiniteNumber(value?.y, 0),
+  objectType: normalizeObjectType(value?.objectType),
 });
 
 const cloneBallsById = (byId) =>
@@ -139,7 +142,7 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
       const base = next[targetId] || normalizeBall(targetId, INITIAL_BALL);
       const resolved = typeof updater === "function" ? updater(base) : updater;
       if (!resolved || typeof resolved !== "object") return next;
-      const normalized = normalizeBall(resolved.id || targetId, resolved);
+      const normalized = normalizeBall(resolved.id || targetId, { ...base, ...resolved });
       if (normalized.id !== targetId) delete next[targetId];
       next[normalized.id] = normalized;
       return next;
@@ -320,6 +323,20 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
     if (playerEditor.open && playerEditor.id === id) {
       handleCloseEditPlayer();
     }
+  };
+
+  const handleDeleteBall = (id) => {
+    const allBallIds = Object.keys(ballsById || {});
+    if (allBallIds.length <= 1) return; // must keep at least one ball
+    if (!ballsById?.[id]) return;
+    historyApiRef.current?.pushHistory?.();
+    logEvent?.("slate", "deleteBall", { id });
+    setBallsById((prev) => {
+      const next = cloneBallsById(prev);
+      delete next[id];
+      return next;
+    });
+    setSelectedItemIds((prev) => (prev || []).filter((itemId) => itemId !== id));
   };
 
   const handleDeleteSelected = () => {
@@ -522,14 +539,21 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
     setSelectedPlayerIds(nextIds.filter((id) => playersById?.[id]));
   };
 
-  const handleAddBall = ({ x = 0, y = 0, id, select = true, source = "manual" } = {}) => {
+  const handleAddBall = ({
+    x = 0,
+    y = 0,
+    id,
+    select = true,
+    source = "manual",
+    objectType = "ball",
+  } = {}) => {
     let created = null;
     setBallsById((prev) => {
       const next = cloneBallsById(prev);
       const requestedId =
         typeof id === "string" && id.trim() !== "" && !next[id] ? id.trim() : null;
       const nextId = requestedId || getNextBallId(next);
-      created = normalizeBall(nextId, { x, y });
+      created = normalizeBall(nextId, { x, y, objectType });
       next[created.id] = created;
       return next;
     });
@@ -541,6 +565,7 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
       id: created?.id ?? null,
       x: created?.x ?? 0,
       y: created?.y ?? 0,
+      objectType: created?.objectType ?? "ball",
       source,
     });
     return created;
@@ -589,6 +614,7 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
         type: "ball",
         x: ball.x,
         y: ball.y,
+        objectType: normalizeObjectType(ball.objectType),
       })),
     ],
     [playersById, allPlayersDisplay.color, ballsById]
@@ -637,6 +663,7 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
     handleDeletePlayer,
     handleDeleteSelected,
     handleAddBall,
+    handleDeleteBall,
     handleSelectPlayer,
     handleSelectItem,
     handleItemDragStart,

@@ -3,6 +3,7 @@ import { normalizeAnimation, samplePosesAtTime } from "../animation";
 import RugbyField from "../assets/objects/Field Vectors/Rugby_Field.png";
 import SoccerField from "../assets/objects/Field Vectors/Soccer_Field.png";
 import FootballField from "../assets/objects/Field Vectors/Football_Field.png";
+import WhiteBall from "../assets/objects/balls/white_ball.png";
 
 const DEFAULT_FIELD_SIZE = { width: 1000, height: 600 };
 const DEFAULT_PLAYER_COLOR = "#ef4444";
@@ -419,10 +420,14 @@ export default function PlayPreviewCard({
           {Object.entries(ballsById).map(([id]) => {
             const pose = poses?.[id] || fallbackPoses?.[id] || { x: 0, y: 0 };
             return (
-              <g key={id} transform={`translate(${pose.x} ${pose.y})`}>
-                <circle r={ballRadius} fill="#FFFFFF" stroke="#111827" strokeWidth={1.5} />
-                <circle r={Math.max(1.5, ballRadius * 0.18)} fill="#111827" opacity={0.8} />
-              </g>
+              <image
+                key={id}
+                href={WhiteBall}
+                x={pose.x - ballRadius}
+                y={pose.y - ballRadius}
+                width={ballSizePx}
+                height={ballSizePx}
+              />
             );
           })}
         </svg>

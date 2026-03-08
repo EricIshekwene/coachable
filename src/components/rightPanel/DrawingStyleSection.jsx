@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { FiAlignLeft, FiAlignCenter, FiAlignRight } from "react-icons/fi";
 import { PiPenNib } from "react-icons/pi";
 import { Slider } from "@mui/material";
+import { BRAND_SLIDER_SX } from "../subcomponents/sliderStyles";
 
 const PRESET_COLORS = [
   "#FFFFFF", "#000000", "#ef4444", "#3b82f6", "#facc15", "#FF7A18",
@@ -62,35 +63,6 @@ function SectionLabel({ children }) {
   );
 }
 
-const DRAW_SLIDER_SX = {
-  width: "100%",
-  color: "#FF7A18",
-  height: "6.25px",
-  "& .MuiSlider-thumb": {
-    width: "12.5px",
-    height: "12.5px",
-    backgroundColor: "#FF7A18",
-    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
-    "&:hover": {
-      boxShadow: "0 4px 8px rgba(0, 0, 0, 0.3)",
-    },
-    "&:focus, &:active, &.Mui-focusVisible": {
-      outline: "none",
-      boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
-    },
-  },
-  "& .MuiSlider-track": {
-    backgroundColor: "#FF7A18",
-    height: "6.25px",
-    border: "none",
-  },
-  "& .MuiSlider-rail": {
-    backgroundColor: "#75492a",
-    height: "6.25px",
-    opacity: 1,
-  },
-};
-
 const roundToOneDecimal = (value) => Math.round(value * 10) / 10;
 
 function SliderControl({ label, value, onChange, min, max, step = 1, isPercentage = false }) {
@@ -125,7 +97,7 @@ function SliderControl({ label, value, onChange, min, max, step = 1, isPercentag
             step={step}
             value={sliderValue}
             onChange={handleChange}
-            sx={DRAW_SLIDER_SX}
+            sx={BRAND_SLIDER_SX}
             aria-label={label}
           />
         </div>

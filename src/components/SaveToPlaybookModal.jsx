@@ -186,7 +186,7 @@ export default function SaveToPlaybookModal({
               fallbackImageSrc={thumbnailDataUrl}
               autoplay="always"
               cameraMode="fit-distribution"
-              background="none"
+              background="field"
               paddingPx={26}
               minSpanPx={150}
               shape={previewShape}

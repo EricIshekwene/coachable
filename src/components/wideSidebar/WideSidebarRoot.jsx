@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { FaUsers } from "react-icons/fa";
 import { IoFootball } from "react-icons/io5";
+import coneIcon from "../../assets/objects/cone.png";
 import rugbyScrum from "../../assets/prefabIcons/Rugby Scrum.png";
 import rugbyLineout from "../../assets/prefabIcons/Rugby Lineout.png";
 import rugbyKickoff from "../../assets/prefabIcons/Rugby KickOff.png";
@@ -14,6 +15,7 @@ import PrefabsSection from "../sidebar/PrefabsSection";
 import PresetSection from "../sidebar/PresetSection";
 import HistoryActionsSection from "../sidebar/HistoryActionsSection";
 import { WideSidebarRowButton } from "../subcomponents/Buttons";
+import { Popover } from "../subcomponents/Popovers";
 
 const iconClass = "text-BrandOrange text-xl sm:text-2xl md:text-3xl";
 const selectedIconClass = "text-BrandBlack text-xl sm:text-2xl md:text-3xl";
@@ -111,6 +113,7 @@ export default function WideSidebarRoot({
     const selectButtonRef = useRef(null);
     const penButtonRef = useRef(null);
     const addPlayerButtonRef = useRef(null);
+    const objectsButtonRef = useRef(null);
     const playerButtonRef = useRef(null);
     const prefabsButtonRef = useRef(null);
     const presetButtonRef = useRef(null);
@@ -179,6 +182,10 @@ export default function WideSidebarRoot({
     const handleQuickAddPlayer = () => {
         onAddPlayer?.({ color: playerColor });
     };
+    const handleObjectToolSelect = (tool) => {
+        setTool(tool);
+        closePopover();
+    };
 
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -244,6 +251,12 @@ export default function WideSidebarRoot({
     useEffect(() => {
         if (openPopover !== "addPlayer") setShowPlayerDropdown(false);
     }, [openPopover]);
+
+    const isObjectToolSelected = selectedToolForUi === "addBall" || selectedToolForUi === "addCone";
+
+    const objectsRowIcon = selectedToolForUi === "addCone"
+        ? <img src={coneIcon} alt="Cone" className="h-5 w-5 object-contain" />
+        : <IoFootball className={isObjectToolSelected ? selectedIconClass : iconClass} />;
 
     const hr = <hr className="w-full border-0 border-t border-BrandGray2/60" />;
 
@@ -312,12 +325,40 @@ export default function WideSidebarRoot({
             />
 
             <WideSidebarRowButton
-                Icon={<IoFootball className={selectedToolForUi === "addBall" ? selectedIconClass : iconClass} />}
-                label="Add Ball"
+                ref={objectsButtonRef}
+                Icon={objectsRowIcon}
+                label="Add Objects"
                 onHover={() => {}}
-                isSelected={selectedToolForUi === "addBall"}
-                onRowClick={() => setTool("addBall")}
+                isSelected={isObjectToolSelected}
+                onRowClick={() => handleObjectToolSelect("addBall")}
+                onChevronClick={() => togglePopover("addObjects")}
+                chevronActive={openPopover === "addObjects"}
             />
+            <Popover
+                isOpen={openPopover === "addObjects"}
+                onClose={closePopover}
+                anchorRef={objectsButtonRef}
+                topOffset={0}
+            >
+                <div className="ml-2 w-[160px] rounded-lg border border-BrandGray2/70 bg-BrandBlack/95 p-1.5 shadow-xl">
+                    <button
+                        type="button"
+                        onClick={() => handleObjectToolSelect("addBall")}
+                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-DmSans transition-colors ${selectedToolForUi === "addBall" ? "bg-BrandOrange text-BrandBlack" : "text-BrandWhite hover:bg-BrandBlack2"}`}
+                    >
+                        <IoFootball className="text-sm" />
+                        <span>Ball</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => handleObjectToolSelect("addCone")}
+                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-DmSans transition-colors ${selectedToolForUi === "addCone" ? "bg-BrandOrange text-BrandBlack" : "text-BrandWhite hover:bg-BrandBlack2"}`}
+                    >
+                        <img src={coneIcon} alt="Cone" className="h-3.5 w-3.5 object-contain" />
+                        <span>Cone</span>
+                    </button>
+                </div>
+            </Popover>
             {hr}
 
             <PlayerColorSection

@@ -1033,7 +1033,7 @@ function Slate({ onShowMessage }) {
   const handleToolChange = useCallback((tool) => {
     logDrawDebug(`toolChange request=${tool}`);
     logKeyToolDebug(`toolChange request=${tool}`);
-    if (tool === "hand" || tool === "select" || tool === "pen" || tool === "addPlayer" || tool === "addBall" || tool === "color" || tool === "prefab") {
+    if (tool === "hand" || tool === "select" || tool === "pen" || tool === "addPlayer" || tool === "addBall" || tool === "addCone" || tool === "color" || tool === "prefab") {
       setCanvasTool((prev) => {
         if (prev === tool) {
           logKeyToolDebug(`toolChange noop current=${prev}`);
@@ -1220,15 +1220,15 @@ function Slate({ onShowMessage }) {
     }
   }, [canvasTool, entities.ballsById, entities.playersById, entities.selectedItemIds, onShowMessage]);
 
-  const handleCanvasAddBall = useCallback(({ x, y }) => {
+  const handleCanvasAddBall = useCallback(({ x, y, objectType = "ball" }) => {
     const existingBallIds = Object.keys(entities.ballsById || {});
     logPlaceBallDebug(
-      `canvasAddBall click x=${Math.round(x)} y=${Math.round(y)} existingCount=${existingBallIds.length} existingIds=[${existingBallIds.join(",")}]`
+      `canvasAddBall click type=${objectType} x=${Math.round(x)} y=${Math.round(y)} existingCount=${existingBallIds.length} existingIds=[${existingBallIds.join(",")}]`
     );
     historyApiRef.current?.pushHistory?.();
-    const created = entities.handleAddBall({ x, y, source: "canvasAddBall" });
+    const created = entities.handleAddBall({ x, y, source: "canvasAddBall", objectType });
     logPlaceBallDebug(
-      `canvasAddBall created id=${created?.id || "unknown"} x=${Math.round(created?.x ?? x)} y=${Math.round(created?.y ?? y)} nextCount=${Object.keys(entities.ballsById || {}).length + 1}`
+      `canvasAddBall created id=${created?.id || "unknown"} type=${created?.objectType || objectType} x=${Math.round(created?.x ?? x)} y=${Math.round(created?.y ?? y)} nextCount=${Object.keys(entities.ballsById || {}).length + 1}`
     );
     setCanvasTool("select");
   }, [entities]);
@@ -1469,6 +1469,10 @@ function Slate({ onShowMessage }) {
         logRecordingDebug(
           `itemDragStart id=${id} global=${recording.globalState} recordingPid=${recording.recordingPlayerId || "none"} selected=[${(entities.selectedItemIds || []).join(",")}] enginePlayingBefore=${enginePlayingBefore} pauseSuppressed=true`
         );
+        // Auto-resume recording when dragging the recorded player.
+        if (recording.globalState === "paused" && id === recording.recordingPlayerId) {
+          recording.resumeRecording();
+        }
       }
       // Don't pause engine during recording - recording uses its own timer.
       if (!recording.recordingModeEnabled) {
@@ -1476,7 +1480,7 @@ function Slate({ onShowMessage }) {
       }
       entities.handleItemDragStart(id);
     },
-    [entities, recording.globalState, recording.recordingModeEnabled, recording.recordingPlayerId]
+    [entities, recording.globalState, recording.recordingModeEnabled, recording.recordingPlayerId, recording.resumeRecording]
   );
 
   const handleItemDragEnd = useCallback(
@@ -1499,6 +1503,10 @@ function Slate({ onShowMessage }) {
         logRecordingDebug(
           `itemDragEnd id=${id} global=${recording.globalState} recordingPid=${recording.recordingPlayerId || "none"} enginePlaying=${isPlayingNow} targetTrackIds=[${targetTrackIds.join(",")}] recordedKeyframes=${recording.recordingPlayerId ? animationDataRef.current?.tracks?.[recording.recordingPlayerId]?.keyframes?.length || 0 : 0}`
         );
+        // Auto-pause recording when user stops dragging the recorded player.
+        if (recording.globalState === "recording" && id === recording.recordingPlayerId) {
+          recording.pauseRecording();
+        }
         // Don't upsert keyframes during recording mode - recording manages its own tracks.
         return;
       }
@@ -1510,6 +1518,7 @@ function Slate({ onShowMessage }) {
       recording.globalState,
       recording.recordingModeEnabled,
       recording.recordingPlayerId,
+      recording.pauseRecording,
       upsertKeyframesAtCurrentTime,
     ]
   );
@@ -1894,6 +1903,14 @@ function Slate({ onShowMessage }) {
     renderPoseAtTime(currentTimeRef.current);
   }, [renderPoseAtTime]);
 
+  const handleStartRecording = useCallback(
+    (playerId) => {
+      setCanvasTool("select");
+      recording.startRecording(playerId);
+    },
+    [recording.startRecording]
+  );
+
   return (
     <>
       <WideSidebar
@@ -2029,9 +2046,12 @@ function Slate({ onShowMessage }) {
               ? entities.playersById[recording.recordingPlayerId]?.name || "Player"
               : null
           }
+          countdownValue={recording.countdownValue}
           onStartPreview={recording.startPreview}
           onStopPreview={recording.stopPreview}
           onStopRecording={recording.stopRecording}
+          onPauseRecording={recording.pauseRecording}
+          onResumeRecording={recording.resumeRecording}
           onCancelRecording={recording.cancelRecording}
         />
       ) : (
@@ -2113,8 +2133,10 @@ function Slate({ onShowMessage }) {
         selectedItemIds={entities.selectedItemIds}
         selectedPlayers={entities.selectedPlayers}
         onSelectPlayer={entities.handleSelectPlayer}
+        onSelectItem={entities.handleSelectItem}
         onEditPlayer={entities.handleEditPlayer}
         onDeletePlayer={entities.handleDeletePlayer}
+        onDeleteBall={entities.handleDeleteBall}
         allPlayersDisplay={entities.allPlayersDisplay}
         onAllPlayersDisplayChange={entities.setAllPlayersDisplay}
         onSelectedPlayersColorChange={entities.handleSelectedPlayersColorChange}
@@ -2129,10 +2151,12 @@ function Slate({ onShowMessage }) {
         onRecordingModeChange={recording.setRecordingModeEnabled}
         recordingDurationMs={recording.recordingDurationMs}
         onRecordingDurationChange={recording.setRecordingDurationMs}
+        recordingStabilization={recording.stabilization}
+        onRecordingStabilizationChange={recording.setStabilization}
         recordingGlobalState={recording.globalState}
         recordingPlayerId={recording.recordingPlayerId}
         recordingPlayerStates={recording.playerStates}
-        onStartRecording={recording.startRecording}
+        onStartRecording={handleStartRecording}
         onClearPlayerRecording={recording.clearPlayerRecording}
         onClearAllRecordings={recording.clearAllRecordings}
       />

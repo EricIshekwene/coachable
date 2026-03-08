@@ -61,6 +61,17 @@ const useImage = (src) => {
 
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
 const isModifierPressed = (evt) => Boolean(evt?.shiftKey || evt?.ctrlKey || evt?.metaKey);
+
+/** Extract clientX/clientY from a mouse or touch event. */
+const getPointerClientXY = (evt) => {
+  if (evt?.touches?.length > 0) {
+    return { clientX: evt.touches[0].clientX, clientY: evt.touches[0].clientY };
+  }
+  if (evt?.changedTouches?.length > 0) {
+    return { clientX: evt.changedTouches[0].clientX, clientY: evt.changedTouches[0].clientY };
+  }
+  return { clientX: evt?.clientX ?? 0, clientY: evt?.clientY ?? 0 };
+};
 const ZOOM_MIN = 0.2;
 const ZOOM_MAX = 4;
 const ZOOM_STEP = 0.1;
@@ -177,14 +188,20 @@ function KonvaCanvasRoot({
   const showNumber = playerDisplay.showNumber ?? true;
   const showName = playerDisplay.showName ?? false;
   const ballSizePercent = clamp(Number(ball.sizePercent ?? 100), 10, 400);
+  const coneSizePercent = clamp(Number(ball.coneSizePercent ?? 70), 10, 400);
   const baseBallSizePx = 22;
   const ballSizePx = Math.max(6, Math.round((baseBallSizePx * ballSizePercent) / 100));
+  const coneSizePx = Math.max(6, Math.round((baseBallSizePx * coneSizePercent) / 100));
   const ballRadius = ballSizePx / 2;
+  const coneRadius = coneSizePx / 2;
 
   const ballImageSrc = new URL("../assets/objects/balls/white_ball.png", import.meta.url).href;
+  const coneImageSrc = new URL("../assets/objects/cone.png", import.meta.url).href;
   const fieldImage = useImage(showMarkings ? FIELD_TYPE_TO_IMAGE_SRC[resolvedFieldType] : null);
   const ballImage = useImage(ballImageSrc);
+  const coneImage = useImage(coneImageSrc);
   const ballImageElement = ballImage.image;
+  const coneImageElement = coneImage.image;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -681,7 +698,7 @@ function KonvaCanvasRoot({
     const evt = e.evt;
     const isMiddleMouse = evt?.button === 1;
     const isPrimaryButton = evt?.button === 0 || evt?.button === undefined;
-    const isAddTool = tool === "addPlayer" || tool === "color" || tool === "addBall";
+    const isAddTool = tool === "addPlayer" || tool === "color" || tool === "addBall" || tool === "addCone";
     const stage = stageRef.current;
     const target = e.target;
 
@@ -728,7 +745,9 @@ function KonvaCanvasRoot({
       if (!pointer) return;
       const world = toWorldCoords(pointer);
       if (tool === "addBall") {
-        onCanvasAddBall?.({ x: world.x, y: world.y });
+        onCanvasAddBall?.({ x: world.x, y: world.y, objectType: "ball" });
+      } else if (tool === "addCone") {
+        onCanvasAddBall?.({ x: world.x, y: world.y, objectType: "cone" });
       } else {
         onCanvasAddPlayer?.({ x: world.x, y: world.y, source: tool });
       }
@@ -766,9 +785,10 @@ function KonvaCanvasRoot({
 
     if (target !== stage) return;
 
+    const { clientX, clientY } = getPointerClientXY(evt);
     panRef.current.active = true;
-    panRef.current.pointerId = evt?.pointerId ?? "mouse";
-    panRef.current.last = { x: evt?.clientX ?? 0, y: evt?.clientY ?? 0 };
+    panRef.current.pointerId = evt?.pointerId ?? "touch";
+    panRef.current.last = { x: clientX, y: clientY };
     setIsPanning(true);
     setIsHoveringItem(false);
     onPanStart?.();
@@ -1100,10 +1120,11 @@ function KonvaCanvasRoot({
     }
     if (!panRef.current.active) return;
     const evt = e.evt;
-    if (panRef.current.pointerId !== (evt?.pointerId ?? "mouse")) return;
-    const dx = (evt?.clientX ?? 0) - panRef.current.last.x;
-    const dy = (evt?.clientY ?? 0) - panRef.current.last.y;
-    panRef.current.last = { x: evt?.clientX ?? 0, y: evt?.clientY ?? 0 };
+    if (panRef.current.pointerId !== (evt?.pointerId ?? "touch")) return;
+    const { clientX, clientY } = getPointerClientXY(evt);
+    const dx = clientX - panRef.current.last.x;
+    const dy = clientY - panRef.current.last.y;
+    panRef.current.last = { x: clientX, y: clientY };
     setCamera((prev) => ({ ...prev, x: (prev?.x || 0) + dx, y: (prev?.y || 0) + dy }));
   };
 
@@ -1161,7 +1182,9 @@ function KonvaCanvasRoot({
         .filter((item) => item?.type === "player" || item?.type === "ball")
         .filter((item) => {
           const rendered = getRenderedPose(item);
-          const itemRadius = item.type === "ball" ? ballRadius : radius;
+          const itemRadius = item.type === "ball"
+            ? (item.objectType === "cone" ? coneRadius : ballRadius)
+            : radius;
           return intersects(rendered.x, rendered.y, itemRadius);
         })
         .map((item) => item.id);
@@ -1171,7 +1194,7 @@ function KonvaCanvasRoot({
     }
     if (!panRef.current.active) return;
     const evt = e.evt;
-    if (panRef.current.pointerId !== (evt?.pointerId ?? "mouse")) return;
+    if (panRef.current.pointerId !== (evt?.pointerId ?? "touch")) return;
     panRef.current.active = false;
     panRef.current.pointerId = null;
     setIsPanning(false);
@@ -1263,7 +1286,7 @@ function KonvaCanvasRoot({
       ? "grab"
       : tool === "pen"
         ? drawCursor
-        : tool === "addPlayer" || tool === "color" || tool === "prefab"
+        : tool === "addPlayer" || tool === "addBall" || tool === "addCone" || tool === "color" || tool === "prefab"
           ? "copy"
           : "default";
   const hoverAllowed = !isMarqueeActive && !isPanning && !isDragging;
@@ -1552,6 +1575,9 @@ function KonvaCanvasRoot({
                 const draggable = tool === "select" && item.draggable !== false && !isMarqueeActive && !lockDrag;
 
                 if (item.type === "ball") {
+                  const objectType = renderedItem.objectType === "cone" ? "cone" : "ball";
+                  const objectImageElement = objectType === "cone" ? coneImageElement : ballImageElement;
+                  const objectSizePx = objectType === "cone" ? coneSizePx : ballSizePx;
                   return (
                     <Group
                       key={item.id}
@@ -1580,14 +1606,14 @@ function KonvaCanvasRoot({
                         e.cancelBubble = true;
                       }}
                     >
-                      {ballImageElement ? (() => {
-                        const naturalMax = Math.max(ballImageElement.width || 1, ballImageElement.height || 1);
-                        const scale = ballSizePx / naturalMax;
-                        const width = ballImageElement.width * scale;
-                        const height = ballImageElement.height * scale;
+                      {objectImageElement ? (() => {
+                        const naturalMax = Math.max(objectImageElement.width || 1, objectImageElement.height || 1);
+                        const scale = objectSizePx / naturalMax;
+                        const width = objectImageElement.width * scale;
+                        const height = objectImageElement.height * scale;
                         return (
                           <KonvaImage
-                            image={ballImageElement}
+                            image={objectImageElement}
                             x={0}
                             y={0}
                             width={width}
@@ -1602,7 +1628,7 @@ function KonvaCanvasRoot({
                       })() : null}
                       {isSelected && (
                         <Circle
-                          radius={ballSizePx / 2 + 2}
+                          radius={objectSizePx / 2 + 2}
                           stroke="#FF7A18"
                           strokeWidth={2}
                           listening={false}

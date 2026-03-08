@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaChevronDown } from "react-icons/fa";
 import { Slider } from '@mui/material';
+import { BRAND_SLIDER_SX } from '../subcomponents/sliderStyles';
 
 const FIELD_TYPE_OPTIONS = ["Rugby", "Soccer", "Football"];
 const PITCH_SIZE_OPTIONS = ["Full Field", "Half Pitch", "Goal", "Quarter Field"];
@@ -123,33 +124,7 @@ export default function PitchSettingsSection({ value = {}, onChange }) {
                         value={fieldOpacity}
                         onChange={(_, newValue) => update({ fieldOpacity: Array.isArray(newValue) ? newValue[0] : newValue })}
                         className="flex-1"
-                        sx={{
-                            color: '#FF7A18',
-                            height: '4px',
-                            '& .MuiSlider-thumb': {
-                                width: '10px',
-                                height: '10px',
-                                backgroundColor: '#FF7A18',
-                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-                                '&:hover': {
-                                    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.3)',
-                                },
-                                '&:focus, &:active, &.Mui-focusVisible': {
-                                    outline: 'none',
-                                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-                                },
-                            },
-                            '& .MuiSlider-track': {
-                                backgroundColor: '#FF7A18',
-                                height: '4px',
-                                border: 'none',
-                            },
-                            '& .MuiSlider-rail': {
-                                backgroundColor: '#75492a',
-                                height: '4px',
-                                opacity: 1,
-                            },
-                        }}
+                        sx={BRAND_SLIDER_SX}
                     />
                     <div className="flex flex-row bg-BrandBlack2 h-5 sm:h-6 w-14 items-center justify-center px-2 rounded-md">
                         <p className="text-BrandWhite text-xs sm:text-sm font-DmSans">{fieldOpacity}%</p>

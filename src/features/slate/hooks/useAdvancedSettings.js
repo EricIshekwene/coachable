@@ -14,6 +14,7 @@ export const DEFAULT_ADVANCED_SETTINGS = {
   },
   ball: {
     sizePercent: 100,
+    coneSizePercent: 70,
   },
   exportVideo: {
     videoQuality: "1080p",

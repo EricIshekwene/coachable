@@ -1,5 +1,6 @@
 import React from "react";
 import { FaCircle, FaCheck, FaPlay, FaTrash, FaFootballBall } from "react-icons/fa";
+import coneIcon from "../../assets/objects/cone.png";
 
 /**
  * Right panel section shown in recording mode.
@@ -23,7 +24,8 @@ export default function RecordingPlayerList({
   const isRecording = globalState === "recording";
   const isPreviewing = globalState === "previewing";
   const isCountdown = globalState === "countdown";
-  const isBusy = isRecording || isPreviewing || isCountdown;
+  const isPaused = globalState === "paused";
+  const isBusy = isRecording || isPreviewing || isCountdown || isPaused;
 
   const recordedCount = Object.values(playerStates).filter((s) => s === "recorded").length;
 
@@ -46,10 +48,11 @@ export default function RecordingPlayerList({
 
       <div className="flex flex-col gap-0.5 max-h-[300px] overflow-y-auto hide-scroll">
         {allIds.map((id) => {
-          const isBall = id.startsWith("ball-");
+          const ball = ballsById?.[id] || null;
+          const isBall = Boolean(ball);
           const player = isBall ? null : playersById?.[id];
-          const ball = isBall ? ballsById?.[id] : null;
           if (!player && !ball) return null;
+          const objectType = ball?.objectType === "cone" ? "cone" : "ball";
 
           const state = playerStates[id] || "idle";
           const isCurrentlyRecording = recordingPlayerId === id;
@@ -82,9 +85,13 @@ export default function RecordingPlayerList({
               {/* Item indicator + name */}
               {isBall ? (
                 <>
-                  <FaFootballBall className="text-BrandOrange text-[10px] shrink-0" />
+                  {objectType === "cone" ? (
+                    <img src={coneIcon} alt="Cone" className="h-3 w-3 object-contain shrink-0" />
+                  ) : (
+                    <FaFootballBall className="text-BrandOrange text-[10px] shrink-0" />
+                  )}
                   <span className="text-white text-xs font-DmSans truncate flex-1">
-                    Ball
+                    {objectType === "cone" ? "Cone" : "Ball"}
                   </span>
                 </>
               ) : (

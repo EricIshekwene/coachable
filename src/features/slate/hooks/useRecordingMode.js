@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { log as logRecordingDebug } from "../recordingDebugLogger";
+import { smoothTrack } from "../../../utils/smoothTrack";
 
 /**
  * Recording states per player:
@@ -9,7 +10,9 @@ import { log as logRecordingDebug } from "../recordingDebugLogger";
  *
  * Global states:
  * - "idle"       - no recording in progress
+ * - "countdown"  - 3-2-1 before recording starts
  * - "recording"  - actively recording one player's movement
+ * - "paused"     - recording paused, can resume
  * - "previewing" - playing back all recorded tracks together
  */
 
@@ -66,12 +69,14 @@ export function useRecordingMode({
   const [countdownValue, setCountdownValue] = useState(null); // 3,2,1,null
   const [previewTimeMs, setPreviewTimeMs] = useState(0);
   const [recordingDurationMs, setRecordingDurationMs] = useState(10000);
+  const [stabilization, setStabilization] = useState(0.5); // 0 to 1
 
   const countdownTimerRef = useRef(null);
   const pendingCountdownPlayerIdRef = useRef(null);
   const recordingPlayerIdRef = useRef(null);
   const latestPosRef = useRef({ x: 0, y: 0 });
-  const recordingStartRef = useRef(null); // performance.now() at start
+  const recordingStartRef = useRef(null); // performance.now() at start of current segment
+  const pausedElapsedRef = useRef(0); // accumulated ms from previous segments before pause
   const lastSampleElapsedRef = useRef(0);
   const recordingBufferRef = useRef([]); // [{t, x, y}]
   const rafIdRef = useRef(null);
@@ -165,17 +170,20 @@ export function useRecordingMode({
 
       const buffer = recordingBufferRef.current;
       const recordedDurationMs = recordingStartRef.current
-        ? Math.max(0, performance.now() - recordingStartRef.current)
-        : 0;
+        ? Math.max(0, pausedElapsedRef.current + (performance.now() - recordingStartRef.current))
+        : pausedElapsedRef.current;
       const firstFrame = buffer[0] || null;
       const lastFrame = buffer.length ? buffer[buffer.length - 1] : null;
       logRecordingDebug(
         `stop reason=${reason} pid=${pid || "none"} frames=${buffer.length} samples=${sampleCountRef.current} feeds=${feedCountRef.current} durationMs=${Math.round(recordedDurationMs)} first=${firstFrame ? `${Math.round(firstFrame.x)},${Math.round(firstFrame.y)}@${firstFrame.t}` : "none"} last=${lastFrame ? `${Math.round(lastFrame.x)},${Math.round(lastFrame.y)}@${lastFrame.t}` : "none"}`
       );
 
-      // Save buffer into animation data tracks.
+      // Save buffer into animation data tracks (apply stabilization smoothing).
       if (pid && buffer.length > 0) {
-        const keyframes = [...buffer];
+        const keyframes = smoothTrack([...buffer], stabilization);
+        logRecordingDebug(
+          `smoothing applied stabilization=${stabilization} frames=${buffer.length}`
+        );
         setAnimationDataWithMeta((base) => {
           const nextTracks = { ...base.tracks };
           nextTracks[pid] = { keyframes };
@@ -189,6 +197,7 @@ export function useRecordingMode({
 
       recordingBufferRef.current = [];
       recordingStartRef.current = null;
+      pausedElapsedRef.current = 0;
       recordingSessionStartIsoRef.current = null;
       preRecordingTrackRef.current = null;
       lastSampleElapsedRef.current = 0;
@@ -202,7 +211,7 @@ export function useRecordingMode({
       setRecordingPlayerId(null);
       setRecordingTimeMs(0);
     },
-    [setAnimationDataWithMeta]
+    [setAnimationDataWithMeta, stabilization]
   );
 
   // Recording RAF loop.
@@ -217,7 +226,7 @@ export function useRecordingMode({
     }
 
     const now = performance.now();
-    const elapsed = now - recordingStartRef.current;
+    const elapsed = pausedElapsedRef.current + (now - recordingStartRef.current);
     const duration = durationMsRef.current;
 
     setRecordingTimeMs(elapsed);
@@ -312,24 +321,24 @@ export function useRecordingMode({
 
       setRecordingPlayerId(playerId);
       recordingPlayerIdRef.current = playerId;
-      setGlobalState("recording");
-      globalStateRef.current = "recording"; // sync ref immediately for RAF tick
+      // Start in paused state — recording begins automatically when user drags the player.
+      setGlobalState("paused");
+      globalStateRef.current = "paused";
       setRecordingTimeMs(0);
       setPlayerStates((prev) => ({ ...prev, [playerId]: "recording" }));
 
       // Initialize buffer with initial position at t=0.
       recordingBufferRef.current = [{ t: 0, x: round2(initialX), y: round2(initialY) }];
       lastSampleElapsedRef.current = 0;
-      recordingStartRef.current = performance.now();
-      lastFeedAtRef.current = recordingStartRef.current;
+      pausedElapsedRef.current = 0;
+      recordingStartRef.current = null; // will be set on first resume (drag start)
+      lastFeedAtRef.current = 0;
       feedCountRef.current = 0;
       sampleCountRef.current = 0;
       lastFeedLogAtRef.current = -Infinity;
       lastSampleLogAtRef.current = -Infinity;
       lastStaleWarnAtRef.current = -Infinity;
-      logRecordingDebug(`start armed pid=${playerId} sampleIntervalMs=${SAMPLE_INTERVAL_MS}`);
-
-      rafIdRef.current = requestAnimationFrame(() => recordingTickRef.current?.());
+      logRecordingDebug(`start armed pid=${playerId} sampleIntervalMs=${SAMPLE_INTERVAL_MS} state=paused (waiting for drag)`);
     },
     [animationDataRef, animationRendererRef, playersByIdRef, ballsByIdRef, setAnimationDataWithMeta, recordingDurationMs]
   );
@@ -384,8 +393,74 @@ export function useRecordingMode({
     logRecordingDebug(
       `stop requested pid=${recordingPlayerIdRef.current || "none"} global=${globalStateRef.current}`
     );
-    finishRecording("manualStop");
+    // Can stop from recording or paused state.
+    if (globalStateRef.current === "paused") {
+      // Already paused — no RAF to cancel, just finish.
+      finishRecording("manualStopFromPaused");
+    } else {
+      finishRecording("manualStop");
+    }
   }, [finishRecording]);
+
+  const pauseRecording = useCallback(() => {
+    if (globalStateRef.current !== "recording") {
+      logRecordingDebug(`pause ignored global=${globalStateRef.current}`);
+      return;
+    }
+
+    // Stop RAF loop.
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+
+    // Accumulate elapsed time from this segment.
+    const segmentElapsed = recordingStartRef.current
+      ? performance.now() - recordingStartRef.current
+      : 0;
+    pausedElapsedRef.current += segmentElapsed;
+    recordingStartRef.current = null;
+
+    setGlobalState("paused");
+    globalStateRef.current = "paused";
+    setRecordingTimeMs(pausedElapsedRef.current);
+
+    logRecordingDebug(
+      `pause pid=${recordingPlayerIdRef.current || "none"} accumulatedMs=${Math.round(pausedElapsedRef.current)} frames=${recordingBufferRef.current.length}`
+    );
+  }, []);
+
+  const resumeRecording = useCallback(() => {
+    if (globalStateRef.current !== "paused") {
+      logRecordingDebug(`resume ignored global=${globalStateRef.current}`);
+      return;
+    }
+
+    const pid = recordingPlayerIdRef.current;
+
+    // Get current position for seamless resume.
+    const renderer = animationRendererRef.current;
+    const rendererPose = renderer?.getCurrentPose?.(pid);
+    const player = playersByIdRef.current?.[pid];
+    const ball = ballsByIdRef?.current?.[pid];
+    const entity = player || ball;
+    const resumeX = rendererPose?.x ?? entity?.x ?? latestPosRef.current.x;
+    const resumeY = rendererPose?.y ?? entity?.y ?? latestPosRef.current.y;
+    latestPosRef.current = { x: resumeX, y: resumeY };
+
+    // Reset segment start; pausedElapsedRef already holds accumulated time.
+    recordingStartRef.current = performance.now();
+    lastFeedAtRef.current = recordingStartRef.current;
+
+    setGlobalState("recording");
+    globalStateRef.current = "recording";
+
+    logRecordingDebug(
+      `resume pid=${pid || "none"} accumulatedMs=${Math.round(pausedElapsedRef.current)} resumePos=(${Math.round(resumeX)},${Math.round(resumeY)}) frames=${recordingBufferRef.current.length}`
+    );
+
+    rafIdRef.current = requestAnimationFrame(() => recordingTickRef.current?.());
+  }, [animationRendererRef, playersByIdRef, ballsByIdRef]);
 
   const cancelRecording = useCallback(() => {
     const pid = recordingPlayerIdRef.current;
@@ -432,6 +507,7 @@ export function useRecordingMode({
 
     recordingBufferRef.current = [];
     recordingStartRef.current = null;
+    pausedElapsedRef.current = 0;
     recordingSessionStartIsoRef.current = null;
     preRecordingTrackRef.current = null;
     lastFeedAtRef.current = 0;
@@ -593,6 +669,7 @@ export function useRecordingMode({
         }
         recordingBufferRef.current = [];
         recordingStartRef.current = null;
+        pausedElapsedRef.current = 0;
         recordingSessionStartIsoRef.current = null;
         preRecordingTrackRef.current = null;
         lastFeedAtRef.current = 0;
@@ -675,6 +752,8 @@ export function useRecordingMode({
     previewTimeMs,
     recordingDurationMs,
     setRecordingDurationMs,
+    stabilization,
+    setStabilization,
     recordedCount,
     totalCount,
     syncPlayerStates,
@@ -682,6 +761,8 @@ export function useRecordingMode({
     getDebugSnapshot,
     startRecording,
     stopRecording,
+    pauseRecording,
+    resumeRecording,
     cancelRecording,
     clearPlayerRecording,
     clearAllRecordings,
