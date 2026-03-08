@@ -17,6 +17,7 @@ export default function KeyframeDisplay({
 }) {
   const TRACK_VISUAL_START_PERCENT = 3;
   const TRACK_VISUAL_SPAN_PERCENT = 94;
+  const FIRST_KEYFRAME_INDEX = 0;
 
   const timePercentToVisualPosition = (timePercent) =>
     TRACK_VISUAL_START_PERCENT + (timePercent / 100) * TRACK_VISUAL_SPAN_PERCENT;
@@ -29,6 +30,10 @@ export default function KeyframeDisplay({
     (e, marker, idx) => {
       e.stopPropagation();
       e.preventDefault();
+      if (idx === FIRST_KEYFRAME_INDEX) {
+        onKeyframeClick?.(e, marker);
+        return;
+      }
       e.target.setPointerCapture?.(e.pointerId);
       draggingRef.current = {
         markerIndex: idx,
@@ -37,7 +42,7 @@ export default function KeyframeDisplay({
       };
       hasDraggedRef.current = false;
     },
-    []
+    [onKeyframeClick]
   );
 
   const handlePointerMove = useCallback(
@@ -95,6 +100,7 @@ export default function KeyframeDisplay({
   return (
     <>
       {keyframes.map((marker, idx) => {
+        const isFirstKeyframe = idx === FIRST_KEYFRAME_INDEX;
         const isDragging = dragPreview?.index === idx;
         const visualPos = isDragging
           ? dragPreview.visualPercent
@@ -111,7 +117,9 @@ export default function KeyframeDisplay({
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
-            className={`absolute z-30 ${isDragging ? 'cursor-grabbing opacity-80' : 'cursor-grab'}`}
+            className={`absolute z-30 ${
+              isDragging ? "cursor-grabbing opacity-80" : isFirstKeyframe ? "cursor-pointer" : "cursor-grab"
+            }`}
             style={{
               left: `${visualPos}%`,
               top: "50%",

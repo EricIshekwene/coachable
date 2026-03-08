@@ -47,6 +47,7 @@ export default function ControlPill({
   );
 
   const sortedKeyframes = useMemo(() => [...(keyframesMs || [])].sort((a, b) => a - b), [keyframesMs]);
+  const firstKeyframeMs = sortedKeyframes.length ? sortedKeyframes[0] : null;
 
   const handleSeek = (timeMs, meta) => {
     onPause?.();
@@ -107,6 +108,10 @@ export default function ControlPill({
   };
 
   const handleKeyframeDragStart = (timeMs) => {
+    if (firstKeyframeMs !== null && timeMs === firstKeyframeMs) {
+      onSelectKeyframe?.(timeMs);
+      return;
+    }
     onPause?.();
     onSelectKeyframe?.(timeMs);
   };
@@ -116,6 +121,11 @@ export default function ControlPill({
   };
 
   const handleKeyframeDragEnd = (fromTimeMs, toTimeMs) => {
+    if (firstKeyframeMs !== null && fromTimeMs === firstKeyframeMs) {
+      onSelectKeyframe?.(fromTimeMs);
+      jumpToTime(fromTimeMs);
+      return;
+    }
     if (fromTimeMs === toTimeMs) return;
     onMoveKeyframe?.(fromTimeMs, toTimeMs);
     onSelectKeyframe?.(toTimeMs);

@@ -148,6 +148,7 @@ function Slate({ onShowMessage }) {
   const lastUiUpdateRef = useRef(0);
   const lastTickLogRef = useRef(0);
   const timelineDraggingRef = useRef(false);
+  const recordingModeEnabledRef = useRef(false);
   const engineRef = useRef(null);
   if (!engineRef.current) {
     engineRef.current = new AnimationEngine({
@@ -248,7 +249,9 @@ function Slate({ onShowMessage }) {
   }, [activeTrackIds]);
 
   // Ensure all player/ball tracks have a keyframe at t=0 (starting position).
+  // Skip during recording mode — recording manages its own tracks.
   useEffect(() => {
+    if (recordingModeEnabledRef.current) return;
     if (!representedTrackIds.length) return;
     setAnimationData((prev) => {
       const nextTracks = { ...prev.tracks };
@@ -356,6 +359,7 @@ function Slate({ onShowMessage }) {
     playersByIdRef,
     ballsByIdRef,
   });
+  recordingModeEnabledRef.current = recording.recordingModeEnabled;
 
   // Sync recording states only when player/ball IDs change (not positions).
   const recordableIdKeysStr = useMemo(
@@ -369,6 +373,9 @@ function Slate({ onShowMessage }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recordableIdKeysStr, recording.recordingModeEnabled, recording.syncPlayerStates]);
 
+  // Sync animation tracks with entity list: remove tracks for deleted entities, add empty
+  // tracks for new ones. During recording mode, only ADD new tracks — never remove existing
+  // ones (recording manages track data independently).
   useEffect(() => {
     setAnimationDataWithMeta((base) => {
       const playerIds = Object.keys(entities.playersById || {});
@@ -379,7 +386,12 @@ function Slate({ onShowMessage }) {
 
       Object.entries(base.tracks || {}).forEach(([itemId, track]) => {
         if (!validIds.has(itemId)) {
-          changed = true;
+          // During recording, keep orphan tracks (player may be mid-record/shelved).
+          if (recording.recordingModeEnabled) {
+            nextTracks[itemId] = track;
+          } else {
+            changed = true;
+          }
           return;
         }
         nextTracks[itemId] = track;
@@ -394,9 +406,12 @@ function Slate({ onShowMessage }) {
       if (!changed) return null;
       return { ...base, tracks: nextTracks };
     });
-  }, [entities.playersById, entities.ballsById, setAnimationDataWithMeta]);
+  }, [entities.playersById, entities.ballsById, setAnimationDataWithMeta, recording.recordingModeEnabled]);
 
+  // Re-render poses when animation data or entity list changes.
+  // Skip during recording mode — the recording RAF loop manages positions.
   useEffect(() => {
+    if (recording.recordingModeEnabled) return;
     if (entities.isItemDraggingRef.current) return;
     renderPoseAtTime(currentTimeRef.current);
   }, [
@@ -405,6 +420,7 @@ function Slate({ onShowMessage }) {
     entities.ballsById,
     entities.isItemDraggingRef,
     renderPoseAtTime,
+    recording.recordingModeEnabled,
   ]);
 
   const visibleKeyframesMs = useMemo(
@@ -1474,6 +1490,14 @@ function Slate({ onShowMessage }) {
       const from = Math.round(fromTimeMs);
       const to = Math.round(toTimeMs);
       if (from === to) return;
+      const firstVisibleKeyframe = getTrackKeyframeTimes(animationDataRef.current, targetTrackIds)[0];
+      if (Number.isFinite(firstVisibleKeyframe) && Math.abs(from - firstVisibleKeyframe) <= 0.5) {
+        logKfMoveDebug(
+          `moveKeyframe blocked from=${from}ms reason=firstKeyframe locked=${Math.round(firstVisibleKeyframe)}`
+        );
+        setSelectedKeyframeMs(Math.round(firstVisibleKeyframe));
+        return;
+      }
 
       logKfMoveDebug(
         `moveKeyframe from=${from}ms to=${to}ms tracks=[${targetTrackIds.join(",")}]`
@@ -1604,8 +1628,9 @@ function Slate({ onShowMessage }) {
 
   const handleItemChange = useCallback(
     (id, next, meta) => {
-      if (recording.recordingModeEnabled && recording.globalState === "recording") {
+      if (recording.recordingModeEnabled) {
         // Feed position to recording hook for the player being recorded.
+        // Feed in all active states (recording/paused/countdown) so latestPosRef stays current.
         if (id === recording.recordingPlayerId && next) {
           recording.feedPosition(next.x ?? 0, next.y ?? 0);
         }

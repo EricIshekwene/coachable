@@ -108,8 +108,19 @@ export function useRecordingMode({
 
   // Feed position from external drag events.
   const feedPosition = useCallback((x, y) => {
+    const prevX = latestPosRef.current.x;
+    const prevY = latestPosRef.current.y;
     latestPosRef.current = { x, y };
-    if (globalStateRef.current !== "recording") return;
+    if (globalStateRef.current !== "recording") {
+      // Log occasional feeds in non-recording state for debugging position tracking.
+      feedCountRef.current += 1;
+      if (feedCountRef.current % 50 === 1) {
+        logRecordingDebug(
+          `feedPos(non-rec) state=${globalStateRef.current} pid=${recordingPlayerIdRef.current || "none"} pos=(${Math.round(x)},${Math.round(y)}) delta=(${Math.round(x - prevX)},${Math.round(y - prevY)}) feedN=${feedCountRef.current}`
+        );
+      }
+      return;
+    }
     feedCountRef.current += 1;
     lastFeedAtRef.current = performance.now();
   }, []);
@@ -330,7 +341,10 @@ export function useRecordingMode({
       setGlobalState("paused");
       globalStateRef.current = "paused";
       setRecordingTimeMs(0);
-      setPlayerStates((prev) => ({ ...prev, [playerId]: "recording" }));
+      setPlayerStates((prev) => {
+        logRecordingDebug(`beginRec playerStates prev=${JSON.stringify(prev)} setting ${playerId}=recording`);
+        return { ...prev, [playerId]: "recording" };
+      });
 
       // Initialize buffer with initial position at t=0.
       recordingBufferRef.current = [{ t: 0, x: round2(initialX), y: round2(initialY) }];
@@ -777,12 +791,22 @@ export function useRecordingMode({
   const syncPlayerStates = useCallback((playersById, ballsById) => {
     const playerIds = Object.keys(playersById || {});
     const ballIds = Object.keys(ballsById || {});
-    logRecordingDebug(`syncPlayerStates incomingPlayers=${playerIds.length} balls=${ballIds.length}`);
     setPlayerStates((prev) => {
       const next = {};
+      const added = [];
+      const removed = [];
+      const kept = [];
       [...playerIds, ...ballIds].forEach((id) => {
         next[id] = prev[id] || "idle";
+        if (!prev[id]) added.push(id);
+        else kept.push(`${id}:${prev[id]}`);
       });
+      Object.keys(prev).forEach((id) => {
+        if (!next[id]) removed.push(`${id}:${prev[id]}`);
+      });
+      logRecordingDebug(
+        `syncPlayerStates total=${Object.keys(next).length} added=[${added.join(",")}] removed=[${removed.join(",")}] kept=[${kept.join(",")}] global=${globalStateRef.current} activePid=${recordingPlayerIdRef.current || "none"}`
+      );
       return next;
     });
   }, []);
