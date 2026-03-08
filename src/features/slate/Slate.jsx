@@ -1993,14 +1993,66 @@ function Slate({ onShowMessage }) {
             onCancel={recording.cancelRecording}
           />
         )}
+        {screenshotMode && (
+          <ScreenshotConfirmBar
+            hasRegion={Boolean(screenshotRegion)}
+            onConfirm={handleScreenshotConfirm}
+            onCancel={handleScreenshotCancel}
+          />
+        )}
+        {canvasTool === "pen" && !screenshotMode && (
+          <DrawToolsPill
+            activeSubTool={drawSubTool}
+            onSubToolChange={handleDrawSubToolChange}
+          />
+        )}
+        {recording.recordingModeEnabled ? (
+          <RecordingControlBar
+            globalState={recording.globalState}
+            recordingPlayerId={recording.recordingPlayerId}
+            recordingTimeMs={recording.recordingTimeMs}
+            previewTimeMs={recording.previewTimeMs}
+            durationMs={recording.recordingDurationMs}
+            recordedCount={recording.recordedCount}
+            totalCount={recording.totalCount}
+            playerName={
+              recording.recordingPlayerId
+                ? entities.playersById[recording.recordingPlayerId]?.name || "Player"
+                : null
+            }
+            countdownValue={recording.countdownValue}
+            onStartPreview={recording.startPreview}
+            onStopPreview={recording.stopPreview}
+            onStopRecording={recording.stopRecording}
+            onPauseRecording={recording.pauseRecording}
+            onResumeRecording={recording.resumeRecording}
+            onCancelRecording={recording.cancelRecording}
+          />
+        ) : (
+          <ControlPill
+            durationMs={animationData.durationMs}
+            currentTimeMs={timelineDisplayTimeMs}
+            isPlaying={isPlaying}
+            speedMultiplier={speedMultiplier}
+            autoplayEnabled={autoplayEnabled}
+            selectedObjectCount={entities.selectedItemIds?.length ?? 0}
+            keyframesMs={visibleKeyframesMs}
+            selectedKeyframeMs={selectedKeyframeMs}
+            onSeek={seekTimeline}
+            onPause={pauseTimeline}
+            onPlayToggle={togglePlayback}
+            onSpeedChange={setSpeedMultiplier}
+            onAddKeyframe={handleAddKeyframe}
+            onDeleteKeyframe={handleDeleteKeyframe}
+            onDeleteAllKeyframes={handleDeleteAllKeyframes}
+            onDeleteSelectedObjects={entities.handleDeleteSelected}
+            onSelectKeyframe={setSelectedKeyframeMs}
+            onAutoplayChange={setAutoplayEnabled}
+            getAuthoritativeTimeMs={getAuthoritativeTimeMs}
+            onDragStateChange={handleTimelineDragStateChange}
+          />
+        )}
       </div>
-      {screenshotMode && (
-        <ScreenshotConfirmBar
-          hasRegion={Boolean(screenshotRegion)}
-          onConfirm={handleScreenshotConfirm}
-          onCancel={handleScreenshotCancel}
-        />
-      )}
       <ExportModal
         open={exportModalOpen}
         initialFormat={exportInitialFormat}
@@ -2026,58 +2078,6 @@ function Slate({ onShowMessage }) {
         error={exportError}
         onDismissError={() => setExportError(null)}
       />
-      {canvasTool === "pen" && !screenshotMode && (
-        <DrawToolsPill
-          activeSubTool={drawSubTool}
-          onSubToolChange={handleDrawSubToolChange}
-        />
-      )}
-      {recording.recordingModeEnabled ? (
-        <RecordingControlBar
-          globalState={recording.globalState}
-          recordingPlayerId={recording.recordingPlayerId}
-          recordingTimeMs={recording.recordingTimeMs}
-          previewTimeMs={recording.previewTimeMs}
-          durationMs={recording.recordingDurationMs}
-          recordedCount={recording.recordedCount}
-          totalCount={recording.totalCount}
-          playerName={
-            recording.recordingPlayerId
-              ? entities.playersById[recording.recordingPlayerId]?.name || "Player"
-              : null
-          }
-          countdownValue={recording.countdownValue}
-          onStartPreview={recording.startPreview}
-          onStopPreview={recording.stopPreview}
-          onStopRecording={recording.stopRecording}
-          onPauseRecording={recording.pauseRecording}
-          onResumeRecording={recording.resumeRecording}
-          onCancelRecording={recording.cancelRecording}
-        />
-      ) : (
-        <ControlPill
-          durationMs={animationData.durationMs}
-          currentTimeMs={timelineDisplayTimeMs}
-          isPlaying={isPlaying}
-          speedMultiplier={speedMultiplier}
-          autoplayEnabled={autoplayEnabled}
-          selectedObjectCount={entities.selectedItemIds?.length ?? 0}
-          keyframesMs={visibleKeyframesMs}
-          selectedKeyframeMs={selectedKeyframeMs}
-          onSeek={seekTimeline}
-          onPause={pauseTimeline}
-          onPlayToggle={togglePlayback}
-          onSpeedChange={setSpeedMultiplier}
-          onAddKeyframe={handleAddKeyframe}
-          onDeleteKeyframe={handleDeleteKeyframe}
-          onDeleteAllKeyframes={handleDeleteAllKeyframes}
-          onDeleteSelectedObjects={entities.handleDeleteSelected}
-          onSelectKeyframe={setSelectedKeyframeMs}
-          onAutoplayChange={setAutoplayEnabled}
-          getAuthoritativeTimeMs={getAuthoritativeTimeMs}
-          onDragStateChange={handleTimelineDragStateChange}
-        />
-      )}
 
       <RightPanel
         canvasTool={canvasTool}
@@ -2189,6 +2189,9 @@ function Slate({ onShowMessage }) {
           onDebugRotate={handleDebugRotate}
           onDownload={onDownload}
           onClose={() => setShowAdvancedSettings(false)}
+          autoplayEnabled={autoplayEnabled}
+          onAutoplayChange={setAutoplayEnabled}
+          onDeleteAllKeyframes={handleDeleteAllKeyframes}
         />
       )}
     </>

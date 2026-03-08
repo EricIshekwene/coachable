@@ -1,5 +1,6 @@
 import React from 'react';
 import { FaTimes } from "react-icons/fa";
+import { FaRegTrashCan } from "react-icons/fa6";
 import { IoMdDownload } from "react-icons/io";
 import PitchSettingsSection from "./advancedSettings/PitchSettingsSection";
 import PlayerSettingsSection from "./advancedSettings/PlayerSettingsSection";
@@ -22,6 +23,9 @@ export default function AdvancedSettings({
     onCopyRecordingDebug,
     onDebugRotate,
     onDownload,
+    autoplayEnabled,
+    onAutoplayChange,
+    onDeleteAllKeyframes,
 }) {
     const settings = value ?? {};
     const pitch = settings.pitch ?? {};
@@ -37,7 +41,7 @@ export default function AdvancedSettings({
     const updateExportVideo = (patch) => update({ exportVideo: { ...exportVideo, ...patch } });
     const updateAnimation = (patch) => update({ animation: { ...animation, ...patch } });
     return (
-        <div className="absolute right-0 top-0 h-screen z-50 flex flex-col">
+        <div className="absolute right-0 top-0 h-full z-50 flex flex-col">
             <aside
                 className="
                      flex-1 shrink-0 bg-BrandBlack
@@ -60,6 +64,36 @@ export default function AdvancedSettings({
                 </div>
 
                 <PitchSettingsSection value={pitch} onChange={updatePitch} />
+
+                {/* Playback settings (moved from control pill dropdown) */}
+                <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1.5 sm:gap-2">
+                    <div className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans">
+                        Playback
+                    </div>
+                    <div className="flex items-center justify-between w-full">
+                        <span className="text-BrandGray text-[10px] sm:text-xs font-DmSans">Autoplay</span>
+                        <button
+                            onClick={() => onAutoplayChange?.(!autoplayEnabled)}
+                            className={`relative w-[36px] h-[18px] rounded-full transition-colors duration-200 cursor-pointer focus:outline-none ${autoplayEnabled ? 'bg-BrandOrange' : 'bg-BrandGray2'}`}
+                            aria-label="Toggle autoplay"
+                        >
+                            <span
+                                className={`absolute top-1/2 left-0 transform -translate-y-1/2 transition-transform duration-200 w-[14px] h-[14px] bg-BrandBlack rounded-full shadow-sm ${autoplayEnabled ? 'translate-x-[20px]' : 'translate-x-[2px]'}`}
+                            />
+                        </button>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => onDeleteAllKeyframes?.()}
+                        className="w-full h-6 sm:h-7 bg-BrandBlack2 border border-BrandGray rounded-md px-2 flex items-center justify-center gap-2 cursor-pointer transition-colors hover:bg-BrandBlack"
+                    >
+                        <FaRegTrashCan className="text-BrandOrange text-xs shrink-0" aria-hidden />
+                        <span className="text-BrandWhite text-[10px] sm:text-xs font-DmSans truncate">
+                            Clear All Keyframes
+                        </span>
+                    </button>
+                </div>
+
                 <PlayerSettingsSection value={players} onChange={updatePlayers} />
                 <BallSettingsSection value={ball} onChange={updateBall} />
                 <ExportVideoSettingsSection value={exportVideo} onChange={updateExportVideo} />

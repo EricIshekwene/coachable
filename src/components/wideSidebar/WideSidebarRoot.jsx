@@ -263,7 +263,7 @@ export default function WideSidebarRoot({
     return (
         <aside
             className={`
-                h-screen shrink-0 bg-BrandBlack ${WIDE_SIDEBAR_WIDTH_CLASS}
+                h-full shrink-0 bg-BrandBlack ${WIDE_SIDEBAR_WIDTH_CLASS}
                 border-l border-BrandGray2/50
                 px-2 sm:px-2.5 md:px-3 py-4 sm:py-5
                 flex flex-col justify-center

@@ -106,7 +106,7 @@ export default function RightPanel({
   return (
     <aside
       className="
-        h-screen shrink-0 bg-BrandBlack
+        h-full shrink-0 bg-BrandBlack
         w-32 sm:w-36 md:w-40 lg:w-44 xl:w-48
         px-2 sm:px-2.5 md:px-3 py-2 sm:py-2.5 md:py-3
         flex flex-col

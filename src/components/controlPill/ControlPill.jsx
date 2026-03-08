@@ -1,9 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import TimeBar from "./TimeBar";
 import SpeedSlider from "./SpeedSlider";
 import PlaybackControls from "./PlaybackControls";
 import KeyframeManager from "./KeyframeManager";
-import DropdownMenu from "./DropdownMenu";
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -32,8 +31,6 @@ export default function ControlPill({
   getAuthoritativeTimeMs,
   onDragStateChange,
 }) {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-
   const timelineDurationMs = Math.max(1, Math.round(Number(durationMs) || 30000));
   const clampedTimeMs = clamp(Math.round(Number(currentTimeMs) || 0), 0, timelineDurationMs);
 
@@ -121,84 +118,48 @@ export default function ControlPill({
     onSelectKeyframe?.(null);
   };
 
-  const handleTrash = (event) => {
-    event.stopPropagation();
-    if (selectedObjectCount > 0) {
-      onDeleteSelectedObjects?.();
-      onSelectKeyframe?.(null);
-      return;
-    }
-    onDeleteAllKeyframes?.();
-    onSelectKeyframe?.(null);
-  };
-
-  const handleAutoplayToggle = () => {
-    const next = !autoplayEnabled;
-    onAutoplayChange?.(next);
-    if (!next) {
-      onPause?.();
-      onSeek?.(0, { source: "engine" });
-      onSelectKeyframe?.(null);
-    }
-  };
-
   return (
-    <>
-      <div
-        className={`aspect-[641/124] h-[62.5px] sm:h-[75px] md:h-[100px] lg:h-[125px]
-                        flex flex-col items-center justify-between gap-[3.125px] sm:gap-[6.25px]
-                        bg-BrandBlack
-                         py-[3.125px] sm:py-[6.25px] px-[12.5px] sm:px-[15.625px] md:px-[18.75px]
-                        rounded-[25px] sm:rounded-[28.125px] md:rounded-[31.25px]
-                        select-none z-50
-                        absolute left-1/2 transform -translate-x-1/2 transition-all duration-300 ${isDropdownOpen ? "bottom-[40px]" : "bottom-[12px]"
-          }`}
-      >
-        <TimeBar
+    <div
+      className="aspect-[641/124] h-[62.5px] sm:h-[75px] md:h-[100px] lg:h-[125px]
+                      flex flex-col items-center justify-between gap-[3.125px] sm:gap-[6.25px]
+                      bg-BrandBlack
+                       py-[3.125px] sm:py-[6.25px] px-[12.5px] sm:px-[15.625px] md:px-[18.75px]
+                      rounded-[25px] sm:rounded-[28.125px] md:rounded-[31.25px]
+                      select-none z-50
+                      absolute left-1/2 transform -translate-x-1/2 bottom-[12px]"
+    >
+      <TimeBar
+        durationMs={timelineDurationMs}
+        currentTimeMs={clampedTimeMs}
+        isPlaying={isPlaying}
+        keyframes={keyframeMarkers}
+        selectedKeyframeMs={selectedKeyframeMs}
+        onSeek={handleSeek}
+        onKeyframeClick={handleKeyframeClick}
+        getAuthoritativeTimeMs={getAuthoritativeTimeMs}
+        onDragStateChange={onDragStateChange}
+      />
+
+      <div className="flex flex-1 w-full items-center justify-between gap-[3.125px] sm:gap-[6.25px]">
+        <SpeedSlider
+          speedMultiplier={speedMultiplier}
+          onSpeedChange={onSpeedChange}
           durationMs={timelineDurationMs}
-          currentTimeMs={clampedTimeMs}
-          isPlaying={isPlaying}
-          keyframes={keyframeMarkers}
-          selectedKeyframeMs={selectedKeyframeMs}
-          onSeek={handleSeek}
-          onKeyframeClick={handleKeyframeClick}
-          getAuthoritativeTimeMs={getAuthoritativeTimeMs}
-          onDragStateChange={onDragStateChange}
         />
 
-        <div className="flex flex-1 w-full items-center justify-between gap-[3.125px] sm:gap-[6.25px]">
-          <SpeedSlider
-            speedMultiplier={speedMultiplier}
-            onSpeedChange={onSpeedChange}
-            durationMs={timelineDurationMs}
-          />
+        <PlaybackControls
+          isPlaying={isPlaying}
+          onPlayToggle={handlePlayToggle}
+          onSkipBack={handleSkipBack}
+          onSkipForward={handleSkipForward}
+        />
 
-          <PlaybackControls
-            isPlaying={isPlaying}
-            onPlayToggle={handlePlayToggle}
-            onSkipBack={handleSkipBack}
-            onSkipForward={handleSkipForward}
-          />
-
-          <KeyframeManager
-            selectedKeyframe={selectedKeyframeMs}
-            onAddKeyframe={handleAddKeyframe}
-            onDeleteKeyframe={handleDeleteKeyframe}
-          />
-        </div>
+        <KeyframeManager
+          selectedKeyframe={selectedKeyframeMs}
+          onAddKeyframe={handleAddKeyframe}
+          onDeleteKeyframe={handleDeleteKeyframe}
+        />
       </div>
-
-      <DropdownMenu
-        isOpen={isDropdownOpen}
-        onToggle={() => setIsDropdownOpen((prev) => !prev)}
-        onTrash={handleTrash}
-        onUndo={() => {}}
-        onRedo={() => {}}
-        autoplayEnabled={autoplayEnabled}
-        onAutoplayToggle={handleAutoplayToggle}
-        canUndo={false}
-        canRedo={false}
-      />
-    </>
+    </div>
   );
 }

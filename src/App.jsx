@@ -8,7 +8,7 @@ function App() {
 
   return (
     <>
-      <div className="w-full h-screen bg-BrandBlack flex flex-row justify-between relative overflow-hidden">
+      <div className="w-full bg-BrandBlack flex flex-row justify-between relative overflow-hidden" style={{ height: "100dvh" }}>
         <MessagePopup
           message={messagePopup.message}
           subtitle={messagePopup.subtitle}
