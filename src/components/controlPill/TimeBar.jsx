@@ -25,6 +25,9 @@ export default function TimeBar({
   selectedKeyframeMs = null,
   onSeek,
   onKeyframeClick,
+  onKeyframeDragStart,
+  onKeyframeDragMove,
+  onKeyframeDragEnd,
   getAuthoritativeTimeMs,
   onDragStateChange,
 }) {
@@ -281,6 +284,11 @@ export default function TimeBar({
         keyframes={keyframes}
         selectedKeyframeMs={selectedKeyframeMs}
         onKeyframeClick={onKeyframeClick}
+        onKeyframeDragStart={onKeyframeDragStart}
+        onKeyframeDragMove={onKeyframeDragMove}
+        onKeyframeDragEnd={onKeyframeDragEnd}
+        timeFromClientX={timeFromClientX}
+        durationMs={durationRef.current}
       />
 
       <div

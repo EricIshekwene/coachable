@@ -22,6 +22,7 @@ const SHAPE_CLASS_BY_VARIANT = {
   square: "aspect-square",
   landscape: "aspect-[16/10]",
   wide: "aspect-[16/9]",
+  fill: "",
 };
 
 const toFiniteNumber = (value, fallback = 0) => {
@@ -311,12 +312,13 @@ export default function PlayPreviewCard({
     };
   }, [fieldImageSize.height, fieldImageSize.width]);
 
-  const shapeClass = SHAPE_CLASS_BY_VARIANT[shape] || SHAPE_CLASS_BY_VARIANT.landscape;
+  const shapeClass = SHAPE_CLASS_BY_VARIANT[shape] ?? SHAPE_CLASS_BY_VARIANT.landscape;
+  const isFill = shape === "fill";
   const targetAspect = shape === "square" ? 1 : shape === "wide" ? 16 / 9 : 16 / 10;
 
   const viewBounds = useMemo(() => {
     if (cameraMode === "fit-field") {
-      return fitBoundsToAspect(fieldBounds, targetAspect);
+      return isFill ? fieldBounds : fitBoundsToAspect(fieldBounds, targetAspect);
     }
 
     const points = [];
@@ -330,12 +332,12 @@ export default function PlayPreviewCard({
     const base = boundsFromPoints(points, fieldBounds);
     const padded = padBounds(base, paddingPx);
     const withMin = ensureMinimumSpan(padded, minSpanPx);
-    const withAspect = fitBoundsToAspect(withMin, targetAspect);
+    const withAspect = isFill ? withMin : fitBoundsToAspect(withMin, targetAspect);
     if (background === "field") {
       return clampBoundsToField(withAspect, fieldBounds);
     }
     return withAspect;
-  }, [animation?.tracks, background, cameraMode, fallbackPoses, fieldBounds, minSpanPx, paddingPx, targetAspect]);
+  }, [animation?.tracks, background, cameraMode, fallbackPoses, fieldBounds, isFill, minSpanPx, paddingPx, targetAspect]);
 
   const playerSizePercent = clamp(toFiniteNumber(allPlayersDisplay?.sizePercent, 100), 10, 400);
   const playerBasePx = Math.max(6, toFiniteNumber(playersSettings?.baseSizePx, 30));
@@ -349,11 +351,12 @@ export default function PlayPreviewCard({
 
   const hasRenderableContent = play && entityIds.length > 0;
 
-  const containerBackgroundClass = background === "field" ? "bg-BrandBlack2" : "bg-transparent";
+  const containerStyle = background === "field" ? { backgroundColor: pitchColor } : {};
 
   return (
     <div
-      className={`relative w-full overflow-hidden rounded-xl border border-BrandGray2/60 ${containerBackgroundClass} ${shapeClass} ${className}`}
+      className={`relative w-full overflow-hidden rounded-xl border border-BrandGray2/60 ${shapeClass} ${className}`}
+      style={containerStyle}
       onMouseEnter={() => {
         if (autoplay !== "hover") return;
         setTimeMs(0);
@@ -369,7 +372,7 @@ export default function PlayPreviewCard({
         <svg
           className="h-full w-full"
           viewBox={`${viewBounds.left} ${viewBounds.top} ${viewBounds.width} ${viewBounds.height}`}
-          preserveAspectRatio="xMidYMid meet"
+          preserveAspectRatio={isFill ? "xMidYMid slice" : "xMidYMid meet"}
           role="img"
           aria-label="Play preview"
         >

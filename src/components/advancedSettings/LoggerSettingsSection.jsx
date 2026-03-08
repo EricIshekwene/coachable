@@ -7,6 +7,7 @@ export default function LoggerSettingsSection({
   onCopyPlaceBallDebug,
   onCopyVideoExportDebug,
   onCopyRecordingDebug,
+  onCopyKfMoveDebug,
   onDebugRotate,
 }) {
   const [copyAnimationState, setCopyAnimationState] = useState("idle");
@@ -15,12 +16,14 @@ export default function LoggerSettingsSection({
   const [copyPlaceBallState, setCopyPlaceBallState] = useState("idle");
   const [copyVideoExportState, setCopyVideoExportState] = useState("idle");
   const [copyRecordingState, setCopyRecordingState] = useState("idle");
+  const [copyKfMoveState, setCopyKfMoveState] = useState("idle");
   const copyAnimationResetRef = useRef(null);
   const copyDrawResetRef = useRef(null);
   const copyKeyToolResetRef = useRef(null);
   const copyPlaceBallResetRef = useRef(null);
   const copyVideoExportResetRef = useRef(null);
   const copyRecordingResetRef = useRef(null);
+  const copyKfMoveResetRef = useRef(null);
 
   useEffect(
     () => () => {
@@ -47,6 +50,10 @@ export default function LoggerSettingsSection({
       if (copyRecordingResetRef.current) {
         clearTimeout(copyRecordingResetRef.current);
         copyRecordingResetRef.current = null;
+      }
+      if (copyKfMoveResetRef.current) {
+        clearTimeout(copyKfMoveResetRef.current);
+        copyKfMoveResetRef.current = null;
       }
     },
     []
@@ -160,6 +167,24 @@ export default function LoggerSettingsSection({
     }, 1500);
   };
 
+  const handleCopyKfMoveDebug = async (event) => {
+    event.stopPropagation();
+    if (!onCopyKfMoveDebug) return;
+    try {
+      const ok = await onCopyKfMoveDebug();
+      setCopyKfMoveState(ok ? "copied" : "error");
+    } catch {
+      setCopyKfMoveState("error");
+    }
+    if (copyKfMoveResetRef.current) {
+      clearTimeout(copyKfMoveResetRef.current);
+    }
+    copyKfMoveResetRef.current = setTimeout(() => {
+      setCopyKfMoveState("idle");
+      copyKfMoveResetRef.current = null;
+    }, 1500);
+  };
+
   return (
     <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1 sm:gap-2">
       <div className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans">Debug Logs</div>
@@ -217,6 +242,17 @@ export default function LoggerSettingsSection({
           : copyRecordingState === "error"
             ? "Copy Failed"
             : "Copy Recording Debug"}
+      </button>
+      <button
+        type="button"
+        onClick={handleCopyKfMoveDebug}
+        className="h-6 sm:h-7 w-full bg-BrandBlack2 border border-BrandGray text-BrandOrange rounded-md px-2 text-[10px] sm:text-[11px] md:text-[12px] font-DmSans cursor-pointer"
+      >
+        {copyKfMoveState === "copied"
+          ? "Copied"
+          : copyKfMoveState === "error"
+            ? "Copy Failed"
+            : "Copy Keyframe Move Debug"}
       </button>
       <button
         type="button"

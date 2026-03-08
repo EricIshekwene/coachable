@@ -21,6 +21,7 @@ export default function AdvancedSettings({
     onCopyPlaceBallDebug,
     onCopyVideoExportDebug,
     onCopyRecordingDebug,
+    onCopyKfMoveDebug,
     onDebugRotate,
     onDownload,
     autoplayEnabled,
@@ -120,6 +121,7 @@ export default function AdvancedSettings({
                     onCopyPlaceBallDebug={onCopyPlaceBallDebug}
                     onCopyVideoExportDebug={onCopyVideoExportDebug}
                     onCopyRecordingDebug={onCopyRecordingDebug}
+                    onCopyKfMoveDebug={onCopyKfMoveDebug}
                     onDebugRotate={onDebugRotate}
                 />
                 <SavePrefabButton />

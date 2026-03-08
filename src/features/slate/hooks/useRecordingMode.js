@@ -17,10 +17,8 @@ import { smoothTrack } from "../../../utils/smoothTrack";
  */
 
 const SAMPLE_INTERVAL_MS = 100;
-const SAMPLE_LOG_INTERVAL_MS = 500;
-const FEED_LOG_INTERVAL_MS = 150;
-const STALE_FEED_WARN_INTERVAL_MS = 1200;
-const PREVIEW_LOG_INTERVAL_MS = 750;
+const TIME_STATE_UPDATE_INTERVAL_MS = 200; // throttle React re-renders for time display
+const LOG_INTERVAL_MS = 2000; // consolidated log every 2s during recording/preview
 
 const round2 = (value) => Math.round((Number(value) || 0) * 100) / 100;
 
@@ -86,16 +84,14 @@ export function useRecordingMode({
   const lastFeedAtRef = useRef(0);
   const feedCountRef = useRef(0);
   const sampleCountRef = useRef(0);
-  const lastFeedLogAtRef = useRef(-Infinity);
-  const lastSampleLogAtRef = useRef(-Infinity);
-  const lastStaleWarnAtRef = useRef(-Infinity);
-  const recordingSessionStartIsoRef = useRef(null);
+  const lastLogAtRef = useRef(-Infinity); // consolidated log throttle
+  const lastTimeStateAtRef = useRef(0); // throttle React setState for time display
+  const shelvedRecordingsRef = useRef({}); // { [playerId]: { buffer, pausedElapsed, lastSampleElapsed, preRecordingTrack, feedCount, sampleCount } }
 
   // Preview
   const previewRafIdRef = useRef(null);
   const previewStartRef = useRef(null);
   const previewFrameCountRef = useRef(0);
-  const lastPreviewLogAtRef = useRef(-Infinity);
   const currentPreviewElapsedRef = useRef(0);
 
   useEffect(() => {
@@ -114,17 +110,8 @@ export function useRecordingMode({
   const feedPosition = useCallback((x, y) => {
     latestPosRef.current = { x, y };
     if (globalStateRef.current !== "recording") return;
-
-    const now = performance.now();
     feedCountRef.current += 1;
-    lastFeedAtRef.current = now;
-
-    if (now - lastFeedLogAtRef.current >= FEED_LOG_INTERVAL_MS) {
-      lastFeedLogAtRef.current = now;
-      logRecordingDebug(
-        `feedPosition pid=${recordingPlayerIdRef.current || "none"} x=${Math.round(x)} y=${Math.round(y)} feedCount=${feedCountRef.current}`
-      );
-    }
+    lastFeedAtRef.current = performance.now();
   }, []);
 
   // Internal preview stop helper.
@@ -138,12 +125,13 @@ export function useRecordingMode({
       setGlobalState("idle");
       setPreviewTimeMs(0);
 
-      // Reset all players to their t=0 positions.
+      // Position all players at their last recorded position (idle overview).
       const tracks = animationDataRef.current?.tracks || {};
       const patch = {};
       Object.entries(tracks).forEach(([itemId, track]) => {
         if (!track?.keyframes?.length) return;
-        patch[itemId] = { x: track.keyframes[0].x, y: track.keyframes[0].y };
+        const last = track.keyframes[track.keyframes.length - 1];
+        patch[itemId] = { x: last.x, y: last.y };
       });
       if (Object.keys(patch).length) {
         animationRendererRef.current?.setPoses?.(patch, { flush: true });
@@ -153,7 +141,7 @@ export function useRecordingMode({
         `preview stop reason=${reason} renderedItems=${Object.keys(patch).length} frameCount=${previewFrameCountRef.current} elapsedMs=${Math.round(currentPreviewElapsedRef.current)}`
       );
       previewFrameCountRef.current = 0;
-      lastPreviewLogAtRef.current = -Infinity;
+      lastLogAtRef.current = -Infinity;
       currentPreviewElapsedRef.current = 0;
     },
     [animationDataRef, animationRendererRef]
@@ -195,23 +183,34 @@ export function useRecordingMode({
         setPlayerStates((prev) => ({ ...prev, [pid]: "idle" }));
       }
 
+      // Position all recorded players at their last recorded position (idle overview).
+      const tracks = animationDataRef.current?.tracks || {};
+      const resetPatch = {};
+      Object.entries(tracks).forEach(([itemId, track]) => {
+        if (itemId === pid) return; // skip the just-recorded player
+        if (!track?.keyframes?.length) return;
+        const last = track.keyframes[track.keyframes.length - 1];
+        resetPatch[itemId] = { x: last.x, y: last.y };
+      });
+      if (Object.keys(resetPatch).length) {
+        animationRendererRef.current?.setPoses?.(resetPatch, { flush: true });
+      }
+
       recordingBufferRef.current = [];
       recordingStartRef.current = null;
       pausedElapsedRef.current = 0;
-      recordingSessionStartIsoRef.current = null;
-      preRecordingTrackRef.current = null;
+            preRecordingTrackRef.current = null;
       lastSampleElapsedRef.current = 0;
       lastFeedAtRef.current = 0;
       feedCountRef.current = 0;
       sampleCountRef.current = 0;
-      lastFeedLogAtRef.current = -Infinity;
-      lastSampleLogAtRef.current = -Infinity;
-      lastStaleWarnAtRef.current = -Infinity;
-      setGlobalState("idle");
+      lastLogAtRef.current = -Infinity;
+      lastLogAtRef.current = -Infinity;
+            setGlobalState("idle");
       setRecordingPlayerId(null);
       setRecordingTimeMs(0);
     },
-    [setAnimationDataWithMeta, stabilization]
+    [setAnimationDataWithMeta, stabilization, animationDataRef, animationRendererRef]
   );
 
   // Recording RAF loop.
@@ -220,7 +219,7 @@ export function useRecordingMode({
     if (globalStateRef.current !== "recording") return;
 
     if (!recordingStartRef.current) {
-      logRecordingDebug("tick abort reason=missingStartTime");
+      logRecordingDebug("tick abort: no startTime");
       finishRecording("missingStartTime");
       return;
     }
@@ -229,9 +228,13 @@ export function useRecordingMode({
     const elapsed = pausedElapsedRef.current + (now - recordingStartRef.current);
     const duration = durationMsRef.current;
 
-    setRecordingTimeMs(elapsed);
+    // Throttle React state updates for time display (~5fps instead of 60fps).
+    if (now - lastTimeStateAtRef.current >= TIME_STATE_UPDATE_INTERVAL_MS) {
+      lastTimeStateAtRef.current = now;
+      setRecordingTimeMs(elapsed);
+    }
 
-    // Sample at fixed interval.
+    // Sample position at fixed interval.
     if (elapsed - lastSampleElapsedRef.current >= SAMPLE_INTERVAL_MS) {
       lastSampleElapsedRef.current = elapsed;
       sampleCountRef.current += 1;
@@ -242,33 +245,36 @@ export function useRecordingMode({
         x: round2(pos.x),
         y: round2(pos.y),
       });
+    }
 
-      const sinceLastFeed = lastFeedAtRef.current > 0 ? now - lastFeedAtRef.current : null;
-      if (
-        elapsed - lastSampleLogAtRef.current >= SAMPLE_LOG_INTERVAL_MS ||
-        recordingBufferRef.current.length <= 3
-      ) {
-        lastSampleLogAtRef.current = elapsed;
-        logRecordingDebug(
-          `sample pid=${recordingPlayerIdRef.current || "none"} t=${Math.round(elapsed)} x=${Math.round(pos.x || 0)} y=${Math.round(pos.y || 0)} frames=${recordingBufferRef.current.length} samples=${sampleCountRef.current} feedCount=${feedCountRef.current} msSinceFeed=${sinceLastFeed === null ? "none" : Math.round(sinceLastFeed)}`
-        );
-      }
+    // Consolidated log every 2s: position, frame count, feed health.
+    if (now - lastLogAtRef.current >= LOG_INTERVAL_MS) {
+      lastLogAtRef.current = now;
+      const sinceLastFeed = lastFeedAtRef.current > 0 ? Math.round(now - lastFeedAtRef.current) : null;
+      const pos = latestPosRef.current;
+      logRecordingDebug(
+        `rec t=${Math.round(elapsed)}/${Math.round(duration)} pos=(${Math.round(pos.x)},${Math.round(pos.y)}) frames=${recordingBufferRef.current.length} feeds=${feedCountRef.current} lastFeedAgo=${sinceLastFeed ?? "never"}ms`
+      );
+    }
 
-      if (
-        sinceLastFeed !== null &&
-        sinceLastFeed >= STALE_FEED_WARN_INTERVAL_MS &&
-        elapsed - lastStaleWarnAtRef.current >= STALE_FEED_WARN_INTERVAL_MS
-      ) {
-        lastStaleWarnAtRef.current = elapsed;
-        logRecordingDebug(
-          `staleFeed pid=${recordingPlayerIdRef.current || "none"} t=${Math.round(elapsed)} msSinceFeed=${Math.round(sinceLastFeed)}`
-        );
-      }
+    // Animate already-recorded players along their tracks so the coach
+    // can see how other objects move in reference while recording.
+    const activePid = recordingPlayerIdRef.current;
+    const tracks = animationDataRef.current?.tracks || {};
+    const ghostPatch = {};
+    Object.entries(tracks).forEach(([itemId, track]) => {
+      if (itemId === activePid) return;
+      if (!track?.keyframes?.length) return;
+      const pos = interpolateTrack(track.keyframes, elapsed);
+      if (pos) ghostPatch[itemId] = { x: pos.x, y: pos.y };
+    });
+    if (Object.keys(ghostPatch).length) {
+      animationRendererRef.current?.setPoses?.(ghostPatch);
     }
 
     if (elapsed >= duration) {
       logRecordingDebug(
-        `autoStop pid=${recordingPlayerIdRef.current || "none"} elapsed=${Math.round(elapsed)} frames=${recordingBufferRef.current.length} samples=${sampleCountRef.current} feeds=${feedCountRef.current}`
+        `autoStop frames=${recordingBufferRef.current.length} feeds=${feedCountRef.current} ghosts=${Object.keys(ghostPatch).length}`
       );
       finishRecording("autoStop");
       return;
@@ -306,7 +312,6 @@ export function useRecordingMode({
       const initialSource = rendererPose ? "renderer" : entity ? "entity" : "fallback";
 
       latestPosRef.current = { x: initialX, y: initialY };
-      recordingSessionStartIsoRef.current = new Date().toISOString();
 
       logRecordingDebug(
         `start pid=${playerId} initialPos=(${Math.round(initialX)},${Math.round(initialY)}) source=${initialSource} duration=${Math.round(durationMsRef.current)} existingKeyframes=${existingKeyframes}`
@@ -335,10 +340,9 @@ export function useRecordingMode({
       lastFeedAtRef.current = 0;
       feedCountRef.current = 0;
       sampleCountRef.current = 0;
-      lastFeedLogAtRef.current = -Infinity;
-      lastSampleLogAtRef.current = -Infinity;
-      lastStaleWarnAtRef.current = -Infinity;
-      logRecordingDebug(`start armed pid=${playerId} sampleIntervalMs=${SAMPLE_INTERVAL_MS} state=paused (waiting for drag)`);
+      lastLogAtRef.current = -Infinity;
+      lastLogAtRef.current = -Infinity;
+            logRecordingDebug(`start armed pid=${playerId} sampleIntervalMs=${SAMPLE_INTERVAL_MS} state=paused (waiting for drag)`);
     },
     [animationDataRef, animationRendererRef, playersByIdRef, ballsByIdRef, setAnimationDataWithMeta, recordingDurationMs]
   );
@@ -347,47 +351,37 @@ export function useRecordingMode({
   const beginRecordingInternalRef = useRef(beginRecordingInternal);
   beginRecordingInternalRef.current = beginRecordingInternal;
 
-  // Public: starts a 3-2-1 countdown, then begins recording.
-  const startRecording = useCallback(
-    (playerId) => {
-      if (!playerId) {
-        logRecordingDebug("start ignored reason=missingPlayerId");
-        return;
-      }
+  // Runs a 3-2-1 countdown then calls onDone().
+  const runCountdown = useCallback((playerId, onDone) => {
+    // Cancel any existing countdown.
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
 
-      // Cancel any existing countdown.
-      if (countdownTimerRef.current) {
+    pendingCountdownPlayerIdRef.current = playerId;
+    setGlobalState("countdown");
+    setRecordingPlayerId(playerId);
+    recordingPlayerIdRef.current = playerId;
+
+    let remaining = 3;
+    setCountdownValue(remaining);
+    logRecordingDebug(`countdown start pid=${playerId}`);
+
+    countdownTimerRef.current = setInterval(() => {
+      remaining -= 1;
+      if (remaining > 0) {
+        setCountdownValue(remaining);
+      } else {
         clearInterval(countdownTimerRef.current);
         countdownTimerRef.current = null;
+        setCountdownValue(null);
+        pendingCountdownPlayerIdRef.current = null;
+        logRecordingDebug(`countdown done pid=${playerId}`);
+        onDone();
       }
-
-      pendingCountdownPlayerIdRef.current = playerId;
-      setGlobalState("countdown");
-      setRecordingPlayerId(playerId);
-      recordingPlayerIdRef.current = playerId;
-
-      let remaining = 3;
-      setCountdownValue(remaining);
-      logRecordingDebug(`countdown start pid=${playerId} from=${remaining}`);
-
-      countdownTimerRef.current = setInterval(() => {
-        remaining -= 1;
-        if (remaining > 0) {
-          setCountdownValue(remaining);
-          logRecordingDebug(`countdown tick pid=${playerId} remaining=${remaining}`);
-        } else {
-          // Countdown finished — begin recording.
-          clearInterval(countdownTimerRef.current);
-          countdownTimerRef.current = null;
-          setCountdownValue(null);
-          pendingCountdownPlayerIdRef.current = null;
-          logRecordingDebug(`countdown done pid=${playerId} — starting recording`);
-          beginRecordingInternalRef.current(playerId);
-        }
-      }, 1000);
-    },
-    []
-  );
+    }, 1000);
+  }, []);
 
   const stopRecording = useCallback(() => {
     logRecordingDebug(
@@ -402,8 +396,80 @@ export function useRecordingMode({
     }
   }, [finishRecording]);
 
+  // Shelve the current recording state so we can switch to another player.
+  const shelveCurrentRecording = useCallback(() => {
+    const pid = recordingPlayerIdRef.current;
+    if (!pid) return;
+
+    // Stop RAF if running.
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+
+    // Accumulate any remaining segment time.
+    if (recordingStartRef.current) {
+      pausedElapsedRef.current += performance.now() - recordingStartRef.current;
+      recordingStartRef.current = null;
+    }
+
+    shelvedRecordingsRef.current[pid] = {
+      buffer: recordingBufferRef.current,
+      pausedElapsed: pausedElapsedRef.current,
+      lastSampleElapsed: lastSampleElapsedRef.current,
+      preRecordingTrack: preRecordingTrackRef.current,
+      feedCount: feedCountRef.current,
+      sampleCount: sampleCountRef.current,
+    };
+
+    // Write current buffer to animationData.tracks so preview can see it.
+    const bufferCopy = [...recordingBufferRef.current];
+    if (bufferCopy.length > 0) {
+      const keyframes = smoothTrack(bufferCopy, stabilization);
+      setAnimationDataWithMeta((base) => {
+        const nextTracks = { ...base.tracks };
+        nextTracks[pid] = { keyframes };
+        return { ...base, tracks: nextTracks };
+      });
+    }
+
+    logRecordingDebug(`shelved pid=${pid} frames=${recordingBufferRef.current.length} elapsed=${Math.round(pausedElapsedRef.current)}`);
+
+    // Mark player as paused.
+    setPlayerStates((prev) => ({ ...prev, [pid]: "paused" }));
+
+    // Clear active refs (will be restored on unshelve).
+    recordingBufferRef.current = [];
+    pausedElapsedRef.current = 0;
+    lastSampleElapsedRef.current = 0;
+    preRecordingTrackRef.current = null;
+    feedCountRef.current = 0;
+    sampleCountRef.current = 0;
+    recordingPlayerIdRef.current = null;
+    setRecordingPlayerId(null);
+    setRecordingTimeMs(0);
+  }, [setAnimationDataWithMeta, stabilization]);
+
+  // Public: starts a 3-2-1 countdown, then begins recording.
+  const startRecording = useCallback(
+    (playerId) => {
+      if (!playerId) return;
+
+      // If another player is currently paused/recording, shelve them first.
+      const currentPid = recordingPlayerIdRef.current;
+      if (currentPid && currentPid !== playerId) {
+        shelveCurrentRecording();
+      }
+
+      runCountdown(playerId, () => {
+        beginRecordingInternalRef.current(playerId);
+      });
+    },
+    [shelveCurrentRecording, runCountdown]
+  );
+
   const pauseRecording = useCallback(() => {
-    if (globalStateRef.current !== "recording") {
+    if (globalStateRef.current !== "recording" && globalStateRef.current !== "paused") {
       logRecordingDebug(`pause ignored global=${globalStateRef.current}`);
       return;
     }
@@ -424,20 +490,15 @@ export function useRecordingMode({
     setGlobalState("paused");
     globalStateRef.current = "paused";
     setRecordingTimeMs(pausedElapsedRef.current);
+    setPlayerStates((prev) => ({ ...prev, [recordingPlayerIdRef.current]: "paused" }));
 
     logRecordingDebug(
-      `pause pid=${recordingPlayerIdRef.current || "none"} accumulatedMs=${Math.round(pausedElapsedRef.current)} frames=${recordingBufferRef.current.length}`
+      `pause pid=${recordingPlayerIdRef.current || "none"} elapsed=${Math.round(pausedElapsedRef.current)} frames=${recordingBufferRef.current.length}`
     );
   }, []);
 
-  const resumeRecording = useCallback(() => {
-    if (globalStateRef.current !== "paused") {
-      logRecordingDebug(`resume ignored global=${globalStateRef.current}`);
-      return;
-    }
-
-    const pid = recordingPlayerIdRef.current;
-
+  // Internal: actually resume recording after countdown (for both active-paused and shelved).
+  const resumeRecordingInternal = useCallback((pid) => {
     // Get current position for seamless resume.
     const renderer = animationRendererRef.current;
     const rendererPose = renderer?.getCurrentPose?.(pid);
@@ -452,15 +513,61 @@ export function useRecordingMode({
     recordingStartRef.current = performance.now();
     lastFeedAtRef.current = recordingStartRef.current;
 
+    setRecordingPlayerId(pid);
+    recordingPlayerIdRef.current = pid;
     setGlobalState("recording");
     globalStateRef.current = "recording";
+    setPlayerStates((prev) => ({ ...prev, [pid]: "recording" }));
 
     logRecordingDebug(
-      `resume pid=${pid || "none"} accumulatedMs=${Math.round(pausedElapsedRef.current)} resumePos=(${Math.round(resumeX)},${Math.round(resumeY)}) frames=${recordingBufferRef.current.length}`
+      `resume pid=${pid} elapsed=${Math.round(pausedElapsedRef.current)} pos=(${Math.round(resumeX)},${Math.round(resumeY)}) frames=${recordingBufferRef.current.length}`
     );
 
     rafIdRef.current = requestAnimationFrame(() => recordingTickRef.current?.());
   }, [animationRendererRef, playersByIdRef, ballsByIdRef]);
+
+  const resumeRecordingInternalRef = useRef(resumeRecordingInternal);
+  resumeRecordingInternalRef.current = resumeRecordingInternal;
+
+  // Immediate resume (no countdown) — used for auto-resume on drag start.
+  const resumeRecordingImmediate = useCallback(() => {
+    const pid = recordingPlayerIdRef.current;
+    if (!pid || globalStateRef.current !== "paused") return;
+    resumeRecordingInternalRef.current(pid);
+  }, []);
+
+  const resumeRecording = useCallback((playerId) => {
+    // Determine which player to resume: explicit arg, or the current active paused player.
+    const pid = playerId || recordingPlayerIdRef.current;
+    if (!pid) {
+      logRecordingDebug("resume ignored: no player");
+      return;
+    }
+
+    // If another player is currently active (paused/recording), shelve them first.
+    const currentPid = recordingPlayerIdRef.current;
+    if (currentPid && currentPid !== pid) {
+      shelveCurrentRecording();
+    }
+
+    // Check if this player has shelved data to restore.
+    const shelved = shelvedRecordingsRef.current[pid];
+    if (shelved) {
+      recordingBufferRef.current = shelved.buffer;
+      pausedElapsedRef.current = shelved.pausedElapsed;
+      lastSampleElapsedRef.current = shelved.lastSampleElapsed;
+      preRecordingTrackRef.current = shelved.preRecordingTrack;
+      feedCountRef.current = shelved.feedCount;
+      sampleCountRef.current = shelved.sampleCount;
+      delete shelvedRecordingsRef.current[pid];
+      logRecordingDebug(`unshelved pid=${pid} frames=${recordingBufferRef.current.length} elapsed=${Math.round(pausedElapsedRef.current)}`);
+    }
+
+    // Run 3-2-1 countdown before resuming.
+    runCountdown(pid, () => {
+      resumeRecordingInternalRef.current(pid);
+    });
+  }, [shelveCurrentRecording, runCountdown]);
 
   const cancelRecording = useCallback(() => {
     const pid = recordingPlayerIdRef.current;
@@ -472,6 +579,26 @@ export function useRecordingMode({
       setCountdownValue(null);
       pendingCountdownPlayerIdRef.current = null;
       logRecordingDebug(`cancel countdown pid=${pid || "none"}`);
+
+      // If this was a resume countdown, re-shelve the unshelved data.
+      if (pid && recordingBufferRef.current.length > 0) {
+        shelvedRecordingsRef.current[pid] = {
+          buffer: recordingBufferRef.current,
+          pausedElapsed: pausedElapsedRef.current,
+          lastSampleElapsed: lastSampleElapsedRef.current,
+          preRecordingTrack: preRecordingTrackRef.current,
+          feedCount: feedCountRef.current,
+          sampleCount: sampleCountRef.current,
+        };
+        setPlayerStates((prev) => ({ ...prev, [pid]: "paused" }));
+        recordingBufferRef.current = [];
+        pausedElapsedRef.current = 0;
+        lastSampleElapsedRef.current = 0;
+        preRecordingTrackRef.current = null;
+        feedCountRef.current = 0;
+        sampleCountRef.current = 0;
+      }
+
       setGlobalState("idle");
       setRecordingPlayerId(null);
       setRecordingTimeMs(0);
@@ -505,22 +632,33 @@ export function useRecordingMode({
       }));
     }
 
+    // Position ghost players at their last recorded position (idle overview).
+    const tracks = animationDataRef.current?.tracks || {};
+    const resetPatch = {};
+    Object.entries(tracks).forEach(([itemId, track]) => {
+      if (itemId === pid) return;
+      if (!track?.keyframes?.length) return;
+      const last = track.keyframes[track.keyframes.length - 1];
+      resetPatch[itemId] = { x: last.x, y: last.y };
+    });
+    if (Object.keys(resetPatch).length) {
+      animationRendererRef.current?.setPoses?.(resetPatch, { flush: true });
+    }
+
     recordingBufferRef.current = [];
     recordingStartRef.current = null;
     pausedElapsedRef.current = 0;
-    recordingSessionStartIsoRef.current = null;
-    preRecordingTrackRef.current = null;
+        preRecordingTrackRef.current = null;
     lastFeedAtRef.current = 0;
     feedCountRef.current = 0;
     sampleCountRef.current = 0;
-    lastFeedLogAtRef.current = -Infinity;
-    lastSampleLogAtRef.current = -Infinity;
-    lastStaleWarnAtRef.current = -Infinity;
-    setGlobalState("idle");
+    lastLogAtRef.current = -Infinity;
+    lastLogAtRef.current = -Infinity;
+        setGlobalState("idle");
     setRecordingPlayerId(null);
     setRecordingTimeMs(0);
     logRecordingDebug(`cancel done pid=${pid || "none"} resetTo=idle`);
-  }, [setAnimationDataWithMeta]);
+  }, [setAnimationDataWithMeta, animationDataRef, animationRendererRef]);
 
   // Preview RAF loop.
   const previewTickRef = useRef(null);
@@ -547,7 +685,11 @@ export function useRecordingMode({
       return;
     }
 
-    setPreviewTimeMs(elapsed);
+    // Throttle React state updates for time display.
+    if (now - lastTimeStateAtRef.current >= TIME_STATE_UPDATE_INTERVAL_MS) {
+      lastTimeStateAtRef.current = now;
+      setPreviewTimeMs(elapsed);
+    }
 
     // Interpolate all recorded tracks and push to renderer.
     const tracks = animationDataRef.current?.tracks || {};
@@ -563,10 +705,10 @@ export function useRecordingMode({
     }
 
     previewFrameCountRef.current += 1;
-    if (elapsed - lastPreviewLogAtRef.current >= PREVIEW_LOG_INTERVAL_MS) {
-      lastPreviewLogAtRef.current = elapsed;
+    if (now - lastLogAtRef.current >= LOG_INTERVAL_MS) {
+      lastLogAtRef.current = now;
       logRecordingDebug(
-        `preview tick t=${Math.round(elapsed)} patchItems=${Object.keys(patch).length} frameCount=${previewFrameCountRef.current}`
+        `preview t=${Math.round(elapsed)}/${Math.round(duration)} items=${Object.keys(patch).length} frames=${previewFrameCountRef.current}`
       );
     }
 
@@ -585,7 +727,7 @@ export function useRecordingMode({
     previewStartRef.current = performance.now();
     currentPreviewElapsedRef.current = 0;
     previewFrameCountRef.current = 0;
-    lastPreviewLogAtRef.current = -Infinity;
+    lastLogAtRef.current = -Infinity;
     setGlobalState("previewing");
     setPreviewTimeMs(0);
     previewRafIdRef.current = requestAnimationFrame(() => previewTickRef.current?.());
@@ -601,6 +743,7 @@ export function useRecordingMode({
     (playerId) => {
       const prevKeyframes = animationDataRef.current?.tracks?.[playerId]?.keyframes?.length || 0;
       logRecordingDebug(`clearPlayer pid=${playerId} prevKeyframes=${prevKeyframes}`);
+      delete shelvedRecordingsRef.current[playerId];
       setAnimationDataWithMeta((base) => {
         const nextTracks = { ...base.tracks };
         nextTracks[playerId] = { keyframes: [] };
@@ -613,7 +756,8 @@ export function useRecordingMode({
 
   const clearAllRecordings = useCallback(() => {
     const trackCount = Object.keys(animationDataRef.current?.tracks || {}).length;
-    logRecordingDebug(`clearAll tracks=${trackCount}`);
+    logRecordingDebug(`clearAll tracks=${trackCount} shelved=${Object.keys(shelvedRecordingsRef.current).length}`);
+    shelvedRecordingsRef.current = {};
     setAnimationDataWithMeta((base) => {
       const nextTracks = {};
       Object.keys(base.tracks || {}).forEach((id) => {
@@ -658,6 +802,7 @@ export function useRecordingMode({
         }
         setCountdownValue(null);
         pendingCountdownPlayerIdRef.current = null;
+        shelvedRecordingsRef.current = {};
         const droppedFrames = recordingBufferRef.current.length;
         if (rafIdRef.current) {
           cancelAnimationFrame(rafIdRef.current);
@@ -670,16 +815,14 @@ export function useRecordingMode({
         recordingBufferRef.current = [];
         recordingStartRef.current = null;
         pausedElapsedRef.current = 0;
-        recordingSessionStartIsoRef.current = null;
-        preRecordingTrackRef.current = null;
+                preRecordingTrackRef.current = null;
         lastFeedAtRef.current = 0;
         feedCountRef.current = 0;
         sampleCountRef.current = 0;
-        lastFeedLogAtRef.current = -Infinity;
-        lastSampleLogAtRef.current = -Infinity;
-        lastStaleWarnAtRef.current = -Infinity;
-        previewFrameCountRef.current = 0;
-        lastPreviewLogAtRef.current = -Infinity;
+        lastLogAtRef.current = -Infinity;
+        lastLogAtRef.current = -Infinity;
+                previewFrameCountRef.current = 0;
+        lastLogAtRef.current = -Infinity;
         currentPreviewElapsedRef.current = 0;
         setGlobalState("idle");
         setRecordingPlayerId(null);
@@ -691,7 +834,7 @@ export function useRecordingMode({
     });
   }, []);
 
-  const recordedCount = Object.values(playerStates).filter((s) => s === "recorded").length;
+  const recordedCount = Object.values(playerStates).filter((s) => s === "recorded" || s === "paused").length;
   const totalCount = Object.keys(playerStates).length;
 
   const getDebugSnapshot = useCallback(() => {
@@ -708,7 +851,6 @@ export function useRecordingMode({
       lastFeedAtRef.current > 0 ? Math.round(now - lastFeedAtRef.current) : null;
 
     return {
-      sessionStartedAt: recordingSessionStartIsoRef.current,
       recordingModeEnabled,
       globalState,
       recordingPlayerId: pid,
@@ -763,6 +905,7 @@ export function useRecordingMode({
     stopRecording,
     pauseRecording,
     resumeRecording,
+    resumeRecordingImmediate,
     cancelRecording,
     clearPlayerRecording,
     clearAllRecordings,

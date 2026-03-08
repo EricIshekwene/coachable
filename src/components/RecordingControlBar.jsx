@@ -1,6 +1,5 @@
-import React, { useEffect, useRef } from "react";
+import React from "react";
 import { FaCircle, FaStop, FaPlay, FaPause, FaUndo } from "react-icons/fa";
-import { log as logRecordingDebug } from "../features/slate/recordingDebugLogger";
 
 const formatTime = (ms) => {
   const totalSec = Math.floor(ms / 1000);
@@ -38,60 +37,18 @@ export default function RecordingControlBar({
   const displayTime = isRecording ? recordingTimeMs : isPreviewing ? previewTimeMs : isPaused ? recordingTimeMs : 0;
   const progress = durationMs > 0 ? (displayTime / durationMs) * 100 : 0;
 
-  // --- Debug logging for control bar state transitions ---
-  const prevStateRef = useRef(null);
-  const renderCountRef = useRef(0);
-  const lastTimeLogRef = useRef(0);
-
-  renderCountRef.current += 1;
-
-  // Log every globalState transition
-  useEffect(() => {
-    const prev = prevStateRef.current;
-    prevStateRef.current = globalState;
-    logRecordingDebug(
-      `[ControlBar] stateChange prev=${prev ?? "mount"} next=${globalState} pid=${recordingPlayerId ?? "none"} durationMs=${durationMs} recordedCount=${recordedCount}/${totalCount} renderCount=${renderCountRef.current}`
-    );
-  }, [globalState, recordingPlayerId, durationMs, recordedCount, totalCount]);
-
-  // Log time updates periodically (every 2s) during recording/preview to confirm updates are flowing
-  useEffect(() => {
-    if (!isRecording && !isPreviewing) return;
-    const now = Date.now();
-    if (now - lastTimeLogRef.current >= 2000) {
-      lastTimeLogRef.current = now;
-      logRecordingDebug(
-        `[ControlBar] timeTick state=${globalState} displayTime=${Math.round(displayTime)} recTimeMs=${Math.round(recordingTimeMs)} prevTimeMs=${Math.round(previewTimeMs)} progress=${Math.round(progress)}% pid=${recordingPlayerId ?? "none"}`
-      );
-    }
-  }, [globalState, displayTime, recordingTimeMs, previewTimeMs, progress, isRecording, isPreviewing, recordingPlayerId]);
-
-  // Log if globalState is an unexpected value
-  useEffect(() => {
-    if (!isRecording && !isPreviewing && !isIdle && !isCountdown && !isPaused) {
-      logRecordingDebug(
-        `[ControlBar] UNEXPECTED globalState="${globalState}" — no UI branch matches. pid=${recordingPlayerId ?? "none"}`
-      );
-    }
-  }, [globalState, isRecording, isPreviewing, isIdle, isCountdown, isPaused, recordingPlayerId]);
-
-  // Log callback availability
-  useEffect(() => {
-    logRecordingDebug(
-      `[ControlBar] callbacks onStartPreview=${!!onStartPreview} onStopPreview=${!!onStopPreview} onStopRecording=${!!onStopRecording} onCancelRecording=${!!onCancelRecording}`
-    );
-  }, [onStartPreview, onStopPreview, onStopRecording, onCancelRecording]);
-
   return (
     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50">
       <div className="bg-BrandBlack/95 border border-BrandGray2 rounded-xl px-4 py-2.5 flex items-center gap-3 shadow-lg backdrop-blur-sm min-w-[340px]">
-        {/* Progress bar */}
-        <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-xl overflow-hidden">
-          <div
-            className={`h-full transition-all duration-100 ${isRecording ? "bg-red-500" : isPaused ? "bg-yellow-500" : "bg-BrandOrange"}`}
-            style={{ width: `${Math.min(100, progress)}%` }}
-          />
-        </div>
+        {/* Progress bar — hidden during preview (time display is sufficient) */}
+        {!isPreviewing && (
+          <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-xl overflow-hidden">
+            <div
+              className={`h-full transition-all duration-100 ${isRecording ? "bg-red-500" : isPaused ? "bg-yellow-500" : "bg-BrandOrange"}`}
+              style={{ width: `${Math.min(100, progress)}%` }}
+            />
+          </div>
+        )}
 
         {/* Status indicator */}
         <div className="flex items-center gap-2 min-w-[100px]">

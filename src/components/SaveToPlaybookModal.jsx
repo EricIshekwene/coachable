@@ -42,7 +42,6 @@ export default function SaveToPlaybookModal({
   const [newFolderName, setNewFolderName] = useState("");
   const [teamDropdownOpen, setTeamDropdownOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [previewShape, setPreviewShape] = useState("wide");
 
   // Initialize state when modal opens.
   useEffect(() => {
@@ -61,7 +60,6 @@ export default function SaveToPlaybookModal({
     setNewFolderName("");
     setTeamDropdownOpen(false);
     setSaving(false);
-    setPreviewShape("wide");
   }, [open, initialPlayName]);
 
   // Load folders when team changes.
@@ -153,34 +151,6 @@ export default function SaveToPlaybookModal({
         <div className="flex flex-col lg:flex-row gap-4 min-h-0 flex-1 overflow-hidden">
           {/* Left panel: preview + metadata */}
           <section className="lg:w-[38%] flex flex-col gap-3 min-h-0">
-            <div className="flex items-center justify-between">
-              <label className={POPUP_LABEL_CLASS}>Preview Shape</label>
-              <div className="inline-flex rounded-md border border-BrandGray2/50 bg-BrandBlack2 p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setPreviewShape("square")}
-                  className={`h-7 px-2.5 rounded text-[11px] font-DmSans transition-colors ${
-                    previewShape === "square"
-                      ? "bg-BrandOrange/20 text-BrandOrange"
-                      : "text-BrandGray hover:text-BrandWhite"
-                  }`}
-                >
-                  Square
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPreviewShape("wide")}
-                  className={`h-7 px-2.5 rounded text-[11px] font-DmSans transition-colors ${
-                    previewShape === "wide"
-                      ? "bg-BrandOrange/20 text-BrandOrange"
-                      : "text-BrandGray hover:text-BrandWhite"
-                  }`}
-                >
-                  Wide
-                </button>
-              </div>
-            </div>
-
             <PlayPreviewCard
               playData={playData}
               fallbackImageSrc={thumbnailDataUrl}
@@ -189,7 +159,7 @@ export default function SaveToPlaybookModal({
               background="field"
               paddingPx={26}
               minSpanPx={150}
-              shape={previewShape}
+              shape="fill"
             />
 
             <div className="flex flex-col gap-1.5">

@@ -28,6 +28,7 @@ export default function ControlPill({
   onDeleteSelectedObjects,
   onSelectKeyframe,
   onAutoplayChange,
+  onMoveKeyframe,
   getAuthoritativeTimeMs,
   onDragStateChange,
 }) {
@@ -105,6 +106,22 @@ export default function ControlPill({
     jumpToTime(marker.timeMs);
   };
 
+  const handleKeyframeDragStart = (timeMs) => {
+    onPause?.();
+    onSelectKeyframe?.(timeMs);
+  };
+
+  const handleKeyframeDragMove = () => {
+    // Visual feedback handled in KeyframeDisplay; no state update needed during drag.
+  };
+
+  const handleKeyframeDragEnd = (fromTimeMs, toTimeMs) => {
+    if (fromTimeMs === toTimeMs) return;
+    onMoveKeyframe?.(fromTimeMs, toTimeMs);
+    onSelectKeyframe?.(toTimeMs);
+    jumpToTime(toTimeMs);
+  };
+
   const handleAddKeyframe = (event) => {
     event.stopPropagation();
     onPause?.();
@@ -136,6 +153,9 @@ export default function ControlPill({
         selectedKeyframeMs={selectedKeyframeMs}
         onSeek={handleSeek}
         onKeyframeClick={handleKeyframeClick}
+        onKeyframeDragStart={handleKeyframeDragStart}
+        onKeyframeDragMove={handleKeyframeDragMove}
+        onKeyframeDragEnd={handleKeyframeDragEnd}
         getAuthoritativeTimeMs={getAuthoritativeTimeMs}
         onDragStateChange={onDragStateChange}
       />

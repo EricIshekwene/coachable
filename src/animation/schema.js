@@ -144,5 +144,17 @@ export const getTrackKeyframeTimes = (animation, playerIds) => {
   return Array.from(timeSet).sort((a, b) => a - b);
 };
 
+/** Moves all keyframes at `fromTimeMs` to `toTimeMs` within specified tracks, preserving pose data. */
+export const moveKeyframeTime = (track, fromTimeMs, toTimeMs, toleranceMs = EPSILON_MS) => {
+  const normalized = normalizeTrack(track);
+  const from = normalizeTime(fromTimeMs);
+  const to = normalizeTime(toTimeMs);
+  if (from === to) return normalized;
+  const nextKeyframes = normalized.keyframes.map((kf) =>
+    Math.abs(kf.t - from) <= toleranceMs ? { ...kf, t: to } : kf
+  );
+  return { keyframes: sortAndDedupeKeyframes(nextKeyframes) };
+};
+
 /** Deep-clones an animation object via normalization. */
 export const cloneAnimation = (animation) => normalizeAnimation(animation);

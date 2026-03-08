@@ -100,6 +100,7 @@ export default function RightPanel({
   recordingPlayerId,
   recordingPlayerStates,
   onStartRecording,
+  onResumeRecording,
   onClearPlayerRecording,
   onClearAllRecordings,
 }) {
@@ -187,6 +188,7 @@ export default function RightPanel({
               recordingPlayerId={recordingPlayerId}
               globalState={recordingGlobalState}
               onStartRecording={onStartRecording}
+              onResumeRecording={onResumeRecording}
               onClearPlayerRecording={onClearPlayerRecording}
               onClearAllRecordings={onClearAllRecordings}
             />

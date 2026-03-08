@@ -6,6 +6,7 @@ export {
   normalizeTrack,
   upsertKeyframe,
   deleteKeyframeAtTime,
+  moveKeyframeTime,
   getTrackKeyframeTimes,
   cloneAnimation,
 } from "./schema";

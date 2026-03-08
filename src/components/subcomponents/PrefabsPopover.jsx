@@ -104,21 +104,33 @@ const PrefabItem = ({ prefab, onSelect, isOpen, onToggle, onClose, onDelete }) =
         onDelete?.(prefab.id);
     };
 
+    const handleRowKeyDown = (e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        onSelect?.();
+    };
+
     return (
         <div className="relative" ref={prefabRef}>
             {/* Row */}
             <div
+                role="button"
+                tabIndex={0}
+                onClick={onSelect}
+                onKeyDown={handleRowKeyDown}
                 className="
           w-full flex items-center gap-2
           rounded-md border border-BrandGray
           bg-BrandBlack2 hover:bg-BrandBlack2/80
+          cursor-pointer
           transition-all duration-100
+          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-BrandOrange/70
           px-2 py-2
         "
             >
                 {/* Icon Button (standard size) */}
-                <button
-                    onClick={onSelect}
+                <div
                     className="
             w-10 h-10 shrink-0
             rounded-md border border-BrandGray
@@ -133,7 +145,7 @@ const PrefabItem = ({ prefab, onSelect, isOpen, onToggle, onClose, onDelete }) =
                     <span className="text-BrandOrange text-xl leading-none flex items-center justify-center">
                         {prefab.icon}
                     </span>
-                </button>
+                </div>
 
                 {/* Label */}
                 <div className="flex-1 min-w-0">

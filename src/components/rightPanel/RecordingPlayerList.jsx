@@ -1,5 +1,5 @@
 import React from "react";
-import { FaCircle, FaCheck, FaPlay, FaTrash, FaFootballBall } from "react-icons/fa";
+import { FaCircle, FaCheck, FaPlay, FaPause, FaTrash, FaFootballBall } from "react-icons/fa";
 import coneIcon from "../../assets/objects/cone.png";
 
 /**
@@ -15,6 +15,7 @@ export default function RecordingPlayerList({
   recordingPlayerId,
   globalState,
   onStartRecording,
+  onResumeRecording,
   onClearPlayerRecording,
   onClearAllRecordings,
 }) {
@@ -25,9 +26,10 @@ export default function RecordingPlayerList({
   const isPreviewing = globalState === "previewing";
   const isCountdown = globalState === "countdown";
   const isPaused = globalState === "paused";
-  const isBusy = isRecording || isPreviewing || isCountdown || isPaused;
+  // Busy = actively recording or in countdown. Paused allows interaction with other players.
+  const isBusy = isRecording || isPreviewing || isCountdown;
 
-  const recordedCount = Object.values(playerStates).filter((s) => s === "recorded").length;
+  const recordedCount = Object.values(playerStates).filter((s) => s === "recorded" || s === "paused").length;
 
   return (
     <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4">
@@ -55,7 +57,8 @@ export default function RecordingPlayerList({
           const objectType = ball?.objectType === "cone" ? "cone" : "ball";
 
           const state = playerStates[id] || "idle";
-          const isCurrentlyRecording = recordingPlayerId === id;
+          const isCurrentlyRecording = recordingPlayerId === id && (isRecording || isCountdown);
+          const isPlayerPaused = state === "paused";
           const isRecorded = state === "recorded";
           const isIdle = state === "idle";
 
@@ -65,7 +68,8 @@ export default function RecordingPlayerList({
               className={`
                 flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors
                 ${isCurrentlyRecording ? "bg-red-500/15 border border-red-500/30" : ""}
-                ${isRecorded ? "bg-green-500/10 border border-green-500/20" : ""}
+                ${isPlayerPaused ? "bg-yellow-500/10 border border-yellow-500/25" : ""}
+                ${isRecorded && !isPlayerPaused ? "bg-green-500/10 border border-green-500/20" : ""}
                 ${isIdle && !isCurrentlyRecording ? "bg-BrandGray2/20 border border-transparent" : ""}
               `}
             >
@@ -74,7 +78,10 @@ export default function RecordingPlayerList({
                 {isCurrentlyRecording && (
                   <FaCircle className="text-red-500 text-[8px] animate-pulse" />
                 )}
-                {isRecorded && !isCurrentlyRecording && (
+                {isPlayerPaused && !isCurrentlyRecording && (
+                  <FaPause className="text-yellow-500 text-[9px]" />
+                )}
+                {isRecorded && !isCurrentlyRecording && !isPlayerPaused && (
                   <FaCheck className="text-green-500 text-[10px]" />
                 )}
                 {isIdle && !isCurrentlyRecording && (
@@ -109,7 +116,19 @@ export default function RecordingPlayerList({
 
               {/* Action buttons */}
               <div className="flex items-center gap-1 shrink-0">
-                {!isBusy && (
+                {/* Resume button for paused players */}
+                {isPlayerPaused && !isCurrentlyRecording && !isBusy && (
+                  <button
+                    onClick={() => onResumeRecording(id)}
+                    className="w-6 h-6 flex items-center justify-center rounded-md bg-green-500/20 hover:bg-green-500/40 text-green-400 transition-colors"
+                    title="Resume recording"
+                  >
+                    <FaPlay className="text-[8px]" />
+                  </button>
+                )}
+
+                {/* Record / Re-record button (not for paused players — they use resume) */}
+                {!isBusy && !isPlayerPaused && (
                   <button
                     onClick={() => onStartRecording(id)}
                     className={`
@@ -129,7 +148,8 @@ export default function RecordingPlayerList({
                   </button>
                 )}
 
-                {isRecorded && !isBusy && (
+                {/* Clear button for recorded or paused players */}
+                {(isRecorded || isPlayerPaused) && !isBusy && (
                   <button
                     onClick={() => onClearPlayerRecording(id)}
                     className="w-6 h-6 flex items-center justify-center rounded-md bg-BrandGray2/30 hover:bg-red-500/30 text-BrandGray hover:text-red-400 transition-colors"

@@ -139,6 +139,7 @@ function KonvaCanvasRoot({
   onScreenshotRegionChange,
   screenshotApiRef,
   lockDrag = false,
+  disableSnapping = false,
 }) {
   const viewportRef = useRef(null);
   const stageRef = useRef(null);
@@ -1217,7 +1218,7 @@ function KonvaCanvasRoot({
 
   const handleItemDragMove = (item) => (e) => {
     const node = e.target;
-    const canSnap = tool === "select" && !marqueeRef.current.active && !panRef.current.active;
+    const canSnap = tool === "select" && !marqueeRef.current.active && !panRef.current.active && !disableSnapping;
     if (canSnap) {
       const isMultiSelectDrag =
         selectedItemIds?.length > 1 && selectedItemIds.includes(item.id);

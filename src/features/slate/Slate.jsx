@@ -22,6 +22,7 @@ import {
   AnimationEngine,
   createEmptyAnimation,
   deleteKeyframeAtTime,
+  moveKeyframeTime,
   getTrackKeyframeTimes,
   normalizeAnimation,
   samplePosesAtTime,
@@ -33,6 +34,7 @@ import { getLogs as getKeyToolDebugLogs, log as logKeyToolDebug } from "../../ca
 import { getLogs as getVideoExportDebugLogs, log as logVideoExport } from "../../utils/videoExportDebugLogger";
 import { getLogs as getPlaceBallDebugLogs, log as logPlaceBallDebug } from "./placeBallDebugLogger";
 import { getLogs as getRecordingDebugLogs, log as logRecordingDebug } from "./recordingDebugLogger";
+import { getLogs as getKfMoveDebugLogs, log as logKfMoveDebug } from "../../animation/keyframeMoveDebugLogger";
 import { useDrawings } from "./hooks/useDrawings";
 import { useRecordingMode } from "./hooks/useRecordingMode";
 import RecordingControlBar from "../../components/RecordingControlBar";
@@ -244,6 +246,31 @@ function Slate({ onShowMessage }) {
   useEffect(() => {
     activeTrackIdsRef.current = activeTrackIds;
   }, [activeTrackIds]);
+
+  // Ensure all player/ball tracks have a keyframe at t=0 (starting position).
+  useEffect(() => {
+    if (!representedTrackIds.length) return;
+    setAnimationData((prev) => {
+      const nextTracks = { ...prev.tracks };
+      let changed = false;
+      representedTrackIds.forEach((itemId) => {
+        const track = nextTracks[itemId];
+        const hasZero = track?.keyframes?.some((kf) => kf.t === 0);
+        if (hasZero) return;
+        const player = entities.playersById?.[itemId];
+        const ball = entities.ballsById?.[itemId];
+        const source = player || ball;
+        if (!source) return;
+        const existing = track?.keyframes || [];
+        nextTracks[itemId] = {
+          keyframes: [{ t: 0, x: source.x ?? 0, y: source.y ?? 0 }, ...existing],
+        };
+        changed = true;
+      });
+      if (!changed) return prev;
+      return { ...prev, tracks: nextTracks };
+    });
+  }, [representedTrackIds, entities.playersById, entities.ballsById]);
 
   const resolveTrackPose = useCallback((itemId) => {
     const rendererPose = animationRendererRef.current?.getCurrentPose?.(itemId);
@@ -1220,6 +1247,19 @@ function Slate({ onShowMessage }) {
     }
   }, [canvasTool, entities.ballsById, entities.playersById, entities.selectedItemIds, onShowMessage]);
 
+  const handleCopyKfMoveDebug = useCallback(async () => {
+    const lines = getKfMoveDebugLogs(300);
+    const payload = lines.length ? lines.join("\n") : "[KFMOVE] no logs captured yet";
+    try {
+      await navigator.clipboard.writeText(payload);
+      return true;
+    } catch (error) {
+      logKfMoveDebug(`copyKfMoveDebug failed err=${error?.message || "clipboard unavailable"}`);
+      onShowMessage("Copy keyframe move debug failed", "Clipboard access was denied.", "error");
+      return false;
+    }
+  }, [onShowMessage]);
+
   const handleCanvasAddBall = useCallback(({ x, y, objectType = "ball" }) => {
     const existingBallIds = Object.keys(entities.ballsById || {});
     logPlaceBallDebug(
@@ -1230,7 +1270,6 @@ function Slate({ onShowMessage }) {
     logPlaceBallDebug(
       `canvasAddBall created id=${created?.id || "unknown"} type=${created?.objectType || objectType} x=${Math.round(created?.x ?? x)} y=${Math.round(created?.y ?? y)} nextCount=${Object.keys(entities.ballsById || {}).length + 1}`
     );
-    setCanvasTool("select");
   }, [entities]);
 
   // --- Prefab handlers ---
@@ -1428,6 +1467,46 @@ function Slate({ onShowMessage }) {
     });
   }, [setAnimationDataWithMeta]);
 
+  const handleMoveKeyframe = useCallback(
+    (fromTimeMs, toTimeMs) => {
+      const targetTrackIds = activeTrackIdsRef.current || [];
+      if (!targetTrackIds.length) return;
+      const from = Math.round(fromTimeMs);
+      const to = Math.round(toTimeMs);
+      if (from === to) return;
+
+      logKfMoveDebug(
+        `moveKeyframe from=${from}ms to=${to}ms tracks=[${targetTrackIds.join(",")}]`
+      );
+
+      setAnimationDataWithMeta((base) => {
+        const nextTracks = { ...base.tracks };
+        let changed = false;
+        targetTrackIds.forEach((itemId) => {
+          const track = nextTracks[itemId];
+          if (!track?.keyframes?.length) return;
+          const hasMatch = track.keyframes.some(
+            (kf) => Math.abs(kf.t - from) <= 0.5
+          );
+          if (!hasMatch) return;
+          nextTracks[itemId] = moveKeyframeTime(track, from, to);
+          changed = true;
+          logKfMoveDebug(
+            `  moved item=${itemId} keyframes=${nextTracks[itemId].keyframes.length}`
+          );
+        });
+        if (!changed) {
+          logKfMoveDebug(`  no matching keyframes found at t=${from}`);
+          return null;
+        }
+        return { ...base, tracks: nextTracks };
+      });
+
+      setSelectedKeyframeMs(to);
+    },
+    [setAnimationDataWithMeta]
+  );
+
   const upsertKeyframesAtCurrentTime = useCallback(
     (targetTrackIds, { source = "unknown" } = {}) => {
       const uniqueIds = Array.from(new Set((targetTrackIds || []).filter(Boolean)));
@@ -1469,9 +1548,9 @@ function Slate({ onShowMessage }) {
         logRecordingDebug(
           `itemDragStart id=${id} global=${recording.globalState} recordingPid=${recording.recordingPlayerId || "none"} selected=[${(entities.selectedItemIds || []).join(",")}] enginePlayingBefore=${enginePlayingBefore} pauseSuppressed=true`
         );
-        // Auto-resume recording when dragging the recorded player.
+        // Auto-resume recording when dragging the recorded player (no countdown).
         if (recording.globalState === "paused" && id === recording.recordingPlayerId) {
-          recording.resumeRecording();
+          recording.resumeRecordingImmediate();
         }
       }
       // Don't pause engine during recording - recording uses its own timer.
@@ -1480,7 +1559,7 @@ function Slate({ onShowMessage }) {
       }
       entities.handleItemDragStart(id);
     },
-    [entities, recording.globalState, recording.recordingModeEnabled, recording.recordingPlayerId, recording.resumeRecording]
+    [entities, recording.globalState, recording.recordingModeEnabled, recording.recordingPlayerId, recording.resumeRecordingImmediate]
   );
 
   const handleItemDragEnd = useCallback(
@@ -1777,6 +1856,22 @@ function Slate({ onShowMessage }) {
         tagName === "INPUT" || tagName === "TEXTAREA" || e.target?.isContentEditable;
 
       if (e.key === "Escape") {
+        // Recording mode: stop/cancel current action and return to idle overview.
+        if (recording.recordingModeEnabled) {
+          const gs = recording.globalState;
+          if (gs === "recording" || gs === "paused") {
+            recording.stopRecording();
+            return;
+          }
+          if (gs === "countdown") {
+            recording.cancelRecording();
+            return;
+          }
+          if (gs === "previewing") {
+            recording.stopPreview();
+            return;
+          }
+        }
         // Cancel export modal
         if (exportModalOpen) {
           setExportModalOpen(false);
@@ -1897,6 +1992,11 @@ function Slate({ onShowMessage }) {
     isExporting,
     screenshotMode,
     handleNudgeSelectedItems,
+    recording.recordingModeEnabled,
+    recording.globalState,
+    recording.stopRecording,
+    recording.cancelRecording,
+    recording.stopPreview,
   ]);
 
   const handleAnimationRendererReady = useCallback(() => {
@@ -1980,6 +2080,7 @@ function Slate({ onShowMessage }) {
           onScreenshotRegionChange={handleScreenshotRegionChange}
           screenshotApiRef={screenshotApiRef}
           lockDrag={recording.globalState === "countdown"}
+          disableSnapping={recording.recordingModeEnabled}
         />
         {/* Text editing is now handled via right panel textarea */}
         {recording.countdownValue != null && (
@@ -2048,6 +2149,7 @@ function Slate({ onShowMessage }) {
             onDeleteSelectedObjects={entities.handleDeleteSelected}
             onSelectKeyframe={setSelectedKeyframeMs}
             onAutoplayChange={setAutoplayEnabled}
+            onMoveKeyframe={handleMoveKeyframe}
             getAuthoritativeTimeMs={getAuthoritativeTimeMs}
             onDragStateChange={handleTimelineDragStateChange}
           />
@@ -2157,6 +2259,7 @@ function Slate({ onShowMessage }) {
         recordingPlayerId={recording.recordingPlayerId}
         recordingPlayerStates={recording.playerStates}
         onStartRecording={handleStartRecording}
+        onResumeRecording={recording.resumeRecording}
         onClearPlayerRecording={recording.clearPlayerRecording}
         onClearAllRecordings={recording.clearAllRecordings}
       />
@@ -2186,6 +2289,7 @@ function Slate({ onShowMessage }) {
           onCopyPlaceBallDebug={handleCopyPlaceBallDebug}
           onCopyVideoExportDebug={handleCopyVideoExportDebug}
           onCopyRecordingDebug={handleCopyRecordingDebug}
+          onCopyKfMoveDebug={handleCopyKfMoveDebug}
           onDebugRotate={handleDebugRotate}
           onDownload={onDownload}
           onClose={() => setShowAdvancedSettings(false)}
