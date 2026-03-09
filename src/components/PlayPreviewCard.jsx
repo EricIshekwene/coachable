@@ -252,10 +252,18 @@ export default function PlayPreviewCard({
     [animation, displayTimeMs, fallbackPoses, entityIds]
   );
 
+  // Reset animation when the play identity changes (not just object reference).
+  // Use entity IDs + duration as a stable fingerprint to avoid resetting on every
+  // parent re-render that creates a new playData object.
+  const playFingerprint = useMemo(() => {
+    const ids = entityIds.slice().sort().join(",");
+    return `${ids}|${durationMs}`;
+  }, [entityIds, durationMs]);
+
   useEffect(() => {
     setTimeMs(0);
     lastFrameAtRef.current = null;
-  }, [playData]);
+  }, [playFingerprint]);
 
   useEffect(() => {
     if (!shouldPlay || autoplay === "off") {

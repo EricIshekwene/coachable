@@ -19,9 +19,9 @@ const toggleBtnClass = (active) =>
   }`;
 
 const QUALITY_PRESETS = {
-  standard: { label: "Standard", pixelRatio: 1, fps: 24, bitrate: 2_500_000, note: "Fast export, smaller file" },
-  high:     { label: "High",     pixelRatio: 2, fps: 30, bitrate: 5_000_000, note: "Balanced quality" },
-  ultra:    { label: "Ultra",    pixelRatio: 3, fps: 30, bitrate: 10_000_000, note: "Best quality, slower export" },
+  standard: { label: "Standard", pixelRatio: 1, fps: 30, bitrate: 4_000_000, note: "Fast export, smaller file" },
+  high:     { label: "High",     pixelRatio: 2, fps: 45, bitrate: 8_000_000, note: "Smooth playback, balanced size" },
+  ultra:    { label: "Ultra",    pixelRatio: 3, fps: 60, bitrate: 16_000_000, note: "Slate-quality, every frame captured" },
 };
 
 export default function ExportModal({ open, initialFormat = "photo", onClose, onExport }) {

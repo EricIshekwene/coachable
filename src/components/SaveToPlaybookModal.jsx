@@ -42,6 +42,7 @@ export default function SaveToPlaybookModal({
   const [newFolderName, setNewFolderName] = useState("");
   const [teamDropdownOpen, setTeamDropdownOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   // Initialize state when modal opens.
   useEffect(() => {
@@ -60,6 +61,7 @@ export default function SaveToPlaybookModal({
     setNewFolderName("");
     setTeamDropdownOpen(false);
     setSaving(false);
+    setSaveError(null);
   }, [open, initialPlayName]);
 
   // Load folders when team changes.
@@ -106,6 +108,7 @@ export default function SaveToPlaybookModal({
   const handleSave = useCallback(() => {
     if (!playName.trim() || !selectedTeamId || !selectedFolderId || saving) return;
     setSaving(true);
+    setSaveError(null);
     try {
       const entry = savePlayToPlaybook({
         teamId: selectedTeamId,
@@ -117,8 +120,9 @@ export default function SaveToPlaybookModal({
       });
       onSaved?.(entry);
       onClose?.();
-    } catch {
+    } catch (err) {
       setSaving(false);
+      setSaveError(err?.message || "Failed to save play. Please try again.");
     }
   }, [playName, selectedTeamId, selectedFolderId, thumbnailDataUrl, playData, notes, saving, onSaved, onClose]);
 
@@ -185,6 +189,9 @@ export default function SaveToPlaybookModal({
               />
             </div>
 
+            {saveError && (
+              <p className="text-red-400 text-[11px] font-DmSans">{saveError}</p>
+            )}
             <button
               type="button"
               onClick={handleSave}

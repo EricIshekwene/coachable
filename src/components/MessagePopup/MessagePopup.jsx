@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   IoAlertCircleOutline,
   IoCheckmarkCircleOutline,
@@ -61,18 +61,20 @@ export default function MessagePopup({
     setIsVisible(visible);
   }, [visible]);
 
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   const hide = useCallback(() => {
     setIsVisible(false);
-    onClose?.();
-  }, [onClose]);
+    onCloseRef.current?.();
+  }, []);
 
+  // Reset timer when a new message arrives (message/subtitle/type change)
+  // or when visibility toggles. `hide` is stable so it won't cause resets.
   useEffect(() => {
     if (!isVisible || autoHideDuration <= 0) return undefined;
 
-    const timer = setTimeout(() => {
-      hide();
-    }, autoHideDuration);
-
+    const timer = setTimeout(hide, autoHideDuration);
     return () => clearTimeout(timer);
   }, [isVisible, autoHideDuration, hide, message, subtitle, type]);
 

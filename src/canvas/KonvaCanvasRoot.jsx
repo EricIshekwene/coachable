@@ -35,16 +35,13 @@ const useImage = (src) => {
       setStatus("error");
       return;
     }
-    console.log(`[useImage] loading ${src}`);
     const img = new window.Image();
     img.src = src;
     const handleLoad = () => {
-      console.log(`[useImage] loaded ${src}`);
       setImage(img);
       setStatus("loaded");
     };
     const handleError = () => {
-      console.log(`[useImage] error ${src}`);
       setImage(null);
       setStatus("error");
     };

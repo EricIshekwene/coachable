@@ -116,13 +116,14 @@ export const downloadScreenshot = async (dataUrl, playName) => {
 };
 
 /**
- * Downloads a video blob as a WebM file.
- * @param {Blob} blob - The recorded video blob.
+ * Downloads a video blob. Extension is derived from the blob's MIME type.
+ * @param {Blob} blob - The recorded video blob (MP4 or WebM).
  * @param {string} playName - Play name used to derive the filename.
  */
 export const downloadVideo = (blob, playName) => {
   if (!blob) return;
-  const filename = `${sanitizeFilename(playName)}_export.webm`;
+  const ext = blob.type?.includes("mp4") ? "mp4" : "webm";
+  const filename = `${sanitizeFilename(playName)}_export.${ext}`;
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
