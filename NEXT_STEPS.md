@@ -130,7 +130,7 @@ Keep:
 ```bash
 # Run migration again (if you update schema.sql)
 cd server
-DATABASE_URL="postgresql://postgres:vCjwUoNMDvyPiiqqyCpeCYcqvYADwiHT@crossover.proxy.rlwy.net:39355/railway" node db/migrate.js
+DATABASE_URL="<your-public-postgres-url>" node db/migrate.js
 
 # Deploy updates
 cd server
@@ -139,7 +139,7 @@ railway up --service resplendent-inspiration
 # View logs
 railway logs --service resplendent-inspiration
 
-# Run server locally
+# Run server locally (get DATABASE_URL from Railway dashboard > Postgres > Variables > DATABASE_PUBLIC_URL)
 cd server
-DATABASE_URL="postgresql://postgres:vCjwUoNMDvyPiiqqyCpeCYcqvYADwiHT@crossover.proxy.rlwy.net:39355/railway" npm run dev
+DATABASE_URL="<your-public-postgres-url>" npm run dev
 ```
