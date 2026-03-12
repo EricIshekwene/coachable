@@ -12,11 +12,15 @@ html, body {
     background-color: #121212;
 }
 
+#root {
+    height: 100%;
+}
+
 /* Scrollable containers need their own touch-action to allow vertical scroll */
 .touch-scroll {
     touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
+    overscroll-behavior: none;
 }
 
 @theme {

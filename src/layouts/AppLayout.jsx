@@ -53,7 +53,10 @@ export default function AppLayout() {
   };
 
   return (
-    <div className="app-themed flex h-screen flex-col bg-BrandBlack font-DmSans text-BrandText">
+    <div
+      className="app-themed flex min-h-0 flex-col bg-BrandBlack font-DmSans text-BrandText"
+      style={{ height: "100dvh" }}
+    >
       {/* Player View Banner */}
       {playerViewMode && (
         <div className="flex items-center justify-between border-b border-BrandOrange/30 bg-BrandOrange/10 px-4 py-2">
@@ -72,7 +75,7 @@ export default function AppLayout() {
         </div>
       )}
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
       {/* Sidebar */}
       <aside className="hidden w-60 flex-col border-r border-BrandGray2/20 md:flex">
         <Link to="/app" className="flex items-center gap-3 px-5 py-5">
@@ -118,7 +121,7 @@ export default function AppLayout() {
       </aside>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-BrandGray2/20 bg-BrandBlack md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-BrandGray2/20 bg-BrandBlack pb-[env(safe-area-inset-bottom)] md:hidden">
         {navItems.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
@@ -135,7 +138,7 @@ export default function AppLayout() {
       </nav>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto pb-16 md:pb-0 touch-scroll">
+      <main className="min-h-0 flex-1 touch-scroll overflow-x-hidden overflow-y-auto pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
         <Outlet />
       </main>
       </div>
