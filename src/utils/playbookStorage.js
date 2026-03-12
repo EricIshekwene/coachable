@@ -2,18 +2,73 @@ import {
   log as logPersistence,
   summarizePlayData,
 } from "./playPersistenceDebugLogger";
+import { normalizePlayRecord, normalizeTeamRecord } from "./dataContracts";
 
 const PLAYBOOK_KEY = "coachable-playbook";
 const TEAMS_KEY = "coachable-teams";
 const ACTIVE_TEAM_KEY = "coachable-active-team";
 
-const DEFAULT_TEAM = { id: "team-default", name: "My Team" };
+const DEFAULT_TEAM = normalizeTeamRecord({
+  id: "team-default",
+  name: "My Team",
+});
 const DEFAULT_FOLDERS = [
   { id: "folder-offense", name: "Offense" },
   { id: "folder-defense", name: "Defense" },
   { id: "folder-setpieces", name: "Set Pieces" },
   { id: "folder-other", name: "Other" },
 ];
+
+const isObject = (value) => Boolean(value && typeof value === "object" && !Array.isArray(value));
+
+const sameStringArray = (a, b) =>
+  Array.isArray(a) &&
+  Array.isArray(b) &&
+  a.length === b.length &&
+  a.every((value, index) => value === b[index]);
+
+const samePlayContract = (raw, normalized) =>
+  Boolean(raw) &&
+  raw.id === normalized.id &&
+  raw.title === normalized.title &&
+  raw.playName === normalized.playName &&
+  (raw.teamId ?? null) === (normalized.teamId ?? null) &&
+  (raw.folderId ?? null) === (normalized.folderId ?? null) &&
+  sameStringArray(raw.tags, normalized.tags) &&
+  raw.playData === normalized.playData &&
+  (raw.thumbnail ?? null) === (normalized.thumbnail ?? null) &&
+  (raw.notes ?? "") === normalized.notes &&
+  (raw.notesAuthorName ?? "") === normalized.notesAuthorName &&
+  (raw.notesUpdatedAt ?? null) === normalized.notesUpdatedAt &&
+  Boolean(raw.favorited) === normalized.favorited &&
+  raw.createdAt === normalized.createdAt &&
+  raw.updatedAt === normalized.updatedAt &&
+  raw.savedAt === normalized.savedAt;
+
+const sameTeamContract = (raw, normalized) =>
+  Boolean(raw) &&
+  raw.id === normalized.id &&
+  raw.name === normalized.name &&
+  raw.teamName === normalized.teamName &&
+  (raw.sport ?? null) === (normalized.sport ?? null) &&
+  (raw.seasonYear ?? null) === (normalized.seasonYear ?? null) &&
+  (raw.ownerId ?? null) === (normalized.ownerId ?? null) &&
+  raw.createdAt === normalized.createdAt &&
+  raw.updatedAt === normalized.updatedAt;
+
+const normalizeTeams = (teams) =>
+  (Array.isArray(teams) ? teams : [])
+    .map((team) => normalizeTeamRecord(team))
+    .filter(Boolean);
+
+const normalizePlaybook = (playbook) => {
+  const raw = isObject(playbook) ? playbook : {};
+  const folders = isObject(raw.folders) ? raw.folders : {};
+  const plays = (Array.isArray(raw.plays) ? raw.plays : [])
+    .map((play) => normalizePlayRecord(play, { defaultToNowForNotes: false }))
+    .filter(Boolean);
+  return { folders, plays };
+};
 
 /** Load teams from localStorage. Returns at least the default team. */
 export function loadTeams() {
@@ -23,10 +78,33 @@ export function loadTeams() {
       logPersistence("playbook loadTeams default");
       return [DEFAULT_TEAM];
     }
+
     const parsed = JSON.parse(raw);
-    const teams = Array.isArray(parsed) && parsed.length > 0 ? parsed : [DEFAULT_TEAM];
-    logPersistence("playbook loadTeams ok", { teamCount: teams.length });
-    return teams;
+    const parsedTeams = Array.isArray(parsed) ? parsed : [];
+    let normalized = !Array.isArray(parsed);
+
+    const teams = parsedTeams
+      .map((team) => {
+        const nextTeam = normalizeTeamRecord(team);
+        if (!nextTeam) {
+          normalized = true;
+          return null;
+        }
+        if (!sameTeamContract(team, nextTeam)) {
+          normalized = true;
+        }
+        return nextTeam;
+      })
+      .filter(Boolean);
+
+    const safeTeams = teams.length > 0 ? teams : [DEFAULT_TEAM];
+    if (!teams.length) normalized = true;
+
+    if (normalized) {
+      localStorage.setItem(TEAMS_KEY, JSON.stringify(safeTeams));
+    }
+    logPersistence("playbook loadTeams ok", { teamCount: safeTeams.length });
+    return safeTeams;
   } catch {
     logPersistence("playbook loadTeams failed parseError=true");
     return [DEFAULT_TEAM];
@@ -35,20 +113,27 @@ export function loadTeams() {
 
 /** Save teams array to localStorage. */
 export function saveTeams(teams) {
-  localStorage.setItem(TEAMS_KEY, JSON.stringify(teams));
+  const normalizedTeams = normalizeTeams(teams);
+  const safeTeams = normalizedTeams.length > 0 ? normalizedTeams : [DEFAULT_TEAM];
+  localStorage.setItem(TEAMS_KEY, JSON.stringify(safeTeams));
   logPersistence("playbook saveTeams", {
-    teamCount: Array.isArray(teams) ? teams.length : 0,
+    teamCount: safeTeams.length,
   });
 }
 
 /** Add a new team. Returns updated array. */
 export function addTeam(name) {
   const teams = loadTeams();
-  const team = { id: `team-${Date.now()}`, name: name.trim() };
-  teams.push(team);
-  saveTeams(teams);
-  logPersistence("playbook addTeam", { teamId: team.id, name: team.name });
-  return { teams, team };
+  const fallbackId = `team-${Date.now()}`;
+  const team = normalizeTeamRecord(
+    { id: fallbackId, name: String(name || "").trim() },
+    { fallbackId }
+  );
+  const nextTeam = team || DEFAULT_TEAM;
+  const updatedTeams = [...teams, nextTeam];
+  saveTeams(updatedTeams);
+  logPersistence("playbook addTeam", { teamId: nextTeam.id, name: nextTeam.name });
+  return { teams: updatedTeams, team: nextTeam };
 }
 
 /** Get the active team ID. */
@@ -64,7 +149,7 @@ export function saveActiveTeamId(teamId) {
   logPersistence("playbook saveActiveTeamId", { teamId });
 }
 
-/** Load the full playbook (all teams). Returns { teams, folders, plays }. */
+/** Load the full playbook (all teams). Returns { folders, plays }. */
 export function loadPlaybook() {
   try {
     const raw = localStorage.getItem(PLAYBOOK_KEY);
@@ -72,11 +157,34 @@ export function loadPlaybook() {
       logPersistence("playbook loadPlaybook default");
       return { folders: {}, plays: [] };
     }
+
     const parsed = JSON.parse(raw);
+    const parsedPlays = Array.isArray(parsed?.plays) ? parsed.plays : [];
+    let normalized = !isObject(parsed) || !Array.isArray(parsed?.plays);
+
+    const plays = parsedPlays
+      .map((play) => {
+        const nextPlay = normalizePlayRecord(play, { defaultToNowForNotes: false });
+        if (!nextPlay) {
+          normalized = true;
+          return null;
+        }
+        if (!samePlayContract(play, nextPlay)) {
+          normalized = true;
+        }
+        return nextPlay;
+      })
+      .filter(Boolean);
+
     const playbook = {
-      folders: parsed.folders || {},
-      plays: Array.isArray(parsed.plays) ? parsed.plays : [],
+      folders: isObject(parsed?.folders) ? parsed.folders : {},
+      plays,
     };
+    if (!isObject(parsed?.folders)) normalized = true;
+
+    if (normalized) {
+      localStorage.setItem(PLAYBOOK_KEY, JSON.stringify(playbook));
+    }
     logPersistence("playbook loadPlaybook ok", {
       teamFolderCount: Object.keys(playbook.folders).length,
       playCount: playbook.plays.length,
@@ -90,10 +198,11 @@ export function loadPlaybook() {
 
 /** Save full playbook to localStorage. */
 function savePlaybook(playbook) {
-  localStorage.setItem(PLAYBOOK_KEY, JSON.stringify(playbook));
+  const normalized = normalizePlaybook(playbook);
+  localStorage.setItem(PLAYBOOK_KEY, JSON.stringify(normalized));
   logPersistence("playbook savePlaybook", {
-    teamFolderCount: Object.keys(playbook?.folders || {}).length,
-    playCount: Array.isArray(playbook?.plays) ? playbook.plays.length : 0,
+    teamFolderCount: Object.keys(normalized.folders).length,
+    playCount: normalized.plays.length,
   });
 }
 
@@ -119,7 +228,7 @@ export function saveFoldersForTeam(teamId, folders) {
 /** Add a new folder for a team. Returns updated folders array. */
 export function addFolderForTeam(teamId, folderName) {
   const folders = getFoldersForTeam(teamId);
-  const folder = { id: `folder-${Date.now()}`, name: folderName.trim() };
+  const folder = { id: `folder-${Date.now()}`, name: String(folderName || "").trim() };
   const updated = [...folders, folder];
   saveFoldersForTeam(teamId, updated);
   logPersistence("playbook addFolderForTeam", {
@@ -143,26 +252,41 @@ export function addFolderForTeam(teamId, folderName) {
  */
 export function savePlayToPlaybook({ teamId, folderId, playName, thumbnail, playData, notes }) {
   const playbook = loadPlaybook();
-  const entry = {
-    id: `play-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-    teamId,
-    folderId,
-    playName: playName.trim(),
-    thumbnail: thumbnail || null,
-    playData,
-    notes: notes?.trim() || "",
-    savedAt: new Date().toISOString(),
-  };
+  const generatedId = `play-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  const nowIso = new Date().toISOString();
+  const entry = normalizePlayRecord(
+    {
+      id: generatedId,
+      teamId,
+      folderId,
+      title: String(playName || "").trim(),
+      thumbnail: thumbnail || null,
+      playData,
+      notes: notes?.trim() || "",
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    },
+    {
+      fallbackId: generatedId,
+      defaultToNowForNotes: true,
+      nowIso,
+    }
+  );
+
+  if (!entry) {
+    throw new Error("Failed to normalize playbook play");
+  }
+
   playbook.plays.push(entry);
   savePlaybook(playbook);
   logPersistence("playbook savePlayToPlaybook", {
-    teamId,
-    folderId,
+    teamId: entry.teamId,
+    folderId: entry.folderId,
     playId: entry.id,
-    playName: entry.playName,
-    hasThumbnail: Boolean(thumbnail),
+    playName: entry.title,
+    hasThumbnail: Boolean(entry.thumbnail),
     notesLength: entry.notes.length,
-    summary: summarizePlayData(playData),
+    summary: summarizePlayData(entry.playData),
   });
   return entry;
 }

@@ -3,39 +3,36 @@ import {
   summarizePlayData,
   summarizePlaysCollection,
 } from "./playPersistenceDebugLogger";
+import { normalizePlayRecord } from "./dataContracts";
 
 const STORAGE_KEY = "coachable_app_plays";
 const FOLDERS_KEY = "coachable_app_folders";
 
 const isNonEmptyString = (value) => typeof value === "string" && value.length > 0;
-const toTrimmedString = (value) => (typeof value === "string" ? value.trim() : "");
 
-const normalizeNotesPayload = ({
-  notes,
-  notesAuthorName,
-  notesUpdatedAt,
-  fallbackTimestamp = null,
-  defaultToNow = false,
-}) => {
-  const normalizedNotes = toTrimmedString(notes);
-  if (!normalizedNotes) {
-    return {
-      notes: "",
-      notesAuthorName: "",
-      notesUpdatedAt: null,
-    };
-  }
-  const normalizedTimestamp =
-    (typeof notesUpdatedAt === "string" && notesUpdatedAt) ||
-    fallbackTimestamp ||
-    (defaultToNow ? new Date().toISOString() : null);
+const sameStringArray = (a, b) =>
+  Array.isArray(a) &&
+  Array.isArray(b) &&
+  a.length === b.length &&
+  a.every((value, index) => value === b[index]);
 
-  return {
-    notes: normalizedNotes,
-    notesAuthorName: toTrimmedString(notesAuthorName),
-    notesUpdatedAt: normalizedTimestamp,
-  };
-};
+const hasSamePlayContract = (raw, normalized) =>
+  Boolean(raw) &&
+  raw.id === normalized.id &&
+  raw.title === normalized.title &&
+  raw.playName === normalized.playName &&
+  (raw.teamId ?? null) === (normalized.teamId ?? null) &&
+  (raw.folderId ?? null) === (normalized.folderId ?? null) &&
+  sameStringArray(raw.tags, normalized.tags) &&
+  raw.playData === normalized.playData &&
+  (raw.thumbnail ?? null) === (normalized.thumbnail ?? null) &&
+  (raw.notes ?? "") === normalized.notes &&
+  (raw.notesAuthorName ?? "") === normalized.notesAuthorName &&
+  (raw.notesUpdatedAt ?? null) === normalized.notesUpdatedAt &&
+  Boolean(raw.favorited) === normalized.favorited &&
+  raw.createdAt === normalized.createdAt &&
+  raw.updatedAt === normalized.updatedAt &&
+  raw.savedAt === normalized.savedAt;
 
 /** Load all saved plays from localStorage. */
 export function loadAppPlays() {
@@ -52,25 +49,17 @@ export function loadAppPlays() {
         return keep;
       })
       .map((play) => {
-        const normalizedNotes = normalizeNotesPayload({
-          notes: play.notes,
-          notesAuthorName: play.notesAuthorName,
-          notesUpdatedAt: play.notesUpdatedAt,
-          fallbackTimestamp:
-            (typeof play.updatedAt === "string" && play.updatedAt) ||
-            (typeof play.createdAt === "string" && play.createdAt) ||
-            null,
-        });
-        const nextPlay = { ...play, ...normalizedNotes };
-        if (
-          play.notes !== nextPlay.notes ||
-          play.notesAuthorName !== nextPlay.notesAuthorName ||
-          play.notesUpdatedAt !== nextPlay.notesUpdatedAt
-        ) {
+        const nextPlay = normalizePlayRecord(play, { defaultToNowForNotes: false });
+        if (!nextPlay) {
+          normalized = true;
+          return null;
+        }
+        if (!hasSamePlayContract(play, nextPlay)) {
           normalized = true;
         }
         return nextPlay;
-      });
+      })
+      .filter(Boolean);
 
     if (normalized) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(safeParsed));
@@ -95,23 +84,29 @@ export function saveAppPlay({
   notesUpdatedAt = null,
 }) {
   const plays = loadAppPlays();
+  const nowIso = new Date().toISOString();
   const id = requestedId || "p-" + Date.now();
-  const normalizedNotes = normalizeNotesPayload({
-    notes,
-    notesAuthorName,
-    notesUpdatedAt,
-    defaultToNow: true,
-  });
-  const entry = {
-    id,
-    title: playName || "Untitled",
-    tags,
-    playData,
-    ...normalizedNotes,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    favorited: false,
-  };
+
+  const entry = normalizePlayRecord(
+    {
+      id,
+      title: playName || "Untitled",
+      tags,
+      playData,
+      notes,
+      notesAuthorName,
+      notesUpdatedAt,
+      favorited: false,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    },
+    { fallbackId: id, defaultToNowForNotes: true, nowIso }
+  );
+
+  if (!entry) {
+    throw new Error("Failed to create play record");
+  }
+
   plays.unshift(entry);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(plays));
   logPersistence("saveAppPlay inserted", {
@@ -132,33 +127,41 @@ export function updateAppPlay(playId, updates = {}) {
     logPersistence("updateAppPlay skipped missingPlay", { playId });
     return null;
   }
+
   const existingPlay = plays[idx];
   const hasNotes = Object.prototype.hasOwnProperty.call(updates, "notes");
   const hasNotesAuthorName = Object.prototype.hasOwnProperty.call(updates, "notesAuthorName");
   const hasNotesUpdatedAt = Object.prototype.hasOwnProperty.call(updates, "notesUpdatedAt");
   const hasAnyNotesUpdate = hasNotes || hasNotesAuthorName || hasNotesUpdatedAt;
-  const normalizedNotes = hasAnyNotesUpdate
-    ? normalizeNotesPayload({
-      notes: hasNotes ? updates.notes : existingPlay.notes,
-      notesAuthorName: hasNotesAuthorName
-        ? updates.notesAuthorName
-        : existingPlay.notesAuthorName,
-      notesUpdatedAt: hasNotesUpdatedAt ? updates.notesUpdatedAt : existingPlay.notesUpdatedAt,
-      fallbackTimestamp:
-          (typeof existingPlay.notesUpdatedAt === "string" && existingPlay.notesUpdatedAt) ||
-          (typeof existingPlay.updatedAt === "string" && existingPlay.updatedAt) ||
-          (typeof existingPlay.createdAt === "string" && existingPlay.createdAt) ||
-          null,
-      defaultToNow: true,
-    })
-    : {};
+  const nowIso = new Date().toISOString();
 
-  plays[idx] = {
-    ...existingPlay,
-    ...updates,
-    ...normalizedNotes,
-    updatedAt: new Date().toISOString(),
-  };
+  const nextPlay = normalizePlayRecord(
+    {
+      ...existingPlay,
+      ...updates,
+      id: existingPlay.id,
+      createdAt: existingPlay.createdAt,
+      updatedAt: nowIso,
+    },
+    {
+      fallbackId: existingPlay.id,
+      defaultToNowForNotes: hasAnyNotesUpdate,
+      nowIso,
+    }
+  );
+
+  if (!nextPlay) {
+    logPersistence("updateAppPlay failed normalize", { playId });
+    return null;
+  }
+
+  if (!hasAnyNotesUpdate) {
+    nextPlay.notes = existingPlay.notes || "";
+    nextPlay.notesAuthorName = existingPlay.notesAuthorName || "";
+    nextPlay.notesUpdatedAt = existingPlay.notesUpdatedAt || null;
+  }
+
+  plays[idx] = nextPlay;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(plays));
   logPersistence("updateAppPlay updated", {
     playId,
@@ -181,23 +184,18 @@ export function deleteAppPlay(playId) {
 
 /** Save all plays (bulk update). */
 export function saveAllAppPlays(plays) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(plays));
-  logPersistence("saveAllAppPlays replaced", summarizePlaysCollection(plays));
+  const normalizedPlays = (Array.isArray(plays) ? plays : [])
+    .map((play) => normalizePlayRecord(play, { defaultToNowForNotes: false }))
+    .filter(Boolean);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedPlays));
+  logPersistence("saveAllAppPlays replaced", summarizePlaysCollection(normalizedPlays));
 }
 
 const normalizeFolderPlayIds = (playIds, validPlayIds) => {
-  const uniqueIds = Array.from(
-    new Set((Array.isArray(playIds) ? playIds : []).filter(isNonEmptyString))
-  );
+  const uniqueIds = Array.from(new Set((Array.isArray(playIds) ? playIds : []).filter(isNonEmptyString)));
   if (!validPlayIds) return uniqueIds;
   return uniqueIds.filter((id) => validPlayIds.has(id));
 };
-
-const sameStringArray = (a, b) =>
-  Array.isArray(a) &&
-  Array.isArray(b) &&
-  a.length === b.length &&
-  a.every((value, index) => value === b[index]);
 
 /** Load all folder hierarchy. */
 export function loadFolders() {
