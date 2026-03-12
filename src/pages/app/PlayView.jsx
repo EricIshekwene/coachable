@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { FiArrowLeft, FiEdit2, FiClock, FiTag, FiExternalLink } from "react-icons/fi";
-import { loadAppPlays, updateAppPlay } from "../../utils/appPlaysStorage";
+import { FiArrowLeft, FiEdit2, FiClock, FiTag, FiExternalLink, FiLoader } from "react-icons/fi";
+import { fetchPlay, updatePlay } from "../../utils/apiPlays";
 import PlayPreviewCard from "../../components/PlayPreviewCard";
 
 const MOBILE_BREAKPOINT = 768;
@@ -51,25 +51,26 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
   const effectiveViewOnly = viewOnly || playerViewMode;
   const canCoachEdit = user?.role === "coach" && !effectiveViewOnly && !isMobile;
   const noteInputRef = useRef(null);
+  const teamId = user?.teamId;
 
-  const getPlayById = useCallback(() => {
-    const plays = loadAppPlays();
-    return plays.find((p) => p.id === playId) || null;
-  }, [playId]);
-  const [play, setPlay] = useState(() => getPlayById());
+  const [play, setPlay] = useState(null);
+  const [loadingPlay, setLoadingPlay] = useState(true);
   const [editingNotes, setEditingNotes] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
   const [savingNote, setSavingNote] = useState(false);
   const [noteError, setNoteError] = useState("");
 
   useEffect(() => {
-    const nextPlay = getPlayById();
-    setPlay(nextPlay);
-    setEditingNotes(false);
-    setSavingNote(false);
-    setNoteError("");
-    setNoteDraft(String(nextPlay?.notes || ""));
-  }, [getPlayById]);
+    if (!teamId || !playId) { setLoadingPlay(false); return; }
+    setLoadingPlay(true);
+    fetchPlay(teamId, playId)
+      .then((p) => {
+        setPlay(p);
+        setNoteDraft(String(p?.notes || ""));
+      })
+      .catch(() => setPlay(null))
+      .finally(() => setLoadingPlay(false));
+  }, [teamId, playId]);
 
   useEffect(() => {
     if (editingNotes) noteInputRef.current?.focus();
@@ -95,8 +96,8 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
     setNoteError("");
   };
 
-  const handleSaveNote = useCallback(() => {
-    if (!play || !canSaveNote) return;
+  const handleSaveNote = useCallback(async () => {
+    if (!play || !canSaveNote || !teamId) return;
     setSavingNote(true);
     setNoteError("");
     try {
@@ -104,15 +105,10 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
       const noteAuthor = trimmedNote
         ? String(user?.name || user?.email || "Coach").trim()
         : "";
-      const noteUpdatedAt = trimmedNote ? new Date().toISOString() : null;
-      const updated = updateAppPlay(play.id, {
+      const updated = await updatePlay(teamId, play.id, {
         notes: trimmedNote,
         notesAuthorName: noteAuthor,
-        notesUpdatedAt: noteUpdatedAt,
       });
-      if (!updated) {
-        throw new Error("Play could not be updated.");
-      }
       setPlay(updated);
       setEditingNotes(false);
       setNoteDraft(updated.notes || "");
@@ -121,7 +117,11 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
     } finally {
       setSavingNote(false);
     }
-  }, [play, noteDraft, user, canSaveNote]);
+  }, [play, noteDraft, user, canSaveNote, teamId]);
+
+  if (loadingPlay) {
+    return (<div className="flex items-center justify-center py-32"><FiLoader className="animate-spin text-2xl text-BrandGray2" /></div>);
+  }
 
   if (!play) {
     return (

@@ -1,71 +1,58 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useMessagePopup } from "../components/messaging/useMessagePopup";
 import MessagePopup from "../components/MessagePopup/MessagePopup";
 import Slate from "../features/slate/Slate";
 import MobileViewOnlyGate from "../components/MobileViewOnlyGate";
-import { loadAppPlays, updateAppPlay } from "../utils/appPlaysStorage";
+import { useAuth } from "../context/AuthContext";
+import { fetchPlay, updatePlay } from "../utils/apiPlays";
 import useThemeColor from "../utils/useThemeColor";
-import {
-  log as logPersistence,
-  summarizePlayData,
-} from "../utils/playPersistenceDebugLogger";
 
 export default function PlayEditPage() {
   const { playId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const teamId = user?.teamId;
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
   const [ready, setReady] = useState(false);
+  const [existingPlay, setExistingPlay] = useState(null);
+  const [loadingPlay, setLoadingPlay] = useState(true);
   useThemeColor("#121212");
 
-  const existingPlay = useMemo(() => {
-    const plays = loadAppPlays();
-    const play = plays.find((p) => p.id === playId) || null;
-    logPersistence("PlayEditPage existingPlay resolved", {
-      playId,
-      found: Boolean(play),
-      title: play?.title || null,
-      summary: summarizePlayData(play?.playData),
-    });
-    return play;
-  }, [playId]);
+  useEffect(() => {
+    if (!teamId || !playId) { setLoadingPlay(false); return; }
+    setLoadingPlay(true);
+    fetchPlay(teamId, playId)
+      .then((p) => setExistingPlay(p))
+      .catch(() => setExistingPlay(null))
+      .finally(() => setLoadingPlay(false));
+  }, [teamId, playId]);
 
   const handlePlayDataChange = useCallback(
-    (playData, playName, options = {}) => {
-      const source = options?.source || "unspecified";
-      const plays = loadAppPlays();
-      const play = plays.find((p) => p.id === playId);
-      if (!play) {
-        logPersistence("PlayEditPage onPlayDataChange skipped missingPlay", {
-          playId,
-          source,
-          title: playName || null,
-          summary: summarizePlayData(playData),
-        });
-        return;
-      }
-      logPersistence("PlayEditPage onPlayDataChange start", {
-        playId,
-        source,
-        nextTitle: playName || "Untitled",
-        summary: summarizePlayData(playData),
-      });
-      updateAppPlay(playId, {
+    (playData, playName) => {
+      if (!teamId || !playId) return;
+      updatePlay(teamId, playId, {
         playData,
         title: playName || "Untitled",
-        updatedAt: new Date().toISOString(),
-      });
-      logPersistence("PlayEditPage onPlayDataChange complete", {
-        playId,
-        source,
-      });
+      }).catch(() => {});
     },
-    [playId]
+    [teamId, playId]
   );
 
   const handleNavigateHome = useCallback(() => {
     navigate("/app/plays");
   }, [navigate]);
+
+  if (loadingPlay) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-[#121212]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-10 w-10 rounded-full border-[3px] border-[#FF7A18]/30 border-t-[#FF7A18] animate-spin" />
+          <p className="text-sm font-DmSans text-[#9AA0A6]">Loading editor...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full bg-[#121212] flex flex-row justify-between relative overflow-hidden" style={{ height: "100dvh" }}>

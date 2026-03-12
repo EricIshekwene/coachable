@@ -11,11 +11,12 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const { signup } = useAuth();
   const { showMessage } = useAppMessage();
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const trimmedName = name.trim();
     const trimmedEmail = email.trim();
@@ -47,8 +48,15 @@ export default function Signup() {
       return;
     }
 
-    signup(trimmedName, trimmedEmail);
-    navigate("/onboarding");
+    setSubmitting(true);
+    try {
+      await signup(trimmedName, trimmedEmail, trimmedPassword);
+      navigate("/onboarding");
+    } catch (err) {
+      showMessage("Signup failed", err.message || "Could not create account.", "error");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const inputClass =
@@ -115,9 +123,10 @@ export default function Signup() {
 
             <button
               type="submit"
-              className="mt-2 w-full rounded-lg bg-BrandBlack py-2.5 text-sm font-semibold text-white transition hover:bg-BrandBlack2 active:scale-[0.98]"
+              disabled={submitting}
+              className="mt-2 w-full rounded-lg bg-BrandBlack py-2.5 text-sm font-semibold text-white transition hover:bg-BrandBlack2 active:scale-[0.98] disabled:opacity-50"
             >
-              Create account
+              {submitting ? "Creating account..." : "Create account"}
             </button>
           </form>
 

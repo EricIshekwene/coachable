@@ -1,16 +1,23 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useAppMessage } from "../../context/AppMessageContext";
 import { FiCopy, FiCheck, FiShield, FiUser, FiMail, FiMessageSquare, FiX, FiSearch } from "react-icons/fi";
 import { isValidEmail, isValidPhone } from "../../utils/inputValidation";
-
-const MOCK_INVITE_CODE = "RVSD-2024-XKCD";
+import { apiFetch } from "../../utils/api";
 
 export default function Team() {
   const { user, teamMembers } = useAuth();
   const { showMessage } = useAppMessage();
   const isCoach = user?.role === "coach";
   const [copied, setCopied] = useState(false);
+  const [inviteCode, setInviteCode] = useState("");
+
+  useEffect(() => {
+    if (!isCoach || !user?.teamId) return;
+    apiFetch(`/teams/${user.teamId}/invite-code`)
+      .then((data) => setInviteCode(data.inviteCode || ""))
+      .catch(() => {});
+  }, [isCoach, user?.teamId]);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteMethod, setInviteMethod] = useState("email");
   const [inviteContact, setInviteContact] = useState("");
@@ -20,7 +27,7 @@ export default function Team() {
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(MOCK_INVITE_CODE);
+      await navigator.clipboard.writeText(inviteCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       showMessage("Invite code copied", "Share it with players to join your team.", "success");
@@ -114,7 +121,7 @@ export default function Team() {
           {/* Invite code row */}
           <div className="mt-3 flex items-center gap-2">
             <div className="flex-1 rounded-lg border border-BrandGray2/30 bg-BrandBlack px-3.5 py-2.5 font-mono text-sm tracking-wider text-BrandOrange">
-              {MOCK_INVITE_CODE}
+              {inviteCode}
             </div>
             <button
               onClick={handleCopy}

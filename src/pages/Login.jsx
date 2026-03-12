@@ -7,15 +7,16 @@ import whiteLogo from "../assets/logos/White_Full_Coachable.png";
 import { isValidEmail } from "../utils/inputValidation";
 
 export default function Login() {
-  const [email, setEmail] = useState("coach@coachable.app");
-  const [password, setPassword] = useState("password");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const { login } = useAuth();
   const { showMessage } = useAppMessage();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get("returnTo") || "/app/plays";
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
@@ -30,8 +31,15 @@ export default function Login() {
       return;
     }
 
-    const user = login(trimmedEmail, trimmedPassword);
-    navigate(user.onboarded ? returnTo : "/onboarding");
+    setSubmitting(true);
+    try {
+      const user = await login(trimmedEmail, trimmedPassword);
+      navigate(user.onboarded ? returnTo : "/onboarding");
+    } catch (err) {
+      showMessage("Login failed", err.message || "Invalid email or password.", "error");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const inputClass =
@@ -81,9 +89,10 @@ export default function Login() {
 
             <button
               type="submit"
-              className="mt-2 w-full rounded-lg bg-BrandBlack py-2.5 text-sm font-semibold text-white transition hover:bg-BrandBlack2 active:scale-[0.98]"
+              disabled={submitting}
+              className="mt-2 w-full rounded-lg bg-BrandBlack py-2.5 text-sm font-semibold text-white transition hover:bg-BrandBlack2 active:scale-[0.98] disabled:opacity-50"
             >
-              Sign in
+              {submitting ? "Signing in..." : "Sign in"}
             </button>
           </form>
 

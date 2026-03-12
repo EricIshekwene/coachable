@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import "./index.css";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import Slate from "./features/slate/Slate";
 import MessagePopup from "./components/MessagePopup/MessagePopup";
 import { useMessagePopup } from "./components/messaging/useMessagePopup";
@@ -43,6 +43,31 @@ function SlateRoot() {
   );
 }
 
+function RequireAuth({ children }) {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-BrandBlack">
+        <div className="h-10 w-10 rounded-full border-[3px] border-[#FF7A18]/30 border-t-[#FF7A18] animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to={`/login?returnTo=${encodeURIComponent(location.pathname)}`} replace />;
+  }
+
+  return children;
+}
+
+function RequireOnboarded({ children }) {
+  const { user } = useAuth();
+  if (user && !user.onboarded) return <Navigate to="/onboarding" replace />;
+  return children;
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -50,17 +75,17 @@ function AppRoutes() {
       <Route path="/" element={<Landing />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/onboarding" element={<Onboarding />} />
+      <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
 
-      {/* Standalone slate editor */}
+      {/* Standalone slate editor (no auth required) */}
       <Route path="/slate" element={<SlateRoot />} />
 
       {/* Full-screen play editor (outside AppLayout — no nav chrome) */}
-      <Route path="/app/plays/:playId/edit" element={<PlayEditPage />} />
-      <Route path="/app/plays/:playId/view" element={<PlayViewOnlyPage />} />
+      <Route path="/app/plays/:playId/edit" element={<RequireAuth><RequireOnboarded><PlayEditPage /></RequireOnboarded></RequireAuth>} />
+      <Route path="/app/plays/:playId/view" element={<RequireAuth><RequireOnboarded><PlayViewOnlyPage /></RequireOnboarded></RequireAuth>} />
 
       {/* App shell */}
-      <Route path="/app" element={<AppLayout />}>
+      <Route path="/app" element={<RequireAuth><RequireOnboarded><AppLayout /></RequireOnboarded></RequireAuth>}>
         <Route index element={<Navigate to="plays" replace />} />
         <Route path="plays" element={<Plays />} />
         <Route path="plays/new" element={<PlayNew />} />

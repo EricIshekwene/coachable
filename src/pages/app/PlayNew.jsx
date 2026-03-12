@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiX } from "react-icons/fi";
 import { useAppMessage } from "../../context/AppMessageContext";
-import { saveAppPlay } from "../../utils/appPlaysStorage";
+import { useAuth } from "../../context/AuthContext";
+import { createPlay } from "../../utils/apiPlays";
 
 const PRESET_TAGS = [
   // Phase of Play
@@ -33,9 +34,11 @@ export default function PlayNew() {
   const [tagInput, setTagInput] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef(null);
   const navigate = useNavigate();
   const { showMessage } = useAppMessage();
+  const { user } = useAuth();
 
   const suggestions = tagInput.trim()
     ? PRESET_TAGS.filter(
@@ -111,7 +114,7 @@ export default function PlayNew() {
     }
   };
 
-  const handleCreate = (e) => {
+  const handleCreate = async (e) => {
     e.preventDefault();
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
@@ -127,15 +130,18 @@ export default function PlayNew() {
       return;
     }
 
+    setSubmitting(true);
     try {
-      const entry = saveAppPlay({
-        playName: trimmedTitle,
-        playData: null,
+      const entry = await createPlay(user.teamId, {
+        title: trimmedTitle,
         tags,
+        playData: null,
       });
       navigate(`/app/plays/${entry.id}/edit`);
     } catch {
       showMessage("Save failed", "Could not create play. Please try again.", "error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -242,7 +248,7 @@ export default function PlayNew() {
 
         <button
           type="submit"
-          disabled={!title.trim()}
+          disabled={!title.trim() || submitting}
           className="mt-2 flex w-full items-center justify-center rounded-lg bg-BrandOrange py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Create & Open Editor

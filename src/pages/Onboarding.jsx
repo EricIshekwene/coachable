@@ -39,7 +39,9 @@ export default function Onboarding() {
         : inviteCode.trim().length > 0
       : true;
 
-  const handleFinish = () => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleFinish = async () => {
     if (teamAction === "create") {
       const trimmedTeamName = teamName.trim();
       if (!trimmedTeamName) {
@@ -70,14 +72,21 @@ export default function Onboarding() {
     }
 
     const finalRole = teamAction === "create" ? "coach" : role;
-    completeOnboarding({
-      teamName: teamName.trim(),
-      teamAction,
-      inviteCode: inviteCode.trim(),
-      role: finalRole,
-      sport,
-    });
-    navigate("/app/plays");
+    setSubmitting(true);
+    try {
+      await completeOnboarding({
+        teamName: teamName.trim(),
+        teamAction,
+        inviteCode: inviteCode.trim(),
+        role: finalRole,
+        sport,
+      });
+      navigate("/app/plays");
+    } catch (err) {
+      showMessage("Setup failed", err.message || "Could not complete setup.", "error");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleNext = () => {
@@ -266,7 +275,7 @@ export default function Onboarding() {
             {step === 0 ? (
               <button
                 type="button"
-                disabled={!canAdvance}
+                disabled={!canAdvance || submitting}
                 onClick={handleNext}
                 className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-BrandBlack py-2.5 text-sm font-semibold text-white transition hover:bg-BrandBlack2 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
               >
@@ -276,8 +285,9 @@ export default function Onboarding() {
             ) : (
               <button
                 type="button"
+                disabled={submitting}
                 onClick={handleFinish}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-BrandOrange py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.98]"
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-BrandOrange py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40"
               >
                 Finish setup
                 <FiArrowRight className="text-sm" />

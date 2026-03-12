@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { apiFetch, setToken, clearToken, getToken } from "../utils/api";
 
 const AuthContext = createContext(null);
 
@@ -15,230 +16,266 @@ const DEFAULT_ASSISTANT_PERMISSIONS = {
   canSendInvites: false,
 };
 
-const DEFAULT_SEASON_YEAR = String(new Date().getFullYear());
+/**
+ * Map a backend /auth/me or /auth/login response into the flat user shape
+ * the rest of the frontend expects.
+ */
+function mapApiUserToLocal(data) {
+  const team = data.team || {};
+  const prefs = data.preferences || {};
+  const assistPerms = data.assistantPermissions || {};
 
-const MOCK_USERS = {
-  coach: {
-    id: "u1",
-    name: "Coach Williams",
-    email: "coach@coachable.app",
-    role: "coach",
-    teamId: "t1",
-    teamName: "Riverside Rugby",
-    sport: "rugby",
-    seasonYear: DEFAULT_SEASON_YEAR,
-    teamLogo: "",
-    ownerId: "u1",
-    onboarded: true,
-  },
-  player: {
-    id: "u2",
-    name: "Jake Miller",
-    email: "jake@coachable.app",
-    role: "player",
-    teamId: "t1",
-    teamName: "Riverside Rugby",
-    sport: "rugby",
-    seasonYear: DEFAULT_SEASON_YEAR,
-    teamLogo: "",
-    ownerId: "u1",
-    onboarded: true,
-  },
-};
-
-const DEFAULT_TEAM_MEMBERS = [
-  { id: "u1", name: "Coach Williams", role: "coach", email: "coach@coachable.app" },
-  { id: "u2", name: "Jake Miller", role: "player", email: "jake@coachable.app" },
-  { id: "u3", name: "Sam Torres", role: "player", email: "sam@coachable.app" },
-  { id: "u4", name: "Alex Chen", role: "player", email: "alex@coachable.app" },
-];
-
-function withDefaultUserSettings(profile) {
   return {
-    ...profile,
-    seasonYear: profile.seasonYear || DEFAULT_SEASON_YEAR,
-    teamLogo: profile.teamLogo || "",
-    ownerId: profile.ownerId || profile.id,
+    id: data.id,
+    name: data.name,
+    email: data.email,
+    role: data.role || null,
+    teamId: team.id || null,
+    teamName: team.name || null,
+    sport: team.sport || "",
+    seasonYear: team.seasonYear || String(new Date().getFullYear()),
+    teamLogo: team.logo || "",
+    ownerId: team.ownerId || null,
+    onboarded: data.onboarded || false,
     notifications: {
       ...DEFAULT_NOTIFICATION_PREFERENCES,
-      ...(profile.notifications || {}),
+      playersJoinTeam: prefs.notifyPlayersJoin ?? true,
+      coachesMakeChanges: prefs.notifyCoachesChange ?? true,
+      inviteAccepted: prefs.notifyInviteAccepted ?? true,
     },
     assistantPermissions: {
       ...DEFAULT_ASSISTANT_PERMISSIONS,
-      ...(profile.assistantPermissions || {}),
+      ...assistPerms,
     },
   };
 }
 
-function updateMemberInList(members, memberId, updates) {
-  return members.map((member) => (member.id === memberId ? { ...member, ...updates } : member));
-}
-
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(withDefaultUserSettings(MOCK_USERS.coach));
-  const [teamMembers, setTeamMembers] = useState(DEFAULT_TEAM_MEMBERS);
+  const [user, setUser] = useState(null);
+  const [teamMembers, setTeamMembers] = useState([]);
   const [pendingEmailChange, setPendingEmailChange] = useState(null);
   const [playerViewMode, setPlayerViewMode] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const login = (email) => {
-    // Mock: coach email picks coach profile, everything else picks player profile
-    const profile = email.includes("coach") ? MOCK_USERS.coach : MOCK_USERS.player;
-    const nextUser = withDefaultUserSettings({ ...profile, email });
+  // On mount, try to restore session from stored JWT
+  useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    apiFetch("/auth/me")
+      .then((data) => {
+        setUser(mapApiUserToLocal(data));
+      })
+      .catch(() => {
+        clearToken();
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
-    setUser(nextUser);
-    setTeamMembers(DEFAULT_TEAM_MEMBERS);
-    setPendingEmailChange(null);
+  // When user changes and has a team, fetch team members
+  useEffect(() => {
+    if (!user?.teamId) {
+      setTeamMembers([]);
+      return;
+    }
+    apiFetch(`/teams/${user.teamId}/members`)
+      .then((data) => {
+        setTeamMembers(
+          (data.members || []).map((m) => ({
+            id: m.id,
+            name: m.name,
+            role: m.role,
+            email: m.email,
+          }))
+        );
+      })
+      .catch(() => setTeamMembers([]));
+  }, [user?.teamId]);
 
-    return nextUser;
-  };
-
-  const signup = (name, email) => {
-    const nextUser = withDefaultUserSettings({
-      id: "u-new",
-      name,
-      email,
-      role: null,
-      teamId: null,
-      teamName: null,
-      sport: "",
-      onboarded: false,
-      ownerId: null,
+  const login = useCallback(async (email, password) => {
+    const data = await apiFetch("/auth/login", {
+      method: "POST",
+      body: { email, password },
     });
+    setToken(data.token);
+    const localUser = mapApiUserToLocal(data);
+    setUser(localUser);
+    return localUser;
+  }, []);
 
-    setUser(nextUser);
-    setTeamMembers([{ id: nextUser.id, name: nextUser.name, role: "pending", email: nextUser.email }]);
-    setPendingEmailChange(null);
-  };
+  const signup = useCallback(async (name, email, password) => {
+    const data = await apiFetch("/auth/signup", {
+      method: "POST",
+      body: { name, email, password },
+    });
+    setToken(data.token);
+    const localUser = mapApiUserToLocal(data);
+    setUser(localUser);
+    return localUser;
+  }, []);
 
-  const completeOnboarding = ({ teamName, teamAction, role, sport }) => {
-    setUser((prev) =>
-      withDefaultUserSettings({
-        ...prev,
-        role,
-        teamId: teamAction === "create" ? "t-" + Date.now() : "t1",
-        teamName: teamAction === "create" ? teamName : "Joined Team",
-        sport,
-        ownerId: teamAction === "create" ? prev.id : "u1",
-        onboarded: true,
-      }),
-    );
-
-    setTeamMembers((prevMembers) => {
+  const completeOnboarding = useCallback(
+    async ({ teamName, teamAction, inviteCode, role, sport }) => {
       if (teamAction === "create") {
-        return [{ id: user?.id || "u-new", name: user?.name || "Coach", role, email: user?.email || "" }];
-      }
-
-      const memberExists = prevMembers.some((member) => member.id === user?.id);
-      if (memberExists) {
-        return updateMemberInList(prevMembers, user?.id, {
-          role,
-          email: user?.email || "",
-          name: user?.name || "",
+        const data = await apiFetch("/onboarding/create-team", {
+          method: "POST",
+          body: { name: teamName, sport, role: "coach" },
         });
+        const team = data.team || {};
+        setUser((prev) => ({
+          ...prev,
+          role: "coach",
+          teamId: team.id,
+          teamName: team.name,
+          sport: team.sport || "",
+          ownerId: prev.id,
+          onboarded: true,
+        }));
+      } else {
+        const data = await apiFetch("/onboarding/join-team", {
+          method: "POST",
+          body: { inviteCode, role: role || "player" },
+        });
+        const team = data.team || {};
+        setUser((prev) => ({
+          ...prev,
+          role: role || "player",
+          teamId: team.id,
+          teamName: team.name,
+          sport: team.sport || "",
+          ownerId: team.ownerId || null,
+          onboarded: true,
+        }));
       }
+    },
+    []
+  );
 
-      return [
-        ...DEFAULT_TEAM_MEMBERS,
-        { id: user?.id || "u-new", name: user?.name || "New Member", role, email: user?.email || "" },
-      ];
-    });
-  };
-
-  const updateProfile = ({ name }) => {
+  const updateProfile = useCallback(async ({ name }) => {
     if (!name?.trim()) return false;
-
     const trimmedName = name.trim();
-    const userId = user?.id;
-
-    setUser((prev) => ({ ...prev, name: trimmedName }));
-    if (userId) {
-      setTeamMembers((prev) => updateMemberInList(prev, userId, { name: trimmedName }));
-    }
-
-    return true;
-  };
-
-  const requestEmailChange = (newEmail) => {
-    if (!newEmail?.trim()) return false;
-
-    const trimmedEmail = newEmail.trim().toLowerCase();
-    if (trimmedEmail === user?.email) return false;
-
-    setPendingEmailChange({
-      currentEmail: user?.email || "",
-      nextEmail: trimmedEmail,
-      requestedAt: Date.now(),
+    await apiFetch("/users/me", {
+      method: "PATCH",
+      body: { name: trimmedName },
     });
-
+    setUser((prev) => ({ ...prev, name: trimmedName }));
+    setTeamMembers((prev) =>
+      prev.map((m) => (m.id === user?.id ? { ...m, name: trimmedName } : m))
+    );
     return true;
-  };
+  }, [user?.id]);
 
-  const confirmEmailChange = () => {
+  const requestEmailChange = useCallback(
+    (newEmail) => {
+      if (!newEmail?.trim()) return false;
+      const trimmedEmail = newEmail.trim().toLowerCase();
+      if (trimmedEmail === user?.email) return false;
+      // Email change requires Resend setup — stub for now
+      setPendingEmailChange({
+        currentEmail: user?.email || "",
+        nextEmail: trimmedEmail,
+        requestedAt: Date.now(),
+      });
+      return true;
+    },
+    [user?.email]
+  );
+
+  const confirmEmailChange = useCallback(() => {
     if (!pendingEmailChange?.nextEmail) return false;
-
-    const userId = user?.id;
     const nextEmail = pendingEmailChange.nextEmail;
-
     setUser((prev) => ({ ...prev, email: nextEmail }));
-    if (userId) {
-      setTeamMembers((prev) => updateMemberInList(prev, userId, { email: nextEmail }));
-    }
+    setTeamMembers((prev) =>
+      prev.map((m) => (m.id === user?.id ? { ...m, email: nextEmail } : m))
+    );
     setPendingEmailChange(null);
-
     return true;
-  };
+  }, [pendingEmailChange, user?.id]);
 
-  const cancelEmailChange = () => setPendingEmailChange(null);
+  const cancelEmailChange = useCallback(() => setPendingEmailChange(null), []);
 
-  const updateNotificationPreferences = (preferences) => {
-    setUser((prev) => ({
-      ...prev,
-      notifications: {
-        ...prev.notifications,
-        ...preferences,
-      },
-    }));
-  };
+  const updateNotificationPreferences = useCallback(
+    async (preferences) => {
+      if (!user?.teamId) return;
+      const body = {};
+      if (preferences.playersJoinTeam !== undefined) body.notifyPlayersJoin = preferences.playersJoinTeam;
+      if (preferences.coachesMakeChanges !== undefined) body.notifyCoachesChange = preferences.coachesMakeChanges;
+      if (preferences.inviteAccepted !== undefined) body.notifyInviteAccepted = preferences.inviteAccepted;
+      await apiFetch("/users/me/preferences", { method: "PATCH", body }).catch(() => {});
+      setUser((prev) => ({
+        ...prev,
+        notifications: { ...prev.notifications, ...preferences },
+      }));
+    },
+    [user?.teamId]
+  );
 
-  const updateAssistantPermissions = (permissions) => {
-    setUser((prev) => ({
-      ...prev,
-      assistantPermissions: {
-        ...prev.assistantPermissions,
-        ...permissions,
-      },
-    }));
-  };
+  const updateAssistantPermissions = useCallback(
+    async (permissions) => {
+      if (!user?.teamId) return;
+      await apiFetch(`/teams/${user.teamId}/settings`, {
+        method: "PATCH",
+        body: { assistantPermissions: permissions },
+      }).catch(() => {});
+      setUser((prev) => ({
+        ...prev,
+        assistantPermissions: { ...prev.assistantPermissions, ...permissions },
+      }));
+    },
+    [user?.teamId]
+  );
 
-  const updateTeamDefaults = ({ teamName, sport, teamLogo, seasonYear }) => {
-    setUser((prev) => ({
-      ...prev,
-      teamName: teamName?.trim() ? teamName.trim() : prev.teamName,
-      sport: sport?.trim() ? sport.trim().toLowerCase() : prev.sport,
-      teamLogo: teamLogo?.trim() ? teamLogo.trim() : "",
-      seasonYear: seasonYear?.trim() ? seasonYear.trim() : prev.seasonYear,
-    }));
-  };
+  const updateTeamDefaults = useCallback(
+    async ({ teamName, sport, teamLogo, seasonYear }) => {
+      if (!user?.teamId) return;
+      const body = {};
+      if (teamName?.trim()) body.name = teamName.trim();
+      if (sport?.trim()) body.sport = sport.trim().toLowerCase();
+      if (teamLogo !== undefined) body.logo = teamLogo?.trim() || "";
+      if (seasonYear?.trim()) body.seasonYear = seasonYear.trim();
+      await apiFetch(`/teams/${user.teamId}/settings`, {
+        method: "PATCH",
+        body,
+      }).catch(() => {});
+      setUser((prev) => ({
+        ...prev,
+        teamName: body.name || prev.teamName,
+        sport: body.sport || prev.sport,
+        teamLogo: body.logo !== undefined ? body.logo : prev.teamLogo,
+        seasonYear: body.seasonYear || prev.seasonYear,
+      }));
+    },
+    [user?.teamId]
+  );
 
-  const transferOwnership = (newOwnerId) => {
-    if (!newOwnerId || newOwnerId === user?.id) return false;
+  const transferOwnership = useCallback(
+    async (newOwnerId) => {
+      if (!newOwnerId || newOwnerId === user?.id || !user?.teamId) return false;
+      await apiFetch(`/teams/${user.teamId}/ownership-transfer`, {
+        method: "POST",
+        body: { newOwnerId },
+      });
+      setUser((prev) => ({ ...prev, ownerId: newOwnerId }));
+      return true;
+    },
+    [user?.id, user?.teamId]
+  );
 
-    const memberExists = teamMembers.some((member) => member.id === newOwnerId);
-    if (!memberExists) return false;
-
-    setUser((prev) => ({ ...prev, ownerId: newOwnerId }));
-    return true;
-  };
-
-  const logout = () => {
+  const logout = useCallback(() => {
+    clearToken();
     setUser(null);
+    setTeamMembers([]);
     setPendingEmailChange(null);
-  };
+    setPlayerViewMode(false);
+  }, []);
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        loading,
         teamMembers,
         pendingEmailChange,
         playerViewMode,
