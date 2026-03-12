@@ -61,7 +61,8 @@
       "Bash(railway logs:*)",
       "Bash(PGPASSWORD=\"vCjwUoNMDvyPiiqqyCpeCYcqvYADwiHT\" psql \"postgresql://postgres@crossover.proxy.rlwy.net:39355/railway\" -c \"ALTER USER postgres WITH PASSWORD ''K9mXwPr4hN7vTsJq2YdF8eRbL5cA3gWx'';\")",
       "Bash(node reset-password.js ericlife791@gmail.com password123)",
-      "Bash(node reset-password.js ericishcollege@gmail.com password123)"
+      "Bash(node reset-password.js ericishcollege@gmail.com password123)",
+      "WebFetch(domain:resend.com)"
     ]
   }
 }
