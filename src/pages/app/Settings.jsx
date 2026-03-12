@@ -269,7 +269,7 @@ export default function Settings() {
         </div>
       </div>
 
-      {user?.role === "coach" && !playerViewMode && (
+      {(user?.role === "coach" || user?.role === "owner") && !playerViewMode && (
         <div className="mt-6 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-5">
           <div className="mb-4 flex items-center gap-2">
             <FiEye className="text-sm text-BrandOrange" />

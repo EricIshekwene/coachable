@@ -49,7 +49,7 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
   }, []);
 
   const effectiveViewOnly = viewOnly || playerViewMode;
-  const canCoachEdit = user?.role === "coach" && !effectiveViewOnly && !isMobile;
+  const canCoachEdit = (user?.role === "coach" || user?.role === "owner") && !effectiveViewOnly && !isMobile;
   const noteInputRef = useRef(null);
   const teamId = user?.teamId;
 

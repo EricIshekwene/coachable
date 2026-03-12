@@ -29,7 +29,7 @@ const MOBILE_BREAKPOINT = 768;
 export default function Plays() {
   const { user, playerViewMode } = useAuth();
   const navigate = useNavigate();
-  const isCoach = user?.role === "coach" && !playerViewMode;
+  const isCoach = (user?.role === "coach" || user?.role === "owner") && !playerViewMode;
   const teamId = user?.teamId;
 
   const [isMobile, setIsMobile] = useState(() =>

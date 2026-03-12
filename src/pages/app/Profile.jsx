@@ -189,7 +189,7 @@ export default function Profile() {
             Current team owner: <span className="font-semibold text-BrandText">{owner?.name || "Unknown"}</span>
           </p>
 
-          {user?.role === "coach" && isTeamOwner ? (
+          {(user?.role === "coach" || user?.role === "owner") && isTeamOwner ? (
             <>
               <div className="mt-4 flex flex-col gap-1.5">
                 <label className="text-xs font-semibold">Transfer ownership to</label>

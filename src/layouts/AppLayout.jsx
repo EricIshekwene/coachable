@@ -22,7 +22,8 @@ const playerNavItems = [
 export default function AppLayout() {
   const { user, logout, playerViewMode, setPlayerViewMode } = useAuth();
   const navigate = useNavigate();
-  const navItems = playerViewMode ? playerNavItems : coachNavItems;
+  const isCoachRole = user?.role === "coach" || user?.role === "owner";
+  const navItems = (!isCoachRole || playerViewMode) ? playerNavItems : coachNavItems;
   const [isLight, setIsLight] = useState(document.documentElement.getAttribute("data-theme") === "light");
 
   useEffect(() => {
