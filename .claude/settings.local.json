@@ -25,7 +25,10 @@
       "Bash(git checkout feat/app-routes -- src/assets/logos/)",
       "Bash(npm install react-router-dom)",
       "Bash(xargs grep:*)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "WebSearch",
+      "Bash(npm install:*)",
+      "mcp__railway__check-railway-status"
     ]
   }
 }
