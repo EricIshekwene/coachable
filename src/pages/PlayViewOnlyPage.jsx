@@ -1,21 +1,38 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Slate from "../features/slate/Slate";
-import { loadAppPlays } from "../utils/appPlaysStorage";
+import { useAuth } from "../context/AuthContext";
+import { fetchPlay } from "../utils/apiPlays";
 import useThemeColor from "../utils/useThemeColor";
 
 export default function PlayViewOnlyPage() {
   const { playId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const teamId = user?.teamId;
   const [ready, setReady] = useState(false);
+  const [existingPlay, setExistingPlay] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const existingPlay = useMemo(() => {
-    const plays = loadAppPlays();
-    return plays.find((p) => p.id === playId) || null;
-  }, [playId]);
+  useEffect(() => {
+    if (!teamId || !playId) { setLoading(false); return; }
+    setLoading(true);
+    fetchPlay(teamId, playId)
+      .then((p) => setExistingPlay(p))
+      .catch(() => setExistingPlay(null))
+      .finally(() => setLoading(false));
+  }, [teamId, playId]);
 
   const fieldColor = existingPlay?.playData?.pitch?.pitchColor || "#4FA85D";
   useThemeColor(fieldColor);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-[#121212]">
+        <div className="h-10 w-10 rounded-full border-[3px] border-[#FF7A18]/30 border-t-[#FF7A18] animate-spin" />
+      </div>
+    );
+  }
 
   if (!existingPlay) {
     return (

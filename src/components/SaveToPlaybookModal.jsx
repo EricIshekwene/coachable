@@ -11,13 +11,8 @@ import {
   POPUP_SURFACE_CLASS,
   POPUP_TITLE_CLASS,
 } from "./subcomponents/popupStyles";
-import {
-  loadAppPlays,
-  updateAppPlay,
-  saveAppPlay,
-  loadFolders,
-  saveFolders,
-} from "../utils/appPlaysStorage";
+import { createPlay, updatePlay, fetchPlay, movePlayToFolder } from "../utils/apiPlays";
+import { fetchFolders, createFolder as apiCreateFolder } from "../utils/apiFolders";
 import { useAuth } from "../context/AuthContext";
 
 const normalizePlayName = (value) => String(value ?? "").trim().toLowerCase();
@@ -32,67 +27,77 @@ export default function SaveToPlaybookModal({
   onSaved,
 }) {
   const { user } = useAuth();
+  const teamId = user?.teamId;
   const [folders, setFolders] = useState([]);
-  const [selectedFolderId, setSelectedFolderId] = useState(null); // null = root (no folder)
-  const [folderPath, setFolderPath] = useState([]); // breadcrumb navigation
+  const [selectedFolderId, setSelectedFolderId] = useState(null);
+  const [folderPath, setFolderPath] = useState([]);
   const [playName, setPlayName] = useState("");
   const [notes, setNotes] = useState("");
   const [newFolderMode, setNewFolderMode] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [sourcePlay, setSourcePlay] = useState(null);
   const newFolderRef = useRef(null);
 
-  // Initialize state when modal opens.
   useEffect(() => {
-    if (!open) return;
-    const allPlays = loadAppPlays();
-    const sourcePlay = sourcePlayId
-      ? allPlays.find((play) => play.id === sourcePlayId) || null
-      : null;
-    setFolders(loadFolders());
+    if (!open || !teamId) return;
     setSelectedFolderId(null);
     setFolderPath([]);
     setPlayName(initialPlayName || "");
-    setNotes(sourcePlay?.notes || "");
+    setNotes("");
     setNewFolderMode(false);
     setNewFolderName("");
     setSaving(false);
     setSaveError(null);
-  }, [open, initialPlayName, sourcePlayId]);
+    setSourcePlay(null);
 
-  // Auto-focus new folder input
+    fetchFolders(teamId).then((f) => setFolders(f)).catch(() => setFolders([]));
+
+    if (sourcePlayId) {
+      fetchPlay(teamId, sourcePlayId)
+        .then((p) => {
+          setSourcePlay(p);
+          setNotes(p?.notes || "");
+        })
+        .catch(() => {});
+    }
+  }, [open, initialPlayName, sourcePlayId, teamId]);
+
   useEffect(() => {
     if (newFolderMode) newFolderRef.current?.focus();
   }, [newFolderMode]);
 
-  // Current location in the folder tree
   const currentFolderId = folderPath[folderPath.length - 1] ?? null;
   const visibleFolders = folders.filter((f) => f.parentId === currentFolderId);
 
   const handleCreateFolder = useCallback(() => {
     const trimmed = newFolderName.trim();
-    if (!trimmed) {
+    if (!trimmed || !teamId) {
       setNewFolderMode(false);
       return;
     }
-    const id = "f-" + Date.now();
-    const newFolder = { id, name: trimmed, parentId: currentFolderId, tags: [], playIds: [] };
-    const updated = [...folders, newFolder];
-    saveFolders(updated);
-    setFolders(updated);
-    setSelectedFolderId(id);
+    const tempId = "f-" + Date.now();
+    const newFolder = { id: tempId, name: trimmed, parentId: currentFolderId, tags: [], playIds: [] };
+    setFolders((prev) => [...prev, newFolder]);
+    setSelectedFolderId(tempId);
     setNewFolderName("");
     setNewFolderMode(false);
-  }, [newFolderName, currentFolderId, folders]);
+    apiCreateFolder(teamId, { name: trimmed, parentId: currentFolderId })
+      .then((created) => {
+        setFolders((prev) => prev.map((f) => (f.id === tempId ? { ...f, id: created.id } : f)));
+        setSelectedFolderId((prev) => (prev === tempId ? created.id : prev));
+      })
+      .catch(() => {});
+  }, [newFolderName, currentFolderId, teamId]);
 
   const handleNavigateFolder = useCallback((folderId) => {
     setFolderPath((prev) => [...prev, folderId]);
     setSelectedFolderId(null);
   }, []);
 
-  const handleSave = useCallback(() => {
-    if (!playName.trim() || saving) return;
+  const handleSave = useCallback(async () => {
+    if (!playName.trim() || saving || !teamId) return;
     setSaving(true);
     setSaveError(null);
     try {
@@ -101,71 +106,46 @@ export default function SaveToPlaybookModal({
       const noteAuthorName = trimmedNotes
         ? String(user?.name || user?.email || "Coach").trim()
         : "";
-      const noteUpdatedAt = trimmedNotes ? new Date().toISOString() : null;
       const normalizedPlayName = normalizePlayName(trimmedPlayName);
-      const allPlays = loadAppPlays();
-      const sourcePlay = sourcePlayId
-        ? allPlays.find((play) => play.id === sourcePlayId) || null
-        : null;
       const sameNameAsSource =
         Boolean(sourcePlay) && normalizePlayName(sourcePlay.title) === normalizedPlayName;
 
       let entry = null;
-      // Save as update when name matches the source play; otherwise save as a duplicate.
-      if (sameNameAsSource) {
-        entry = updateAppPlay(sourcePlay.id, {
+      if (sameNameAsSource && sourcePlayId) {
+        entry = await updatePlay(teamId, sourcePlayId, {
           title: trimmedPlayName,
           playData,
           notes: trimmedNotes,
           notesAuthorName: noteAuthorName,
-          notesUpdatedAt: noteUpdatedAt,
-          updatedAt: new Date().toISOString(),
         });
       }
       if (!entry) {
-        entry = saveAppPlay({
-          playName: trimmedPlayName,
-          playData,
+        entry = await createPlay(teamId, {
+          title: trimmedPlayName,
           tags: Array.isArray(sourcePlay?.tags) ? sourcePlay.tags : [],
+          playData,
           notes: trimmedNotes,
           notesAuthorName: noteAuthorName,
-          notesUpdatedAt: noteUpdatedAt,
         });
       }
 
-      // Move this play to the selected folder (or root), not add to multiple folders.
       const requestedFolderId = selectedFolderId || currentFolderId || null;
-      const latestFolders = loadFolders();
-      const targetFolderId = latestFolders.some((folder) => folder.id === requestedFolderId)
-        ? requestedFolderId
-        : null;
-      const updatedFolders = latestFolders.map((folder) => {
-        const withoutPlay = Array.isArray(folder.playIds)
-          ? folder.playIds.filter((id) => id !== entry.id)
-          : [];
-        if (folder.id === targetFolderId) {
-          return { ...folder, playIds: [...withoutPlay, entry.id] };
-        }
-        return withoutPlay.length === (folder.playIds || []).length
-          ? folder
-          : { ...folder, playIds: withoutPlay };
-      });
-      saveFolders(updatedFolders);
-      setFolders(updatedFolders);
+      if (requestedFolderId) {
+        await movePlayToFolder(teamId, entry.id, requestedFolderId).catch(() => {});
+      }
 
-      onSaved?.({ ...entry, folderId: targetFolderId });
+      onSaved?.({ ...entry, folderId: requestedFolderId });
       onClose?.();
     } catch (err) {
       setSaving(false);
       setSaveError(err?.message || "Failed to save play. Please try again.");
     }
-  }, [playName, notes, selectedFolderId, currentFolderId, playData, sourcePlayId, user, saving, onSaved, onClose]);
+  }, [playName, notes, selectedFolderId, currentFolderId, playData, sourcePlayId, sourcePlay, user, saving, teamId, onSaved, onClose]);
 
   if (!open) return null;
 
   const canSave = playName.trim() && !saving;
 
-  // Determine save location label
   const getSaveLocationLabel = () => {
     if (selectedFolderId) {
       const f = folders.find((fol) => fol.id === selectedFolderId);
@@ -201,7 +181,6 @@ export default function SaveToPlaybookModal({
         </div>
 
         <div className="flex flex-col lg:flex-row gap-4 min-h-0 flex-1 overflow-hidden">
-          {/* Left panel: preview + metadata */}
           <section className="lg:w-[40%] flex flex-col gap-3 min-h-0">
             <PlayPreviewCard
               playData={playData}
@@ -241,7 +220,6 @@ export default function SaveToPlaybookModal({
               <p className="text-red-400 text-[11px] font-DmSans">{saveError}</p>
             )}
 
-            {/* Save location indicator */}
             <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-BrandGray2/10 border border-BrandGray2/20">
               <FiFolder className="text-sm text-BrandOrange shrink-0" />
               <span className="text-[11px] text-BrandGray font-DmSans truncate">
@@ -259,9 +237,7 @@ export default function SaveToPlaybookModal({
             </button>
           </section>
 
-          {/* Right panel: folder browser */}
           <section className="lg:w-[60%] flex flex-col gap-3 min-h-0 overflow-hidden">
-            {/* Breadcrumb */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1 text-xs font-DmSans">
                 <button
@@ -310,9 +286,7 @@ export default function SaveToPlaybookModal({
               )}
             </div>
 
-            {/* Folder list */}
             <div className="flex flex-col gap-1.5 overflow-y-auto hide-scroll pr-1 min-h-0 flex-1">
-              {/* "Save here" option for current browsed folder */}
               {currentFolderId && (
                 <button
                   type="button"
@@ -362,7 +336,7 @@ export default function SaveToPlaybookModal({
                         {folder.name}
                       </p>
                       <p className="text-[11px] text-BrandGray2">
-                        {folder.playIds.length} play{folder.playIds.length !== 1 ? "s" : ""}
+                        {folder.playIds?.length || 0} play{(folder.playIds?.length || 0) !== 1 ? "s" : ""}
                         {subFolderCount > 0 && ` · ${subFolderCount} subfolder${subFolderCount !== 1 ? "s" : ""}`}
                       </p>
                     </div>
@@ -383,7 +357,6 @@ export default function SaveToPlaybookModal({
                 );
               })}
 
-              {/* New folder inline input */}
               {newFolderMode && (
                 <div className="flex items-center gap-3 rounded-xl border border-BrandOrange/40 bg-BrandOrange/5 p-3.5">
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-BrandOrange/20">
