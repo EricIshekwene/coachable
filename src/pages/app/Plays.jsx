@@ -170,7 +170,7 @@ export default function Plays() {
   };
 
   const copyLink = (playId) => {
-    navigator.clipboard.writeText(`${window.location.origin}/app/plays/${playId}`);
+    navigator.clipboard.writeText(`${window.location.origin}/app/plays/${playId}/view`);
     showToast("Link copied");
     setMenuOpen(null);
   };

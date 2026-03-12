@@ -53,6 +53,7 @@ function AppRoutes() {
 
       {/* Full-screen play editor (outside AppLayout — no nav chrome) */}
       <Route path="/app/plays/:playId/edit" element={<PlayEditPage />} />
+      <Route path="/app/plays/:playId/view" element={<PlayView viewOnly showBackButton={false} />} />
 
       {/* App shell */}
       <Route path="/app" element={<AppLayout />}>

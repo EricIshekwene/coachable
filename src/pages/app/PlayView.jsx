@@ -30,11 +30,11 @@ function formatNoteDate(isoString) {
   });
 }
 
-export default function PlayView() {
+export default function PlayView({ viewOnly = false, showBackButton = true }) {
   const { playId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const isCoach = user?.role === "coach";
+  const canCoachEdit = user?.role === "coach" && !viewOnly;
   const noteInputRef = useRef(null);
 
   const getPlayById = useCallback(() => {
@@ -111,13 +111,15 @@ export default function PlayView() {
   if (!play) {
     return (
       <div className="mx-auto max-w-3xl px-6 py-8 md:px-10 md:py-12">
-        <button
-          onClick={() => navigate("/app/plays")}
-          className="mb-8 flex items-center gap-2 text-sm text-BrandGray transition hover:text-BrandText"
-        >
-          <FiArrowLeft />
-          Back to Playbook
-        </button>
+        {showBackButton && (
+          <button
+            onClick={() => navigate("/app/plays")}
+            className="mb-8 flex items-center gap-2 text-sm text-BrandGray transition hover:text-BrandText"
+          >
+            <FiArrowLeft />
+            Back to Playbook
+          </button>
+        )}
         <h1 className="font-Manrope text-xl font-bold tracking-tight">Play not found</h1>
         <p className="mt-2 text-sm text-BrandGray">The play you're looking for doesn't exist.</p>
       </div>
@@ -126,13 +128,15 @@ export default function PlayView() {
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-8 md:px-10 md:py-12">
-      <button
-        onClick={() => navigate("/app/plays")}
-        className="mb-8 flex items-center gap-2 text-sm text-BrandGray transition hover:text-BrandText"
-      >
-        <FiArrowLeft />
-        Back to Playbook
-      </button>
+      {showBackButton && (
+        <button
+          onClick={() => navigate("/app/plays")}
+          className="mb-8 flex items-center gap-2 text-sm text-BrandGray transition hover:text-BrandText"
+        >
+          <FiArrowLeft />
+          Back to Playbook
+        </button>
+      )}
 
       <div className="flex items-start justify-between">
         <div>
@@ -144,7 +148,7 @@ export default function PlayView() {
             </span>
           </div>
         </div>
-        {isCoach && (
+        {canCoachEdit && (
           <Link
             to={`/app/plays/${playId}/edit`}
             className="flex items-center gap-2 rounded-lg bg-BrandOrange px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
@@ -168,7 +172,7 @@ export default function PlayView() {
         />
       </div>
 
-      {isCoach && (
+      {canCoachEdit && (
         <div className="mb-4 flex justify-end">
           <button
             type="button"
@@ -180,7 +184,7 @@ export default function PlayView() {
         </div>
       )}
 
-      {editingNotes && (
+      {canCoachEdit && editingNotes && (
         <section className="mb-8 rounded-2xl border border-BrandGray2/20 bg-BrandBlack2/30 p-4 sm:p-5">
           <label className="text-xs font-semibold text-BrandText">Note</label>
           <textarea

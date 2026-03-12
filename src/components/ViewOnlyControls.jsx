@@ -255,7 +255,7 @@ export default function ViewOnlyControls({
                 onChange={(e, v) => onSpeedChange(v)}
                 sx={{
                   ...BRAND_SLIDER_SX,
-                  width: 50,
+                  width: { xs: 50, sm: 56, md: 76, lg: 96, xl: 112 },
                   "& .MuiSlider-rail": { ...BRAND_SLIDER_SX["& .MuiSlider-rail"], opacity: 0.3 },
                 }}
               />

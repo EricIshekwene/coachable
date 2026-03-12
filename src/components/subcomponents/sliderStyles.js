@@ -8,7 +8,7 @@ export const BRAND_SLIDER_SX = {
     height: 12,
     backgroundColor: "#FF7A18",
     border: "none",
-    boxShadow: "0 0 0 2px #121212",
+    boxShadow: "none",
     "&::before": {
       boxShadow: "none",
     },
