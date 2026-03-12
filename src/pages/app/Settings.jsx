@@ -48,16 +48,17 @@ function ToggleRow({ label, description, enabled, onToggle }) {
       </div>
       <button
         type="button"
+        aria-pressed={enabled}
         onClick={onToggle}
-        className={`relative h-7 w-12 rounded-full border transition ${
+        className={`relative inline-flex h-7 w-12 shrink-0 items-center overflow-hidden rounded-full border p-0.5 appearance-none transition-colors ${
           enabled
             ? "border-BrandOrange bg-BrandOrange/80"
             : "border-BrandGray2/40 bg-BrandGray2/20"
         }`}
       >
         <span
-          className={`absolute top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-white transition ${
-            enabled ? "left-6" : "left-1"
+          className={`pointer-events-none block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+            enabled ? "translate-x-6" : "translate-x-0"
           }`}
         />
       </button>
