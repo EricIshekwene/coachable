@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { FaUsers } from "react-icons/fa";
 import { IoFootball } from "react-icons/io5";
 import { TbLayoutSidebarLeftCollapse } from "react-icons/tb";
@@ -274,7 +275,9 @@ export default function WideSidebarRoot({
         >
             {/* Logo + collapse button */}
             <div className="flex items-center justify-between px-1 mb-1">
-                <img src={coachableLogo} alt="Coachable" className="h-5 sm:h-6 w-auto" />
+                <Link to="/app" className="inline-flex">
+                    <img src={coachableLogo} alt="Coachable" className="h-5 sm:h-6 w-auto" />
+                </Link>
                 <button
                     type="button"
                     onClick={onCollapse}

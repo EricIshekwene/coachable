@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import darkLogo from "../assets/logos/White_Coachable_Logo.png";
 import lightLogo from "../assets/logos/coachable_Logo.png";
@@ -40,10 +40,10 @@ export default function AppLayout() {
     <div className="app-themed flex h-screen bg-BrandBlack font-DmSans text-BrandText">
       {/* Sidebar */}
       <aside className="hidden w-60 flex-col border-r border-BrandGray2/20 md:flex">
-        <div className="flex items-center gap-3 px-5 py-5">
+        <Link to="/app" className="flex items-center gap-3 px-5 py-5">
           <img src={isLight ? lightLogo : darkLogo} alt="Coachable" className="h-7 w-7" />
           <span className="font-Manrope text-sm font-semibold tracking-tight">Coachable</span>
-        </div>
+        </Link>
 
         {/* Team badge */}
         {user?.teamName && (
