@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build)",
+      "Bash(npx vite build)",
+      "Bash(npm install -D vitest)",
+      "Bash(npx vitest run)",
+      "WebFetch(domain:konvajs.org)",
+      "Bash(npm test)",
+      "Bash(grep -n \"export.*AnimationEngine\" /c/Users/ericl/Desktop/coachable/src/animation/*.js)",
+      "Bash(grep -n \"export.*createEmptyAnimation\\\\|export.*buildInterpolatedSlate\\\\|export.*samplePosesAtTime\" /c/Users/ericl/Desktop/coachable/src/animation/*.js)",
+      "Bash(node -e \":*)",
+      "Bash(grep -r \"rotate\\\\|Math.cos\\\\|Math.sin\\\\|transform\" \"c:\\\\Users\\\\ericl\\\\Desktop\\\\coachable\\\\src\\\\features\\\\slate\"\" --include=\"*.js \")",
+      "WebFetch(domain:tldraw.dev)",
+      "Bash(xargs grep -l \"recordVideoExport\\\\|handleVideoExport\\\\|ExportModal\")",
+      "Bash(xargs grep -l \"captureFrameCanvas\\\\|screenshotApi\\\\|hideOverlays\")",
+      "Bash(npm install mp4-muxer)",
+      "Bash(git status -u)",
+      "Bash(git branch -f main rebuild-konva)",
+      "Bash(git checkout main)",
+      "Bash(git checkout feat/app-routes -- src/pages/ src/layouts/ src/context/ src/components/messaging/)",
+      "Bash(git status -u --short)",
+      "Bash(git checkout HEAD -- src/components/messaging/useMessagePopup.js src/components/messaging/README.md)",
+      "Bash(git ls-tree feat/app-routes -- src/assets/logos/)",
+      "Bash(git checkout feat/app-routes -- src/assets/logos/)",
+      "Bash(npm install react-router-dom)",
+      "Bash(xargs grep:*)",
+      "Bash(npx vite:*)"
+    ]
+  }
+}
