@@ -161,7 +161,6 @@ export function useDrawingSelection({
       const world = toWorldCoords(pointer);
       const evt = e.evt || e;
       const shiftKey = evt?.shiftKey || false;
-      const altKey = evt?.altKey || false;
 
       // 0. Hit-test arrow endpoint handles (before resize handles)
       if (arrowEndpointHandles.length > 0) {

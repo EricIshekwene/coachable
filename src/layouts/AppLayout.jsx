@@ -92,12 +92,15 @@ export default function AppLayout() {
         )}
 
         <nav className="flex flex-1 flex-col gap-1 px-3">
-          {navItems.map(({ to, icon: Icon, label }) => (
-            <NavLink key={to} to={to} className={linkClass}>
-              <Icon className="text-base" />
-              {label}
-            </NavLink>
-          ))}
+          {navItems.map((navItem) => {
+            const NavIcon = navItem.icon;
+            return (
+              <NavLink key={navItem.to} to={navItem.to} className={linkClass}>
+                <NavIcon className="text-base" />
+                {navItem.label}
+              </NavLink>
+            );
+          })}
         </nav>
 
         <div className="border-t border-BrandGray2/20 px-3 py-4">
@@ -122,19 +125,22 @@ export default function AppLayout() {
 
       {/* Mobile bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-BrandGray2/20 bg-BrandBlack pb-[env(safe-area-inset-bottom)] md:hidden">
-        {navItems.map(({ to, icon: Icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              `flex flex-1 flex-col items-center gap-1 py-3 text-[10px] transition ${isActive ? "text-BrandOrange" : "text-BrandGray"
-              }`
-            }
-          >
-            <Icon className="text-lg" />
-            {label}
-          </NavLink>
-        ))}
+        {navItems.map((navItem) => {
+          const NavIcon = navItem.icon;
+          return (
+            <NavLink
+              key={navItem.to}
+              to={navItem.to}
+              className={({ isActive }) =>
+                `flex flex-1 flex-col items-center gap-1 py-3 text-[10px] transition ${isActive ? "text-BrandOrange" : "text-BrandGray"
+                }`
+              }
+            >
+              <NavIcon className="text-lg" />
+              {navItem.label}
+            </NavLink>
+          );
+        })}
       </nav>
 
       {/* Main content */}

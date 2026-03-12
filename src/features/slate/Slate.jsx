@@ -90,17 +90,6 @@ const isTooCloseToExistingKeyframe = (track, timeMs) => {
 const hasKeyframeAtTime = (track, timeMs, toleranceMs = KEYFRAME_TIME_TOLERANCE_MS) =>
   Boolean(track?.keyframes?.some((kf) => Math.abs((kf?.t ?? 0) - timeMs) <= toleranceMs));
 
-const posesEqual = (existing, pose, epsilon = POSE_UPDATE_EPSILON) =>
-  Math.abs((existing?.x ?? 0) - (pose?.x ?? 0)) <= epsilon &&
-  Math.abs((existing?.y ?? 0) - (pose?.y ?? 0)) <= epsilon &&
-  Math.abs((existing?.r ?? 0) - (pose?.r ?? 0)) <= epsilon;
-
-const isTooCloseToAnyKeyframeTime = (times, timeMs) =>
-  (times || []).some((t) => {
-    const gap = Math.abs((t ?? 0) - timeMs);
-    return gap > KEYFRAME_TIME_TOLERANCE_MS && gap < KEYFRAME_MIN_GAP_MS;
-  });
-
 /**
  * Clamps a keyframe target time to maintain minimum spacing from all other keyframes.
  * Prevents keyframes from overlapping or getting too close during drag.
@@ -1706,7 +1695,7 @@ function Slate({
       await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
       onShowMessage?.("Debug copied", "Full player + keyframe snapshot copied to clipboard.", "success");
       return true;
-    } catch (error) {
+    } catch {
       onShowMessage?.("Copy failed", "Clipboard access was denied.", "error");
       return false;
     }

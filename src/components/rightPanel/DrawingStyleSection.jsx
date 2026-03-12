@@ -260,21 +260,23 @@ function TextSubToolStyle({
       <FontSizeDropdown value={drawFontSize} onChange={onFontSizeChange} />
       <SectionLabel>Alignment</SectionLabel>
       <div className="flex gap-1.5">
-        {TEXT_ALIGNS.map(({ value, Icon }) => (
+        {TEXT_ALIGNS.map((alignOption) => {
+          const IconComponent = alignOption.Icon;
+          return (
           <button
-            key={value}
-            onClick={() => onTextAlignChange?.(value)}
+            key={alignOption.value}
+            onClick={() => onTextAlignChange?.(alignOption.value)}
             className={`
               p-1.5 rounded-md transition-all duration-100
-              ${drawTextAlign === value
+              ${drawTextAlign === alignOption.value
                 ? "bg-BrandOrange text-BrandBlack"
                 : "text-BrandOrange hover:bg-BrandBlack2 border border-BrandGray2"
               }
             `}
           >
-            <Icon className="text-sm sm:text-base" />
+            <IconComponent className="text-sm sm:text-base" />
           </button>
-        ))}
+        )})}
       </div>
     </>
   );
@@ -472,21 +474,23 @@ function SelectedDrawingStyle({ selectedDrawing, onUpdateDrawing }) {
         <FontSizeDropdown value={d.fontSize || 18} onChange={(s) => update({ fontSize: s })} />
         <SectionLabel>Alignment</SectionLabel>
         <div className="flex gap-1.5">
-          {TEXT_ALIGNS.map(({ value, Icon }) => (
+          {TEXT_ALIGNS.map((alignOption) => {
+            const IconComponent = alignOption.Icon;
+            return (
             <button
-              key={value}
-              onClick={() => update({ align: value })}
+              key={alignOption.value}
+              onClick={() => update({ align: alignOption.value })}
               className={`
                 p-1.5 rounded-md transition-all duration-100
-                ${(d.align || "left") === value
+                ${(d.align || "left") === alignOption.value
                   ? "bg-BrandOrange text-BrandBlack"
                   : "text-BrandOrange hover:bg-BrandBlack2 border border-BrandGray2"
                 }
               `}
             >
-              <Icon className="text-sm sm:text-base" />
+              <IconComponent className="text-sm sm:text-base" />
             </button>
-          ))}
+          )})}
         </div>
       </>
     );

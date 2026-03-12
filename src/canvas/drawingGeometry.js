@@ -29,6 +29,7 @@ export function pointToSegmentDist(px, py, ax, ay, bx, by) {
 // Shared offscreen canvas for text measurement
 let _measureCtx = null;
 function getMeasureCtx() {
+  if (typeof document === "undefined") return null;
   if (!_measureCtx) {
     const c = document.createElement("canvas");
     _measureCtx = c.getContext("2d");
@@ -38,6 +39,9 @@ function getMeasureCtx() {
 
 export function measureTextWidth(text, fontSize, fontFamily = "DmSans, sans-serif") {
   const ctx = getMeasureCtx();
+  if (!ctx) {
+    return String(text || "").length * (fontSize || 18) * 0.6;
+  }
   ctx.font = `${fontSize}px ${fontFamily}`;
   return ctx.measureText(text).width;
 }
@@ -316,28 +320,6 @@ export function hitTestRotateHandle(handlePos, worldPoint, zoom) {
 }
 
 // ─── Transform: Resize ──────────────────────────────────────────────────────
-
-/**
- * Get the anchor point (opposite corner/edge) for a resize handle position.
- */
-function getResizeAnchor(bounds, handlePos) {
-  const { x, y, width, height } = bounds;
-  const r = x + width;
-  const b = y + height;
-  const cx = x + width / 2;
-  const cy = y + height / 2;
-  switch (handlePos) {
-    case "nw": return { x: r, y: b };
-    case "n":  return { x: cx, y: b };
-    case "ne": return { x: x, y: b };
-    case "e":  return { x: x, y: cy };
-    case "se": return { x: x, y: y };
-    case "s":  return { x: cx, y: y };
-    case "sw": return { x: r, y: y };
-    case "w":  return { x: r, y: cy };
-    default:   return { x: cx, y: cy };
-  }
-}
 
 /**
  * Compute new bounds from a handle drag.

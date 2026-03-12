@@ -25,7 +25,6 @@ export default function RecordingPlayerList({
   const isRecording = globalState === "recording";
   const isPreviewing = globalState === "previewing";
   const isCountdown = globalState === "countdown";
-  const isPaused = globalState === "paused";
   // Busy = actively recording or in countdown. Paused allows interaction with other players.
   const isBusy = isRecording || isPreviewing || isCountdown;
 

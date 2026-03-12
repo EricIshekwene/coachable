@@ -54,7 +54,7 @@ export function useCanvasMarquee({
     return true;
   };
 
-  const handlePointerMove = (e) => {
+  const handlePointerMove = () => {
     if (!marqueeRef.current.active) return false;
     const stage = stageRef.current;
     const pointer = stage?.getPointerPosition?.();

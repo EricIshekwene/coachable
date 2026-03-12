@@ -14,7 +14,6 @@ const formatTime = (ms) => {
  */
 export default function RecordingControlBar({
   globalState,
-  recordingPlayerId,
   recordingTimeMs,
   previewTimeMs,
   durationMs,

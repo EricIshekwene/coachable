@@ -45,7 +45,6 @@ export default function RightPanel({
 
   onSaveNow,
   onSaveToPlaybook,
-  onImport,
   onScreenshot,
   onVideoExport,
 

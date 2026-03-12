@@ -10,8 +10,8 @@ const DEFAULT_CAMERA = { x: 0, y: 0, zoom: 1 };
 export function useFieldViewport() {
   const [camera, setCamera] = useState(DEFAULT_CAMERA);
   const [fieldRotation, setFieldRotation] = useState(0);
-  const [fieldHistoryPast, setFieldHistoryPast] = useState([]);
-  const [fieldHistoryFuture, setFieldHistoryFuture] = useState([]);
+  const [, setFieldHistoryPast] = useState([]);
+  const [, setFieldHistoryFuture] = useState([]);
   const isFieldRestoringRef = useRef(false);
 
   const snapshotField = () => ({

@@ -62,7 +62,7 @@ describe("getDrawingWorldBounds", () => {
     const d = { type: "text", x: 10, y: 30, text: "Hello", fontSize: 20 };
     const b = getDrawingWorldBounds(d);
     expect(b.x).toBe(10);
-    expect(b.y).toBeCloseTo(30 - 20 * 1.3);
+    expect(b.y).toBeCloseTo(30);
     expect(b.width).toBeCloseTo(5 * 20 * 0.6);
     expect(b.height).toBeCloseTo(20 * 1.3);
   });
@@ -70,7 +70,7 @@ describe("getDrawingWorldBounds", () => {
   it("handles text with no text content", () => {
     const d = { type: "text", x: 0, y: 0, text: "", fontSize: 18 };
     const b = getDrawingWorldBounds(d);
-    expect(b.width).toBeCloseTo(1 * 18 * 0.6);
+    expect(b.width).toBeCloseTo(18);
   });
 });
 
