@@ -57,7 +57,11 @@
       "Bash(curl -s -X POST https://resplendent-inspiration-production-2fa9.up.railway.app/auth/signup -H \"Content-Type: application/json\" -d '{\"\"name\"\":\"\"Test Coach\"\",\"\"email\"\":\"\"test@coachable.app\"\",\"\"password\"\":\"\"test123456\"\"}')",
       "Bash(DATABASE_URL=\"postgresql://postgres:vCjwUoNMDvyPiiqqyCpeCYcqvYADwiHT@crossover.proxy.rlwy.net:39355/railway\" node -e \":*)",
       "Bash(railway variables:*)",
-      "Bash(openssl rand:*)"
+      "Bash(openssl rand:*)",
+      "Bash(railway logs:*)",
+      "Bash(PGPASSWORD=\"vCjwUoNMDvyPiiqqyCpeCYcqvYADwiHT\" psql \"postgresql://postgres@crossover.proxy.rlwy.net:39355/railway\" -c \"ALTER USER postgres WITH PASSWORD ''K9mXwPr4hN7vTsJq2YdF8eRbL5cA3gWx'';\")",
+      "Bash(node reset-password.js ericlife791@gmail.com password123)",
+      "Bash(node reset-password.js ericishcollege@gmail.com password123)"
     ]
   }
 }

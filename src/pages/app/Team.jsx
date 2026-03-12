@@ -8,14 +8,14 @@ import { apiFetch } from "../../utils/api";
 export default function Team() {
   const { user, teamMembers } = useAuth();
   const { showMessage } = useAppMessage();
-  const isCoach = user?.role === "coach";
+  const isCoach = user?.role === "coach" || user?.role === "owner";
   const [copied, setCopied] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
 
   useEffect(() => {
     if (!isCoach || !user?.teamId) return;
     apiFetch(`/teams/${user.teamId}/invite-code`)
-      .then((data) => setInviteCode(data.inviteCode || ""))
+      .then((data) => setInviteCode(data.code || ""))
       .catch(() => {});
   }, [isCoach, user?.teamId]);
   const [showInviteModal, setShowInviteModal] = useState(false);

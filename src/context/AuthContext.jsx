@@ -20,28 +20,26 @@ const DEFAULT_ASSISTANT_PERMISSIONS = {
  * Map a backend /auth/me or /auth/login response into the flat user shape
  * the rest of the frontend expects.
  */
-function mapApiUserToLocal(data) {
-  const team = data.team || {};
-  const prefs = data.preferences || {};
-  const assistPerms = data.assistantPermissions || {};
+function mapApiUserToLocal(u) {
+  if (!u) return null;
+  const notifs = u.notifications || {};
+  const assistPerms = u.assistantPermissions || {};
 
   return {
-    id: data.id,
-    name: data.name,
-    email: data.email,
-    role: data.role || null,
-    teamId: team.id || null,
-    teamName: team.name || null,
-    sport: team.sport || "",
-    seasonYear: team.seasonYear || String(new Date().getFullYear()),
-    teamLogo: team.logo || "",
-    ownerId: team.ownerId || null,
-    onboarded: data.onboarded || false,
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    role: u.role || null,
+    teamId: u.teamId || null,
+    teamName: u.teamName || null,
+    sport: u.sport || "",
+    seasonYear: u.seasonYear || String(new Date().getFullYear()),
+    teamLogo: u.teamLogo || "",
+    ownerId: u.ownerId || null,
+    onboarded: u.onboarded || false,
     notifications: {
       ...DEFAULT_NOTIFICATION_PREFERENCES,
-      playersJoinTeam: prefs.notifyPlayersJoin ?? true,
-      coachesMakeChanges: prefs.notifyCoachesChange ?? true,
-      inviteAccepted: prefs.notifyInviteAccepted ?? true,
+      ...notifs,
     },
     assistantPermissions: {
       ...DEFAULT_ASSISTANT_PERMISSIONS,
@@ -66,7 +64,7 @@ export function AuthProvider({ children }) {
     }
     apiFetch("/auth/me")
       .then((data) => {
-        setUser(mapApiUserToLocal(data));
+        setUser(mapApiUserToLocal(data.user));
       })
       .catch(() => {
         clearToken();
@@ -100,7 +98,7 @@ export function AuthProvider({ children }) {
       body: { email, password },
     });
     setToken(data.token);
-    const localUser = mapApiUserToLocal(data);
+    const localUser = mapApiUserToLocal(data.user);
     setUser(localUser);
     return localUser;
   }, []);
@@ -111,7 +109,7 @@ export function AuthProvider({ children }) {
       body: { name, email, password },
     });
     setToken(data.token);
-    const localUser = mapApiUserToLocal(data);
+    const localUser = mapApiUserToLocal(data.user);
     setUser(localUser);
     return localUser;
   }, []);
@@ -121,7 +119,7 @@ export function AuthProvider({ children }) {
       if (teamAction === "create") {
         const data = await apiFetch("/onboarding/create-team", {
           method: "POST",
-          body: { name: teamName, sport, role: "coach" },
+          body: { teamName, sport, role: "coach" },
         });
         const team = data.team || {};
         setUser((prev) => ({
