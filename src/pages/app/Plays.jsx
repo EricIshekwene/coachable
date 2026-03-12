@@ -437,7 +437,7 @@ export default function Plays() {
                   <div className="relative">
                     <button
                       onClick={(e) => { e.stopPropagation(); setMenuOpen(menuOpen === folder.id ? null : folder.id); }}
-                      className="rounded-md p-1.5 text-BrandGray2 opacity-0 transition hover:bg-BrandBlack2 hover:text-BrandText group-hover:opacity-100"
+                      className="rounded-md p-1.5 text-BrandGray2 opacity-100 md:opacity-0 transition hover:bg-BrandBlack2 hover:text-BrandText group-hover:opacity-100"
                     >
                       <FiMoreHorizontal className="text-sm" />
                     </button>
@@ -519,7 +519,7 @@ export default function Plays() {
                     <div className="relative shrink-0">
                       <button
                         onClick={(e) => { e.stopPropagation(); setMenuOpen(menuOpen === play.id ? null : play.id); }}
-                        className="rounded-md p-1 text-BrandGray2 opacity-0 transition hover:bg-BrandBlack2 hover:text-BrandText group-hover:opacity-100"
+                        className="rounded-md p-1 text-BrandGray2 opacity-100 md:opacity-0 transition hover:bg-BrandBlack2 hover:text-BrandText group-hover:opacity-100"
                       >
                         <FiMoreHorizontal className="text-sm" />
                       </button>

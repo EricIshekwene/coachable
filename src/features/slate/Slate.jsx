@@ -2748,7 +2748,8 @@ function Slate({
             onAutoplayChange={setAutoplayEnabled}
             getAuthoritativeTimeMs={getAuthoritativeTimeMs}
             onDragStateChange={handleTimelineDragStateChange}
-            onExitViewOnly={viewOnlyProp ? null : () => setViewOnlyLocal(false)}
+            onExitViewOnly={viewOnlyProp ? (onNavigateHome || null) : () => setViewOnlyLocal(false)}
+            exitIsBack={!!viewOnlyProp}
             isFullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
             playName={playName}

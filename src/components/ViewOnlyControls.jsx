@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef } from "react";
-import { IoPlayOutline, IoExpandOutline, IoContractOutline, IoCloseOutline } from "react-icons/io5";
+import { IoPlayOutline, IoExpandOutline, IoContractOutline, IoCloseOutline, IoArrowBackOutline } from "react-icons/io5";
 import { Slider } from "@mui/material";
 import { BRAND_SLIDER_SX } from "./subcomponents/sliderStyles";
 
@@ -24,6 +24,7 @@ export default function ViewOnlyControls({
   getAuthoritativeTimeMs,
   onDragStateChange,
   onExitViewOnly,
+  exitIsBack = false,
   isFullscreen = false,
   onToggleFullscreen,
   playName,
@@ -187,9 +188,9 @@ export default function ViewOnlyControls({
             <button
               onClick={onExitViewOnly}
               className="h-8 w-8 flex items-center justify-center rounded-lg bg-BrandBlack/70 text-white/80 hover:text-white hover:bg-BrandBlack/90 transition backdrop-blur-sm"
-              title="Exit view mode"
+              title={exitIsBack ? "Back to playbook" : "Exit view mode"}
             >
-              <IoCloseOutline size={20} />
+              {exitIsBack ? <IoArrowBackOutline size={18} /> : <IoCloseOutline size={20} />}
             </button>
           )}
         </div>

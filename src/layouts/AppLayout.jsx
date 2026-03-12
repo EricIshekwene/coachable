@@ -135,7 +135,7 @@ export default function AppLayout() {
       </nav>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto pb-16 md:pb-0">
+      <main className="flex-1 overflow-auto pb-16 md:pb-0 touch-scroll">
         <Outlet />
       </main>
       </div>
