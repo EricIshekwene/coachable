@@ -55,7 +55,9 @@
       "Bash(railway run:*)",
       "Bash(DATABASE_URL=\"postgresql://postgres:vCjwUoNMDvyPiiqqyCpeCYcqvYADwiHT@crossover.proxy.rlwy.net:39355/railway\" node db/migrate.js)",
       "Bash(curl -s -X POST https://resplendent-inspiration-production-2fa9.up.railway.app/auth/signup -H \"Content-Type: application/json\" -d '{\"\"name\"\":\"\"Test Coach\"\",\"\"email\"\":\"\"test@coachable.app\"\",\"\"password\"\":\"\"test123456\"\"}')",
-      "Bash(DATABASE_URL=\"postgresql://postgres:vCjwUoNMDvyPiiqqyCpeCYcqvYADwiHT@crossover.proxy.rlwy.net:39355/railway\" node -e \":*)"
+      "Bash(DATABASE_URL=\"postgresql://postgres:vCjwUoNMDvyPiiqqyCpeCYcqvYADwiHT@crossover.proxy.rlwy.net:39355/railway\" node -e \":*)",
+      "Bash(railway variables:*)",
+      "Bash(openssl rand:*)"
     ]
   }
 }
