@@ -6,6 +6,7 @@ import Slate from "./features/slate/Slate";
 import MessagePopup from "./components/MessagePopup/MessagePopup";
 import { useMessagePopup } from "./components/messaging/useMessagePopup";
 import useThemeColor from "./utils/useThemeColor";
+import { AppMessageProvider } from "./context/AppMessageContext";
 import Landing from "./pages/Landing";
 import Signup from "./pages/Signup";
 import Login from "./pages/Login";
@@ -88,11 +89,28 @@ function ThemeInit() {
 }
 
 function App() {
+  const appMessage = useMessagePopup();
+
   return (
     <BrowserRouter>
       <ThemeInit />
       <AuthProvider>
-        <AppRoutes />
+        <AppMessageProvider
+          value={{
+            showMessage: appMessage.showMessage,
+            hideMessage: appMessage.hideMessage,
+          }}
+        >
+          <MessagePopup
+            message={appMessage.messagePopup.message}
+            subtitle={appMessage.messagePopup.subtitle}
+            visible={appMessage.messagePopup.visible}
+            type={appMessage.messagePopup.type}
+            autoHideDuration={appMessage.messagePopup.autoHideDuration}
+            onClose={appMessage.hideMessage}
+          />
+          <AppRoutes />
+        </AppMessageProvider>
       </AuthProvider>
     </BrowserRouter>
   );

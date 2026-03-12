@@ -1,25 +1,36 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useAppMessage } from "../context/AppMessageContext";
 import logo from "../assets/logos/full_Coachable_logo.png";
 import whiteLogo from "../assets/logos/White_Full_Coachable.png";
+import { isValidEmail } from "../utils/inputValidation";
 
 export default function Login() {
   const [email, setEmail] = useState("coach@coachable.app");
   const [password, setPassword] = useState("password");
-  const [error, setError] = useState("");
   const { login } = useAuth();
+  const { showMessage } = useAppMessage();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get("returnTo") || "/app/plays";
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError("Please fill in all fields.");
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedEmail || !trimmedPassword) {
+      showMessage("Missing fields", "Please enter both email and password.", "error");
       return;
     }
-    const user = login(email, password);
+
+    if (!isValidEmail(trimmedEmail)) {
+      showMessage("Invalid email", "Please enter a valid email address.", "error");
+      return;
+    }
+
+    const user = login(trimmedEmail, trimmedPassword);
     navigate(user.onboarded ? returnTo : "/onboarding");
   };
 
@@ -41,12 +52,6 @@ export default function Login() {
           </p>
 
           <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
-            {error && (
-              <div className="rounded-lg bg-red-50 px-3.5 py-2.5 text-xs text-red-600">
-                {error}
-              </div>
-            )}
-
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-BrandBlack">Email</label>
               <input

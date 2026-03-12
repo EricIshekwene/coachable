@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useAppMessage } from "../context/AppMessageContext";
 import logo from "../assets/logos/full_Coachable_logo.png";
 import { MdOutlineCreateNewFolder } from "react-icons/md";
 import { FaRegHandshake } from "react-icons/fa6";
@@ -25,6 +26,7 @@ export default function Onboarding() {
   const [role, setRole] = useState("player");
 
   const { completeOnboarding } = useAuth();
+  const { showMessage } = useAppMessage();
   const navigate = useNavigate();
 
   // Creating a team = you're a coach, so skip role step
@@ -38,12 +40,59 @@ export default function Onboarding() {
       : true;
 
   const handleFinish = () => {
+    if (teamAction === "create") {
+      const trimmedTeamName = teamName.trim();
+      if (!trimmedTeamName) {
+        showMessage("Missing team name", "Please enter a team name to continue.", "error");
+        return;
+      }
+      if (trimmedTeamName.length < 2) {
+        showMessage("Invalid team name", "Team name must be at least 2 characters.", "error");
+        return;
+      }
+    }
+
+    if (teamAction === "join") {
+      const trimmedInviteCode = inviteCode.trim();
+      if (!trimmedInviteCode) {
+        showMessage("Missing invite code", "Enter an invite code to join a team.", "error");
+        return;
+      }
+      if (trimmedInviteCode.length < 6) {
+        showMessage("Invalid invite code", "Invite code looks too short.", "error");
+        return;
+      }
+    }
+
+    if (teamAction === "join" && !["coach", "player"].includes(role)) {
+      showMessage("Select a role", "Please choose coach or player.", "error");
+      return;
+    }
+
     const finalRole = teamAction === "create" ? "coach" : role;
-    completeOnboarding({ teamName, teamAction, inviteCode, role: finalRole, sport });
+    completeOnboarding({
+      teamName: teamName.trim(),
+      teamAction,
+      inviteCode: inviteCode.trim(),
+      role: finalRole,
+      sport,
+    });
     navigate("/app/plays");
   };
 
   const handleNext = () => {
+    if (teamAction === "join") {
+      const trimmedInviteCode = inviteCode.trim();
+      if (!trimmedInviteCode) {
+        showMessage("Missing invite code", "Enter an invite code to continue.", "error");
+        return;
+      }
+      if (trimmedInviteCode.length < 6) {
+        showMessage("Invalid invite code", "Invite code looks too short.", "error");
+        return;
+      }
+    }
+
     if (teamAction === "create") {
       handleFinish();
     } else {

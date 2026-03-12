@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { useAppMessage } from "../../context/AppMessageContext";
 import { FiCopy, FiCheck, FiShield, FiUser, FiMail, FiMessageSquare, FiX, FiSearch } from "react-icons/fi";
+import { isValidEmail, isValidPhone } from "../../utils/inputValidation";
 
 const MOCK_INVITE_CODE = "RVSD-2024-XKCD";
 
 export default function Team() {
   const { user, teamMembers } = useAuth();
+  const { showMessage } = useAppMessage();
   const isCoach = user?.role === "coach";
   const [copied, setCopied] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -15,15 +18,44 @@ export default function Team() {
   const [filter, setFilter] = useState("all"); // all | coach | player
   const [search, setSearch] = useState("");
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(MOCK_INVITE_CODE);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(MOCK_INVITE_CODE);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      showMessage("Invite code copied", "Share it with players to join your team.", "success");
+    } catch {
+      showMessage("Copy failed", "Clipboard access was denied.", "error");
+    }
   };
 
   const handleSendInvite = () => {
-    if (!inviteContact.trim()) return;
+    const contact = inviteContact.trim();
+    if (!contact) {
+      showMessage(
+        "Missing contact",
+        inviteMethod === "email" ? "Enter an email address." : "Enter a phone number.",
+        "error"
+      );
+      return;
+    }
+
+    if (inviteMethod === "email" && !isValidEmail(contact)) {
+      showMessage("Invalid email", "Please enter a valid email address.", "error");
+      return;
+    }
+
+    if (inviteMethod === "text" && !isValidPhone(contact)) {
+      showMessage("Invalid phone number", "Enter a valid phone number.", "error");
+      return;
+    }
+
     setInviteSent(true);
+    showMessage(
+      "Invite sent",
+      inviteMethod === "email" ? `Invitation sent to ${contact}.` : `Text invite sent to ${contact}.`,
+      "success"
+    );
     setTimeout(() => {
       setInviteSent(false);
       setInviteContact("");

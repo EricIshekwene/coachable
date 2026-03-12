@@ -1,29 +1,53 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useAppMessage } from "../context/AppMessageContext";
 import logo from "../assets/logos/full_Coachable_logo.png";
 import whiteLogo from "../assets/logos/White_Full_Coachable.png";
+import { isValidEmail } from "../utils/inputValidation";
 
 export default function Signup() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [error, setError] = useState("");
   const { signup } = useAuth();
+  const { showMessage } = useAppMessage();
   const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!name || !email || !password || !confirm) {
-      setError("Please fill in all fields.");
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+    const trimmedConfirm = confirm.trim();
+
+    if (!trimmedName || !trimmedEmail || !trimmedPassword || !trimmedConfirm) {
+      showMessage("Missing fields", "Please fill in all required fields.", "error");
       return;
     }
-    if (password !== confirm) {
-      setError("Passwords do not match.");
+
+    if (trimmedName.length < 2) {
+      showMessage("Invalid name", "Name must be at least 2 characters.", "error");
       return;
     }
-    signup(name, email);
+
+    if (!isValidEmail(trimmedEmail)) {
+      showMessage("Invalid email", "Please enter a valid email address.", "error");
+      return;
+    }
+
+    if (trimmedPassword.length < 8) {
+      showMessage("Weak password", "Password must be at least 8 characters.", "error");
+      return;
+    }
+
+    if (trimmedPassword !== trimmedConfirm) {
+      showMessage("Password mismatch", "Passwords do not match.", "error");
+      return;
+    }
+
+    signup(trimmedName, trimmedEmail);
     navigate("/onboarding");
   };
 
@@ -45,12 +69,6 @@ export default function Signup() {
           </p>
 
           <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
-            {error && (
-              <div className="rounded-lg bg-red-50 px-3.5 py-2.5 text-xs text-red-600">
-                {error}
-              </div>
-            )}
-
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-BrandBlack">Full name</label>
               <input

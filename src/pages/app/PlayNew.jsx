@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiX } from "react-icons/fi";
+import { useAppMessage } from "../../context/AppMessageContext";
 import { saveAppPlay } from "../../utils/appPlaysStorage";
 
 const PRESET_TAGS = [
@@ -22,6 +23,9 @@ const PRESET_TAGS = [
   // Field Location
   "Red Zone", "Midfield", "Defensive Third", "Attacking Third", "Sideline", "Goal Line",
 ];
+const MAX_TITLE_LENGTH = 80;
+const MAX_TAG_LENGTH = 24;
+const MAX_TAG_COUNT = 12;
 
 export default function PlayNew() {
   const [title, setTitle] = useState("");
@@ -31,6 +35,7 @@ export default function PlayNew() {
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const inputRef = useRef(null);
   const navigate = useNavigate();
+  const { showMessage } = useAppMessage();
 
   const suggestions = tagInput.trim()
     ? PRESET_TAGS.filter(
@@ -45,9 +50,36 @@ export default function PlayNew() {
   }, [tagInput]);
 
   const addTag = (tag) => {
-    if (!tags.includes(tag)) {
-      setTags([...tags, tag]);
+    const trimmedTag = String(tag || "").trim();
+    if (!trimmedTag) return;
+
+    if (trimmedTag.length > MAX_TAG_LENGTH) {
+      showMessage(
+        "Tag too long",
+        `Tags can be up to ${MAX_TAG_LENGTH} characters.`,
+        "error"
+      );
+      return;
     }
+
+    if (tags.includes(trimmedTag)) {
+      showMessage("Duplicate tag", "That tag has already been added.", "warning");
+      setTagInput("");
+      setShowSuggestions(false);
+      inputRef.current?.focus();
+      return;
+    }
+
+    if (tags.length >= MAX_TAG_COUNT) {
+      showMessage(
+        "Tag limit reached",
+        `You can add up to ${MAX_TAG_COUNT} tags.`,
+        "warning"
+      );
+      return;
+    }
+
+    setTags((prev) => [...prev, trimmedTag]);
     setTagInput("");
     setShowSuggestions(false);
     inputRef.current?.focus();
@@ -81,13 +113,30 @@ export default function PlayNew() {
 
   const handleCreate = (e) => {
     e.preventDefault();
-    if (!title.trim()) return;
-    const entry = saveAppPlay({
-      playName: title.trim(),
-      playData: null,
-      tags,
-    });
-    navigate(`/app/plays/${entry.id}/edit`);
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      showMessage("Missing title", "Please enter a play title.", "error");
+      return;
+    }
+    if (trimmedTitle.length > MAX_TITLE_LENGTH) {
+      showMessage(
+        "Title too long",
+        `Title must be ${MAX_TITLE_LENGTH} characters or fewer.`,
+        "error"
+      );
+      return;
+    }
+
+    try {
+      const entry = saveAppPlay({
+        playName: trimmedTitle,
+        playData: null,
+        tags,
+      });
+      navigate(`/app/plays/${entry.id}/edit`);
+    } catch {
+      showMessage("Save failed", "Could not create play. Please try again.", "error");
+    }
   };
 
   const inputClass =
@@ -117,6 +166,7 @@ export default function PlayNew() {
             onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g. Inside Pass Loop"
             className={inputClass}
+            maxLength={MAX_TITLE_LENGTH}
             autoFocus
           />
         </div>
