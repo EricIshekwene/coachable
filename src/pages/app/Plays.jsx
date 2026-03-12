@@ -22,10 +22,28 @@ function formatRelativeTime(isoString) {
   return `${weeks}w ago`;
 }
 
+const MOBILE_BREAKPOINT = 768;
+
 export default function Plays() {
   const { user, playerViewMode } = useAuth();
   const navigate = useNavigate();
   const isCoach = user?.role === "coach" && !playerViewMode;
+
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < MOBILE_BREAKPOINT : false
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
+    const handler = (e) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    setIsMobile(mq.matches);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  // On mobile, coaches can manage folders/moves but cannot create or edit plays
+  const canCreatePlay = isCoach && !isMobile;
+  const canEditPlay = isCoach && !isMobile;
 
   const [plays, setPlays] = useState(() =>
     loadAppPlays().map((p) => ({
@@ -344,9 +362,9 @@ export default function Plays() {
             </div>
           )}
         </div>
-        {isCoach && (
+        {(isCoach || canCreatePlay) && (
           <div className="flex items-center gap-2">
-            {folderPath.length < 4 && (
+            {isCoach && folderPath.length < 4 && (
               <button
                 onClick={() => setNewFolderMode(true)}
                 className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-3.5 py-2.5 text-sm text-BrandGray transition hover:border-BrandGray hover:text-BrandText disabled:opacity-50 disabled:cursor-not-allowed"
@@ -356,13 +374,15 @@ export default function Plays() {
                 New Folder
               </button>
             )}
-            <Link
-              to="/app/plays/new"
-              className="flex items-center gap-2 rounded-lg bg-BrandOrange px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.97]"
-            >
-              <FiPlus className="text-base" />
-              New Play
-            </Link>
+            {canCreatePlay && (
+              <Link
+                to="/app/plays/new"
+                className="flex items-center gap-2 rounded-lg bg-BrandOrange px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.97]"
+              >
+                <FiPlus className="text-base" />
+                New Play
+              </Link>
+            )}
           </div>
         )}
       </div>
@@ -520,7 +540,7 @@ export default function Plays() {
                   <span className="flex items-center gap-1.5 text-[11px] text-BrandGray2">
                     <FiClock className="text-[10px]" />{play.updatedAt}
                   </span>
-                  {isCoach && (
+                  {canEditPlay && (
                     <button
                       onClick={(e) => { e.stopPropagation(); navigate(`/app/plays/${play.id}/edit`); }}
                       className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-BrandGray transition hover:bg-BrandGray2/20 hover:text-BrandOrange"
@@ -547,7 +567,7 @@ export default function Plays() {
           <p className="mt-1 text-xs text-BrandGray2">
             {currentFolderId
               ? "Drag plays here or use the menu to move them."
-              : isCoach
+              : canCreatePlay
                 ? "Create your first play to get started."
                 : "Your coach hasn't added any plays yet."}
           </p>

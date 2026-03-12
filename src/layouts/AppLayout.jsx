@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import darkLogo from "../assets/logos/White_Coachable_Logo.png";
 import lightLogo from "../assets/logos/coachable_Logo.png";
 import { FiBookOpen, FiUsers, FiUser, FiLogOut, FiSettings, FiEye, FiX } from "react-icons/fi";
+import useThemeColor from "../utils/useThemeColor";
 
 const coachNavItems = [
   { to: "/app/plays", icon: FiBookOpen, label: "Plays" },
@@ -31,6 +32,9 @@ export default function AppLayout() {
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     return () => observer.disconnect();
   }, []);
+
+  // iOS Safari overscroll area matches the app shell background
+  useThemeColor(isLight ? "#ffffff" : "#121212");
 
   const handleLogout = () => {
     logout();

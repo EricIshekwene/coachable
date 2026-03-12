@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Slate from "../features/slate/Slate";
 import { loadAppPlays } from "../utils/appPlaysStorage";
+import useThemeColor from "../utils/useThemeColor";
 
 export default function PlayViewOnlyPage() {
   const { playId } = useParams();
@@ -12,6 +13,9 @@ export default function PlayViewOnlyPage() {
     const plays = loadAppPlays();
     return plays.find((p) => p.id === playId) || null;
   }, [playId]);
+
+  const fieldColor = existingPlay?.playData?.pitch?.pitchColor || "#4FA85D";
+  useThemeColor(fieldColor);
 
   if (!existingPlay) {
     return (

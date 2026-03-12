@@ -5,6 +5,7 @@ import { AuthProvider } from "./context/AuthContext";
 import Slate from "./features/slate/Slate";
 import MessagePopup from "./components/MessagePopup/MessagePopup";
 import { useMessagePopup } from "./components/messaging/useMessagePopup";
+import useThemeColor from "./utils/useThemeColor";
 import Landing from "./pages/Landing";
 import Signup from "./pages/Signup";
 import Login from "./pages/Login";
@@ -23,6 +24,7 @@ import MobileViewOnlyGate from "./components/MobileViewOnlyGate";
 
 function SlateRoot() {
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
+  useThemeColor("#121212");
   return (
     <div className="w-full bg-BrandBlack flex flex-row justify-between relative overflow-hidden" style={{ height: "100dvh" }}>
       <MessagePopup

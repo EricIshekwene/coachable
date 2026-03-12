@@ -1,15 +1,10 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { FaUsers } from "react-icons/fa";
 import { IoFootball } from "react-icons/io5";
 import { TbLayoutSidebarLeftCollapse } from "react-icons/tb";
 import coachableLogo from "../../assets/logos/White_Coachable_Logo.png";
 import coneIcon from "../../assets/objects/cone.png";
-import rugbyScrum from "../../assets/prefabIcons/Rugby Scrum.png";
-import rugbyLineout from "../../assets/prefabIcons/Rugby Lineout.png";
-import rugbyKickoff from "../../assets/prefabIcons/Rugby KickOff.png";
-
 import SelectToolSection from "../sidebar/SelectToolSection";
 import PenToolSection from "../sidebar/PenToolSection";
 import AddPlayerSection from "../sidebar/AddPlayerSection";
@@ -22,63 +17,6 @@ import { Popover } from "../subcomponents/Popovers";
 const iconClass = "text-BrandOrange text-xl sm:text-2xl md:text-3xl";
 const selectedIconClass = "text-BrandBlack text-xl sm:text-2xl md:text-3xl";
 
-const DEFAULT_PLAYERS = [
-    "Tommy Kilbane", "Tristan Arndt", "Tommy Graham", "Trenton Bui", "Ty Johnson",
-    "Trey Burkhart", "Trey Lundy", "Trevor Jackson", "Trevor Simms", "Tyler Banks",
-    "Tyler Davis", "Tyler Gray", "Tyler Smith", "Tyler Wilson", "Zachary Breaux",
-    "Zachary Brown", "Zachary Chavez", "Zachary Davis", "Zachary Green", "Zachary Johnson",
-    "Zachary Lee", "Zachary Martin", "Zachary Martinez", "Zachary Miller", "Zachary Mitchell",
-    "Zachary Moore", "Zachary Nelson", "Zachary Phillips", "Zachary Robinson", "Zachary Rodriguez",
-    "Zachary Scott", "Zachary Smith", "Zachary Taylor", "Zachary Thompson", "Zachary Walker",
-    "Zachary Wilson", "Zachary Young",
-];
-
-function buildDefaultPrefabs() {
-    return [
-        {
-            id: "lineout",
-            label: "Lineout",
-            mode: "offense",
-            icon: <img src={rugbyLineout} alt="Lineout" className={iconClass} />,
-            dropdowns: [{ label: "Number of Players", options: ["3", "4", "5", "6", "7"], value: "5", onChange: () => {} }],
-        },
-        {
-            id: "scrum",
-            label: "Scrum",
-            mode: "offense",
-            icon: <img src={rugbyScrum} alt="Scrum" className={iconClass} />,
-            dropdowns: [{ label: "Number of Players", options: ["3", "8"], value: "3", onChange: () => {} }],
-        },
-        {
-            id: "kickoff1",
-            label: "Kickoff",
-            mode: "offense",
-            icon: <img src={rugbyKickoff} alt="Kickoff" className={iconClass} />,
-            dropdowns: [{ label: "Area", options: ["Goal Line", "22", "50"], value: "5", onChange: () => {} }],
-        },
-        {
-            id: "scrum1",
-            label: "Scrum",
-            mode: "defense",
-            icon: <img src={rugbyLineout} alt="Lineout" className={iconClass} />,
-            dropdowns: [{ label: "Formation", options: ["3", "8"], value: "3", onChange: () => {} }],
-        },
-        {
-            id: "lineout2",
-            label: "Lineout",
-            mode: "defense",
-            icon: <img src={rugbyLineout} alt="Lineout" className={iconClass} />,
-            dropdowns: [{ label: "Players", options: ["5", "6", "7", "8"], value: "4", onChange: () => {} }],
-        },
-        {
-            id: "kickoff2",
-            label: "Kickoff",
-            mode: "defense",
-            icon: <img src={rugbyKickoff} alt="Kickoff" className={iconClass} />,
-            dropdowns: [{ label: "Area", options: ["Goal Line", "22", "50"], value: "Goal Line", onChange: () => {} }],
-        },
-    ];
-}
 
 // Same width as RightPanel: w-32 sm:w-36 md:w-40 lg:w-44 xl:w-48
 const WIDE_SIDEBAR_WIDTH_CLASS = "w-32 sm:w-36 md:w-40 lg:w-44 xl:w-48";
@@ -95,8 +33,6 @@ export default function WideSidebarRoot({
     onPrefabSelect,
     onDeleteCustomPrefab,
     onAddPlayer,
-    players: playersProp,
-    prefabs: prefabsProp,
     customPrefabs,
     playName,
     onCollapse,
@@ -106,8 +42,6 @@ export default function WideSidebarRoot({
     const [openPopover, setOpenPopover] = useState(null);
     const [playerNumber, setPlayerNumber] = useState("");
     const [playerName, setPlayerName] = useState("");
-    const [playerSearch, setPlayerSearch] = useState("");
-    const [showPlayerDropdown, setShowPlayerDropdown] = useState(false);
     const [playerColor, setPlayerColor] = useState(PLAYER_COLORS.red);
     const [hoveredTooltip, setHoveredTooltip] = useState(null);
     const selectedToolForUi = activeTool ?? selectedTool;
@@ -120,21 +54,12 @@ export default function WideSidebarRoot({
     const objectsButtonRef = useRef(null);
     const playerButtonRef = useRef(null);
     const prefabsButtonRef = useRef(null);
-    const playerDropdownRef = useRef(null);
-
-    const players = playersProp ?? DEFAULT_PLAYERS;
-    const defaultPrefabs = prefabsProp ?? buildDefaultPrefabs();
     const prefabs = useMemo(() => {
-        const customForPopover = (customPrefabs || []).map((cp) => ({
+        return (customPrefabs || []).map((cp) => ({
             ...cp,
             isCustom: true,
-            icon: <FaUsers className={iconClass} />,
         }));
-        return [...defaultPrefabs, ...customForPopover];
-    }, [defaultPrefabs, customPrefabs]);
-    const filteredPlayers = players.filter((p) =>
-        String(p).toLowerCase().includes(playerSearch.toLowerCase())
-    );
+    }, [customPrefabs]);
 
     const togglePopover = (key) => {
         setOpenPopover((prev) => (prev === key ? null : key));
@@ -160,27 +85,19 @@ export default function WideSidebarRoot({
         setTool("prefab");
         onPrefabSelect?.(prefab);
     };
-    const handlePlayerAssign = (name) => {
-        setPlayerSearch(name);
-        setShowPlayerDropdown(false);
-    };
     const handleAddPlayer = (data) => {
         const next = {
             number: data?.number ?? playerNumber,
             name: data?.name ?? playerName,
-            assignment: data?.assignment ?? playerSearch,
             color: playerColor,
         };
         const hasValue =
             String(next.number ?? "").trim() !== "" ||
-            String(next.name ?? "").trim() !== "" ||
-            String(next.assignment ?? "").trim() !== "";
+            String(next.name ?? "").trim() !== "";
         if (!hasValue) return;
         onAddPlayer?.(next);
         setPlayerNumber("");
         setPlayerName("");
-        setPlayerSearch("");
-        setShowPlayerDropdown(false);
     };
     const handleQuickAddPlayer = () => {
         onAddPlayer?.({ color: playerColor });
@@ -236,24 +153,6 @@ export default function WideSidebarRoot({
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [closePopover, handlePlayerColorChange, onDeleteSelected, onRedo, onUndo, playerColor, setTool]);
-
-    useEffect(() => {
-        if (!showPlayerDropdown) return;
-        const handleClickOutside = (e) => {
-            const input = e.target.closest('input[placeholder="Search player"]');
-            const button = e.target.closest("button");
-            const dropdown = playerDropdownRef.current;
-            if (dropdown && !dropdown.contains(e.target) && !input && !button) {
-                setShowPlayerDropdown(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [showPlayerDropdown]);
-
-    useEffect(() => {
-        if (openPopover !== "addPlayer") setShowPlayerDropdown(false);
-    }, [openPopover]);
 
     const isObjectToolSelected = selectedToolForUi === "addBall" || selectedToolForUi === "addCone";
 
@@ -332,19 +231,12 @@ export default function WideSidebarRoot({
                 hoveredTooltip={hoveredTooltip}
                 numberValue={playerNumber}
                 nameValue={playerName}
-                playerSearch={playerSearch}
-                showPlayerDropdown={showPlayerDropdown}
-                filteredPlayers={filteredPlayers}
                 anchorRef={addPlayerButtonRef}
-                dropdownRef={playerDropdownRef}
                 onToolSelect={() => setTool("addPlayer")}
                 onPopoverToggle={togglePopover}
                 onPopoverClose={closePopover}
                 onNumberChange={setPlayerNumber}
                 onNameChange={setPlayerName}
-                onPlayerSearchChange={setPlayerSearch}
-                onPlayerAssign={handlePlayerAssign}
-                onShowPlayerDropdownChange={setShowPlayerDropdown}
                 onHoverTooltip={setHoveredTooltip}
                 onAddPlayer={handleAddPlayer}
                 onQuickAdd={handleQuickAddPlayer}
@@ -367,7 +259,7 @@ export default function WideSidebarRoot({
                 anchorRef={objectsButtonRef}
                 topOffset={0}
             >
-                <div className="ml-2 w-[160px] rounded-lg border border-BrandGray2/70 bg-BrandBlack/95 p-1.5 shadow-xl">
+                <div className="ml-2 w-[160px] rounded-lg bg-BrandBlack p-1.5 shadow-[0_16px_30px_-20px_rgba(0,0,0,0.95)]">
                     <button
                         type="button"
                         onClick={() => handleObjectToolSelect("addBall")}

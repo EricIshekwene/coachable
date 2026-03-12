@@ -1,5 +1,5 @@
 import { SidebarChevronButton, WideSidebarRowButton } from "../subcomponents/Buttons";
-import { Popover, PopoverGrid, Tooltip } from "../subcomponents/Popovers";
+import { Popover, Tooltip } from "../subcomponents/Popovers";
 
 const PLAYER_COLORS = { red: "#ef4444", blue: "#3b82f6" };
 
@@ -45,12 +45,12 @@ export default function PlayerColorSection({
             />
             <Tooltip isOpen={hoveredTooltip === "player" && !isOpen} text="Switch Color (C)" />
             <Popover isOpen={isOpen} onClose={onPopoverClose} anchorRef={anchorRef}>
-                <PopoverGrid cols={2}>
+                <div className="ml-2 p-2.5 bg-BrandBlack rounded-lg shadow-[0_16px_30px_-20px_rgba(0,0,0,0.95)] font-DmSans grid grid-cols-2 gap-2 min-w-[120px]">
                     <div className="flex flex-col items-center gap-1">
                         <button
                             onClick={() => onPlayerColorChange?.(PLAYER_COLORS.red)}
                             className={`
-                                rounded-md border border-BrandGray
+                                rounded-md
                                 flex items-center justify-center
                                 p-2 aspect-square w-full
                                 transition-all duration-100
@@ -58,17 +58,17 @@ export default function PlayerColorSection({
                             `}
                         >
                             <div
-                                className="h-5 w-5 md:h-7 md:w-7 rounded-full border border-BrandBlack"
+                                className="h-5 w-5 md:h-7 md:w-7 rounded-full"
                                 style={{ backgroundColor: PLAYER_COLORS.red }}
                             />
                         </button>
-                        <span className="text-[10px] text-BrandOrange">Red</span>
+                        <span className="text-[10px] text-BrandGray">Red</span>
                     </div>
                     <div className="flex flex-col items-center gap-1">
                         <button
                             onClick={() => onPlayerColorChange?.(PLAYER_COLORS.blue)}
                             className={`
-                                rounded-md border border-BrandGray
+                                rounded-md
                                 flex items-center justify-center
                                 p-2 aspect-square w-full
                                 transition-all duration-100
@@ -76,13 +76,13 @@ export default function PlayerColorSection({
                             `}
                         >
                             <div
-                                className="h-5 w-5 md:h-7 md:w-7 rounded-full border border-BrandBlack"
+                                className="h-5 w-5 md:h-7 md:w-7 rounded-full"
                                 style={{ backgroundColor: PLAYER_COLORS.blue }}
                             />
                         </button>
-                        <span className="text-[10px] text-BrandOrange">Blue</span>
+                        <span className="text-[10px] text-BrandGray">Blue</span>
                     </div>
-                </PopoverGrid>
+                </div>
             </Popover>
         </div>
     );

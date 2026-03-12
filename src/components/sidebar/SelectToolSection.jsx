@@ -1,7 +1,7 @@
 import { LuMousePointer2 } from "react-icons/lu";
 import { IoHandLeftOutline } from "react-icons/io5";
 import { SidebarChevronButton, WideSidebarRowButton } from "../subcomponents/Buttons";
-import { Popover, PopoverGrid, Tooltip } from "../subcomponents/Popovers";
+import { Popover, Tooltip } from "../subcomponents/Popovers";
 
 const iconClass = "text-BrandOrange text-xl sm:text-2xl md:text-3xl";
 const selectedIconClass = "text-BrandBlack text-xl sm:text-2xl md:text-3xl";
@@ -52,12 +52,12 @@ export default function SelectToolSection({
                 text={selectToolType === "hand" ? "Hand Tool (H)" : "Select Tool (S)"}
             />
             <Popover isOpen={isOpen} onClose={onPopoverClose} anchorRef={anchorRef}>
-                <PopoverGrid cols={2}>
+                <div className="ml-2 p-2.5 bg-BrandBlack rounded-lg shadow-[0_16px_30px_-20px_rgba(0,0,0,0.95)] font-DmSans grid grid-cols-2 gap-2 min-w-[120px]">
                     <div className="flex flex-col items-center gap-1">
                         <button
                             onClick={() => onSelectSubTool?.("select")}
                             className={`
-                                rounded-md border border-BrandGray
+                                rounded-md
                                 flex items-center justify-center
                                 p-2 aspect-square w-full
                                 transition-all duration-100
@@ -66,13 +66,13 @@ export default function SelectToolSection({
                         >
                             <LuMousePointer2 className={selectToolType === "select" ? selectedIconClass : iconClass} />
                         </button>
-                        <span className="text-[10px] text-BrandOrange">Select (S)</span>
+                        <span className="text-[10px] text-BrandGray">Select (S)</span>
                     </div>
                     <div className="flex flex-col items-center gap-1">
                         <button
                             onClick={() => onSelectSubTool?.("hand")}
                             className={`
-                                rounded-md border border-BrandGray
+                                rounded-md
                                 flex items-center justify-center
                                 p-2 aspect-square w-full
                                 transition-all duration-100
@@ -81,9 +81,9 @@ export default function SelectToolSection({
                         >
                             <IoHandLeftOutline className={selectToolType === "hand" ? selectedIconClass : iconClass} />
                         </button>
-                        <span className="text-[10px] text-BrandOrange">Hand (H)</span>
+                        <span className="text-[10px] text-BrandGray">Hand (H)</span>
                     </div>
-                </PopoverGrid>
+                </div>
             </Popover>
         </div>
     );

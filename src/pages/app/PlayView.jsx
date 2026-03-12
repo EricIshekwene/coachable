@@ -5,6 +5,8 @@ import { FiArrowLeft, FiEdit2, FiClock, FiTag, FiExternalLink } from "react-icon
 import { loadAppPlays, updateAppPlay } from "../../utils/appPlaysStorage";
 import PlayPreviewCard from "../../components/PlayPreviewCard";
 
+const MOBILE_BREAKPOINT = 768;
+
 function formatRelativeTime(isoString) {
   if (!isoString) return "";
   const diff = Date.now() - new Date(isoString).getTime();
@@ -34,8 +36,20 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
   const { playId } = useParams();
   const { user, playerViewMode } = useAuth();
   const navigate = useNavigate();
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < MOBILE_BREAKPOINT : false
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
+    const handler = (e) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    setIsMobile(mq.matches);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
   const effectiveViewOnly = viewOnly || playerViewMode;
-  const canCoachEdit = user?.role === "coach" && !effectiveViewOnly;
+  const canCoachEdit = user?.role === "coach" && !effectiveViewOnly && !isMobile;
   const noteInputRef = useRef(null);
 
   const getPlayById = useCallback(() => {

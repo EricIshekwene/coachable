@@ -9,6 +9,7 @@ html, body {
     touch-action: none;
     -webkit-overflow-scrolling: auto;
     overscroll-behavior: none;
+    background-color: #121212;
 }
 
 @theme {

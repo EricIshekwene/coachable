@@ -5,6 +5,7 @@ import MessagePopup from "../components/MessagePopup/MessagePopup";
 import Slate from "../features/slate/Slate";
 import MobileViewOnlyGate from "../components/MobileViewOnlyGate";
 import { loadAppPlays, updateAppPlay } from "../utils/appPlaysStorage";
+import useThemeColor from "../utils/useThemeColor";
 import {
   log as logPersistence,
   summarizePlayData,
@@ -15,6 +16,7 @@ export default function PlayEditPage() {
   const navigate = useNavigate();
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
   const [ready, setReady] = useState(false);
+  useThemeColor("#121212");
 
   const existingPlay = useMemo(() => {
     const plays = loadAppPlays();
