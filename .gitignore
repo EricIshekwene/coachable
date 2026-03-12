@@ -27,4 +27,5 @@ dist-ssr
 .env
 .env.*
 .mcp.json
+.claude/
 server/reset-password.js
