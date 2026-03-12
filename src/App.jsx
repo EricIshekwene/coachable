@@ -14,6 +14,7 @@ import Plays from "./pages/app/Plays";
 import PlayNew from "./pages/app/PlayNew";
 import PlayView from "./pages/app/PlayView";
 import PlayEditPage from "./pages/PlayEditPage";
+import PlayViewOnlyPage from "./pages/PlayViewOnlyPage";
 import Team from "./pages/app/Team";
 import Profile from "./pages/app/Profile";
 import ProfileEmailVerification from "./pages/app/ProfileEmailVerification";
@@ -53,7 +54,7 @@ function AppRoutes() {
 
       {/* Full-screen play editor (outside AppLayout — no nav chrome) */}
       <Route path="/app/plays/:playId/edit" element={<PlayEditPage />} />
-      <Route path="/app/plays/:playId/view" element={<PlayView viewOnly showBackButton={false} />} />
+      <Route path="/app/plays/:playId/view" element={<PlayViewOnlyPage />} />
 
       {/* App shell */}
       <Route path="/app" element={<AppLayout />}>

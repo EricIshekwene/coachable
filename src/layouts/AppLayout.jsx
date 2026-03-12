@@ -3,18 +3,25 @@ import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import darkLogo from "../assets/logos/White_Coachable_Logo.png";
 import lightLogo from "../assets/logos/coachable_Logo.png";
-import { FiBookOpen, FiUsers, FiUser, FiLogOut, FiSettings } from "react-icons/fi";
+import { FiBookOpen, FiUsers, FiUser, FiLogOut, FiSettings, FiEye, FiX } from "react-icons/fi";
 
-const navItems = [
+const coachNavItems = [
   { to: "/app/plays", icon: FiBookOpen, label: "Plays" },
   { to: "/app/team", icon: FiUsers, label: "Team" },
   { to: "/app/profile", icon: FiUser, label: "Profile" },
   { to: "/app/settings", icon: FiSettings, label: "Settings" },
 ];
 
+const playerNavItems = [
+  { to: "/app/plays", icon: FiBookOpen, label: "Plays" },
+  { to: "/app/team", icon: FiUsers, label: "Team" },
+  { to: "/app/profile", icon: FiUser, label: "Profile" },
+];
+
 export default function AppLayout() {
-  const { user, logout } = useAuth();
+  const { user, logout, playerViewMode, setPlayerViewMode } = useAuth();
   const navigate = useNavigate();
+  const navItems = playerViewMode ? playerNavItems : coachNavItems;
   const [isLight, setIsLight] = useState(document.documentElement.getAttribute("data-theme") === "light");
 
   useEffect(() => {
@@ -36,8 +43,32 @@ export default function AppLayout() {
       : "text-BrandGray hover:bg-BrandBlack2 hover:text-BrandText"
     }`;
 
+  const handleExitPlayerView = () => {
+    setPlayerViewMode(false);
+    navigate("/app/settings");
+  };
+
   return (
-    <div className="app-themed flex h-screen bg-BrandBlack font-DmSans text-BrandText">
+    <div className="app-themed flex h-screen flex-col bg-BrandBlack font-DmSans text-BrandText">
+      {/* Player View Banner */}
+      {playerViewMode && (
+        <div className="flex items-center justify-between border-b border-BrandOrange/30 bg-BrandOrange/10 px-4 py-2">
+          <div className="flex items-center gap-2">
+            <FiEye className="text-sm text-BrandOrange" />
+            <span className="text-xs font-semibold text-BrandOrange">Player View</span>
+            <span className="text-xs text-BrandGray2">— You're previewing the app as a player sees it</span>
+          </div>
+          <button
+            onClick={handleExitPlayerView}
+            className="flex items-center gap-1.5 rounded-md bg-BrandOrange px-3 py-1.5 text-xs font-semibold text-white transition hover:brightness-110"
+          >
+            <FiX className="text-xs" />
+            Exit Player View
+          </button>
+        </div>
+      )}
+
+      <div className="flex flex-1 overflow-hidden">
       {/* Sidebar */}
       <aside className="hidden w-60 flex-col border-r border-BrandGray2/20 md:flex">
         <Link to="/app" className="flex items-center gap-3 px-5 py-5">
@@ -69,7 +100,7 @@ export default function AppLayout() {
             </div>
             <div className="min-w-0">
               <p className="truncate text-xs font-semibold">{user?.name || "Guest"}</p>
-              <p className="truncate text-[10px] text-BrandGray2">{user?.role || ""}</p>
+              <p className="truncate text-[10px] text-BrandGray2">{playerViewMode ? "player" : (user?.role || "")}</p>
             </div>
           </div>
           <button
@@ -103,6 +134,7 @@ export default function AppLayout() {
       <main className="flex-1 overflow-auto pb-16 md:pb-0">
         <Outlet />
       </main>
+      </div>
     </div>
   );
 }

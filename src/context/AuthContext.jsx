@@ -78,6 +78,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(withDefaultUserSettings(MOCK_USERS.coach));
   const [teamMembers, setTeamMembers] = useState(DEFAULT_TEAM_MEMBERS);
   const [pendingEmailChange, setPendingEmailChange] = useState(null);
+  const [playerViewMode, setPlayerViewMode] = useState(false);
 
   const login = (email) => {
     // Mock: coach email picks coach profile, everything else picks player profile
@@ -240,6 +241,8 @@ export function AuthProvider({ children }) {
         user,
         teamMembers,
         pendingEmailChange,
+        playerViewMode,
+        setPlayerViewMode,
         login,
         signup,
         completeOnboarding,

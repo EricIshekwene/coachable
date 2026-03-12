@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   FiBell,
   FiCheck,
+  FiEye,
   FiMonitor,
   FiMoon,
   FiShield,
@@ -66,10 +68,13 @@ function ToggleRow({ label, description, enabled, onToggle }) {
 export default function Settings() {
   const {
     user,
+    playerViewMode,
+    setPlayerViewMode,
     updateAssistantPermissions,
     updateNotificationPreferences,
     updateTeamDefaults,
   } = useAuth();
+  const navigate = useNavigate();
 
   const initialTheme = localStorage.getItem("theme") || "dark";
   const initialNotifications = user?.notifications || {};
@@ -262,6 +267,29 @@ export default function Settings() {
           </div>
         </div>
       </div>
+
+      {user?.role === "coach" && !playerViewMode && (
+        <div className="mt-6 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <FiEye className="text-sm text-BrandOrange" />
+            <p className="text-xs font-semibold uppercase tracking-widest text-BrandGray2">Player View</p>
+          </div>
+          <p className="text-xs text-BrandGray2">
+            Preview the app as a player sees it. You'll see read-only plays, limited navigation, and player-level account options.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setPlayerViewMode(true);
+              navigate("/app/plays");
+            }}
+            className="mt-4 flex items-center gap-2 rounded-lg bg-BrandOrange px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.98]"
+          >
+            <FiEye className="text-sm" />
+            Switch to Player View
+          </button>
+        </div>
+      )}
 
       <div className="mt-6">
         <p className="text-xs font-semibold uppercase tracking-widest text-BrandGray2">Appearance</p>

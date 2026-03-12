@@ -184,6 +184,38 @@ function Slate({
 }) {
   const [viewOnlyLocal, setViewOnlyLocal] = useState(viewOnlyProp);
   const viewOnly = viewOnlyProp || viewOnlyLocal;
+
+  // Smooth transition state: "edit" | "collapsing" | "view" | "expanding"
+  const [viewTransition, setViewTransition] = useState(viewOnly ? "view" : "edit");
+
+  useEffect(() => {
+    if (viewOnly && (viewTransition === "edit" || viewTransition === "expanding")) {
+      // Start collapsing
+      setViewTransition("collapsing");
+      const timer = setTimeout(() => setViewTransition("view"), 350);
+      return () => clearTimeout(timer);
+    } else if (!viewOnly && (viewTransition === "view" || viewTransition === "collapsing")) {
+      // Start expanding — mount panels in collapsed state first
+      setViewTransition("expanding");
+      // Use double rAF so the DOM paints the collapsed state before animating open
+      let raf1, raf2;
+      raf1 = requestAnimationFrame(() => {
+        raf2 = requestAnimationFrame(() => {
+          setViewTransition("edit");
+        });
+      });
+      return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2); };
+    }
+  }, [viewOnly]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Whether editing panels (sidebar, right panel, control pill) should be in the DOM
+  const showEditPanels = viewTransition === "edit" || viewTransition === "collapsing" || viewTransition === "expanding";
+  // Whether panels should visually be in their expanded (visible) state
+  const panelsExpanded = viewTransition === "edit";
+  // Whether view-only controls should be in the DOM
+  const showViewOverlay = viewTransition === "view" || viewTransition === "collapsing";
+  // Whether view-only controls should be fully visible
+  const viewOverlayVisible = viewTransition === "view";
   const containerRef = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -2592,22 +2624,28 @@ function Slate({
           </div>
         </div>
       )}
-      {!viewOnly && (
-        <WideSidebar
-          activeTool={canvasTool}
-          onToolChange={handleToolChange}
-          onUndo={slateHistory.onUndo}
-          onRedo={slateHistory.onRedo}
-          onReset={onReset}
-          onAddPlayer={entities.handleAddPlayer}
-          onPlayerColorChange={entities.handlePlayerColorChange}
-          onDeleteSelected={entities.handleDeleteSelected}
-          onPrefabSelect={handlePrefabSelect}
-          onDeleteCustomPrefab={handleDeleteCustomPrefab}
-          customPrefabs={customPrefabs}
-          playName={playName}
-          onCollapse={() => setViewOnlyLocal(true)}
-        />
+      {showEditPanels && (
+        <div
+          className={`shrink-0 overflow-hidden transition-[max-width,opacity] duration-300 ease-in-out ${
+            panelsExpanded ? "max-w-[12rem] opacity-100" : "max-w-0 opacity-0"
+          }`}
+        >
+          <WideSidebar
+            activeTool={canvasTool}
+            onToolChange={handleToolChange}
+            onUndo={slateHistory.onUndo}
+            onRedo={slateHistory.onRedo}
+            onReset={onReset}
+            onAddPlayer={entities.handleAddPlayer}
+            onPlayerColorChange={entities.handlePlayerColorChange}
+            onDeleteSelected={entities.handleDeleteSelected}
+            onPrefabSelect={handlePrefabSelect}
+            onDeleteCustomPrefab={handleDeleteCustomPrefab}
+            customPrefabs={customPrefabs}
+            playName={playName}
+            onCollapse={() => setViewOnlyLocal(true)}
+          />
+        </div>
       )}
       <div ref={containerRef} data-slate-root className="flex-1 flex relative">
         <KonvaCanvasRoot
@@ -2692,7 +2730,11 @@ function Slate({
             onSubToolChange={handleDrawSubToolChange}
           />
         )}
-        {viewOnly ? (
+        {showViewOverlay ? (
+          <div
+            className="transition-opacity duration-300 ease-in-out"
+            style={{ opacity: viewOverlayVisible ? 1 : 0 }}
+          >
           <ViewOnlyControls
             durationMs={animationData.durationMs}
             currentTimeMs={timelineDisplayTimeMs}
@@ -2711,6 +2753,7 @@ function Slate({
             onToggleFullscreen={toggleFullscreen}
             playName={playName}
           />
+          </div>
         ) : recording.recordingModeEnabled ? (
           <RecordingControlBar
             globalState={recording.globalState}
@@ -2790,7 +2833,11 @@ function Slate({
         </>
       )}
 
-      {!viewOnly && <RightPanel
+      {showEditPanels && <div
+        className={`shrink-0 overflow-hidden transition-[max-width,opacity] duration-300 ease-in-out ${
+          panelsExpanded ? "max-w-[12rem] opacity-100" : "max-w-0 opacity-0"
+        }`}
+      ><RightPanel
         canvasTool={canvasTool}
         drawSubTool={drawSubTool}
         drawColor={drawColor}
@@ -2867,7 +2914,7 @@ function Slate({
         onResumeRecording={recording.resumeRecording}
         onClearPlayerRecording={recording.clearPlayerRecording}
         onClearAllRecordings={recording.clearAllRecordings}
-      />}
+      /></div>}
       {!viewOnly && (
         <>
           <input

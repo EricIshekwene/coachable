@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { FiArrowLeft, FiEdit2, FiClock, FiTag } from "react-icons/fi";
+import { FiArrowLeft, FiEdit2, FiClock, FiTag, FiExternalLink } from "react-icons/fi";
 import { loadAppPlays, updateAppPlay } from "../../utils/appPlaysStorage";
 import PlayPreviewCard from "../../components/PlayPreviewCard";
 
@@ -32,9 +32,10 @@ function formatNoteDate(isoString) {
 
 export default function PlayView({ viewOnly = false, showBackButton = true }) {
   const { playId } = useParams();
-  const { user } = useAuth();
+  const { user, playerViewMode } = useAuth();
   const navigate = useNavigate();
-  const canCoachEdit = user?.role === "coach" && !viewOnly;
+  const effectiveViewOnly = viewOnly || playerViewMode;
+  const canCoachEdit = user?.role === "coach" && !effectiveViewOnly;
   const noteInputRef = useRef(null);
 
   const getPlayById = useCallback(() => {
@@ -148,14 +149,25 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
             </span>
           </div>
         </div>
-        {canCoachEdit && (
-          <Link
-            to={`/app/plays/${playId}/edit`}
-            className="flex items-center gap-2 rounded-lg bg-BrandOrange px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
-          >
-            <FiEdit2 className="text-sm" />
-            Edit
-          </Link>
+        {!effectiveViewOnly && (
+          <div className="flex items-center gap-2">
+            <Link
+              to={`/app/plays/${playId}/view`}
+              className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-4 py-2 text-sm font-semibold text-BrandGray transition hover:border-BrandOrange/50 hover:text-BrandOrange"
+            >
+              <FiExternalLink className="text-sm" />
+              View in Slate
+            </Link>
+            {canCoachEdit && (
+              <Link
+                to={`/app/plays/${playId}/edit`}
+                className="flex items-center gap-2 rounded-lg bg-BrandOrange px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
+              >
+                <FiEdit2 className="text-sm" />
+                Edit
+              </Link>
+            )}
+          </div>
         )}
       </div>
 

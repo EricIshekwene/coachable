@@ -23,9 +23,9 @@ function formatRelativeTime(isoString) {
 }
 
 export default function Plays() {
-  const { user } = useAuth();
+  const { user, playerViewMode } = useAuth();
   const navigate = useNavigate();
-  const isCoach = user?.role === "coach";
+  const isCoach = user?.role === "coach" && !playerViewMode;
 
   const [plays, setPlays] = useState(() =>
     loadAppPlays().map((p) => ({
@@ -282,6 +282,14 @@ export default function Plays() {
             <FiFolder className="text-sm" /> Move to Folder
           </button>
         )}
+        {!isFolder && currentFolderId && (
+          <button
+            onClick={() => { removePlayFromFolder(id, currentFolderId); setMenuOpen(null); }}
+            className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"
+          >
+            <FiFolder className="text-sm" /> Remove from Folder
+          </button>
+        )}
         <div className="mx-2 my-1 h-px bg-BrandGray2/15" />
         <button
           onClick={() => (isFolder ? deleteFolder(id) : deletePlay(id))}
@@ -454,7 +462,7 @@ export default function Plays() {
             >
               <div
                 className="flex flex-1 cursor-pointer flex-col"
-                onClick={() => navigate(`/app/plays/${play.id}`)}
+                onClick={() => navigate(playerViewMode ? `/app/plays/${play.id}/view` : `/app/plays/${play.id}`)}
               >
                 {/* Play preview */}
                 <PlayPreviewCard
@@ -523,15 +531,6 @@ export default function Plays() {
                 </div>
               </div>
 
-              {/* Remove from folder button */}
-              {currentFolderId && isCoach && (
-                <button
-                  onClick={() => removePlayFromFolder(play.id, currentFolderId)}
-                  className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-BrandGray2/20 py-1.5 text-[11px] text-BrandGray2 transition hover:border-red-500/30 hover:text-red-400"
-                >
-                  Remove from folder
-                </button>
-              )}
             </div>
           ))}
         </div>

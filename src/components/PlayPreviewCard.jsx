@@ -285,7 +285,7 @@ export default function PlayPreviewCard({
       }
       const deltaMs = Math.max(0, stamp - lastFrameAtRef.current);
       lastFrameAtRef.current = stamp;
-      setTimeMs((prev) => (prev + deltaMs) % durationMs);
+      setTimeMs((prev) => (prev + deltaMs * 1.5) % durationMs);
       rafIdRef.current = requestAnimationFrame(tick);
     };
 
