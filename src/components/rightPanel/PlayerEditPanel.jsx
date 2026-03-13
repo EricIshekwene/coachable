@@ -21,8 +21,6 @@ export default function PlayerEditPanel({
   if (!isOpen) return null;
   const nameValue = draft?.name ?? player?.name ?? "";
   const numberValue = draft?.number ?? player?.number ?? "";
-  const assignmentValue = draft?.assignment ?? player?.assignment ?? "";
-
   return (
     <aside
       className="absolute right-0 top-0 h-screen w-48 sm:w-56 md:w-64 bg-BrandBlack border-l border-BrandGray2/80 shadow-[0_18px_38px_-18px_rgba(0,0,0,0.95)] z-[60] flex flex-col"
@@ -62,19 +60,6 @@ export default function PlayerEditPanel({
             type="text"
             value={nameValue}
             onChange={(e) => onChange?.({ name: e.target.value })}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") onSave?.();
-              if (e.key === "Escape") onClose?.();
-            }}
-            className={POPUP_DENSE_INPUT_CLASS}
-          />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-BrandOrange text-xs sm:text-sm font-DmSans">Assignment</span>
-          <input
-            type="text"
-            value={assignmentValue}
-            onChange={(e) => onChange?.({ assignment: e.target.value })}
             onKeyDown={(e) => {
               if (e.key === "Enter") onSave?.();
               if (e.key === "Escape") onClose?.();

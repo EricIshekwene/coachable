@@ -9,7 +9,9 @@ import { FiArrowRight, FiChevronDown } from "react-icons/fi";
 
 const SPORTS = [
   "Rugby", "Soccer", "Basketball", "Football", "Baseball",
-  "Hockey", "Lacrosse", "Volleyball", "Cricket", "Other",
+  "Field Hockey", "Ice Hockey", "Lacrosse", "Volleyball",
+  "Cricket", "Water Polo", "Ultimate Frisbee", "Handball",
+  "Softball", "Other",
 ];
 
 export default function Onboarding() {

@@ -170,6 +170,7 @@ function Slate({
   onPlayDataChange,
   onReady,
   viewOnly: viewOnlyProp = false,
+  adminMode = false,
 }) {
   const [viewOnlyLocal, setViewOnlyLocal] = useState(viewOnlyProp);
   const viewOnly = viewOnlyProp || viewOnlyLocal;
@@ -1767,7 +1768,6 @@ function Slate({
         y: y + (p.dy ?? 0),
         number: getNextAvailableNumber(color, p.number),
         name: p.name ?? "",
-        assignment: p.assignment ?? "",
         color,
       };
       currentRepresented.push(newId);
@@ -2953,6 +2953,7 @@ function Slate({
           ballsById={entities.ballsById}
           animationData={animationData}
           currentTimeMs={Math.round(currentTimeRef.current)}
+          adminMode={adminMode}
         />
       )}
     </>

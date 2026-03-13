@@ -10,8 +10,7 @@ export const INITIAL_PLAYERS_BY_ID = {
     x: 0,
     y: 0,
     number: 1,
-    name: "John",
-    assignment: "Left Wing",
+    name: "",
     color: DEFAULT_PLAYER_COLOR,
   },
 };
@@ -23,7 +22,7 @@ export const INITIAL_BALLS_BY_ID = { [INITIAL_BALL.id]: { ...INITIAL_BALL } };
 const EMPTY_EDITOR = {
   open: false,
   id: null,
-  draft: { number: "", name: "", assignment: "" },
+  draft: { number: "", name: "" },
 };
 
 const DEFAULT_ALL_PLAYERS_DISPLAY = {
@@ -225,12 +224,11 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
     });
   };
 
-  const handleAddPlayer = ({ number, name, assignment, color, position }) => {
+  const handleAddPlayer = ({ number, name, color, position }) => {
     historyApiRef.current?.pushHistory?.();
     const nextName = String(name ?? "").trim();
-    const nextAssignment = String(assignment ?? "").trim();
     const colorKey = color || currentPlayerColor || allPlayersDisplay.color || DEFAULT_PLAYER_COLOR;
-    const hasInput = String(number ?? "").trim() !== "" || nextName !== "" || nextAssignment !== "";
+    const hasInput = String(number ?? "").trim() !== "" || nextName !== "";
     const nextNumber = resolveNextNumber(number);
     if (!hasInput && String(nextNumber ?? "").trim() === "") {
       return;
@@ -247,7 +245,6 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
       y: basePosition.y,
       number: nextNumber,
       name: nextName,
-      assignment: nextAssignment,
       color: colorKey,
     };
 
@@ -281,7 +278,6 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
       draft: {
         number: player.number ?? "",
         name: player.name ?? "",
-        assignment: player.assignment ?? "",
       },
     });
   };
@@ -314,7 +310,6 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
           ...existing,
           number: normalizeNumber(playerEditor.draft.number),
           name: String(playerEditor.draft.name ?? "").trim(),
-          assignment: String(playerEditor.draft.assignment ?? "").trim(),
         },
       };
     });
@@ -624,7 +619,6 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
         y: p.y,
         number: p.number,
         name: p.name,
-        assignment: p.assignment,
         color: p.color || allPlayersDisplay.color,
       })),
       ...Object.values(ballsById || {}).map((ball) => ({

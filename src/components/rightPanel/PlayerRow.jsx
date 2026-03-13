@@ -5,7 +5,6 @@ import { MdDeleteOutline } from "react-icons/md";
 export default function PlayerRow({ player, isSelected = false, onClick, onEdit, onDelete }) {
   if (!player) return null;
   const nameText = player.name ?? "";
-  const assignmentText = player.assignment ?? "";
   return (
     <div
       role="button"
@@ -24,13 +23,9 @@ export default function PlayerRow({ player, isSelected = false, onClick, onEdit,
         style={{ backgroundColor: player.color || "#ef4444" }}
       />
 
-      {/* Number + optional label/assignment */}
+      {/* Number + optional name */}
       <div className="flex-1 min-w-0 flex flex-col items-center justify-center px-1">
         <div className="w-full min-w-0 flex flex-row items-center justify-center gap-1">
-          {/*
-            Top row: number + name share identical typography.
-            Name truncates with ellipsis when long.
-          */}
           {(player.number ?? "") !== "" && (
             <span className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans font-semibold leading-none shrink-0">
               {player.number}
@@ -45,12 +40,6 @@ export default function PlayerRow({ player, isSelected = false, onClick, onEdit,
             </span>
           )}
         </div>
-
-        {assignmentText !== "" && (
-          <p className="text-BrandGray text-[7px] sm:text-[8px] md:text-[10px] font-DmSans leading-none truncate w-full text-center">
-            {assignmentText}
-          </p>
-        )}
       </div>
 
       {/* Actions */}

@@ -39,6 +39,7 @@ export default function AdvancedSettings({
     ballsById = {},
     animationData = {},
     currentTimeMs = 0,
+    adminMode = false,
 }) {
     const [showPreviewDebug, setShowPreviewDebug] = React.useState(false);
     const settings = value ?? {};
@@ -126,7 +127,8 @@ export default function AdvancedSettings({
 
                 <PlayerSettingsSection value={players} onChange={updatePlayers} />
                 <BallSettingsSection value={ball} onChange={updateBall} />
-                <ExportVideoSettingsSection value={exportVideo} onChange={updateExportVideo} />
+                {adminMode && <ExportVideoSettingsSection value={exportVideo} onChange={updateExportVideo} />}
+                {adminMode && (
                 <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1 sm:gap-2">
                     <div className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans">
                         Export
@@ -152,7 +154,9 @@ export default function AdvancedSettings({
                         </span>
                     </button>
                 </div>
+                )}
                 <AnimationSettingsSection value={animation} onChange={updateAnimation} />
+                {adminMode && (
                 <LoggerSettingsSection
                     onCopyDebug={onCopyDebug}
                     onCopyDrawDebug={onCopyDrawDebug}
@@ -164,6 +168,8 @@ export default function AdvancedSettings({
                     onCopyFixAllDebug={onCopyFixAllDebug}
                     onDebugRotate={onDebugRotate}
                 />
+                )}
+                {adminMode && (
                 <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1 sm:gap-2">
                     <div className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans">
                         Animation Debug
@@ -176,7 +182,8 @@ export default function AdvancedSettings({
                         currentTimeMs={currentTimeMs}
                     />
                 </div>
-                {/* Debug Preview */}
+                )}
+                {adminMode && (
                 <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1 sm:gap-2">
                     <div className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans">
                         Preview Debug
@@ -204,6 +211,7 @@ export default function AdvancedSettings({
                         </div>
                     )}
                 </div>
+                )}
                 <SavePrefabButton />
             </aside>
             {/* Reset to Default - Fixed at bottom */}

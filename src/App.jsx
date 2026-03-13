@@ -27,7 +27,7 @@ import MobileViewOnlyGate from "./components/MobileViewOnlyGate";
 import SharedPlay from "./pages/SharedPlay";
 import SharedPlayView from "./pages/SharedPlayView";
 
-function SlateRoot() {
+function SlateRoot({ adminMode = false }) {
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
   useThemeColor("#121212");
   return (
@@ -41,7 +41,7 @@ function SlateRoot() {
         onClose={hideMessage}
       />
       <MobileViewOnlyGate>
-        <Slate onShowMessage={showMessage} />
+        <Slate onShowMessage={showMessage} adminMode={adminMode} />
       </MobileViewOnlyGate>
     </div>
   );
@@ -87,6 +87,7 @@ function AppRoutes() {
 
       {/* Standalone slate editor (no auth required) */}
       <Route path="/slate" element={<SlateRoot />} />
+      <Route path="/admin/slate" element={<SlateRoot adminMode />} />
 
       {/* Full-screen play editor (outside AppLayout — no nav chrome) */}
       <Route path="/app/plays/:playId/edit" element={<RequireAuth><RequireOnboarded><PlayEditPage /></RequireOnboarded></RequireAuth>} />

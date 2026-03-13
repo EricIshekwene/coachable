@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { apiFetch } from "../utils/api";
 import logo from "../assets/logos/full_Coachable_logo.png";
 
@@ -163,6 +164,12 @@ export default function Admin() {
             <p className="text-sm text-BrandGray">{users.length} total accounts</p>
           </div>
           <div className="flex gap-2">
+            <Link
+              to="/admin/slate"
+              className="rounded-lg border border-BrandOrange/40 px-3 py-1.5 text-xs font-semibold text-BrandOrange transition hover:border-BrandOrange hover:bg-BrandOrange/10"
+            >
+              Open Slate
+            </Link>
             <button
               onClick={fetchUsers}
               disabled={loading}

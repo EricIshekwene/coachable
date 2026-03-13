@@ -21,9 +21,19 @@ const THEME_OPTIONS = [
 const SPORT_OPTIONS = [
   "rugby",
   "soccer",
-  "football",
-  "lacrosse",
   "basketball",
+  "football",
+  "baseball",
+  "field hockey",
+  "ice hockey",
+  "lacrosse",
+  "volleyball",
+  "cricket",
+  "water polo",
+  "ultimate frisbee",
+  "handball",
+  "softball",
+  "other",
 ];
 
 function resolveTheme(theme) {
@@ -265,7 +275,7 @@ export default function Settings() {
               <option value="">Select sport</option>
               {SPORT_OPTIONS.map((sportOption) => (
                 <option key={sportOption} value={sportOption} className="bg-BrandBlack">
-                  {sportOption.charAt(0).toUpperCase() + sportOption.slice(1)}
+                  {sportOption.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
                 </option>
               ))}
             </select>

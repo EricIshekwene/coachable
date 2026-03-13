@@ -185,19 +185,17 @@ export const PanelButton = ({ Icon, onHover, onClick, isSelected = false }) => {
     );
 };
 
-/** Player list row showing color swatch, number, name, assignment, with edit/delete actions. */
+/** Player list row showing color swatch, number, and name, with edit/delete actions. */
 export const PlayerButton = ({
     id,
     color = "#ef4444",
     number,
     name,
-    assignment,
     onClick,
     onEdit,
     onDelete,
     isSelected = false,
 }) => {
-    const hasMeta = Boolean(name) || Boolean(assignment);
     return (
         <button
             type="button"
@@ -212,14 +210,14 @@ export const PlayerButton = ({
                 style={{ backgroundColor: color }}
             />
 
-            {/* Number + optional label/assignment */}
+            {/* Number + optional name */}
             <div className="flex-1 min-w-0 flex flex-col items-center justify-center px-1">
                 <p className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans leading-none">
                     {number ?? ""}
                 </p>
-                {hasMeta && (
+                {Boolean(name) && (
                     <p className="text-BrandGray text-[9px] sm:text-[10px] md:text-xs font-DmSans leading-none truncate w-full text-center">
-                        {[name, assignment].filter(Boolean).join(" • ")}
+                        {name}
                     </p>
                 )}
             </div>

@@ -136,13 +136,11 @@ export default function SidebarRoot({
         const next = {
             number: data?.number ?? playerNumber,
             name: data?.name ?? playerName,
-            assignment: data?.assignment ?? playerSearch,
             color: playerColor,
         };
         const hasValue =
             String(next.number ?? "").trim() !== "" ||
-            String(next.name ?? "").trim() !== "" ||
-            String(next.assignment ?? "").trim() !== "";
+            String(next.name ?? "").trim() !== "";
         if (!hasValue) return;
         onAddPlayer?.(next);
         setPlayerNumber("");
