@@ -60,10 +60,12 @@ router.get("/users", requireAdmin, async (_req, res, next) => {
   }
 });
 
-// DELETE /admin/users/:id — delete a single user
+// DELETE /admin/users/:id — delete a single user and their owned teams
 router.delete("/users/:id", requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
+    // Delete teams owned by this user (cascades to memberships, invites, plays, etc.)
+    await pool.query("DELETE FROM teams WHERE owner_user_id = $1", [id]);
     await pool.query("DELETE FROM users WHERE id = $1", [id]);
     res.json({ ok: true });
   } catch (err) {
@@ -74,6 +76,8 @@ router.delete("/users/:id", requireAdmin, async (req, res, next) => {
 // DELETE /admin/users — delete ALL users
 router.delete("/users", requireAdmin, async (_req, res, next) => {
   try {
+    // Delete all teams first (cascades to memberships, invites, plays, etc.)
+    await pool.query("DELETE FROM teams");
     await pool.query("DELETE FROM users");
     res.json({ ok: true, message: "All users deleted" });
   } catch (err) {
