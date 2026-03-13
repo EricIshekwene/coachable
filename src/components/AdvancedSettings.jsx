@@ -12,6 +12,7 @@ import LoggerSettingsSection from "./advancedSettings/LoggerSettingsSection";
 import SavePrefabButton from "./rightPanel/SavePrefabButton";
 import PlayPreviewCard from "./PlayPreviewCard";
 import DebugPanel from "./rightPanel/DebugPanel";
+import { SPORT_DEFAULTS } from "../features/slate/hooks/useAdvancedSettings";
 
 export default function AdvancedSettings({
     value,
@@ -50,7 +51,19 @@ export default function AdvancedSettings({
     const animation = settings.animation ?? {};
 
     const update = (patch) => onChange?.({ ...settings, ...patch });
-    const updatePitch = (patch) => update({ pitch: { ...pitch, ...patch } });
+    const updatePitch = (patch) => {
+        const newPitch = { ...pitch, ...patch };
+        if (patch.fieldType && patch.fieldType !== pitch.fieldType) {
+            const sd = SPORT_DEFAULTS[patch.fieldType] || {};
+            update({
+                pitch: newPitch,
+                players: { ...players, baseSizePx: sd.baseSizePx ?? 30 },
+                ball: { ...ball, sizePercent: sd.sizePercent ?? 100, coneSizePercent: sd.coneSizePercent ?? 70 },
+            });
+        } else {
+            update({ pitch: newPitch });
+        }
+    };
     const updatePlayers = (patch) => update({ players: { ...players, ...patch } });
     const updateBall = (patch) => update({ ball: { ...ball, ...patch } });
     const updateExportVideo = (patch) => update({ exportVideo: { ...exportVideo, ...patch } });
@@ -94,7 +107,7 @@ export default function AdvancedSettings({
                     </p>
                 </div>
 
-                <PitchSettingsSection value={pitch} onChange={updatePitch} />
+                <PitchSettingsSection value={pitch} onChange={updatePitch} adminMode={adminMode} />
 
                 {/* Playback settings (moved from control pill dropdown) */}
                 <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1.5 sm:gap-2">

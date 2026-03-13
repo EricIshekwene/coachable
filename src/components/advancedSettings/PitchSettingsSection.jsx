@@ -16,13 +16,18 @@ const PITCH_COLOR_OPTIONS = [
     { name: "Tactical Blue", hex: "#4A78A8" },
 ];
 
-export default function PitchSettingsSection({ value = {}, onChange }) {
+const FIELD_TYPE_OPTIONS = ["Rugby", "Soccer", "Football", "Lacrosse", "Basketball"];
+
+export default function PitchSettingsSection({ value = {}, onChange, adminMode = false }) {
+    const fieldType = value.fieldType ?? "Rugby";
     const fieldOpacity = value.fieldOpacity ?? 100;
     const showMarkings = value.showMarkings ?? true;
     const pitchColor = value.pitchColor ?? "#4FA85D";
 
     const [openPitchColorDropdown, setOpenPitchColorDropdown] = useState(false);
+    const [openFieldTypeDropdown, setOpenFieldTypeDropdown] = useState(false);
     const pitchColorRef = useRef(null);
+    const fieldTypeRef = useRef(null);
 
     const selectedPitchColorName =
         PITCH_COLOR_OPTIONS.find((c) => c.hex.toLowerCase() === String(pitchColor).toLowerCase())?.name ?? "Custom";
@@ -45,11 +50,62 @@ export default function PitchSettingsSection({ value = {}, onChange }) {
         };
     }, [openPitchColorDropdown]);
 
+    // Close field type dropdown when clicking outside
+    useEffect(() => {
+        if (!openFieldTypeDropdown) return;
+
+        const handleClickOutside = (e) => {
+            if (fieldTypeRef.current && !fieldTypeRef.current.contains(e.target)) {
+                setOpenFieldTypeDropdown(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [openFieldTypeDropdown]);
+
     return (
         <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1 sm:gap-2">
             <div className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans">
                 Pitch Settings
             </div>
+
+            {/* Field Type (admin only) */}
+            {adminMode && (
+            <div className="flex flex-col w-full items-start justify-start gap-1 sm:gap-1.5 relative">
+                <p className="text-BrandWhite text-xs sm:text-sm font-DmSans">Field Type</p>
+                <div ref={fieldTypeRef} className="relative w-full">
+                    <div
+                        onClick={() => setOpenFieldTypeDropdown(!openFieldTypeDropdown)}
+                        className="bg-BrandBlack2 h-5 sm:h-6 w-full flex flex-row items-center justify-between px-2 rounded-md cursor-pointer"
+                    >
+                        <p className="text-BrandWhite text-xs sm:text-sm font-DmSans truncate">{fieldType}</p>
+                        <FaChevronDown className={`text-BrandOrange text-xs transition-transform shrink-0 ${openFieldTypeDropdown ? 'rotate-180' : ''}`} />
+                    </div>
+                    {openFieldTypeDropdown && (
+                        <div className="absolute left-0 top-full w-full bg-BrandBlack2 border border-BrandGray rounded-md mt-1 max-h-60 overflow-y-auto z-10 shadow-lg">
+                            {FIELD_TYPE_OPTIONS.map((ft) => (
+                                <div
+                                    key={ft}
+                                    onClick={() => {
+                                        update({ fieldType: ft });
+                                        setOpenFieldTypeDropdown(false);
+                                    }}
+                                    className={`px-2 py-1.5 text-xs sm:text-sm font-DmSans cursor-pointer transition-colors ${fieldType === ft
+                                        ? 'bg-BrandOrange text-BrandBlack'
+                                        : 'text-BrandWhite hover:bg-BrandBlack'
+                                        }`}
+                                >
+                                    {ft}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+            )}
 
             {/* Show Markings Switch */}
             <div className="flex flex-col w-full items-start justify-start gap-1 sm:gap-1.5">

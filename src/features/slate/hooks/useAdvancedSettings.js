@@ -11,9 +11,16 @@ export function resolveFieldTypeFromSport(sport) {
   return "Rugby";
 }
 
+/** Per-sport default overrides for player/ball/cone sizes. */
+export const SPORT_DEFAULTS = {
+  Football: { baseSizePx: 25, sizePercent: 70, coneSizePercent: 65 },
+  Lacrosse: { sizePercent: 65 },
+};
+
 /** Default values for all advanced settings (pitch, players, ball, export, animation, logging). */
 export function createDefaultAdvancedSettings(fieldType = "Rugby") {
   const resolvedFieldType = SUPPORTED_FIELD_TYPES.includes(fieldType) ? fieldType : "Rugby";
+  const sportDefaults = SPORT_DEFAULTS[resolvedFieldType] || {};
   return {
     pitch: {
       fieldType: resolvedFieldType,
@@ -23,11 +30,11 @@ export function createDefaultAdvancedSettings(fieldType = "Rugby") {
       pitchColor: "#4FA85D",
     },
     players: {
-      baseSizePx: 30,
+      baseSizePx: sportDefaults.baseSizePx ?? 30,
     },
     ball: {
-      sizePercent: 100,
-      coneSizePercent: 70,
+      sizePercent: sportDefaults.sizePercent ?? 100,
+      coneSizePercent: sportDefaults.coneSizePercent ?? 70,
     },
     exportVideo: {
       videoQuality: "1080p",
