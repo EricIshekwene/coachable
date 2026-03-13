@@ -8,6 +8,9 @@ const DEFAULT_NOTIFICATION_PREFERENCES = {
   playersJoinTeam: true,
   coachesMakeChanges: true,
   inviteAccepted: true,
+  newPlays: true,
+  playUpdates: true,
+  teamAnnouncements: true,
 };
 
 const DEFAULT_ASSISTANT_PERMISSIONS = {
@@ -208,9 +211,12 @@ export function AuthProvider({ children }) {
     async (preferences) => {
       if (!user?.teamId) return;
       const body = {};
-      if (preferences.playersJoinTeam !== undefined) body.notifyPlayersJoin = preferences.playersJoinTeam;
-      if (preferences.coachesMakeChanges !== undefined) body.notifyCoachesChange = preferences.coachesMakeChanges;
-      if (preferences.inviteAccepted !== undefined) body.notifyInviteAccepted = preferences.inviteAccepted;
+      if (preferences.playersJoinTeam !== undefined) body.playersJoinTeam = preferences.playersJoinTeam;
+      if (preferences.coachesMakeChanges !== undefined) body.coachesMakeChanges = preferences.coachesMakeChanges;
+      if (preferences.inviteAccepted !== undefined) body.inviteAccepted = preferences.inviteAccepted;
+      if (preferences.newPlays !== undefined) body.newPlays = preferences.newPlays;
+      if (preferences.playUpdates !== undefined) body.playUpdates = preferences.playUpdates;
+      if (preferences.teamAnnouncements !== undefined) body.teamAnnouncements = preferences.teamAnnouncements;
       await apiFetch("/users/me/preferences", { method: "PATCH", body }).catch(() => {});
       setUser((prev) => ({
         ...prev,

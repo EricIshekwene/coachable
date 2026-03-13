@@ -203,6 +203,9 @@ router.get("/me", requireAuth, async (req, res, next) => {
           playersJoinTeam: prefs.notify_players_join_team ?? true,
           coachesMakeChanges: prefs.notify_coaches_make_changes ?? true,
           inviteAccepted: prefs.notify_invite_accepted ?? true,
+          newPlays: prefs.notify_new_plays ?? true,
+          playUpdates: prefs.notify_play_updates ?? true,
+          teamAnnouncements: prefs.notify_team_announcements ?? true,
         },
         assistantPermissions: {
           canCreateEditDeletePlays: true,

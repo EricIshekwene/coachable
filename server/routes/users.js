@@ -36,6 +36,9 @@ router.patch("/me/preferences", requireAuth, async (req, res, next) => {
       playersJoinTeam,
       coachesMakeChanges,
       inviteAccepted,
+      newPlays,
+      playUpdates,
+      teamAnnouncements,
     } = req.body;
 
     // Upsert preferences
@@ -48,6 +51,9 @@ router.patch("/me/preferences", requireAuth, async (req, res, next) => {
          notify_players_join_team = COALESCE($4, user_preferences.notify_players_join_team),
          notify_coaches_make_changes = COALESCE($5, user_preferences.notify_coaches_make_changes),
          notify_invite_accepted = COALESCE($6, user_preferences.notify_invite_accepted),
+         notify_new_plays = COALESCE($7, user_preferences.notify_new_plays),
+         notify_play_updates = COALESCE($8, user_preferences.notify_play_updates),
+         notify_team_announcements = COALESCE($9, user_preferences.notify_team_announcements),
          updated_at = now()
        RETURNING *`,
       [
@@ -57,6 +63,9 @@ router.patch("/me/preferences", requireAuth, async (req, res, next) => {
         playersJoinTeam ?? null,
         coachesMakeChanges ?? null,
         inviteAccepted ?? null,
+        newPlays ?? null,
+        playUpdates ?? null,
+        teamAnnouncements ?? null,
       ]
     );
 
@@ -69,6 +78,9 @@ router.patch("/me/preferences", requireAuth, async (req, res, next) => {
           playersJoinTeam: prefs.notify_players_join_team,
           coachesMakeChanges: prefs.notify_coaches_make_changes,
           inviteAccepted: prefs.notify_invite_accepted,
+          newPlays: prefs.notify_new_plays,
+          playUpdates: prefs.notify_play_updates,
+          teamAnnouncements: prefs.notify_team_announcements,
         },
       },
     });

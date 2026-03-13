@@ -77,6 +77,8 @@ export default function Settings() {
   } = useAuth();
   const navigate = useNavigate();
 
+  const isPlayer = user?.role === "player" || playerViewMode;
+
   const initialTheme = localStorage.getItem("theme") || "dark";
   const initialNotifications = user?.notifications || {};
   const initialAssistantPermissions = user?.assistantPermissions || {};
@@ -108,8 +110,8 @@ export default function Settings() {
   const hasChanges =
     selectedTheme !== savedTheme ||
     JSON.stringify(notifications) !== JSON.stringify(savedNotifications) ||
-    JSON.stringify(assistantPermissions) !== JSON.stringify(savedAssistantPermissions) ||
-    JSON.stringify(teamDefaults) !== JSON.stringify(savedTeamDefaults);
+    (!isPlayer && JSON.stringify(assistantPermissions) !== JSON.stringify(savedAssistantPermissions)) ||
+    (!isPlayer && JSON.stringify(teamDefaults) !== JSON.stringify(savedTeamDefaults));
 
   const toggleNotification = (key) => {
     setNotifications((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -124,8 +126,10 @@ export default function Settings() {
     setSavedTheme(selectedTheme);
 
     updateNotificationPreferences(notifications);
-    updateAssistantPermissions(assistantPermissions);
-    updateTeamDefaults(teamDefaults);
+    if (!isPlayer) {
+      updateAssistantPermissions(assistantPermissions);
+      updateTeamDefaults(teamDefaults);
+    }
 
     setSavedNotifications({ ...notifications });
     setSavedAssistantPermissions({ ...assistantPermissions });
@@ -145,7 +149,11 @@ export default function Settings() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10 md:py-12">
       <h1 className="font-Manrope text-xl font-bold tracking-tight">Settings</h1>
-      <p className="mt-1.5 text-sm text-BrandGray2">Manage notifications, team defaults, and app appearance.</p>
+      <p className="mt-1.5 text-sm text-BrandGray2">
+        {isPlayer
+          ? "Manage your notification preferences and app appearance."
+          : "Manage notifications, team defaults, and app appearance."}
+      </p>
 
       <div className="mt-8 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-5">
         <div className="mb-4 flex items-center gap-2">
@@ -153,27 +161,53 @@ export default function Settings() {
           <p className="text-xs font-semibold uppercase tracking-widest text-BrandGray2">Notification Preferences</p>
         </div>
         <div className="flex flex-col gap-2">
-          <ToggleRow
-            label="Players join team"
-            description="Get notified when new players join your team."
-            enabled={Boolean(notifications.playersJoinTeam)}
-            onToggle={() => toggleNotification("playersJoinTeam")}
-          />
-          <ToggleRow
-            label="Coaches make changes"
-            description="Get notified when coaches edit plays or team settings."
-            enabled={Boolean(notifications.coachesMakeChanges)}
-            onToggle={() => toggleNotification("coachesMakeChanges")}
-          />
-          <ToggleRow
-            label="Invites accepted"
-            description="Get notified when pending invites are accepted."
-            enabled={Boolean(notifications.inviteAccepted)}
-            onToggle={() => toggleNotification("inviteAccepted")}
-          />
+          {isPlayer ? (
+            <>
+              <ToggleRow
+                label="New plays added"
+                description="Get notified when your coach adds new plays."
+                enabled={Boolean(notifications.newPlays)}
+                onToggle={() => toggleNotification("newPlays")}
+              />
+              <ToggleRow
+                label="Play updates"
+                description="Get notified when existing plays are modified."
+                enabled={Boolean(notifications.playUpdates)}
+                onToggle={() => toggleNotification("playUpdates")}
+              />
+              <ToggleRow
+                label="Team announcements"
+                description="Get notified about general team updates."
+                enabled={Boolean(notifications.teamAnnouncements)}
+                onToggle={() => toggleNotification("teamAnnouncements")}
+              />
+            </>
+          ) : (
+            <>
+              <ToggleRow
+                label="Players join team"
+                description="Get notified when new players join your team."
+                enabled={Boolean(notifications.playersJoinTeam)}
+                onToggle={() => toggleNotification("playersJoinTeam")}
+              />
+              <ToggleRow
+                label="Coaches make changes"
+                description="Get notified when coaches edit plays or team settings."
+                enabled={Boolean(notifications.coachesMakeChanges)}
+                onToggle={() => toggleNotification("coachesMakeChanges")}
+              />
+              <ToggleRow
+                label="Invites accepted"
+                description="Get notified when pending invites are accepted."
+                enabled={Boolean(notifications.inviteAccepted)}
+                onToggle={() => toggleNotification("inviteAccepted")}
+              />
+            </>
+          )}
         </div>
       </div>
 
+      {!isPlayer && (
       <div className="mt-6 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-5">
         <div className="mb-4 flex items-center gap-2">
           <FiShield className="text-sm text-BrandOrange" />
@@ -201,7 +235,9 @@ export default function Settings() {
           />
         </div>
       </div>
+      )}
 
+      {!isPlayer && (
       <div className="mt-6 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-5">
         <div className="mb-4 flex items-center gap-2">
           <FiUsers className="text-sm text-BrandOrange" />
@@ -268,6 +304,7 @@ export default function Settings() {
           </div>
         </div>
       </div>
+      )}
 
       {(user?.role === "coach" || user?.role === "owner") && !playerViewMode && (
         <div className="mt-6 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-5">

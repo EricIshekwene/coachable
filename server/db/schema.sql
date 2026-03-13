@@ -63,9 +63,27 @@ CREATE TABLE IF NOT EXISTS user_preferences (
   notify_players_join_team BOOLEAN NOT NULL DEFAULT true,
   notify_coaches_make_changes BOOLEAN NOT NULL DEFAULT true,
   notify_invite_accepted BOOLEAN NOT NULL DEFAULT true,
+  -- Player-specific notification preferences
+  notify_new_plays BOOLEAN NOT NULL DEFAULT true,
+  notify_play_updates BOOLEAN NOT NULL DEFAULT true,
+  notify_team_announcements BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Add player notification columns to existing tables (safe to re-run)
+DO $$ BEGIN
+  ALTER TABLE user_preferences ADD COLUMN notify_new_plays BOOLEAN NOT NULL DEFAULT true;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE user_preferences ADD COLUMN notify_play_updates BOOLEAN NOT NULL DEFAULT true;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE user_preferences ADD COLUMN notify_team_announcements BOOLEAN NOT NULL DEFAULT true;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
 
 -- ============================================================
 -- 2. Teams and membership

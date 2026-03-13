@@ -17,6 +17,7 @@ const playerNavItems = [
   { to: "/app/plays", icon: FiBookOpen, label: "Plays" },
   { to: "/app/team", icon: FiUsers, label: "Team" },
   { to: "/app/profile", icon: FiUser, label: "Profile" },
+  { to: "/app/settings", icon: FiSettings, label: "Settings" },
 ];
 
 export default function AppLayout() {
