@@ -15,6 +15,7 @@ export function resolveFieldTypeFromSport(sport) {
 export const SPORT_DEFAULTS = {
   Football: { baseSizePx: 25, sizePercent: 70, coneSizePercent: 65 },
   Lacrosse: { sizePercent: 65 },
+  Basketball: { sizePercent: 80 },
 };
 
 /** Default values for all advanced settings (pitch, players, ball, export, animation, logging). */
