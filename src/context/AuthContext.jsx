@@ -58,13 +58,8 @@ export function AuthProvider({ children }) {
   const [playerViewMode, setPlayerViewMode] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // On mount, try to restore session from stored JWT
+  // On mount, try to restore session from stored JWT or session cookie
   useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      setLoading(false);
-      return;
-    }
     apiFetch("/auth/me")
       .then((data) => {
         setUser(mapApiUserToLocal(data.user));
@@ -285,6 +280,8 @@ export function AuthProvider({ children }) {
   );
 
   const logout = useCallback(() => {
+    // Tell server to clear the session cookie
+    apiFetch("/auth/logout", { method: "POST" }).catch(() => {});
     clearToken();
     setUser(null);
     setTeamMembers([]);

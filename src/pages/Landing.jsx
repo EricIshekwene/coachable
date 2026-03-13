@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import logo from "../assets/logos/White_Full_Coachable.png";
 import { FiArrowRight, FiPlay, FiUsers, FiLayers, FiChevronDown } from "react-icons/fi";
 
@@ -10,6 +11,7 @@ const RESOURCES_ITEMS = [
 ];
 
 export default function Landing() {
+  const { user, loading } = useAuth();
   const [resourcesOpen, setResourcesOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -22,6 +24,11 @@ export default function Landing() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  // If already logged in, redirect to app
+  if (!loading && user) {
+    return <Navigate to={user.onboarded ? "/app/plays" : "/onboarding"} replace />;
+  }
 
   return (
     <div className="min-h-screen bg-BrandBlack text-white font-DmSans">

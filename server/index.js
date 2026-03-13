@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import pool from "./db/pool.js";
 import authRoutes from "./routes/auth.js";
 import onboardingRoutes from "./routes/onboarding.js";
@@ -31,6 +32,7 @@ app.use(
 );
 
 app.use(express.json({ limit: "10mb" }));
+app.use(cookieParser());
 
 // --------------- Health check ---------------
 

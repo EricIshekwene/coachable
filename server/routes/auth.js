@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcrypt";
 import pool from "../db/pool.js";
-import { signToken, requireAuth } from "../middleware/auth.js";
+import { signToken, setSessionCookie, clearSessionCookie, requireAuth } from "../middleware/auth.js";
 import { generateCode, sendVerificationEmail } from "../lib/email.js";
 
 const router = Router();
@@ -57,6 +57,7 @@ router.post("/signup", async (req, res, next) => {
       }
     }
 
+    setSessionCookie(res, token);
     res.status(201).json({ token, user, requiresVerification });
   } catch (err) {
     if (err.code === "23505") {
@@ -114,6 +115,7 @@ router.post("/login", async (req, res, next) => {
     }
 
     const token = signToken(user.id);
+    setSessionCookie(res, token);
     res.json({
       token,
       user: {
@@ -134,8 +136,9 @@ router.post("/login", async (req, res, next) => {
   }
 });
 
-// POST /auth/logout  (stateless JWT — client just discards token)
+// POST /auth/logout — clear session cookie
 router.post("/logout", (_req, res) => {
+  clearSessionCookie(res);
   res.json({ ok: true });
 });
 
