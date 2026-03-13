@@ -29,6 +29,7 @@ function mapApiUserToLocal(u) {
     id: u.id,
     name: u.name,
     email: u.email,
+    emailVerified: u.emailVerified || false,
     role: u.role || null,
     teamId: u.teamId || null,
     teamName: u.teamName || null,
@@ -92,6 +93,15 @@ export function AuthProvider({ children }) {
       .catch(() => setTeamMembers([]));
   }, [user?.teamId]);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const data = await apiFetch("/auth/me");
+      setUser(mapApiUserToLocal(data.user));
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const login = useCallback(async (email, password) => {
     const data = await apiFetch("/auth/login", {
       method: "POST",
@@ -111,7 +121,7 @@ export function AuthProvider({ children }) {
     setToken(data.token);
     const localUser = mapApiUserToLocal(data.user);
     setUser(localUser);
-    return localUser;
+    return { user: localUser, requiresVerification: data.requiresVerification || false };
   }, []);
 
   const completeOnboarding = useCallback(
@@ -280,6 +290,7 @@ export function AuthProvider({ children }) {
         setPlayerViewMode,
         login,
         signup,
+        refreshUser,
         completeOnboarding,
         updateProfile,
         requestEmailChange,

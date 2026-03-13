@@ -7,6 +7,7 @@ import teamRoutes from "./routes/teams.js";
 import playRoutes from "./routes/plays.js";
 import folderRoutes from "./routes/folders.js";
 import userRoutes from "./routes/users.js";
+import verificationRoutes from "./routes/verification.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -49,6 +50,7 @@ app.use("/teams", teamRoutes);
 app.use("/teams", playRoutes);
 app.use("/teams", folderRoutes);
 app.use("/users", userRoutes);
+app.use("/verification", verificationRoutes);
 
 // --------------- Error handler ---------------
 

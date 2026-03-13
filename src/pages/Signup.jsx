@@ -50,8 +50,12 @@ export default function Signup() {
 
     setSubmitting(true);
     try {
-      await signup(trimmedName, trimmedEmail, trimmedPassword);
-      navigate("/onboarding");
+      const result = await signup(trimmedName, trimmedEmail, trimmedPassword);
+      if (result.requiresVerification) {
+        navigate("/verify-email");
+      } else {
+        navigate("/onboarding");
+      }
     } catch (err) {
       showMessage("Signup failed", err.message || "Could not create account.", "error");
     } finally {

@@ -2,9 +2,13 @@ import { Router } from "express";
 import bcrypt from "bcrypt";
 import pool from "../db/pool.js";
 import { signToken, requireAuth } from "../middleware/auth.js";
+import { generateCode, sendVerificationEmail } from "../lib/email.js";
 
 const router = Router();
 const SALT_ROUNDS = 10;
+
+/** Toggle email verification via REQUIRE_EMAIL_VERIFICATION env var (default: false) */
+const REQUIRE_VERIFICATION = process.env.REQUIRE_EMAIL_VERIFICATION === "true";
 
 // POST /auth/signup
 router.post("/signup", async (req, res, next) => {
@@ -32,8 +36,28 @@ router.post("/signup", async (req, res, next) => {
       [rows[0].id]
     );
 
-    const token = signToken(rows[0].id);
-    res.status(201).json({ token, user: rows[0] });
+    const user = rows[0];
+    const token = signToken(user.id);
+
+    // If verification is required, send a code
+    let requiresVerification = false;
+    if (REQUIRE_VERIFICATION) {
+      requiresVerification = true;
+      try {
+        const code = generateCode();
+        await pool.query(
+          `INSERT INTO email_verification_codes (user_id, email, code, expires_at)
+           VALUES ($1, $2, $3, now() + interval '10 minutes')`,
+          [user.id, user.email, code]
+        );
+        await sendVerificationEmail(user.email, code, user.name);
+      } catch (emailErr) {
+        console.error("Failed to send verification email:", emailErr.message);
+        // Don't block signup if email fails — they can resend from the verify page
+      }
+    }
+
+    res.status(201).json({ token, user, requiresVerification });
   } catch (err) {
     if (err.code === "23505") {
       return res.status(409).json({ error: "Email already registered" });
@@ -121,7 +145,7 @@ router.post("/logout", (_req, res) => {
 router.get("/me", requireAuth, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      "SELECT id, name, email, onboarded_at FROM users WHERE id = $1",
+      "SELECT id, name, email, email_verified_at, onboarded_at FROM users WHERE id = $1",
       [req.userId]
     );
     if (!rows.length) return res.status(404).json({ error: "User not found" });
@@ -166,6 +190,7 @@ router.get("/me", requireAuth, async (req, res, next) => {
         id: user.id,
         name: user.name,
         email: user.email,
+        emailVerified: Boolean(user.email_verified_at),
         onboarded: Boolean(user.onboarded_at),
         role: membership?.role || null,
         teamId: team?.id || null,
@@ -189,6 +214,11 @@ router.get("/me", requireAuth, async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+// GET /auth/config — public endpoint for frontend feature flags
+router.get("/config", (_req, res) => {
+  res.json({ requireEmailVerification: REQUIRE_VERIFICATION });
 });
 
 export default router;

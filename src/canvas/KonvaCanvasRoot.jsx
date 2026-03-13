@@ -27,6 +27,7 @@ const FIELD_TYPE_TO_IMAGE_SRC = {
   Lacrosse: LacrosseField,
   Basketball: BasketballField,
 };
+const ROUND_BALL_FIELD_TYPES = new Set(["soccer", "lacrosse", "basketball"]);
 
 /** Loads an HTML Image from a URL and tracks loading status. */
 const useImage = (src) => {
@@ -180,6 +181,7 @@ function KonvaCanvasRoot({
 
   const fieldType = pitch.fieldType ?? "Rugby";
   const resolvedFieldType = FIELD_TYPE_TO_IMAGE_SRC[fieldType] ? fieldType : "Rugby";
+  const useRoundBallSprite = ROUND_BALL_FIELD_TYPES.has(String(resolvedFieldType).toLowerCase());
   const fieldOpacityPercent = clamp(Number(pitch.fieldOpacity ?? 100), 0, 100);
   const fieldOpacity = fieldOpacityPercent / 100;
   const pitchColor = pitch.pitchColor ?? undefined;
@@ -1711,10 +1713,11 @@ function KonvaCanvasRoot({
                       }}
                     >
                       {objectImageElement ? (() => {
+                        const shouldForceSquare = objectType === "ball" && useRoundBallSprite;
                         const naturalMax = Math.max(objectImageElement.width || 1, objectImageElement.height || 1);
                         const scale = objectSizePx / naturalMax;
-                        const width = objectImageElement.width * scale;
-                        const height = objectImageElement.height * scale;
+                        const width = shouldForceSquare ? objectSizePx : objectImageElement.width * scale;
+                        const height = shouldForceSquare ? objectSizePx : objectImageElement.height * scale;
                         return (
                           <KonvaImage
                             image={objectImageElement}
