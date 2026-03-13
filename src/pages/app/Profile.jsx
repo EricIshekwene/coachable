@@ -64,15 +64,24 @@ export default function Profile() {
     setTimeout(() => setShowNameSaved(false), 1800);
   };
 
-  const handleChangeEmail = () => {
-    const didRequest = requestEmailChange(emailInput);
-    if (!didRequest) {
+  const [emailSubmitting, setEmailSubmitting] = useState(false);
+
+  const handleChangeEmail = async () => {
+    if (!emailInput.trim() || emailInput.trim().toLowerCase() === user?.email) {
       setEmailError("Enter a new email address to continue.");
       return;
     }
 
     setEmailError("");
-    navigate("/app/profile/verify-email");
+    setEmailSubmitting(true);
+    try {
+      await requestEmailChange(emailInput);
+      navigate("/app/profile/verify-email");
+    } catch (err) {
+      setEmailError(err.message || "Could not send verification code.");
+    } finally {
+      setEmailSubmitting(false);
+    }
   };
 
   const handleTransferOwnership = () => {
@@ -152,10 +161,10 @@ export default function Profile() {
               <button
                 type="button"
                 onClick={handleChangeEmail}
-                disabled={!emailInput.trim() || emailInput.trim() === user?.email}
+                disabled={emailSubmitting || !emailInput.trim() || emailInput.trim().toLowerCase() === user?.email}
                 className="rounded-lg border border-BrandOrange/40 px-4 py-2.5 text-sm font-semibold text-BrandOrange transition hover:bg-BrandOrange/10 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Verify
+                {emailSubmitting ? "Sending..." : "Change"}
               </button>
             </div>
             {emailError && <p className="text-xs text-red-400">{emailError}</p>}

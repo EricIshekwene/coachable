@@ -21,7 +21,7 @@ router.post("/create-team", requireAuth, async (req, res, next) => {
       const teamRes = await client.query(
         `INSERT INTO teams (name, sport, owner_user_id)
          VALUES ($1, $2, $3)
-         RETURNING id, name, sport, season_year, logo_url, owner_user_id, created_at`,
+         RETURNING id, name, sport, season_year, owner_user_id, created_at`,
         [teamName.trim(), sport?.trim() || null, req.userId]
       );
       const team = teamRes.rows[0];
@@ -129,7 +129,7 @@ router.post("/join-team", requireAuth, async (req, res, next) => {
 
       // Get team info
       const teamRes = await client.query(
-        "SELECT id, name, sport, season_year, logo_url, owner_user_id FROM teams WHERE id = $1",
+        "SELECT id, name, sport, season_year, owner_user_id FROM teams WHERE id = $1",
         [teamId]
       );
       const team = teamRes.rows[0];
@@ -142,7 +142,6 @@ router.post("/join-team", requireAuth, async (req, res, next) => {
           name: team.name,
           sport: team.sport,
           seasonYear: team.season_year,
-          teamLogo: team.logo_url || "",
           ownerId: team.owner_user_id,
         },
         role: requestedRole,

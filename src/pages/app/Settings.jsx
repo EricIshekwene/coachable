@@ -85,7 +85,6 @@ export default function Settings() {
   const initialTeamDefaults = {
     teamName: user?.teamName || "",
     sport: user?.sport || "",
-    teamLogo: user?.teamLogo || "",
     seasonYear: user?.seasonYear || String(new Date().getFullYear()),
   };
 
@@ -283,25 +282,6 @@ export default function Settings() {
             />
           </div>
 
-          <div className="flex flex-col gap-1.5 md:col-span-2">
-            <label className="text-xs font-semibold">Team Logo URL</label>
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-BrandGray2/30 bg-BrandBlack2/40 text-sm font-bold text-BrandOrange">
-                {teamDefaults.teamLogo ? (
-                  <img src={teamDefaults.teamLogo} alt="Team logo" className="h-full w-full object-cover" />
-                ) : (
-                  (teamDefaults.teamName?.[0] || "T").toUpperCase()
-                )}
-              </div>
-              <input
-                type="url"
-                value={teamDefaults.teamLogo}
-                onChange={(e) => setTeamDefaults((prev) => ({ ...prev, teamLogo: e.target.value }))}
-                placeholder="https://example.com/logo.png"
-                className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
-              />
-            </div>
-          </div>
         </div>
       </div>
       )}

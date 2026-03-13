@@ -193,7 +193,7 @@ Tables touched:
 Frontend behavior:
 - Notification preferences.
 - Assistant coach permissions.
-- Team defaults (`teamName`, `sport`, `teamLogo`, `seasonYear`).
+- Team defaults (`teamName`, `sport`, `seasonYear`).
 - Theme selection and player-view toggle.
 
 Backend responsibilities:
@@ -207,7 +207,7 @@ Suggested endpoints:
 Tables touched:
 - `user_preferences`
 - `team_settings`
-- `teams` (for editable defaults like name/sport/logo/season)
+- `teams` (for editable defaults like name/sport/season)
 
 ## Flow H: Play CRUD (core)
 
@@ -368,7 +368,6 @@ create table teams (
   name text not null,
   sport text,
   season_year text,
-  logo_url text,
   owner_user_id uuid not null references users(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

@@ -38,7 +38,6 @@ function mapApiUserToLocal(u) {
     teamName: u.teamName || null,
     sport: u.sport || "",
     seasonYear: u.seasonYear || String(new Date().getFullYear()),
-    teamLogo: u.teamLogo || "",
     ownerId: u.ownerId || null,
     onboarded: u.onboarded || false,
     notifications: {
@@ -179,11 +178,14 @@ export function AuthProvider({ children }) {
   }, [user?.id]);
 
   const requestEmailChange = useCallback(
-    (newEmail) => {
+    async (newEmail) => {
       if (!newEmail?.trim()) return false;
       const trimmedEmail = newEmail.trim().toLowerCase();
       if (trimmedEmail === user?.email) return false;
-      // Email change requires Resend setup — stub for now
+      await apiFetch("/users/me/change-email", {
+        method: "POST",
+        body: { newEmail: trimmedEmail },
+      });
       setPendingEmailChange({
         currentEmail: user?.email || "",
         nextEmail: trimmedEmail,
@@ -194,16 +196,23 @@ export function AuthProvider({ children }) {
     [user?.email]
   );
 
-  const confirmEmailChange = useCallback(() => {
-    if (!pendingEmailChange?.nextEmail) return false;
-    const nextEmail = pendingEmailChange.nextEmail;
-    setUser((prev) => ({ ...prev, email: nextEmail }));
-    setTeamMembers((prev) =>
-      prev.map((m) => (m.id === user?.id ? { ...m, email: nextEmail } : m))
-    );
-    setPendingEmailChange(null);
-    return true;
-  }, [pendingEmailChange, user?.id]);
+  const confirmEmailChange = useCallback(
+    async (code) => {
+      if (!pendingEmailChange?.nextEmail || !code?.trim()) return false;
+      const data = await apiFetch("/users/me/confirm-email-change", {
+        method: "POST",
+        body: { code: code.trim() },
+      });
+      const nextEmail = data.email || pendingEmailChange.nextEmail;
+      setUser((prev) => ({ ...prev, email: nextEmail }));
+      setTeamMembers((prev) =>
+        prev.map((m) => (m.id === user?.id ? { ...m, email: nextEmail } : m))
+      );
+      setPendingEmailChange(null);
+      return true;
+    },
+    [pendingEmailChange, user?.id]
+  );
 
   const cancelEmailChange = useCallback(() => setPendingEmailChange(null), []);
 
@@ -242,12 +251,11 @@ export function AuthProvider({ children }) {
   );
 
   const updateTeamDefaults = useCallback(
-    async ({ teamName, sport, teamLogo, seasonYear }) => {
+    async ({ teamName, sport, seasonYear }) => {
       if (!user?.teamId) return;
       const body = {};
       if (teamName?.trim()) body.name = teamName.trim();
       if (sport?.trim()) body.sport = sport.trim().toLowerCase();
-      if (teamLogo !== undefined) body.logo = teamLogo?.trim() || "";
       if (seasonYear?.trim()) body.seasonYear = seasonYear.trim();
       await apiFetch(`/teams/${user.teamId}/settings`, {
         method: "PATCH",
@@ -257,7 +265,6 @@ export function AuthProvider({ children }) {
         ...prev,
         teamName: body.name || prev.teamName,
         sport: body.sport || prev.sport,
-        teamLogo: body.logo !== undefined ? body.logo : prev.teamLogo,
         seasonYear: body.seasonYear || prev.seasonYear,
       }));
     },

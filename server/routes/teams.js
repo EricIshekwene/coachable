@@ -83,7 +83,7 @@ router.patch(
   requireTeamRole("owner"),
   async (req, res, next) => {
     try {
-      const { teamName, sport, teamLogo, seasonYear } = req.body;
+      const { teamName, sport, seasonYear } = req.body;
 
       // Update team table fields
       const setClauses = [];
@@ -97,10 +97,6 @@ router.patch(
       if (sport !== undefined) {
         setClauses.push(`sport = $${idx++}`);
         values.push(sport?.trim() || null);
-      }
-      if (teamLogo !== undefined) {
-        setClauses.push(`logo_url = $${idx++}`);
-        values.push(teamLogo?.trim() || null);
       }
       if (seasonYear !== undefined) {
         setClauses.push(`season_year = $${idx++}`);

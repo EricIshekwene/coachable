@@ -93,7 +93,7 @@ router.post("/login", async (req, res, next) => {
     let membership = null;
     if (user.onboarded_at) {
       const memberRes = await pool.query(
-        `SELECT tm.role, tm.team_id, t.name AS team_name, t.sport, t.season_year, t.logo_url, t.owner_user_id
+        `SELECT tm.role, tm.team_id, t.name AS team_name, t.sport, t.season_year, t.owner_user_id
          FROM team_memberships tm
          JOIN teams t ON t.id = tm.team_id
          WHERE tm.user_id = $1
@@ -107,7 +107,6 @@ router.post("/login", async (req, res, next) => {
           name: m.team_name,
           sport: m.sport,
           seasonYear: m.season_year,
-          teamLogo: m.logo_url || "",
           ownerId: m.owner_user_id,
         };
         membership = { role: m.role };
@@ -127,7 +126,6 @@ router.post("/login", async (req, res, next) => {
         teamName: team?.name || null,
         sport: team?.sport || "",
         seasonYear: team?.seasonYear || String(new Date().getFullYear()),
-        teamLogo: team?.teamLogo || "",
         ownerId: team?.ownerId || null,
       },
     });
@@ -157,7 +155,7 @@ router.get("/me", requireAuth, async (req, res, next) => {
     let membership = null;
     if (user.onboarded_at) {
       const memberRes = await pool.query(
-        `SELECT tm.role, tm.team_id, t.name AS team_name, t.sport, t.season_year, t.logo_url, t.owner_user_id
+        `SELECT tm.role, tm.team_id, t.name AS team_name, t.sport, t.season_year, t.owner_user_id
          FROM team_memberships tm
          JOIN teams t ON t.id = tm.team_id
          WHERE tm.user_id = $1
@@ -171,7 +169,6 @@ router.get("/me", requireAuth, async (req, res, next) => {
           name: m.team_name,
           sport: m.sport,
           seasonYear: m.season_year,
-          teamLogo: m.logo_url || "",
           ownerId: m.owner_user_id,
         };
         membership = { role: m.role };
@@ -197,7 +194,6 @@ router.get("/me", requireAuth, async (req, res, next) => {
         teamName: team?.name || null,
         sport: team?.sport || "",
         seasonYear: team?.seasonYear || String(new Date().getFullYear()),
-        teamLogo: team?.teamLogo || "",
         ownerId: team?.ownerId || null,
         notifications: {
           playersJoinTeam: prefs.notify_players_join_team ?? true,

@@ -85,6 +85,12 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_column THEN NULL;
 END $$;
 
+-- Remove logo_url column from teams (safe to re-run)
+DO $$ BEGIN
+  ALTER TABLE teams DROP COLUMN IF EXISTS logo_url;
+EXCEPTION WHEN undefined_column THEN NULL;
+END $$;
+
 -- ============================================================
 -- 2. Teams and membership
 -- ============================================================
@@ -94,7 +100,6 @@ CREATE TABLE IF NOT EXISTS teams (
   name TEXT NOT NULL,
   sport TEXT,
   season_year TEXT,
-  logo_url TEXT,
   owner_user_id UUID NOT NULL REFERENCES users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
