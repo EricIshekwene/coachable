@@ -4,7 +4,8 @@ import { useAuth } from "../context/AuthContext";
 import { fetchSharedFolder, copySharedFolder } from "../utils/apiFolders";
 import PlayPreviewCard from "../components/PlayPreviewCard";
 import { FiLoader, FiClock, FiTag, FiPlus, FiExternalLink, FiCheck, FiUser, FiFolder } from "react-icons/fi";
-import logo from "../assets/logos/White_Full_Coachable.png";
+import darkLogo from "../assets/logos/White_Full_Coachable.png";
+import lightLogo from "../assets/logos/full_Coachable_logo.png";
 
 function formatRelativeTime(isoString) {
   if (!isoString) return "";
@@ -32,6 +33,21 @@ export default function SharedFolder() {
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(null);
   const [selectedPlay, setSelectedPlay] = useState(null);
+
+  // Theme: use user's saved preference, default to light for visitors
+  const [isLight, setIsLight] = useState(() => {
+    const saved = localStorage.getItem("theme");
+    if (!saved) return true;
+    if (saved === "system") return !window.matchMedia("(prefers-color-scheme: dark)").matches;
+    return saved === "light";
+  });
+
+  useEffect(() => {
+    const resolved = isLight ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", resolved);
+  }, [isLight]);
+
+  const logo = isLight ? lightLogo : darkLogo;
 
   useEffect(() => {
     if (!token) return;
@@ -61,7 +77,7 @@ export default function SharedFolder() {
 
   if (loading || authLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-BrandBlack">
+      <div className="app-themed flex min-h-screen items-center justify-center bg-BrandBlack">
         <FiLoader className="animate-spin text-3xl text-BrandGray2" />
       </div>
     );
@@ -69,7 +85,7 @@ export default function SharedFolder() {
 
   if (error || !folder) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-BrandBlack text-white">
+      <div className="app-themed flex min-h-screen flex-col items-center justify-center bg-BrandBlack text-BrandText">
         <h1 className="font-Manrope text-xl font-bold">Folder not found</h1>
         <p className="mt-2 text-sm text-BrandGray">
           {error || "This share link may have expired or been revoked."}
@@ -88,7 +104,7 @@ export default function SharedFolder() {
   const plays = folder.plays || [];
 
   return (
-    <div className="min-h-screen bg-BrandBlack text-white font-DmSans">
+    <div className="app-themed min-h-screen bg-BrandBlack text-BrandText font-DmSans">
       {/* Top bar */}
       <nav className="flex items-center justify-between px-6 py-4 md:px-12">
         <Link to="/">
@@ -116,7 +132,7 @@ export default function SharedFolder() {
           </div>
         ) : (
           <div className="flex items-center gap-3">
-            <Link to="/login" className="text-sm text-BrandGray transition hover:text-white">
+            <Link to="/login" className="text-sm text-BrandGray transition hover:text-BrandText">
               Log in
             </Link>
             <Link
