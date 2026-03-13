@@ -12,6 +12,7 @@ import Signup from "./pages/Signup";
 import Login from "./pages/Login";
 import Onboarding from "./pages/Onboarding";
 import VerifyEmail from "./pages/VerifyEmail";
+import Admin from "./pages/Admin";
 import AppLayout from "./layouts/AppLayout";
 import Plays from "./pages/app/Plays";
 import PlayNew from "./pages/app/PlayNew";
@@ -76,6 +77,7 @@ function AppRoutes() {
       <Route path="/" element={<Landing />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/admin" element={<Admin />} />
       <Route path="/verify-email" element={<RequireAuth><VerifyEmail /></RequireAuth>} />
       <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
 
