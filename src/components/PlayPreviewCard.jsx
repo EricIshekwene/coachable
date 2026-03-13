@@ -184,7 +184,6 @@ export default function PlayPreviewCard({
   paddingPx = DEFAULT_PADDING_PX,
   minSpanPx = MIN_CAMERA_SPAN_PX,
   className = "",
-  showHoverHint = true,
 }) {
   const [isHovered, setIsHovered] = useState(false);
   const [timeMs, setTimeMs] = useState(0);
@@ -345,9 +344,6 @@ export default function PlayPreviewCard({
     const padded = padBounds(base, paddingPx);
     const withMin = ensureMinimumSpan(padded, minSpanPx);
     const withAspect = isFill ? withMin : fitBoundsToAspect(withMin, targetAspect);
-    if (background === "field") {
-      return clampBoundsToField(withAspect, fieldBounds);
-    }
     return withAspect;
   }, [animation?.tracks, background, cameraMode, fallbackPoses, fieldBounds, isFill, minSpanPx, paddingPx, targetAspect]);
 
@@ -454,13 +450,6 @@ export default function PlayPreviewCard({
         </div>
       )}
 
-      {autoplay === "hover" && showHoverHint && !isHovered ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center">
-          <span className="rounded-full border border-BrandGray2/60 bg-BrandBlack/60 px-2 py-1 text-[10px] font-DmSans text-BrandGray">
-            Hover to play
-          </span>
-        </div>
-      ) : null}
     </div>
   );
 }

@@ -249,7 +249,7 @@ export function AuthProvider({ children }) {
     async ({ teamName, sport, seasonYear }) => {
       if (!user?.teamId) return;
       const body = {};
-      if (teamName?.trim()) body.name = teamName.trim();
+      if (teamName?.trim()) body.teamName = teamName.trim();
       if (sport?.trim()) body.sport = sport.trim().toLowerCase();
       if (seasonYear?.trim()) body.seasonYear = seasonYear.trim();
       await apiFetch(`/teams/${user.teamId}/settings`, {
@@ -258,7 +258,7 @@ export function AuthProvider({ children }) {
       }).catch(() => {});
       setUser((prev) => ({
         ...prev,
-        teamName: body.name || prev.teamName,
+        teamName: body.teamName || prev.teamName,
         sport: body.sport || prev.sport,
         seasonYear: body.seasonYear || prev.seasonYear,
       }));

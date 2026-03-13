@@ -93,7 +93,7 @@ router.post(
 router.patch(
   "/:teamId/settings",
   requireAuth,
-  requireTeamRole("owner"),
+  requireTeamRole("owner", "coach"),
   async (req, res, next) => {
     try {
       const { teamName, sport, seasonYear } = req.body;
