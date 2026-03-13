@@ -174,7 +174,7 @@ export async function sendEmailChangeVerification(toEmail, code, userName) {
 export async function sendTeamInviteEmail({ toEmail, inviteCode, role, teamName, inviterName }) {
   const roleLabel = role === "coach" ? "Coach" : "Player";
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-  const signupLink = `${frontendUrl}/signup?invite=${encodeURIComponent(inviteCode)}`;
+  const signupLink = `${frontendUrl}/signup?invite=${encodeURIComponent(inviteCode)}&email=${encodeURIComponent(toEmail)}`;
 
   const html = `
 <!DOCTYPE html>

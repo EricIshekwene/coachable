@@ -8,15 +8,15 @@ import { isValidEmail } from "../utils/inputValidation";
 
 export default function Signup() {
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [searchParams] = useSearchParams();
+  const inviteCode = searchParams.get("invite") || "";
+  const [email, setEmail] = useState(searchParams.get("email") || "");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const { signup } = useAuth();
   const { showMessage } = useAppMessage();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const inviteCode = searchParams.get("invite") || "";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
