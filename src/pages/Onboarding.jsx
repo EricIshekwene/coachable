@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useAppMessage } from "../context/AppMessageContext";
 import logo from "../assets/logos/full_Coachable_logo.png";
@@ -15,9 +15,13 @@ const SPORTS = [
 ];
 
 export default function Onboarding() {
-  const [teamAction, setTeamAction] = useState("create");
+  const [searchParams] = useSearchParams();
+  const inviteFromUrl = searchParams.get("invite") || "";
+  const hasInvite = inviteFromUrl.length > 0;
+
+  const [teamAction, setTeamAction] = useState(hasInvite ? "join" : "create");
   const [teamName, setTeamName] = useState("");
-  const [inviteCode, setInviteCode] = useState("");
+  const [inviteCode, setInviteCode] = useState(inviteFromUrl);
   const [sport, setSport] = useState("");
   const [sportOpen, setSportOpen] = useState(false);
 
@@ -82,6 +86,64 @@ export default function Onboarding() {
         ? "border-BrandOrange bg-BrandOrange/5 shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
         : "border-BrandGray/30 hover:border-BrandGray hover:shadow-sm"
     }`;
+
+  // Simplified flow when arriving via invite link — skip create/join choice
+  if (hasInvite) {
+    return (
+      <div className="flex h-screen font-DmSans">
+        <div className="flex w-full flex-col justify-center overflow-auto bg-white px-8 sm:px-16 md:w-3/5 lg:px-24 xl:px-32">
+          <div className="mx-auto w-full max-w-lg">
+            <img src={logo} alt="Coachable" className="mb-10 h-7" />
+
+            <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-BrandOrange/10">
+              <FaRegHandshake className="text-2xl text-BrandOrange" />
+            </div>
+
+            <h1 className="font-Manrope text-2xl font-bold tracking-tight text-BrandBlack">
+              Join your team
+            </h1>
+            <p className="mt-1.5 text-sm text-BrandGray2">
+              Your invite code has been pre-filled. Tap the button below to join.
+            </p>
+
+            <div className="mt-6 flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-BrandBlack">Invite code</label>
+              <div className="rounded-lg border border-BrandOrange/40 bg-BrandOrange/5 px-3.5 py-2.5 font-mono text-sm font-semibold tracking-wider text-BrandBlack">
+                {inviteCode}
+              </div>
+              <p className="text-[11px] text-BrandGray">
+                Your role (coach or player) is determined by the code.
+              </p>
+            </div>
+
+            <div className="mt-8">
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={handleFinish}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-BrandBlack py-2.5 text-sm font-semibold text-white transition hover:bg-BrandBlack2 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {submitting ? "Joining..." : "Join team"}
+                {!submitting && <FiArrowRight className="text-sm" />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Right panel */}
+        <div className="hidden flex-col items-center justify-center bg-BrandBlack md:flex md:w-2/5">
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-BrandOrange/10">
+              <FaRegHandshake className="text-3xl text-BrandOrange" />
+            </div>
+            <p className="max-w-xs text-center text-sm leading-relaxed text-BrandGray2">
+              Your invite code determines your role. You'll be added to the team automatically.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen font-DmSans">

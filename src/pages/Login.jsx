@@ -15,6 +15,7 @@ export default function Login() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get("returnTo") || "/app/plays";
+  const inviteCode = searchParams.get("invite") || "";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,7 +35,8 @@ export default function Login() {
     setSubmitting(true);
     try {
       const user = await login(trimmedEmail, trimmedPassword);
-      navigate(user.onboarded ? returnTo : "/onboarding");
+      const onboardingPath = inviteCode ? `/onboarding?invite=${encodeURIComponent(inviteCode)}` : "/onboarding";
+      navigate(user.onboarded ? returnTo : onboardingPath);
     } catch (err) {
       showMessage("Login failed", err.message || "Invalid email or password.", "error");
     } finally {
@@ -98,7 +100,7 @@ export default function Login() {
 
           <p className="mt-6 text-center text-sm text-BrandGray2">
             Don&apos;t have an account?{" "}
-            <Link to="/signup" className="font-semibold text-BrandOrange transition hover:opacity-80">
+            <Link to={inviteCode ? `/signup?invite=${encodeURIComponent(inviteCode)}` : "/signup"} className="font-semibold text-BrandOrange transition hover:opacity-80">
               Sign up
             </Link>
           </p>

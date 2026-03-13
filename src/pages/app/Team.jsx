@@ -1,9 +1,99 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useAppMessage } from "../../context/AppMessageContext";
-import { FiCopy, FiCheck, FiShield, FiUser, FiMail, FiMessageSquare, FiX, FiSearch, FiRefreshCw } from "react-icons/fi";
-import { isValidEmail, isValidPhone } from "../../utils/inputValidation";
+import { FiCopy, FiCheck, FiShield, FiUser, FiMail, FiSearch, FiRefreshCw, FiSend } from "react-icons/fi";
+import { isValidEmail } from "../../utils/inputValidation";
 import { apiFetch } from "../../utils/api";
+
+function InviteCodeSection({ role, code, copiedRole, onCopy, onRotate, onSendInvite, sending }) {
+  const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
+  const isCoachCode = role === "coach";
+  const Icon = isCoachCode ? FiShield : FiUser;
+  const label = isCoachCode ? "Coach Code" : "Player Code";
+
+  const handleSend = async () => {
+    const trimmed = email.trim();
+    if (!trimmed || !isValidEmail(trimmed)) return;
+    const ok = await onSendInvite(trimmed, role);
+    if (ok) {
+      setSent(true);
+      setTimeout(() => {
+        setSent(false);
+        setEmail("");
+      }, 2000);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-BrandGray2/20 bg-BrandBlack2/20 p-4">
+      <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-BrandGray">
+        <Icon className="text-[10px]" /> {label}
+      </p>
+
+      {/* Code + actions row */}
+      <div className="flex items-center gap-2">
+        <div className="flex-1 rounded-lg border border-BrandGray2/30 bg-BrandBlack px-3.5 py-2.5 font-mono text-sm tracking-wider text-BrandOrange">
+          {code}
+        </div>
+        <button
+          onClick={() => onCopy(role)}
+          className="flex items-center gap-1.5 rounded-lg border border-BrandGray2/30 px-3 py-2.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
+          title={`Copy ${role} code`}
+        >
+          {copiedRole === role ? <FiCheck className="text-BrandGreen" /> : <FiCopy />}
+        </button>
+        <button
+          onClick={() => onRotate(role)}
+          className="flex items-center gap-1.5 rounded-lg border border-BrandGray2/30 px-3 py-2.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
+          title={`Generate new ${role} code`}
+        >
+          <FiRefreshCw />
+        </button>
+      </div>
+
+      {isCoachCode && (
+        <p className="mt-1.5 text-[11px] text-BrandGray2">
+          Only share the coach code with people you trust.
+        </p>
+      )}
+
+      {/* Inline email invite */}
+      <div className="mt-3 flex items-center gap-2">
+        <div className="relative flex-1">
+          <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-BrandGray2" />
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
+            placeholder={isCoachCode ? "coach@example.com" : "player@example.com"}
+            className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 py-2 pl-8 pr-3 text-xs text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+          />
+        </div>
+        <button
+          onClick={handleSend}
+          disabled={!email.trim() || sending || sent}
+          className="flex items-center gap-1.5 rounded-lg bg-BrandOrange px-3.5 py-2 text-xs font-semibold text-white transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {sent ? (
+            <>
+              <FiCheck className="text-xs" />
+              Sent
+            </>
+          ) : sending ? (
+            "Sending..."
+          ) : (
+            <>
+              <FiSend className="text-xs" />
+              Invite
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function Team() {
   const { user, teamMembers } = useAuth();
@@ -11,6 +101,9 @@ export default function Team() {
   const isCoach = user?.role === "coach" || user?.role === "owner";
   const [copiedRole, setCopiedRole] = useState(null);
   const [inviteCodes, setInviteCodes] = useState({ player: "", coach: "" });
+  const [sending, setSending] = useState(false);
+  const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (!isCoach || !user?.teamId) return;
@@ -18,12 +111,6 @@ export default function Team() {
       .then((data) => setInviteCodes(data.codes || { player: "", coach: "" }))
       .catch(() => {});
   }, [isCoach, user?.teamId]);
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteMethod, setInviteMethod] = useState("email");
-  const [inviteContact, setInviteContact] = useState("");
-  const [inviteSent, setInviteSent] = useState(false);
-  const [filter, setFilter] = useState("all"); // all | coach | player
-  const [search, setSearch] = useState("");
 
   const handleCopy = async (role) => {
     try {
@@ -59,38 +146,29 @@ export default function Team() {
     }
   };
 
-  const handleSendInvite = () => {
-    const contact = inviteContact.trim();
-    if (!contact) {
-      showMessage(
-        "Missing contact",
-        inviteMethod === "email" ? "Enter an email address." : "Enter a phone number.",
-        "error"
-      );
-      return;
-    }
-
-    if (inviteMethod === "email" && !isValidEmail(contact)) {
+  const handleSendInvite = async (email, role) => {
+    if (!isValidEmail(email)) {
       showMessage("Invalid email", "Please enter a valid email address.", "error");
-      return;
+      return false;
     }
-
-    if (inviteMethod === "text" && !isValidPhone(contact)) {
-      showMessage("Invalid phone number", "Enter a valid phone number.", "error");
-      return;
+    setSending(true);
+    try {
+      await apiFetch(`/teams/${user.teamId}/invites`, {
+        method: "POST",
+        body: { email, role },
+      });
+      showMessage(
+        "Invite sent",
+        `Invitation emailed to ${email}.`,
+        "success"
+      );
+      return true;
+    } catch (err) {
+      showMessage("Invite failed", err.message || "Could not send invite email.", "error");
+      return false;
+    } finally {
+      setSending(false);
     }
-
-    setInviteSent(true);
-    showMessage(
-      "Invite sent",
-      inviteMethod === "email" ? `Invitation sent to ${contact}.` : `Text invite sent to ${contact}.`,
-      "success"
-    );
-    setTimeout(() => {
-      setInviteSent(false);
-      setInviteContact("");
-      setShowInviteModal(false);
-    }, 1500);
   };
 
   const filteredMembers = teamMembers.filter((m) => {
@@ -137,71 +215,30 @@ export default function Team() {
       {isCoach && (
         <div className="mt-6 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-5">
           <p className="text-xs font-semibold">Invite codes</p>
-          <p className="mt-1 text-xs text-BrandGray2">
-            Share the right code based on the person's role. Each code determines their access level.
+          <p className="mt-1 mb-4 text-xs text-BrandGray2">
+            Share the right code based on the person's role, or send an invite email directly.
           </p>
 
-          {/* Player code */}
-          <div className="mt-4">
-            <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-BrandGray">
-              <FiUser className="text-[10px]" /> Player Code
-            </p>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 rounded-lg border border-BrandGray2/30 bg-BrandBlack px-3.5 py-2.5 font-mono text-sm tracking-wider text-BrandOrange">
-                {inviteCodes.player}
-              </div>
-              <button
-                onClick={() => handleCopy("player")}
-                className="flex items-center gap-1.5 rounded-lg border border-BrandGray2/30 px-3 py-2.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
-              >
-                {copiedRole === "player" ? <FiCheck className="text-BrandGreen" /> : <FiCopy />}
-              </button>
-              <button
-                onClick={() => handleRotate("player")}
-                className="flex items-center gap-1.5 rounded-lg border border-BrandGray2/30 px-3 py-2.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
-                title="Generate new player code"
-              >
-                <FiRefreshCw />
-              </button>
-            </div>
+          <div className="flex flex-col gap-3">
+            <InviteCodeSection
+              role="player"
+              code={inviteCodes.player}
+              copiedRole={copiedRole}
+              onCopy={handleCopy}
+              onRotate={handleRotate}
+              onSendInvite={handleSendInvite}
+              sending={sending}
+            />
+            <InviteCodeSection
+              role="coach"
+              code={inviteCodes.coach}
+              copiedRole={copiedRole}
+              onCopy={handleCopy}
+              onRotate={handleRotate}
+              onSendInvite={handleSendInvite}
+              sending={sending}
+            />
           </div>
-
-          {/* Coach code */}
-          <div className="mt-3">
-            <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-BrandGray">
-              <FiShield className="text-[10px]" /> Coach Code
-            </p>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 rounded-lg border border-BrandGray2/30 bg-BrandBlack px-3.5 py-2.5 font-mono text-sm tracking-wider text-BrandOrange">
-                {inviteCodes.coach}
-              </div>
-              <button
-                onClick={() => handleCopy("coach")}
-                className="flex items-center gap-1.5 rounded-lg border border-BrandGray2/30 px-3 py-2.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
-              >
-                {copiedRole === "coach" ? <FiCheck className="text-BrandGreen" /> : <FiCopy />}
-              </button>
-              <button
-                onClick={() => handleRotate("coach")}
-                className="flex items-center gap-1.5 rounded-lg border border-BrandGray2/30 px-3 py-2.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
-                title="Generate new coach code"
-              >
-                <FiRefreshCw />
-              </button>
-            </div>
-            <p className="mt-1.5 text-[11px] text-BrandGray2">
-              Only share the coach code with people you trust.
-            </p>
-          </div>
-
-          {/* Send invite button */}
-          <button
-            onClick={() => setShowInviteModal(true)}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-BrandOrange py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.98]"
-          >
-            <FiMail className="text-sm" />
-            Send Invite
-          </button>
         </div>
       )}
 
@@ -265,85 +302,6 @@ export default function Team() {
           ))}
         </div>
       </div>
-
-      {/* Invite modal */}
-      {showInviteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 font-DmSans">
-          <div className="w-full max-w-md rounded-xl border border-BrandGray2/20 bg-BrandBlack p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="font-Manrope text-base font-bold">Invite a Player</h2>
-              <button
-                onClick={() => { setShowInviteModal(false); setInviteContact(""); }}
-                className="rounded-lg p-1.5 text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"
-              >
-                <FiX />
-              </button>
-            </div>
-            <p className="mt-1.5 text-sm text-BrandGray2">
-              Send an invite via email or text message.
-            </p>
-
-            {/* Method toggle */}
-            <div className="mt-5 flex gap-2 rounded-lg border border-BrandGray2/20 p-1">
-              <button
-                onClick={() => setInviteMethod("email")}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-xs font-medium transition ${
-                  inviteMethod === "email"
-                    ? "bg-BrandOrange/10 text-BrandOrange"
-                    : "text-BrandGray2 hover:text-BrandText"
-                }`}
-              >
-                <FiMail className="text-sm" />
-                Email
-              </button>
-              <button
-                onClick={() => setInviteMethod("text")}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-xs font-medium transition ${
-                  inviteMethod === "text"
-                    ? "bg-BrandOrange/10 text-BrandOrange"
-                    : "text-BrandGray2 hover:text-BrandText"
-                }`}
-              >
-                <FiMessageSquare className="text-sm" />
-                Text
-              </button>
-            </div>
-
-            {/* Input */}
-            <div className="mt-4 flex flex-col gap-1.5">
-              <label className="text-xs font-semibold">
-                {inviteMethod === "email" ? "Email address" : "Phone number"}
-              </label>
-              <input
-                type={inviteMethod === "email" ? "email" : "tel"}
-                value={inviteContact}
-                onChange={(e) => setInviteContact(e.target.value)}
-                placeholder={inviteMethod === "email" ? "player@example.com" : "(555) 123-4567"}
-                className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
-                autoFocus
-              />
-            </div>
-
-            {/* Send button */}
-            <button
-              onClick={handleSendInvite}
-              disabled={!inviteContact.trim() || inviteSent}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-BrandOrange py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {inviteSent ? (
-                <>
-                  <FiCheck />
-                  Invite Sent!
-                </>
-              ) : (
-                <>
-                  Send Invite
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

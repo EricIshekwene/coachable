@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useAppMessage } from "../context/AppMessageContext";
 import logo from "../assets/logos/full_Coachable_logo.png";
@@ -15,6 +15,8 @@ export default function Signup() {
   const { signup } = useAuth();
   const { showMessage } = useAppMessage();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const inviteCode = searchParams.get("invite") || "";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -51,10 +53,13 @@ export default function Signup() {
     setSubmitting(true);
     try {
       const result = await signup(trimmedName, trimmedEmail, trimmedPassword);
+      const onboardingPath = inviteCode
+        ? `/onboarding?invite=${encodeURIComponent(inviteCode)}`
+        : "/onboarding";
       if (result.requiresVerification) {
-        navigate("/verify-email");
+        navigate(inviteCode ? `/verify-email?invite=${encodeURIComponent(inviteCode)}` : "/verify-email");
       } else {
-        navigate("/onboarding");
+        navigate(onboardingPath);
       }
     } catch (err) {
       showMessage("Signup failed", err.message || "Could not create account.", "error");
@@ -74,10 +79,10 @@ export default function Signup() {
           <img src={logo} alt="Coachable" className="mb-10 h-7" />
 
           <h1 className="font-Manrope text-2xl font-bold tracking-tight text-BrandBlack">
-            Create your account
+            {inviteCode ? "Create your account to join" : "Create your account"}
           </h1>
           <p className="mt-1.5 text-sm text-BrandGray2">
-            Get started with Coachable in seconds.
+            {inviteCode ? "Sign up and you'll be added to your team automatically." : "Get started with Coachable in seconds."}
           </p>
 
           <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
@@ -136,7 +141,7 @@ export default function Signup() {
 
           <p className="mt-6 text-center text-sm text-BrandGray2">
             Already have an account?{" "}
-            <Link to="/login" className="font-semibold text-BrandOrange transition hover:opacity-80">
+            <Link to={inviteCode ? `/login?invite=${encodeURIComponent(inviteCode)}` : "/login"} className="font-semibold text-BrandOrange transition hover:opacity-80">
               Sign in
             </Link>
           </p>

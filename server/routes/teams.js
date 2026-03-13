@@ -2,6 +2,7 @@ import { Router } from "express";
 import crypto from "crypto";
 import pool from "../db/pool.js";
 import { requireAuth, requireTeamRole } from "../middleware/auth.js";
+import { sendTeamInviteEmail } from "../lib/email.js";
 
 const router = Router();
 
@@ -202,6 +203,68 @@ router.post(
       } finally {
         client.release();
       }
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /teams/:teamId/invites — send invite email
+router.post(
+  "/:teamId/invites",
+  requireAuth,
+  requireTeamRole("owner", "coach"),
+  async (req, res, next) => {
+    try {
+      const { email, role } = req.body;
+      if (!email?.trim()) {
+        return res.status(400).json({ error: "email is required" });
+      }
+      if (!["player", "coach"].includes(role)) {
+        return res.status(400).json({ error: "role must be 'player' or 'coach'" });
+      }
+
+      // Get the invite code for this role
+      const { rows: codeRows } = await pool.query(
+        "SELECT code FROM team_invite_codes WHERE team_id = $1 AND role = $2",
+        [req.params.teamId, role]
+      );
+      if (!codeRows.length) {
+        return res.status(404).json({ error: "No invite code found for this role" });
+      }
+
+      // Get team name and inviter name
+      const { rows: teamRows } = await pool.query(
+        "SELECT name FROM teams WHERE id = $1",
+        [req.params.teamId]
+      );
+      const { rows: userRows } = await pool.query(
+        "SELECT name FROM users WHERE id = $1",
+        [req.userId]
+      );
+
+      const inviteCode = codeRows[0].code;
+      const teamName = teamRows[0]?.name || "a team";
+      const inviterName = userRows[0]?.name || "Your coach";
+
+      // Record the invite
+      const token = crypto.randomBytes(16).toString("hex");
+      await pool.query(
+        `INSERT INTO team_invites (team_id, invited_by_user_id, contact_email, requested_role, token, expires_at)
+         VALUES ($1, $2, $3, $4, $5, now() + interval '7 days')`,
+        [req.params.teamId, req.userId, email.trim().toLowerCase(), role, token]
+      );
+
+      // Send the email
+      await sendTeamInviteEmail({
+        toEmail: email.trim(),
+        inviteCode,
+        role,
+        teamName,
+        inviterName,
+      });
+
+      res.json({ ok: true });
     } catch (err) {
       next(err);
     }

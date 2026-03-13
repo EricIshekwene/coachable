@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useAppMessage } from "../context/AppMessageContext";
 import { apiFetch } from "../utils/api";
@@ -16,6 +16,8 @@ export default function VerifyEmail() {
   const { user, refreshUser } = useAuth();
   const { showMessage } = useAppMessage();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const inviteCode = searchParams.get("invite") || "";
 
   // Start cooldown on mount (code was just sent during signup)
   useEffect(() => {
@@ -81,7 +83,7 @@ export default function VerifyEmail() {
         });
         showMessage("Email verified", "Your email has been verified successfully.", "success");
         if (refreshUser) await refreshUser();
-        navigate("/onboarding");
+        navigate(inviteCode ? `/onboarding?invite=${encodeURIComponent(inviteCode)}` : "/onboarding");
       } catch (err) {
         showMessage("Verification failed", err.message || "Invalid or expired code.", "error");
         setDigits(Array(CODE_LENGTH).fill(""));
