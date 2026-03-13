@@ -230,9 +230,93 @@ router.patch(
   }
 );
 
-// DELETE /teams/:teamId/plays/:playId
+// DELETE /teams/:teamId/plays/:playId  (soft delete → trash)
 router.delete(
   "/:teamId/plays/:playId",
+  requireAuth,
+  requireTeamRole("owner", "coach", "assistant_coach"),
+  async (req, res, next) => {
+    try {
+      await pool.query(
+        "UPDATE plays SET archived_at = now(), updated_at = now() WHERE id = $1 AND team_id = $2",
+        [req.params.playId, req.params.teamId]
+      );
+      res.json({ ok: true });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// GET /teams/:teamId/plays/trash — list trashed plays
+router.get(
+  "/:teamId/plays-trash",
+  requireAuth,
+  requireTeamRole("owner", "coach", "assistant_coach"),
+  async (req, res, next) => {
+    try {
+      const { rows } = await pool.query(
+        `SELECT * FROM plays
+         WHERE team_id = $1 AND archived_at IS NOT NULL
+         ORDER BY archived_at DESC`,
+        [req.params.teamId]
+      );
+
+      const playIds = rows.map((r) => r.id);
+      let tagMap = {};
+      if (playIds.length) {
+        const tagRes = await pool.query(
+          `SELECT ptl.play_id, pt.label
+           FROM play_tag_links ptl
+           JOIN play_tags pt ON pt.id = ptl.tag_id
+           WHERE ptl.play_id = ANY($1)`,
+          [playIds]
+        );
+        tagRes.rows.forEach((r) => {
+          (tagMap[r.play_id] ||= []).push(r.label);
+        });
+      }
+
+      const plays = rows.map((r) =>
+        toPlayResponse(r, { tags: tagMap[r.id] || [] })
+      );
+      // Add archivedAt to response
+      const playsWithArchived = plays.map((p, i) => ({
+        ...p,
+        archivedAt: rows[i].archived_at,
+      }));
+
+      res.json({ plays: playsWithArchived });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /teams/:teamId/plays/:playId/restore — restore from trash
+router.post(
+  "/:teamId/plays/:playId/restore",
+  requireAuth,
+  requireTeamRole("owner", "coach", "assistant_coach"),
+  async (req, res, next) => {
+    try {
+      const { rows } = await pool.query(
+        `UPDATE plays SET archived_at = NULL, updated_at = now()
+         WHERE id = $1 AND team_id = $2 AND archived_at IS NOT NULL
+         RETURNING *`,
+        [req.params.playId, req.params.teamId]
+      );
+      if (!rows.length) return res.status(404).json({ error: "Play not found in trash" });
+      res.json({ ok: true });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// DELETE /teams/:teamId/plays/:playId/permanent — permanently delete
+router.delete(
+  "/:teamId/plays/:playId/permanent",
   requireAuth,
   requireTeamRole("owner", "coach", "assistant_coach"),
   async (req, res, next) => {

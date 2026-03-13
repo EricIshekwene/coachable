@@ -93,6 +93,22 @@ export async function copySharedPlay(token) {
   return data.play;
 }
 
+/** Fetch trashed plays for a team. */
+export async function fetchTrashedPlays(teamId) {
+  const data = await apiFetch(`/teams/${teamId}/plays-trash`);
+  return (data.plays || []).map((p) => ({ ...mapApiPlayToLocal(p), archivedAt: p.archivedAt }));
+}
+
+/** Restore a play from trash. */
+export async function restorePlay(teamId, playId) {
+  await apiFetch(`/teams/${teamId}/plays/${playId}/restore`, { method: "POST" });
+}
+
+/** Permanently delete a play. */
+export async function permanentDeletePlay(teamId, playId) {
+  await apiFetch(`/teams/${teamId}/plays/${playId}/permanent`, { method: "DELETE" });
+}
+
 /** Map API play response to the local PlayRecord shape. */
 function mapApiPlayToLocal(p) {
   return {

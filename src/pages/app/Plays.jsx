@@ -4,9 +4,9 @@ import { useAuth } from "../../context/AuthContext";
 import {
   FiPlus, FiPlay, FiEdit2, FiClock, FiTag, FiFolder, FiMoreHorizontal,
   FiStar, FiCopy, FiExternalLink, FiTrash2, FiEdit3, FiChevronRight,
-  FiLoader,
+  FiLoader, FiSearch, FiRotateCcw, FiX,
 } from "react-icons/fi";
-import { fetchPlays, deletePlay as apiDeletePlay, updatePlay, toggleFavorite as apiToggleFavorite, movePlayToFolder as apiMovePlayToFolder, sharePlay } from "../../utils/apiPlays";
+import { fetchPlays, deletePlay as apiDeletePlay, updatePlay, toggleFavorite as apiToggleFavorite, movePlayToFolder as apiMovePlayToFolder, sharePlay, fetchTrashedPlays, restorePlay as apiRestorePlay, permanentDeletePlay as apiPermanentDelete } from "../../utils/apiPlays";
 import { fetchFolders, createFolder as apiCreateFolder, updateFolder, deleteFolder as apiFolderDelete, shareFolder } from "../../utils/apiFolders";
 import PlayPreviewCard from "../../components/PlayPreviewCard";
 
@@ -60,6 +60,9 @@ export default function Plays() {
   const [draggingPlayId, setDraggingPlayId] = useState(null);
   const [newFolderMode, setNewFolderMode] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [search, setSearch] = useState("");
+  const [showTrash, setShowTrash] = useState(false);
+  const [trashedPlays, setTrashedPlays] = useState([]);
 
   const menuRef = useRef(null);
   const renameRef = useRef(null);
@@ -115,11 +118,32 @@ export default function Plays() {
   };
 
   const handleDeletePlay = (playId) => {
+    const play = plays.find((p) => p.id === playId);
     setPlays((prev) => prev.filter((p) => p.id !== playId));
     setFolders((prev) => prev.map((f) => ({ ...f, playIds: f.playIds.filter((id) => id !== playId) })));
+    if (play) setTrashedPlays((prev) => [{ ...play, archivedAt: new Date().toISOString() }, ...prev]);
     setMenuOpen(null);
-    showToast("Play deleted");
+    showToast("Moved to trash");
     if (teamId) apiDeletePlay(teamId, playId).catch(() => {});
+  };
+
+  const handleRestorePlay = (playId) => {
+    const play = trashedPlays.find((p) => p.id === playId);
+    setTrashedPlays((prev) => prev.filter((p) => p.id !== playId));
+    if (play) setPlays((prev) => [{ ...play, archivedAt: undefined }, ...prev]);
+    showToast("Play restored");
+    if (teamId) apiRestorePlay(teamId, playId).catch(() => {});
+  };
+
+  const handlePermanentDelete = (playId) => {
+    setTrashedPlays((prev) => prev.filter((p) => p.id !== playId));
+    showToast("Play permanently deleted");
+    if (teamId) apiPermanentDelete(teamId, playId).catch(() => {});
+  };
+
+  const loadTrash = () => {
+    if (!teamId) return;
+    fetchTrashedPlays(teamId).then(setTrashedPlays).catch(() => setTrashedPlays([]));
   };
 
   const handleDeleteFolder = (folderId) => {
@@ -218,8 +242,30 @@ export default function Plays() {
 
   const currentFolderId = folderPath[folderPath.length - 1] ?? null;
   const currentFolder = currentFolderId ? folders.find((f) => f.id === currentFolderId) : null;
-  const visibleFolders = folders.filter((f) => f.parentId === currentFolderId);
-  const visiblePlays = currentFolderId ? plays.filter((p) => p.folderId === currentFolderId) : plays;
+
+  const searchLower = search.trim().toLowerCase();
+  const isSearching = searchLower.length > 0;
+
+  const visibleFolders = isSearching
+    ? folders.filter((f) => f.name.toLowerCase().includes(searchLower))
+    : folders.filter((f) => f.parentId === currentFolderId);
+
+  const baseVisiblePlays = isSearching
+    ? plays.filter((p) =>
+        p.title.toLowerCase().includes(searchLower) ||
+        (p.tags || []).some((t) => t.toLowerCase().includes(searchLower)) ||
+        (p.notes || "").toLowerCase().includes(searchLower)
+      )
+    : currentFolderId
+      ? plays.filter((p) => p.folderId === currentFolderId)
+      : plays;
+
+  const visiblePlays = baseVisiblePlays;
+
+  // Recently edited: top 5, only shown at root when not searching
+  const recentlyEdited = (!currentFolderId && !isSearching)
+    ? [...plays].sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)).slice(0, 5)
+    : [];
 
   const ContextMenu = ({ id, type }) => {
     if (menuOpen !== id) return null;
@@ -239,13 +285,51 @@ export default function Plays() {
         {!isFolder && folders.length > 0 && (<button onClick={() => { setMoveTarget(id); setMenuOpen(null); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiFolder className="text-sm" /> Move to Folder</button>)}
         {!isFolder && currentFolderId && (<button onClick={() => { removePlayFromFolder(id, currentFolderId); setMenuOpen(null); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiFolder className="text-sm" /> Remove from Folder</button>)}
         <div className="mx-2 my-1 h-px bg-BrandGray2/15" />
-        <button onClick={() => (isFolder ? handleDeleteFolder(id) : handleDeletePlay(id))} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-red-400 transition hover:bg-red-500/10"><FiTrash2 className="text-sm" /> Delete</button>
+        <button onClick={() => (isFolder ? handleDeleteFolder(id) : handleDeletePlay(id))} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-red-400 transition hover:bg-red-500/10"><FiTrash2 className="text-sm" /> {isFolder ? "Delete" : "Move to Trash"}</button>
       </div>
     );
   };
 
   if (loadingData) {
     return (<div className="flex items-center justify-center py-32"><FiLoader className="animate-spin text-2xl text-BrandGray2" /></div>);
+  }
+
+  // Trash view
+  if (showTrash) {
+    return (
+      <div className="mx-auto max-w-4xl px-6 py-8 md:px-10 md:py-12">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="font-Manrope text-xl font-bold tracking-tight">Trash</h1>
+            <p className="mt-1 text-sm text-BrandGray">{trashedPlays.length} deleted play{trashedPlays.length !== 1 ? "s" : ""} · auto-deleted after 30 days</p>
+          </div>
+          <button onClick={() => setShowTrash(false)} className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-3.5 py-2.5 text-sm text-BrandGray transition hover:border-BrandGray hover:text-BrandText">Back to Playbook</button>
+        </div>
+
+        {trashedPlays.length === 0 ? (
+          <div className="mt-20 flex flex-col items-center text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-BrandGray2/10"><FiTrash2 className="text-2xl text-BrandGray2" /></div>
+            <p className="mt-4 text-sm font-semibold">Trash is empty</p>
+            <p className="mt-1 text-xs text-BrandGray2">Deleted plays will appear here for 30 days.</p>
+          </div>
+        ) : (
+          <div className="mt-6 flex flex-col gap-2">
+            {trashedPlays.map((play) => (
+              <div key={play.id} className="flex items-center gap-4 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 px-5 py-4">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{play.title}</p>
+                  <p className="mt-0.5 text-[11px] text-BrandGray2">Deleted {formatRelativeTime(play.archivedAt)}</p>
+                </div>
+                <button onClick={() => handleRestorePlay(play.id)} className="flex items-center gap-1.5 rounded-lg border border-BrandGray2/30 px-3 py-2 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"><FiRotateCcw className="text-xs" />Restore</button>
+                <button onClick={() => handlePermanentDelete(play.id)} className="flex items-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-2 text-xs text-red-400 transition hover:bg-red-500/10"><FiTrash2 className="text-xs" />Delete Forever</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {toast && (<div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-[fadeInUp_0.25s_ease-out]"><div className="flex items-center gap-2 rounded-lg border border-BrandGray2/20 bg-BrandBlack px-4 py-3 shadow-xl"><div className="h-1 w-1 rounded-full bg-BrandOrange" /><p className="text-sm text-BrandText">{toast}</p></div></div>)}
+      </div>
+    );
   }
 
   return (
@@ -261,13 +345,51 @@ export default function Plays() {
             </div>
           )}
         </div>
-        {(isCoach || canCreatePlay) && (
-          <div className="flex items-center gap-2">
-            {isCoach && folderPath.length < 4 && (<button onClick={() => setNewFolderMode(true)} className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-3.5 py-2.5 text-sm text-BrandGray transition hover:border-BrandGray hover:text-BrandText disabled:opacity-50 disabled:cursor-not-allowed" disabled={folderPath.length >= 4}><FiFolder className="text-sm" />New Folder</button>)}
-            {canCreatePlay && (<Link to="/app/plays/new" className="flex items-center gap-2 rounded-lg bg-BrandOrange px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.97]"><FiPlus className="text-base" />New Play</Link>)}
-          </div>
+        <div className="flex items-center gap-2">
+          {isCoach && (<button onClick={() => { setShowTrash(true); loadTrash(); }} className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-3 py-2.5 text-sm text-BrandGray transition hover:border-BrandGray hover:text-BrandText"><FiTrash2 className="text-sm" /></button>)}
+          {isCoach && folderPath.length < 4 && (<button onClick={() => setNewFolderMode(true)} className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-3.5 py-2.5 text-sm text-BrandGray transition hover:border-BrandGray hover:text-BrandText disabled:opacity-50 disabled:cursor-not-allowed" disabled={folderPath.length >= 4}><FiFolder className="text-sm" />New Folder</button>)}
+          {canCreatePlay && (<Link to="/app/plays/new" className="flex items-center gap-2 rounded-lg bg-BrandOrange px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.97]"><FiPlus className="text-base" />New Play</Link>)}
+        </div>
+      </div>
+
+      {/* Search bar */}
+      <div className="relative mt-5">
+        <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-BrandGray2" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search plays by name, tags, or notes..."
+          className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 py-2.5 pl-10 pr-10 text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+        />
+        {search && (
+          <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-0.5 text-BrandGray2 transition hover:text-BrandText">
+            <FiX className="text-sm" />
+          </button>
         )}
       </div>
+
+      {/* Recently edited */}
+      {recentlyEdited.length > 0 && (
+        <div className="mt-6">
+          <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-BrandGray2">Recently Edited</p>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {recentlyEdited.map((play) => (
+              <button
+                key={play.id}
+                onClick={() => navigate(playerViewMode ? `/app/plays/${play.id}/view` : `/app/plays/${play.id}`)}
+                className="flex shrink-0 items-center gap-2.5 rounded-lg border border-BrandGray2/20 bg-BrandBlack2/30 px-3.5 py-2.5 text-left transition hover:border-BrandOrange/30 hover:bg-BrandBlack2/60"
+              >
+                <FiClock className="shrink-0 text-xs text-BrandGray2" />
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold max-w-[160px]">{play.title}</p>
+                  <p className="text-[10px] text-BrandGray2">{formatRelativeTime(play.updatedAt || play.createdAt)}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {(visibleFolders.length > 0 || newFolderMode) && (
         <div className="mt-6">
@@ -311,11 +433,11 @@ export default function Plays() {
         </div>
       </div>
 
-      {visiblePlays.length === 0 && !loadingData && (
+      {visiblePlays.length === 0 && visibleFolders.length === 0 && !loadingData && (
         <div className="mt-20 flex flex-col items-center text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-BrandGray2/10"><FiPlay className="text-2xl text-BrandGray2" /></div>
-          <p className="mt-4 text-sm font-semibold">{currentFolderId ? "No plays in this folder" : "No plays yet"}</p>
-          <p className="mt-1 text-xs text-BrandGray2">{currentFolderId ? "Drag plays here or use the menu to move them." : canCreatePlay ? "Create your first play to get started." : "Your coach hasn't added any plays yet."}</p>
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-BrandGray2/10">{isSearching ? <FiSearch className="text-2xl text-BrandGray2" /> : <FiPlay className="text-2xl text-BrandGray2" />}</div>
+          <p className="mt-4 text-sm font-semibold">{isSearching ? "No results found" : currentFolderId ? "No plays in this folder" : "No plays yet"}</p>
+          <p className="mt-1 text-xs text-BrandGray2">{isSearching ? `No plays match "${search.trim()}"` : currentFolderId ? "Drag plays here or use the menu to move them." : canCreatePlay ? "Create your first play to get started." : "Your coach hasn't added any plays yet."}</p>
         </div>
       )}
 
