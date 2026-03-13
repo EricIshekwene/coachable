@@ -127,11 +127,11 @@ export function AuthProvider({ children }) {
   }, []);
 
   const completeOnboarding = useCallback(
-    async ({ teamName, teamAction, inviteCode, role, sport }) => {
+    async ({ teamName, teamAction, inviteCode, sport }) => {
       if (teamAction === "create") {
         const data = await apiFetch("/onboarding/create-team", {
           method: "POST",
-          body: { teamName, sport, role: "coach" },
+          body: { teamName, sport },
         });
         const team = data.team || {};
         setUser((prev) => ({
@@ -146,12 +146,12 @@ export function AuthProvider({ children }) {
       } else {
         const data = await apiFetch("/onboarding/join-team", {
           method: "POST",
-          body: { inviteCode, role: role || "player" },
+          body: { inviteCode },
         });
         const team = data.team || {};
         setUser((prev) => ({
           ...prev,
-          role: role || "player",
+          role: data.role || "player",
           teamId: team.id,
           teamName: team.name,
           sport: team.sport || "",

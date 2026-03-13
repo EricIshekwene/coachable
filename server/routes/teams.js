@@ -27,49 +27,62 @@ router.get(
   }
 );
 
-// GET /teams/:teamId/invite-code
+// GET /teams/:teamId/invite-codes
 router.get(
-  "/:teamId/invite-code",
+  "/:teamId/invite-codes",
   requireAuth,
   requireTeamRole("owner", "coach"),
   async (req, res, next) => {
     try {
       const { rows } = await pool.query(
-        "SELECT code FROM team_invite_codes WHERE team_id = $1",
+        "SELECT role, code FROM team_invite_codes WHERE team_id = $1",
         [req.params.teamId]
       );
-      if (!rows.length) {
-        // Generate one if missing
-        const code = crypto.randomBytes(4).toString("hex").toUpperCase();
-        await pool.query(
-          `INSERT INTO team_invite_codes (team_id, code, created_by_user_id)
-           VALUES ($1, $2, $3)`,
-          [req.params.teamId, code, req.userId]
-        );
-        return res.json({ code });
+
+      const codes = { player: null, coach: null };
+      for (const row of rows) codes[row.role] = row.code;
+
+      // Generate any missing codes
+      for (const role of ["player", "coach"]) {
+        if (!codes[role]) {
+          const code = crypto.randomBytes(4).toString("hex").toUpperCase();
+          await pool.query(
+            `INSERT INTO team_invite_codes (team_id, role, code, created_by_user_id)
+             VALUES ($1, $2, $3, $4)
+             ON CONFLICT (team_id, role) DO NOTHING`,
+            [req.params.teamId, role, code, req.userId]
+          );
+          codes[role] = code;
+        }
       }
-      res.json({ code: rows[0].code });
+
+      res.json({ codes });
     } catch (err) {
       next(err);
     }
   }
 );
 
-// POST /teams/:teamId/invite-code/rotate
+// POST /teams/:teamId/invite-codes/rotate
 router.post(
-  "/:teamId/invite-code/rotate",
+  "/:teamId/invite-codes/rotate",
   requireAuth,
   requireTeamRole("owner", "coach"),
   async (req, res, next) => {
     try {
+      const { role } = req.body;
+      if (!["player", "coach"].includes(role)) {
+        return res.status(400).json({ error: "role must be 'player' or 'coach'" });
+      }
+
       const code = crypto.randomBytes(4).toString("hex").toUpperCase();
       await pool.query(
         `UPDATE team_invite_codes
          SET code = $1, rotated_at = now()
-         WHERE team_id = $2`,
-        [code, req.params.teamId]
+         WHERE team_id = $2 AND role = $3`,
+        [code, req.params.teamId, role]
       );
-      res.json({ code });
+      res.json({ code, role });
     } catch (err) {
       next(err);
     }

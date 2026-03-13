@@ -39,12 +39,13 @@ router.post("/create-team", requireAuth, async (req, res, next) => {
         [team.id, req.userId]
       );
 
-      // Generate invite code
-      const code = crypto.randomBytes(4).toString("hex").toUpperCase();
+      // Generate invite codes (one for players, one for coaches)
+      const playerCode = crypto.randomBytes(4).toString("hex").toUpperCase();
+      const coachCode = crypto.randomBytes(4).toString("hex").toUpperCase();
       await client.query(
-        `INSERT INTO team_invite_codes (team_id, code, created_by_user_id)
-         VALUES ($1, $2, $3)`,
-        [team.id, code, req.userId]
+        `INSERT INTO team_invite_codes (team_id, role, code, created_by_user_id)
+         VALUES ($1, 'player', $2, $3), ($1, 'coach', $4, $3)`,
+        [team.id, playerCode, req.userId, coachCode]
       );
 
       // Mark user onboarded
@@ -64,7 +65,7 @@ router.post("/create-team", requireAuth, async (req, res, next) => {
           ownerId: team.owner_user_id,
         },
         role: "owner",
-        inviteCode: code,
+        inviteCodes: { player: playerCode, coach: coachCode },
       });
     } catch (err) {
       await client.query("ROLLBACK");
@@ -80,21 +81,18 @@ router.post("/create-team", requireAuth, async (req, res, next) => {
 // POST /onboarding/join-team
 router.post("/join-team", requireAuth, async (req, res, next) => {
   try {
-    const { inviteCode, role } = req.body;
+    const { inviteCode } = req.body;
     if (!inviteCode?.trim()) {
       return res.status(400).json({ error: "inviteCode is required" });
     }
-
-    const validRoles = ["coach", "player"];
-    const requestedRole = validRoles.includes(role) ? role : "player";
 
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
 
-      // Find team by invite code
+      // Find team and role by invite code
       const codeRes = await client.query(
-        "SELECT team_id FROM team_invite_codes WHERE code = $1",
+        "SELECT team_id, role FROM team_invite_codes WHERE code = $1",
         [inviteCode.trim().toUpperCase()]
       );
       if (!codeRes.rows.length) {
@@ -103,6 +101,7 @@ router.post("/join-team", requireAuth, async (req, res, next) => {
       }
 
       const teamId = codeRes.rows[0].team_id;
+      const requestedRole = codeRes.rows[0].role; // role determined by the code
 
       // Check not already a member
       const existingRes = await client.query(

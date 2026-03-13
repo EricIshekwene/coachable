@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useAppMessage } from "../../context/AppMessageContext";
-import { FiCopy, FiCheck, FiShield, FiUser, FiMail, FiMessageSquare, FiX, FiSearch } from "react-icons/fi";
+import { FiCopy, FiCheck, FiShield, FiUser, FiMail, FiMessageSquare, FiX, FiSearch, FiRefreshCw } from "react-icons/fi";
 import { isValidEmail, isValidPhone } from "../../utils/inputValidation";
 import { apiFetch } from "../../utils/api";
 
@@ -9,13 +9,13 @@ export default function Team() {
   const { user, teamMembers } = useAuth();
   const { showMessage } = useAppMessage();
   const isCoach = user?.role === "coach" || user?.role === "owner";
-  const [copied, setCopied] = useState(false);
-  const [inviteCode, setInviteCode] = useState("");
+  const [copiedRole, setCopiedRole] = useState(null);
+  const [inviteCodes, setInviteCodes] = useState({ player: "", coach: "" });
 
   useEffect(() => {
     if (!isCoach || !user?.teamId) return;
-    apiFetch(`/teams/${user.teamId}/invite-code`)
-      .then((data) => setInviteCode(data.code || ""))
+    apiFetch(`/teams/${user.teamId}/invite-codes`)
+      .then((data) => setInviteCodes(data.codes || { player: "", coach: "" }))
       .catch(() => {});
   }, [isCoach, user?.teamId]);
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -25,14 +25,37 @@ export default function Team() {
   const [filter, setFilter] = useState("all"); // all | coach | player
   const [search, setSearch] = useState("");
 
-  const handleCopy = async () => {
+  const handleCopy = async (role) => {
     try {
-      await navigator.clipboard.writeText(inviteCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-      showMessage("Invite code copied", "Share it with players to join your team.", "success");
+      await navigator.clipboard.writeText(inviteCodes[role]);
+      setCopiedRole(role);
+      setTimeout(() => setCopiedRole(null), 2000);
+      showMessage(
+        `${role === "coach" ? "Coach" : "Player"} code copied`,
+        role === "coach"
+          ? "Share this only with trusted coaches."
+          : "Share this with players to join your team.",
+        "success"
+      );
     } catch {
       showMessage("Copy failed", "Clipboard access was denied.", "error");
+    }
+  };
+
+  const handleRotate = async (role) => {
+    try {
+      const data = await apiFetch(`/teams/${user.teamId}/invite-codes/rotate`, {
+        method: "POST",
+        body: { role },
+      });
+      setInviteCodes((prev) => ({ ...prev, [role]: data.code }));
+      showMessage(
+        `${role === "coach" ? "Coach" : "Player"} code rotated`,
+        "The old code will no longer work.",
+        "success"
+      );
+    } catch {
+      showMessage("Rotate failed", "Could not generate a new code.", "error");
     }
   };
 
@@ -113,29 +136,68 @@ export default function Team() {
       {/* Invite section (coach only) */}
       {isCoach && (
         <div className="mt-6 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-5">
-          <p className="text-xs font-semibold">Invite players</p>
+          <p className="text-xs font-semibold">Invite codes</p>
           <p className="mt-1 text-xs text-BrandGray2">
-            Share your invite code or send a direct invite.
+            Share the right code based on the person's role. Each code determines their access level.
           </p>
 
-          {/* Invite code row */}
-          <div className="mt-3 flex items-center gap-2">
-            <div className="flex-1 rounded-lg border border-BrandGray2/30 bg-BrandBlack px-3.5 py-2.5 font-mono text-sm tracking-wider text-BrandOrange">
-              {inviteCode}
+          {/* Player code */}
+          <div className="mt-4">
+            <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-BrandGray">
+              <FiUser className="text-[10px]" /> Player Code
+            </p>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 rounded-lg border border-BrandGray2/30 bg-BrandBlack px-3.5 py-2.5 font-mono text-sm tracking-wider text-BrandOrange">
+                {inviteCodes.player}
+              </div>
+              <button
+                onClick={() => handleCopy("player")}
+                className="flex items-center gap-1.5 rounded-lg border border-BrandGray2/30 px-3 py-2.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
+              >
+                {copiedRole === "player" ? <FiCheck className="text-BrandGreen" /> : <FiCopy />}
+              </button>
+              <button
+                onClick={() => handleRotate("player")}
+                className="flex items-center gap-1.5 rounded-lg border border-BrandGray2/30 px-3 py-2.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
+                title="Generate new player code"
+              >
+                <FiRefreshCw />
+              </button>
             </div>
-            <button
-              onClick={handleCopy}
-              className="flex items-center gap-1.5 rounded-lg border border-BrandGray2/30 px-3.5 py-2.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
-            >
-              {copied ? <FiCheck className="text-BrandGreen" /> : <FiCopy />}
-              {copied ? "Copied" : "Copy"}
-            </button>
+          </div>
+
+          {/* Coach code */}
+          <div className="mt-3">
+            <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-BrandGray">
+              <FiShield className="text-[10px]" /> Coach Code
+            </p>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 rounded-lg border border-BrandGray2/30 bg-BrandBlack px-3.5 py-2.5 font-mono text-sm tracking-wider text-BrandOrange">
+                {inviteCodes.coach}
+              </div>
+              <button
+                onClick={() => handleCopy("coach")}
+                className="flex items-center gap-1.5 rounded-lg border border-BrandGray2/30 px-3 py-2.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
+              >
+                {copiedRole === "coach" ? <FiCheck className="text-BrandGreen" /> : <FiCopy />}
+              </button>
+              <button
+                onClick={() => handleRotate("coach")}
+                className="flex items-center gap-1.5 rounded-lg border border-BrandGray2/30 px-3 py-2.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
+                title="Generate new coach code"
+              >
+                <FiRefreshCw />
+              </button>
+            </div>
+            <p className="mt-1.5 text-[11px] text-BrandGray2">
+              Only share the coach code with people you trust.
+            </p>
           </div>
 
           {/* Send invite button */}
           <button
             onClick={() => setShowInviteModal(true)}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-BrandOrange py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.98]"
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-BrandOrange py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.98]"
           >
             <FiMail className="text-sm" />
             Send Invite

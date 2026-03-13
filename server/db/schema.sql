@@ -131,12 +131,33 @@ CREATE INDEX IF NOT EXISTS team_memberships_team_role_idx ON team_memberships(te
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS team_invite_codes (
-  team_id UUID PRIMARY KEY REFERENCES teams(id) ON DELETE CASCADE,
+  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  role TEXT NOT NULL DEFAULT 'player' CHECK (role IN ('player', 'coach')),
   code TEXT NOT NULL UNIQUE,
   created_by_user_id UUID NOT NULL REFERENCES users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  rotated_at TIMESTAMPTZ
+  rotated_at TIMESTAMPTZ,
+  PRIMARY KEY (team_id, role)
 );
+
+-- Migration: add role column to existing team_invite_codes (safe to re-run)
+DO $$ BEGIN
+  ALTER TABLE team_invite_codes ADD COLUMN role TEXT NOT NULL DEFAULT 'player' CHECK (role IN ('player', 'coach'));
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Migration: drop old single-column PK and add composite PK (safe to re-run)
+DO $$ BEGIN
+  ALTER TABLE team_invite_codes DROP CONSTRAINT team_invite_codes_pkey;
+  ALTER TABLE team_invite_codes ADD PRIMARY KEY (team_id, role);
+EXCEPTION WHEN others THEN NULL;
+END $$;
+
+-- Migration: generate coach codes for existing teams that only have a player code
+INSERT INTO team_invite_codes (team_id, code, created_by_user_id, role)
+SELECT team_id, upper(encode(gen_random_bytes(4), 'hex')), created_by_user_id, 'coach'
+FROM team_invite_codes WHERE role = 'player'
+ON CONFLICT (team_id, role) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS team_invites (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
