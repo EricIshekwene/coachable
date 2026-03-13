@@ -1,4 +1,5 @@
 import { Router } from "express";
+import crypto from "crypto";
 import pool from "../db/pool.js";
 import { requireAuth, requireTeamRole } from "../middleware/auth.js";
 
@@ -154,6 +155,33 @@ router.delete(
         [req.params.folderId, req.params.teamId]
       );
       res.json({ ok: true });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /teams/:teamId/folders/:folderId/share — create a share link for a folder
+router.post(
+  "/:teamId/folders/:folderId/share",
+  requireAuth,
+  requireTeamRole("owner", "coach", "assistant_coach"),
+  async (req, res, next) => {
+    try {
+      const { rows: folderRows } = await pool.query(
+        "SELECT id FROM play_folders WHERE id = $1 AND team_id = $2",
+        [req.params.folderId, req.params.teamId]
+      );
+      if (!folderRows.length) return res.status(404).json({ error: "Folder not found" });
+
+      const token = crypto.randomBytes(16).toString("hex");
+      await pool.query(
+        `INSERT INTO folder_share_links (folder_id, created_by_user_id, token)
+         VALUES ($1, $2, $3)`,
+        [req.params.folderId, req.userId, token]
+      );
+
+      res.status(201).json({ token });
     } catch (err) {
       next(err);
     }

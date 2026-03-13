@@ -26,6 +26,7 @@ import Settings from "./pages/app/Settings";
 import MobileViewOnlyGate from "./components/MobileViewOnlyGate";
 import SharedPlay from "./pages/SharedPlay";
 import SharedPlayView from "./pages/SharedPlayView";
+import SharedFolder from "./pages/SharedFolder";
 
 function SlateRoot({ adminMode = false }) {
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
@@ -82,6 +83,7 @@ function AppRoutes() {
       <Route path="/admin" element={<Admin />} />
       <Route path="/shared/:token" element={<SharedPlay />} />
       <Route path="/shared/:token/view" element={<SharedPlayView />} />
+      <Route path="/shared/folder/:token" element={<SharedFolder />} />
       <Route path="/verify-email" element={<RequireAuth><VerifyEmail /></RequireAuth>} />
       <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
 

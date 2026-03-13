@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { fetchSharedPlay, copySharedPlay } from "../utils/apiPlays";
+import { fetchSharedFolder, copySharedFolder } from "../utils/apiFolders";
 import PlayPreviewCard from "../components/PlayPreviewCard";
-import { FiLoader, FiClock, FiTag, FiPlus, FiExternalLink, FiCheck, FiUser } from "react-icons/fi";
+import { FiLoader, FiClock, FiTag, FiPlus, FiExternalLink, FiCheck, FiUser, FiFolder } from "react-icons/fi";
 import logo from "../assets/logos/White_Full_Coachable.png";
 
 function formatRelativeTime(isoString) {
@@ -20,39 +20,40 @@ function formatRelativeTime(isoString) {
   return `${weeks}w ago`;
 }
 
-export default function SharedPlay() {
+export default function SharedFolder() {
   const { token } = useParams();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  const [play, setPlay] = useState(null);
+  const [folder, setFolder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [copying, setCopying] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(null);
+  const [selectedPlay, setSelectedPlay] = useState(null);
 
   useEffect(() => {
     if (!token) return;
     setLoading(true);
-    fetchSharedPlay(token)
-      .then((p) => setPlay(p))
-      .catch((err) => setError(err?.message || "Play not found"))
+    fetchSharedFolder(token)
+      .then((f) => setFolder(f))
+      .catch((err) => setError(err?.message || "Folder not found"))
       .finally(() => setLoading(false));
   }, [token]);
 
   const handleAddToPlaybook = async () => {
     if (!user) {
-      navigate(`/login?returnTo=${encodeURIComponent(`/shared/${token}`)}`);
+      navigate(`/login?returnTo=${encodeURIComponent(`/shared/folder/${token}`)}`);
       return;
     }
     setCopying(true);
     setCopyError(null);
     try {
-      await copySharedPlay(token);
+      await copySharedFolder(token);
       setCopied(true);
     } catch (err) {
-      setCopyError(err?.message || "Failed to add play");
+      setCopyError(err?.message || "Failed to add folder");
     } finally {
       setCopying(false);
     }
@@ -66,10 +67,10 @@ export default function SharedPlay() {
     );
   }
 
-  if (error || !play) {
+  if (error || !folder) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-BrandBlack text-white">
-        <h1 className="font-Manrope text-xl font-bold">Play not found</h1>
+        <h1 className="font-Manrope text-xl font-bold">Folder not found</h1>
         <p className="mt-2 text-sm text-BrandGray">
           {error || "This share link may have expired or been revoked."}
         </p>
@@ -84,6 +85,7 @@ export default function SharedPlay() {
   }
 
   const isCoach = user && ["owner", "coach", "assistant_coach"].includes(user.role);
+  const plays = folder.plays || [];
 
   return (
     <div className="min-h-screen bg-BrandBlack text-white font-DmSans">
@@ -127,34 +129,27 @@ export default function SharedPlay() {
         )}
       </nav>
 
-      {/* Play content */}
-      <div className="mx-auto max-w-4xl px-6 py-8 md:px-10 md:py-12">
+      {/* Folder content */}
+      <div className="mx-auto max-w-5xl px-6 py-8 md:px-10 md:py-12">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="mb-1 text-xs text-BrandGray2">
-              Shared from <span className="text-BrandGray">{play.teamName}</span>
+              Shared from <span className="text-BrandGray">{folder.teamName}</span>
             </p>
-            <h1 className="font-Manrope text-2xl font-bold tracking-tight">
-              {play.title}
-            </h1>
-            <div className="mt-2 flex items-center gap-3 text-xs text-BrandGray2">
-              <span className="flex items-center gap-1.5">
-                <FiClock className="text-[10px]" />
-                {formatRelativeTime(play.updatedAt || play.createdAt)}
-              </span>
+            <div className="flex items-center gap-2">
+              <FiFolder className="text-BrandOrange text-lg" />
+              <h1 className="font-Manrope text-2xl font-bold tracking-tight">
+                {folder.name}
+              </h1>
             </div>
+            <p className="mt-2 text-xs text-BrandGray2">
+              {plays.length} {plays.length === 1 ? "play" : "plays"}
+            </p>
           </div>
 
           {/* Action buttons */}
           <div className="flex shrink-0 items-center gap-2">
-            <Link
-              to={`/shared/${token}/view`}
-              className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-4 py-2 text-sm font-semibold text-BrandGray transition hover:border-BrandOrange/50 hover:text-BrandOrange"
-            >
-              <FiExternalLink className="text-sm" />
-              View in Slate
-            </Link>
             {isCoach && !copied && (
               <button
                 onClick={handleAddToPlaybook}
@@ -198,10 +193,10 @@ export default function SharedPlay() {
         {!user && (
           <div className="mt-6 rounded-2xl border border-BrandGray2/20 bg-BrandBlack2/30 p-6 text-center">
             <p className="font-Manrope text-lg font-bold text-BrandText">Get started with Coachable!</p>
-            <p className="mt-1 text-sm text-BrandGray">Sign up to add this play to your playbook and start building plays.</p>
+            <p className="mt-1 text-sm text-BrandGray">Sign up to add this folder to your playbook and start building plays.</p>
             <div className="mt-4 flex items-center justify-center gap-3">
               <Link
-                to={`/login?returnTo=${encodeURIComponent(`/shared/${token}`)}`}
+                to={`/login?returnTo=${encodeURIComponent(`/shared/folder/${token}`)}`}
                 className="rounded-lg border border-BrandGray2/30 px-4 py-2 text-sm font-semibold text-BrandGray transition hover:border-BrandOrange/50 hover:text-BrandOrange"
               >
                 Log in
@@ -216,46 +211,59 @@ export default function SharedPlay() {
           </div>
         )}
 
-        {/* Play preview */}
-        <div className="mt-8 mb-4">
-          <PlayPreviewCard
-            playData={play.playData}
-            autoplay="always"
-            shape="wide"
-            cameraMode="fit-distribution"
-            background="field"
-            paddingPx={30}
-            minSpanPx={150}
-          />
-        </div>
-
-        {/* Tags */}
-        {play.tags && play.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {play.tags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center gap-1 rounded-md bg-BrandGray2/20 px-2.5 py-1 text-xs text-BrandGray"
+        {/* Plays grid */}
+        {plays.length === 0 ? (
+          <div className="mt-12 text-center text-sm text-BrandGray2">
+            This folder has no plays yet.
+          </div>
+        ) : (
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {plays.map((play) => (
+              <div
+                key={play.id}
+                className={`rounded-xl border transition cursor-pointer ${
+                  selectedPlay === play.id
+                    ? "border-BrandOrange bg-BrandBlack2/50"
+                    : "border-BrandGray2/15 bg-BrandBlack2/20 hover:border-BrandGray2/30"
+                }`}
+                onClick={() => setSelectedPlay(selectedPlay === play.id ? null : play.id)}
               >
-                <FiTag className="text-[10px]" />
-                {tag}
-              </span>
+                <div className="p-3">
+                  <PlayPreviewCard
+                    playData={play.playData}
+                    autoplay="hover"
+                    shape="landscape"
+                    cameraMode="fit-distribution"
+                    background="field"
+                    paddingPx={20}
+                    minSpanPx={100}
+                  />
+                </div>
+                <div className="px-3 pb-3">
+                  <p className="font-DmSans text-sm font-semibold text-BrandText truncate">
+                    {play.title}
+                  </p>
+                  <div className="mt-1 flex items-center gap-2 text-[10px] text-BrandGray2">
+                    <FiClock className="text-[9px]" />
+                    {formatRelativeTime(play.updatedAt || play.createdAt)}
+                  </div>
+                  {play.tags && play.tags.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {play.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="inline-flex items-center gap-0.5 rounded bg-BrandGray2/15 px-1.5 py-0.5 text-[9px] text-BrandGray"
+                        >
+                          <FiTag className="text-[8px]" />
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
-        )}
-
-        {/* Notes */}
-        {play.notes && play.notes.trim() && (
-          <section className="mt-8 rounded-2xl border border-BrandGray2/20 bg-BrandBlack2/30 p-4 sm:p-5">
-            <div className="flex items-center justify-between gap-3">
-              <span className="inline-flex items-center rounded-full bg-BrandOrange/15 px-3 py-1 text-[11px] font-semibold text-BrandOrange">
-                {play.notesAuthorName || "Coach"}
-              </span>
-            </div>
-            <p className="mt-3 whitespace-pre-wrap font-DmSans text-sm leading-6 text-BrandText">
-              {play.notes}
-            </p>
-          </section>
         )}
       </div>
     </div>

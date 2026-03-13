@@ -261,3 +261,15 @@ CREATE TABLE IF NOT EXISTS play_share_links (
 );
 
 CREATE INDEX IF NOT EXISTS play_share_links_play_idx ON play_share_links(play_id);
+
+CREATE TABLE IF NOT EXISTS folder_share_links (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  folder_id UUID NOT NULL REFERENCES play_folders(id) ON DELETE CASCADE,
+  created_by_user_id UUID NOT NULL REFERENCES users(id),
+  token TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ,
+  revoked_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS folder_share_links_folder_idx ON folder_share_links(folder_id);

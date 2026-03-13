@@ -1,6 +1,9 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import pool from "./db/pool.js";
 import authRoutes from "./routes/auth.js";
 import onboardingRoutes from "./routes/onboarding.js";
@@ -68,6 +71,22 @@ app.use((err, _req, res, _next) => {
 
 // --------------- Start ---------------
 
-app.listen(PORT, () => {
-  console.log(`Coachable API listening on port ${PORT}`);
+// --------------- Auto-migrate on startup ---------------
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+async function autoMigrate() {
+  try {
+    const sql = fs.readFileSync(path.join(__dirname, "db", "schema.sql"), "utf-8");
+    await pool.query(sql);
+    console.log("Auto-migration complete.");
+  } catch (err) {
+    console.error("Auto-migration failed (non-fatal):", err.message);
+  }
+}
+
+autoMigrate().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Coachable API listening on port ${PORT}`);
+  });
 });
