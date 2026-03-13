@@ -6,7 +6,7 @@ import {
   FiStar, FiCopy, FiExternalLink, FiTrash2, FiEdit3, FiChevronRight,
   FiLoader,
 } from "react-icons/fi";
-import { fetchPlays, deletePlay as apiDeletePlay, updatePlay, toggleFavorite as apiToggleFavorite, movePlayToFolder as apiMovePlayToFolder } from "../../utils/apiPlays";
+import { fetchPlays, deletePlay as apiDeletePlay, updatePlay, toggleFavorite as apiToggleFavorite, movePlayToFolder as apiMovePlayToFolder, sharePlay } from "../../utils/apiPlays";
 import { fetchFolders, createFolder as apiCreateFolder, updateFolder, deleteFolder as apiFolderDelete } from "../../utils/apiFolders";
 import PlayPreviewCard from "../../components/PlayPreviewCard";
 
@@ -172,10 +172,15 @@ export default function Plays() {
     if (teamId) apiMovePlayToFolder(teamId, playId, null).catch(() => {});
   };
 
-  const copyLink = (playId) => {
-    navigator.clipboard.writeText(`${window.location.origin}/app/plays/${playId}/view`);
-    showToast("Link copied");
+  const copyLink = async (playId) => {
     setMenuOpen(null);
+    try {
+      const { token } = await sharePlay(teamId, playId);
+      await navigator.clipboard.writeText(`${window.location.origin}/shared/${token}`);
+      showToast("Share link copied");
+    } catch {
+      showToast("Failed to create share link");
+    }
   };
 
   const handleCreateFolder = () => {
@@ -214,7 +219,7 @@ export default function Plays() {
         {!isFolder && (<>
           <button onClick={() => navigate(`/app/plays/${id}`)} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiExternalLink className="text-sm" /> Open</button>
           <button onClick={() => { handleToggleFavorite(id); setMenuOpen(null); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiStar className={`text-sm ${play?.favorited ? "fill-BrandOrange text-BrandOrange" : ""}`} />{play?.favorited ? "Unfavorite" : "Favorite"}</button>
-          <button onClick={() => copyLink(id)} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiCopy className="text-sm" /> Copy Link</button>
+          <button onClick={() => copyLink(id)} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiCopy className="text-sm" /> Share</button>
         </>)}
         <button onClick={() => startRename(id, isFolder ? folders.find((f) => f.id === id)?.name : play?.title)} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiEdit3 className="text-sm" /> Rename</button>
         {!isFolder && folders.length > 0 && (<button onClick={() => { setMoveTarget(id); setMenuOpen(null); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiFolder className="text-sm" /> Move to Folder</button>)}

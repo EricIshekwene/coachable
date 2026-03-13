@@ -224,16 +224,18 @@ export default function ViewOnlyControls({
         </div>
 
         {/* Controls row */}
-        <div className="flex items-center justify-between mt-1">
+        <div className="flex items-center mt-1">
           {/* Left: time */}
-          <span className="text-xs font-DmSans text-white/70 tabular-nums min-w-[70px]">
-            {formatTime(currentTimeMs)} / {formatTime(durationMs)}
-          </span>
+          <div className="flex-1 flex items-center">
+            <span className="text-xs font-DmSans text-white/70 tabular-nums">
+              {formatTime(currentTimeMs)} / {formatTime(durationMs)}
+            </span>
+          </div>
 
           {/* Center: play/pause */}
           <button
             onClick={onPlayToggle}
-            className="h-10 w-10 flex items-center justify-center rounded-full bg-BrandOrange hover:brightness-110 transition"
+            className="h-10 w-10 flex-shrink-0 flex items-center justify-center rounded-full bg-BrandOrange hover:brightness-110 transition"
           >
             {isPlaying ? (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-BrandBlack">
@@ -246,7 +248,7 @@ export default function ViewOnlyControls({
           </button>
 
           {/* Right: speed + loop */}
-          <div className="flex items-center gap-2 min-w-[70px] justify-end">
+          <div className="flex-1 flex items-center gap-2 justify-end">
             <div className="flex items-center gap-1.5 bg-white/10 rounded-lg px-2 py-1 backdrop-blur-sm">
               <Slider
                 min={0}

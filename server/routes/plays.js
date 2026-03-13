@@ -1,4 +1,5 @@
 import { Router } from "express";
+import crypto from "crypto";
 import pool from "../db/pool.js";
 import { requireAuth, requireTeamRole } from "../middleware/auth.js";
 
@@ -351,6 +352,34 @@ router.patch(
         [folderId || null, req.params.playId, req.params.teamId]
       );
       res.json({ ok: true });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /teams/:teamId/plays/:playId/share — create a share link
+router.post(
+  "/:teamId/plays/:playId/share",
+  requireAuth,
+  requireTeamRole("owner", "coach", "assistant_coach"),
+  async (req, res, next) => {
+    try {
+      // Verify play exists
+      const { rows: playRows } = await pool.query(
+        "SELECT id FROM plays WHERE id = $1 AND team_id = $2",
+        [req.params.playId, req.params.teamId]
+      );
+      if (!playRows.length) return res.status(404).json({ error: "Play not found" });
+
+      const token = crypto.randomBytes(16).toString("hex");
+      await pool.query(
+        `INSERT INTO play_share_links (play_id, created_by_user_id, token)
+         VALUES ($1, $2, $3)`,
+        [req.params.playId, req.userId, token]
+      );
+
+      res.status(201).json({ token });
     } catch (err) {
       next(err);
     }

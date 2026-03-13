@@ -10,6 +10,7 @@ import folderRoutes from "./routes/folders.js";
 import userRoutes from "./routes/users.js";
 import verificationRoutes from "./routes/verification.js";
 import adminRoutes from "./routes/admin.js";
+import sharedRoutes from "./routes/shared.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -55,6 +56,7 @@ app.use("/teams", folderRoutes);
 app.use("/users", userRoutes);
 app.use("/verification", verificationRoutes);
 app.use("/admin", adminRoutes);
+app.use("/shared", sharedRoutes);
 
 // --------------- Error handler ---------------
 

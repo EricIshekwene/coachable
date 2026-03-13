@@ -76,6 +76,23 @@ export async function movePlayToFolder(teamId, playId, folderId) {
   });
 }
 
+/** Create a share link for a play. Returns { token }. */
+export async function sharePlay(teamId, playId) {
+  return apiFetch(`/teams/${teamId}/plays/${playId}/share`, { method: "POST" });
+}
+
+/** Fetch a shared play by token (public, no team needed). */
+export async function fetchSharedPlay(token) {
+  const data = await apiFetch(`/shared/plays/${token}`);
+  return data.play;
+}
+
+/** Copy a shared play to the current user's team playbook. */
+export async function copySharedPlay(token) {
+  const data = await apiFetch(`/shared/plays/${token}/copy`, { method: "POST" });
+  return data.play;
+}
+
 /** Map API play response to the local PlayRecord shape. */
 function mapApiPlayToLocal(p) {
   return {

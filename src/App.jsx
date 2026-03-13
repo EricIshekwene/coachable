@@ -24,6 +24,8 @@ import Profile from "./pages/app/Profile";
 import ProfileEmailVerification from "./pages/app/ProfileEmailVerification";
 import Settings from "./pages/app/Settings";
 import MobileViewOnlyGate from "./components/MobileViewOnlyGate";
+import SharedPlay from "./pages/SharedPlay";
+import SharedPlayView from "./pages/SharedPlayView";
 
 function SlateRoot() {
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
@@ -78,6 +80,8 @@ function AppRoutes() {
       <Route path="/signup" element={<Signup />} />
       <Route path="/login" element={<Login />} />
       <Route path="/admin" element={<Admin />} />
+      <Route path="/shared/:token" element={<SharedPlay />} />
+      <Route path="/shared/:token/view" element={<SharedPlayView />} />
       <Route path="/verify-email" element={<RequireAuth><VerifyEmail /></RequireAuth>} />
       <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
 
