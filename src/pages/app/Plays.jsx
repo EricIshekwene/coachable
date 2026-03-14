@@ -203,7 +203,8 @@ export default function Plays() {
   };
 
   const copyOrShareUrl = async (url, title) => {
-    if (navigator.share) {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile && navigator.share) {
       try {
         await navigator.share({ title, url });
         showToast("Shared");
