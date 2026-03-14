@@ -240,7 +240,7 @@ export default function SharedPlay() {
         )}
 
         {/* Play preview */}
-        <div className="mt-8 mb-4">
+        <div className="mt-8 mb-4 cursor-pointer" onClick={() => navigate(`/shared/${token}/view`)}>
           <PlayPreviewCard
             playData={play.playData}
             autoplay="always"

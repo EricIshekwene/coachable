@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import Slate from "../features/slate/Slate";
 import { fetchSharedPlay } from "../utils/apiPlays";
 import useThemeColor from "../utils/useThemeColor";
@@ -7,11 +7,13 @@ import useThemeColor from "../utils/useThemeColor";
 export default function SharedPlayView() {
   const { token } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [ready, setReady] = useState(false);
-  const [play, setPlay] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [play, setPlay] = useState(location.state?.play || null);
+  const [loading, setLoading] = useState(!location.state?.play);
 
   useEffect(() => {
+    if (play) return; // play passed via router state (e.g. from shared folder)
     if (!token) { setLoading(false); return; }
     setLoading(true);
     fetchSharedPlay(token)
@@ -62,7 +64,7 @@ export default function SharedPlayView() {
         viewOnly
         initialPlayName={play.title}
         initialPlayData={play.playData || null}
-        onNavigateHome={() => navigate(`/shared/${token}`)}
+        onNavigateHome={() => navigate(location.state?.backTo || `/shared/${token}`)}
         onReady={() => setReady(true)}
       />
     </div>

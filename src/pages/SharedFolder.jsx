@@ -33,7 +33,6 @@ export default function SharedFolder() {
   const [copying, setCopying] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(null);
-  const [selectedPlay, setSelectedPlay] = useState(null);
 
   // Theme: use user's saved preference, default to light for visitors
   const [isLight, setIsLight] = useState(() => {
@@ -244,12 +243,8 @@ export default function SharedFolder() {
             {plays.map((play) => (
               <div
                 key={play.id}
-                className={`rounded-xl border transition cursor-pointer ${
-                  selectedPlay === play.id
-                    ? "border-BrandOrange bg-BrandBlack2/50"
-                    : "border-BrandGray2/15 bg-BrandBlack2/20 hover:border-BrandGray2/30"
-                }`}
-                onClick={() => setSelectedPlay(selectedPlay === play.id ? null : play.id)}
+                className="rounded-xl border border-BrandGray2/15 bg-BrandBlack2/20 hover:border-BrandGray2/30 transition cursor-pointer"
+                onClick={() => navigate(`/shared/folder/${token}/play/${play.id}`, { state: { play, backTo: `/shared/folder/${token}` } })}
               >
                 <div className="p-3">
                   <PlayPreviewCard

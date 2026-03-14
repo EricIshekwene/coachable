@@ -84,6 +84,7 @@ function AppRoutes() {
       <Route path="/shared/:token" element={<SharedPlay />} />
       <Route path="/shared/:token/view" element={<SharedPlayView />} />
       <Route path="/shared/folder/:token" element={<SharedFolder />} />
+      <Route path="/shared/folder/:token/play/:playId" element={<SharedPlayView />} />
       <Route path="/verify-email" element={<RequireAuth><VerifyEmail /></RequireAuth>} />
       <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
 
