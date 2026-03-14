@@ -146,7 +146,7 @@ export default function SharedFolder() {
       </nav>
 
       {/* Folder content */}
-      <div className="mx-auto max-w-5xl px-6 py-8 md:px-10 md:py-12">
+      <div className="mx-auto max-w-5xl px-6 py-8 pb-24 md:px-10 md:py-12 md:pb-24">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
