@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useAppMessage } from "../../context/AppMessageContext";
-import { FiCopy, FiCheck, FiShield, FiUser, FiMail, FiSearch, FiRefreshCw, FiSend } from "react-icons/fi";
+import { FiCopy, FiCheck, FiShield, FiUser, FiMail, FiSearch, FiRefreshCw, FiSend, FiUserMinus } from "react-icons/fi";
 import { isValidEmail } from "../../utils/inputValidation";
 import { apiFetch } from "../../utils/api";
 
@@ -96,14 +96,17 @@ function InviteCodeSection({ role, code, copiedRole, onCopy, onRotate, onSendInv
 }
 
 export default function Team() {
-  const { user, teamMembers } = useAuth();
+  const { user, teamMembers, removeMember } = useAuth();
   const { showMessage } = useAppMessage();
-  const isCoach = user?.role === "coach" || user?.role === "owner";
+  const isOwner = user?.role === "owner" || user?.id === user?.ownerId;
+  const isCoach = user?.role === "coach" || isOwner;
   const [copiedRole, setCopiedRole] = useState(null);
   const [inviteCodes, setInviteCodes] = useState({ player: "", coach: "" });
   const [sending, setSending] = useState(false);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [removingId, setRemovingId] = useState(null);
+  const [confirmRemove, setConfirmRemove] = useState(null); // member object or null
 
   useEffect(() => {
     if (!isCoach || !user?.teamId) return;
@@ -168,6 +171,21 @@ export default function Team() {
       return false;
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleRemoveMember = async () => {
+    if (!confirmRemove) return;
+    const member = confirmRemove;
+    setConfirmRemove(null);
+    setRemovingId(member.id);
+    try {
+      await removeMember(member.id);
+      showMessage("Member removed", `${member.name} has been removed from the team.`, "success");
+    } catch (err) {
+      showMessage("Remove failed", err.message || "Could not remove member.", "error");
+    } finally {
+      setRemovingId(null);
     }
   };
 
@@ -298,10 +316,54 @@ export default function Team() {
                   Owner
                 </span>
               )}
+              {isOwner && member.id !== user?.id && (
+                <button
+                  onClick={() => setConfirmRemove(member)}
+                  disabled={removingId === member.id}
+                  className="rounded-md p-1.5 text-BrandGray2 transition hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40"
+                  title={`Remove ${member.name}`}
+                >
+                  <FiUserMinus className="text-sm" />
+                </button>
+              )}
             </div>
           ))}
         </div>
       </div>
+
+      {/* Remove member confirmation modal */}
+      {confirmRemove && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setConfirmRemove(null)}>
+          <div className="w-full max-w-sm rounded-xl border border-BrandGray2/20 bg-BrandBlack p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/15">
+                <FiUserMinus className="text-red-400" />
+              </div>
+              <div>
+                <h2 className="font-Manrope text-base font-bold text-BrandText">Remove member</h2>
+                <p className="text-xs text-BrandGray2">This action cannot be undone</p>
+              </div>
+            </div>
+            <p className="text-sm text-BrandGray leading-relaxed">
+              Remove <strong className="text-BrandText">{confirmRemove.name}</strong> from the team? They will be notified by email.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setConfirmRemove(null)}
+                className="rounded-lg border border-BrandGray2/40 px-3.5 py-2 text-sm text-BrandGray transition hover:text-BrandText"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRemoveMember}
+                className="rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

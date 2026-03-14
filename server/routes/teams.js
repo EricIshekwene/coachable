@@ -2,7 +2,7 @@ import { Router } from "express";
 import crypto from "crypto";
 import pool from "../db/pool.js";
 import { requireAuth, requireTeamRole } from "../middleware/auth.js";
-import { sendTeamInviteEmail } from "../lib/email.js";
+import { sendTeamInviteEmail, sendMemberRemovedEmail } from "../lib/email.js";
 
 const router = Router();
 
@@ -291,10 +291,30 @@ router.delete(
         return res.status(400).json({ error: "Transfer ownership before leaving" });
       }
 
+      // Fetch target user + team info before deleting
+      const [targetResult, teamResult, removerResult] = await Promise.all([
+        pool.query("SELECT name, email FROM users WHERE id = $1", [targetUserId]),
+        pool.query("SELECT name FROM teams WHERE id = $1", [req.params.teamId]),
+        pool.query("SELECT name FROM users WHERE id = $1", [req.userId]),
+      ]);
+      const targetUser = targetResult.rows[0];
+      const teamName = teamResult.rows[0]?.name;
+      const removerName = removerResult.rows[0]?.name;
+
       await pool.query(
         "DELETE FROM team_memberships WHERE team_id = $1 AND user_id = $2",
         [req.params.teamId, targetUserId]
       );
+
+      // Send removal notification email (fire and forget)
+      if (!isSelf && targetUser?.email) {
+        sendMemberRemovedEmail({
+          toEmail: targetUser.email,
+          memberName: targetUser.name,
+          teamName,
+          removedByName: removerName,
+        }).catch((emailErr) => console.error("Failed to send removal email:", emailErr.message));
+      }
 
       res.json({ ok: true });
     } catch (err) {

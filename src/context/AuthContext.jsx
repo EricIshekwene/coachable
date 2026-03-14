@@ -266,6 +266,18 @@ export function AuthProvider({ children }) {
     [user?.teamId]
   );
 
+  const removeMember = useCallback(
+    async (memberId) => {
+      if (!user?.teamId || !memberId) return false;
+      await apiFetch(`/teams/${user.teamId}/members/${memberId}`, {
+        method: "DELETE",
+      });
+      setTeamMembers((prev) => prev.filter((m) => m.id !== memberId));
+      return true;
+    },
+    [user?.teamId]
+  );
+
   const transferOwnership = useCallback(
     async (newOwnerId) => {
       if (!newOwnerId || newOwnerId === user?.id || !user?.teamId) return false;
@@ -309,6 +321,7 @@ export function AuthProvider({ children }) {
         updateNotificationPreferences,
         updateAssistantPermissions,
         updateTeamDefaults,
+        removeMember,
         transferOwnership,
         logout,
       }}
