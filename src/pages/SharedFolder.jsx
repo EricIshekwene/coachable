@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { fetchSharedFolder, copySharedFolder } from "../utils/apiFolders";
 import PlayPreviewCard from "../components/PlayPreviewCard";
+import useThemeColor from "../utils/useThemeColor";
 import { FiLoader, FiClock, FiTag, FiPlus, FiExternalLink, FiCheck, FiUser, FiFolder } from "react-icons/fi";
 import darkLogo from "../assets/logos/White_Full_Coachable.png";
 import lightLogo from "../assets/logos/full_Coachable_logo.png";
@@ -42,10 +43,16 @@ export default function SharedFolder() {
     return saved === "light";
   });
 
+  const resolvedBg = isLight ? "#ffffff" : "#121212";
+
   useEffect(() => {
     const resolved = isLight ? "light" : "dark";
     document.documentElement.setAttribute("data-theme", resolved);
-  }, [isLight]);
+    document.body.style.backgroundColor = resolvedBg;
+    return () => { document.body.style.backgroundColor = ""; };
+  }, [isLight, resolvedBg]);
+
+  useThemeColor(resolvedBg);
 
   const logo = isLight ? lightLogo : darkLogo;
 
@@ -146,10 +153,10 @@ export default function SharedFolder() {
       </nav>
 
       {/* Folder content */}
-      <div className="mx-auto max-w-5xl px-6 py-8 pb-24 md:px-10 md:py-12 md:pb-24">
+      <div className="mx-auto max-w-5xl px-6 py-8 pb-40 md:px-10 md:py-12 md:pb-32">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0">
             <p className="mb-1 text-xs text-BrandGray2">
               Shared from <span className="text-BrandGray">{folder.teamName}</span>
             </p>
@@ -165,7 +172,7 @@ export default function SharedFolder() {
           </div>
 
           {/* Action buttons */}
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             {isCoach && !copied && (
               <button
                 onClick={handleAddToPlaybook}
