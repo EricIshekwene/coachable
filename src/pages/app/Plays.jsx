@@ -4,9 +4,9 @@ import { useAuth } from "../../context/AuthContext";
 import {
   FiPlus, FiPlay, FiEdit2, FiClock, FiTag, FiFolder, FiMoreHorizontal,
   FiStar, FiCopy, FiExternalLink, FiTrash2, FiEdit3, FiChevronRight,
-  FiLoader, FiSearch, FiRotateCcw, FiX,
+  FiLoader, FiSearch, FiRotateCcw, FiX, FiCheckSquare, FiSquare,
 } from "react-icons/fi";
-import { fetchPlays, deletePlay as apiDeletePlay, updatePlay, toggleFavorite as apiToggleFavorite, movePlayToFolder as apiMovePlayToFolder, sharePlay, fetchTrashedPlays, restorePlay as apiRestorePlay, permanentDeletePlay as apiPermanentDelete } from "../../utils/apiPlays";
+import { fetchPlays, deletePlay as apiDeletePlay, updatePlay, toggleFavorite as apiToggleFavorite, movePlayToFolder as apiMovePlayToFolder, sharePlay, fetchTrashedPlays, restorePlay as apiRestorePlay, permanentDeletePlay as apiPermanentDelete, duplicatePlay as apiDuplicatePlay, bulkDeletePlays, bulkMovePlays, bulkTagPlays } from "../../utils/apiPlays";
 import { fetchFolders, createFolder as apiCreateFolder, updateFolder, deleteFolder as apiFolderDelete, shareFolder } from "../../utils/apiFolders";
 import PlayPreviewCard from "../../components/PlayPreviewCard";
 
@@ -63,6 +63,12 @@ export default function Plays() {
   const [search, setSearch] = useState("");
   const [showTrash, setShowTrash] = useState(false);
   const [trashedPlays, setTrashedPlays] = useState([]);
+  const [activeTag, setActiveTag] = useState(null);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkSelected, setBulkSelected] = useState(new Set());
+  const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
+  const [bulkTagOpen, setBulkTagOpen] = useState(false);
+  const [bulkTagInput, setBulkTagInput] = useState("");
 
   const menuRef = useRef(null);
   const renameRef = useRef(null);
@@ -196,12 +202,29 @@ export default function Plays() {
     if (teamId) apiMovePlayToFolder(teamId, playId, null).catch(() => {});
   };
 
+  const copyOrShareUrl = async (url, title) => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, url });
+        showToast("Shared");
+        return;
+      } catch (e) {
+        if (e.name === "AbortError") return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast("Share link copied");
+    } catch {
+      window.prompt("Copy this link:", url);
+    }
+  };
+
   const copyLink = async (playId) => {
     setMenuOpen(null);
     try {
       const { token } = await sharePlay(teamId, playId);
-      await navigator.clipboard.writeText(`${window.location.origin}/shared/${token}`);
-      showToast("Share link copied");
+      await copyOrShareUrl(`${window.location.origin}/shared/${token}`, "Shared Play");
     } catch {
       showToast("Failed to create share link");
     }
@@ -211,8 +234,7 @@ export default function Plays() {
     setMenuOpen(null);
     try {
       const { token } = await shareFolder(teamId, folderId);
-      await navigator.clipboard.writeText(`${window.location.origin}/shared/folder/${token}`);
-      showToast("Folder share link copied");
+      await copyOrShareUrl(`${window.location.origin}/shared/folder/${token}`, "Shared Folder");
     } catch {
       showToast("Failed to create share link");
     }
@@ -233,6 +255,67 @@ export default function Plays() {
     }
   };
 
+  const handleDuplicatePlay = async (playId) => {
+    setMenuOpen(null);
+    if (!teamId) return;
+    try {
+      const newPlay = await apiDuplicatePlay(teamId, playId);
+      setPlays((prev) => [newPlay, ...prev]);
+      showToast(`Duplicated as "${newPlay.title}"`);
+    } catch {
+      showToast("Failed to duplicate play");
+    }
+  };
+
+  const exitBulkMode = () => { setBulkMode(false); setBulkSelected(new Set()); };
+
+  const toggleBulkSelect = (playId) => {
+    setBulkSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(playId)) next.delete(playId); else next.add(playId);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = [...bulkSelected];
+    // Optimistic UI
+    const deleted = plays.filter((p) => bulkSelected.has(p.id));
+    setPlays((prev) => prev.filter((p) => !bulkSelected.has(p.id)));
+    setFolders((prev) => prev.map((f) => ({ ...f, playIds: f.playIds.filter((id) => !bulkSelected.has(id)) })));
+    setTrashedPlays((prev) => [...deleted.map((p) => ({ ...p, archivedAt: new Date().toISOString() })), ...prev]);
+    showToast(`Moved ${ids.length} play${ids.length !== 1 ? "s" : ""} to trash`);
+    exitBulkMode();
+    if (teamId) bulkDeletePlays(teamId, ids).catch(() => {});
+  };
+
+  const handleBulkMove = async (folderId) => {
+    const ids = [...bulkSelected];
+    setPlays((prev) => prev.map((p) => bulkSelected.has(p.id) ? { ...p, folderId } : p));
+    setFolders((prev) => prev.map((f) => {
+      const withoutSelected = f.playIds.filter((id) => !bulkSelected.has(id));
+      if (f.id === folderId) return { ...f, playIds: [...withoutSelected, ...ids] };
+      return { ...f, playIds: withoutSelected };
+    }));
+    const folder = folders.find((f) => f.id === folderId);
+    showToast(`Moved ${ids.length} play${ids.length !== 1 ? "s" : ""} to ${folder?.name}`);
+    setBulkMoveOpen(false);
+    exitBulkMode();
+    if (teamId) bulkMovePlays(teamId, ids, folderId).catch(() => {});
+  };
+
+  const handleBulkTag = async () => {
+    const tag = bulkTagInput.trim();
+    if (!tag) return;
+    const ids = [...bulkSelected];
+    setPlays((prev) => prev.map((p) => bulkSelected.has(p.id) ? { ...p, tags: [...new Set([...(p.tags || []), tag])] } : p));
+    showToast(`Tagged ${ids.length} play${ids.length !== 1 ? "s" : ""} with "${tag}"`);
+    setBulkTagOpen(false);
+    setBulkTagInput("");
+    exitBulkMode();
+    if (teamId) bulkTagPlays(teamId, ids, [tag]).catch(() => {});
+  };
+
   const PLAY_DRAG_MIME = "application/x-coachable-play-id";
   const handleDragStart = (e, playId) => { setDraggingPlayId(playId); e.dataTransfer.setData(PLAY_DRAG_MIME, playId); e.dataTransfer.setData("text/plain", playId); e.dataTransfer.effectAllowed = "move"; };
   const handleDragEnd = () => { setDraggingPlayId(null); setDragOverFolder(null); };
@@ -250,6 +333,9 @@ export default function Plays() {
     ? folders.filter((f) => f.name.toLowerCase().includes(searchLower))
     : folders.filter((f) => f.parentId === currentFolderId);
 
+  // Collect all unique tags for the filter bar
+  const allTags = [...new Set(plays.flatMap((p) => p.tags || []))].sort();
+
   const baseVisiblePlays = isSearching
     ? plays.filter((p) =>
         p.title.toLowerCase().includes(searchLower) ||
@@ -260,7 +346,9 @@ export default function Plays() {
       ? plays.filter((p) => p.folderId === currentFolderId)
       : plays;
 
-  const visiblePlays = baseVisiblePlays;
+  const visiblePlays = activeTag
+    ? baseVisiblePlays.filter((p) => (p.tags || []).includes(activeTag))
+    : baseVisiblePlays;
 
   // Recently edited: top 5, only shown at root when not searching
   const recentlyEdited = (!currentFolderId && !isSearching)
@@ -277,6 +365,7 @@ export default function Plays() {
           <button onClick={() => navigate(`/app/plays/${id}`)} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiExternalLink className="text-sm" /> Open</button>
           <button onClick={() => { handleToggleFavorite(id); setMenuOpen(null); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiStar className={`text-sm ${play?.favorited ? "fill-BrandOrange text-BrandOrange" : ""}`} />{play?.favorited ? "Unfavorite" : "Favorite"}</button>
           <button onClick={() => copyLink(id)} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiCopy className="text-sm" /> Share</button>
+          <button onClick={() => handleDuplicatePlay(id)} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiCopy className="text-sm" /> Duplicate</button>
         </>)}
         {isFolder && (
           <button onClick={() => copyFolderLink(id)} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiCopy className="text-sm" /> Share Folder</button>
@@ -346,6 +435,8 @@ export default function Plays() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          {isCoach && !bulkMode && (<button onClick={() => setBulkMode(true)} className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-3 py-2.5 text-sm text-BrandGray transition hover:border-BrandGray hover:text-BrandText"><FiCheckSquare className="text-sm" /></button>)}
+          {bulkMode && (<button onClick={exitBulkMode} className="flex items-center gap-2 rounded-lg border border-BrandOrange/50 bg-BrandOrange/10 px-3.5 py-2.5 text-sm text-BrandOrange transition hover:bg-BrandOrange/20"><FiX className="text-sm" />Cancel</button>)}
           {isCoach && (<button onClick={() => { setShowTrash(true); loadTrash(); }} className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-3 py-2.5 text-sm text-BrandGray transition hover:border-BrandGray hover:text-BrandText"><FiTrash2 className="text-sm" /></button>)}
           {isCoach && folderPath.length < 4 && (<button onClick={() => setNewFolderMode(true)} className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-3.5 py-2.5 text-sm text-BrandGray transition hover:border-BrandGray hover:text-BrandText disabled:opacity-50 disabled:cursor-not-allowed" disabled={folderPath.length >= 4}><FiFolder className="text-sm" />New Folder</button>)}
           {canCreatePlay && (<Link to="/app/plays/new" className="flex items-center gap-2 rounded-lg bg-BrandOrange px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.97]"><FiPlus className="text-base" />New Play</Link>)}
@@ -368,6 +459,55 @@ export default function Plays() {
           </button>
         )}
       </div>
+
+      {/* Tag filter chips */}
+      {allTags.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {allTags.map((tag) => (
+            <button
+              key={tag}
+              onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+              className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] transition ${
+                activeTag === tag
+                  ? "bg-BrandOrange/20 text-BrandOrange border border-BrandOrange/40"
+                  : "bg-BrandGray2/15 text-BrandGray border border-transparent hover:bg-BrandGray2/25 hover:text-BrandText"
+              }`}
+            >
+              <FiTag className="text-[9px]" />
+              {tag}
+            </button>
+          ))}
+          {activeTag && (
+            <button
+              onClick={() => setActiveTag(null)}
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-BrandGray2 transition hover:text-BrandText"
+            >
+              <FiX className="text-[9px]" />
+              Clear filter
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Bulk action bar */}
+      {bulkMode && bulkSelected.size > 0 && (
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-BrandOrange/30 bg-BrandOrange/5 px-4 py-2.5">
+          <span className="text-sm font-semibold text-BrandOrange">{bulkSelected.size} selected</span>
+          <div className="ml-auto flex items-center gap-2">
+            {folders.length > 0 && (
+              <button onClick={() => setBulkMoveOpen(true)} className="flex items-center gap-1.5 rounded-md border border-BrandGray2/30 px-3 py-1.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText">
+                <FiFolder className="text-xs" />Move
+              </button>
+            )}
+            <button onClick={() => setBulkTagOpen(true)} className="flex items-center gap-1.5 rounded-md border border-BrandGray2/30 px-3 py-1.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText">
+              <FiTag className="text-xs" />Tag
+            </button>
+            <button onClick={handleBulkDelete} className="flex items-center gap-1.5 rounded-md border border-red-500/30 px-3 py-1.5 text-xs text-red-400 transition hover:bg-red-500/10">
+              <FiTrash2 className="text-xs" />Delete
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Recently edited */}
       {recentlyEdited.length > 0 && (
@@ -414,8 +554,13 @@ export default function Plays() {
         {!currentFolderId && <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-BrandGray2">Plays</p>}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {visiblePlays.map((play) => (
-            <div key={play.id} draggable={isCoach} onDragStart={(e) => handleDragStart(e, play.id)} onDragEnd={handleDragEnd} className="group relative flex cursor-grab flex-col rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-5 transition hover:border-BrandOrange/30 hover:bg-BrandBlack2/60 active:cursor-grabbing">
-              <div className="flex flex-1 cursor-pointer flex-col" onClick={() => navigate(playerViewMode ? `/app/plays/${play.id}/view` : `/app/plays/${play.id}`)}>
+            <div key={play.id} draggable={isCoach && !bulkMode} onDragStart={(e) => handleDragStart(e, play.id)} onDragEnd={handleDragEnd} className={`group relative flex cursor-grab flex-col rounded-xl border p-5 transition active:cursor-grabbing ${bulkMode && bulkSelected.has(play.id) ? "border-BrandOrange bg-BrandOrange/5" : "border-BrandGray2/20 bg-BrandBlack2/30 hover:border-BrandOrange/30 hover:bg-BrandBlack2/60"}`} onClick={bulkMode ? () => toggleBulkSelect(play.id) : undefined}>
+              {bulkMode && (
+                <div className="absolute top-3 left-3 z-10">
+                  {bulkSelected.has(play.id) ? <FiCheckSquare className="text-lg text-BrandOrange" /> : <FiSquare className="text-lg text-BrandGray2" />}
+                </div>
+              )}
+              <div className="flex flex-1 cursor-pointer flex-col" onClick={bulkMode ? undefined : () => navigate(playerViewMode ? `/app/plays/${play.id}/view` : `/app/plays/${play.id}`)}>
                 <PlayPreviewCard playData={play.playData} autoplay="hover" shape="landscape" cameraMode="fit-distribution" background="field" paddingPx={20} minSpanPx={100} showHoverHint={false} className="mb-4" />
                 <div className="flex items-center gap-1.5">
                   {play.favorited && <FiStar className="shrink-0 fill-BrandOrange text-sm text-BrandOrange" />}
@@ -448,6 +593,53 @@ export default function Plays() {
             <p className="mt-1 text-sm text-BrandGray2">Select a folder for &ldquo;{plays.find((p) => p.id === moveTarget)?.title}&rdquo;</p>
             <div className="mt-4 flex flex-col gap-1">
               {folders.map((folder) => { const alreadyIn = folder.playIds.includes(moveTarget); return (<button key={folder.id} disabled={alreadyIn} onClick={() => handleMovePlayToFolder(moveTarget, folder.id)} className={`flex items-center gap-3 rounded-lg px-3.5 py-3 text-left text-sm transition ${alreadyIn ? "cursor-not-allowed text-BrandGray2/50" : "text-BrandGray hover:bg-BrandBlack2 hover:text-BrandText"}`}><FiFolder className="text-base" />{folder.name}{alreadyIn && <span className="ml-auto text-[10px] text-BrandGray2">Already in folder</span>}</button>); })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk move modal */}
+      {bulkMoveOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 font-DmSans" onClick={() => setBulkMoveOpen(false)}>
+          <div className="w-full max-w-sm rounded-xl border border-BrandGray2/20 bg-BrandBlack p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="font-Manrope text-base font-bold">Move {bulkSelected.size} play{bulkSelected.size !== 1 ? "s" : ""} to folder</h2>
+            <div className="mt-4 flex flex-col gap-1">
+              {folders.map((folder) => (
+                <button key={folder.id} onClick={() => handleBulkMove(folder.id)} className="flex items-center gap-3 rounded-lg px-3.5 py-3 text-left text-sm text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText">
+                  <FiFolder className="text-base" />{folder.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk tag modal */}
+      {bulkTagOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 font-DmSans" onClick={() => { setBulkTagOpen(false); setBulkTagInput(""); }}>
+          <div className="w-full max-w-sm rounded-xl border border-BrandGray2/20 bg-BrandBlack p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="font-Manrope text-base font-bold">Add tag to {bulkSelected.size} play{bulkSelected.size !== 1 ? "s" : ""}</h2>
+            <input
+              autoFocus
+              type="text"
+              value={bulkTagInput}
+              onChange={(e) => setBulkTagInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleBulkTag(); if (e.key === "Escape") { setBulkTagOpen(false); setBulkTagInput(""); } }}
+              placeholder="Tag name..."
+              className="mt-4 w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none placeholder:text-BrandGray2 focus:border-BrandOrange"
+            />
+            {allTags.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {allTags.filter((t) => !bulkTagInput || t.toLowerCase().includes(bulkTagInput.toLowerCase())).slice(0, 12).map((tag) => (
+                  <button key={tag} onClick={() => { setBulkTagInput(tag); }} className="inline-flex items-center gap-1 rounded-md bg-BrandGray2/15 px-2 py-0.5 text-[10px] text-BrandGray transition hover:bg-BrandGray2/25 hover:text-BrandText">
+                    <FiTag className="text-[8px]" />{tag}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => { setBulkTagOpen(false); setBulkTagInput(""); }} className="rounded-lg border border-BrandGray2/30 px-3.5 py-2 text-sm text-BrandGray transition hover:text-BrandText">Cancel</button>
+              <button onClick={handleBulkTag} disabled={!bulkTagInput.trim()} className="rounded-lg bg-BrandOrange px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50">Add Tag</button>
             </div>
           </div>
         </div>

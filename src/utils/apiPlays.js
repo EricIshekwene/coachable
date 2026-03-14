@@ -109,6 +109,27 @@ export async function permanentDeletePlay(teamId, playId) {
   await apiFetch(`/teams/${teamId}/plays/${playId}/permanent`, { method: "DELETE" });
 }
 
+/** Duplicate a play. Returns the new play in local shape. */
+export async function duplicatePlay(teamId, playId) {
+  const data = await apiFetch(`/teams/${teamId}/plays/${playId}/duplicate`, { method: "POST" });
+  return mapApiPlayToLocal(data.play || data);
+}
+
+/** Bulk soft-delete plays. */
+export async function bulkDeletePlays(teamId, playIds) {
+  await apiFetch(`/teams/${teamId}/plays/bulk/delete`, { method: "POST", body: { playIds } });
+}
+
+/** Bulk move plays to a folder. */
+export async function bulkMovePlays(teamId, playIds, folderId) {
+  await apiFetch(`/teams/${teamId}/plays/bulk/move`, { method: "POST", body: { playIds, folderId } });
+}
+
+/** Bulk add tags to plays. */
+export async function bulkTagPlays(teamId, playIds, tags) {
+  await apiFetch(`/teams/${teamId}/plays/bulk/tags`, { method: "POST", body: { playIds, tags } });
+}
+
 /** Map API play response to the local PlayRecord shape. */
 function mapApiPlayToLocal(p) {
   return {

@@ -442,6 +442,167 @@ router.patch(
   }
 );
 
+// POST /teams/:teamId/plays/:playId/duplicate — clone a play
+router.post(
+  "/:teamId/plays/:playId/duplicate",
+  requireAuth,
+  requireTeamRole("owner", "coach", "assistant_coach"),
+  async (req, res, next) => {
+    try {
+      // Fetch original play
+      const { rows: origRows } = await pool.query(
+        "SELECT * FROM plays WHERE id = $1 AND team_id = $2 AND archived_at IS NULL",
+        [req.params.playId, req.params.teamId]
+      );
+      if (!origRows.length) return res.status(404).json({ error: "Play not found" });
+      const orig = origRows[0];
+
+      // Build duplicate title: "Title (1)", "Title (2)", etc.
+      const baseTitle = orig.title.replace(/\s*\(\d+\)$/, "");
+      const { rows: existing } = await pool.query(
+        `SELECT title FROM plays WHERE team_id = $1 AND archived_at IS NULL AND title ~ $2`,
+        [req.params.teamId, `^${baseTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\s*\\(\\d+\\))?$`]
+      );
+      let maxNum = 0;
+      const pattern = new RegExp(`^${baseTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\((\\d+)\\)$`);
+      existing.forEach((r) => {
+        const m = r.title.match(pattern);
+        if (m) maxNum = Math.max(maxNum, parseInt(m[1], 10));
+      });
+      const dupTitle = `${baseTitle} (${maxNum + 1})`;
+
+      // Insert duplicate
+      const { rows } = await pool.query(
+        `INSERT INTO plays (team_id, folder_id, title, play_data, thumbnail_url, notes, notes_author_name, notes_updated_at, created_by_user_id, updated_by_user_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9)
+         RETURNING *`,
+        [
+          req.params.teamId,
+          orig.folder_id,
+          dupTitle,
+          orig.play_data,
+          orig.thumbnail_url,
+          orig.notes || "",
+          orig.notes_author_name || "",
+          orig.notes_updated_at,
+          req.userId,
+        ]
+      );
+
+      // Copy tags
+      const tagRes = await pool.query(
+        `SELECT pt.id, pt.label FROM play_tag_links ptl
+         JOIN play_tags pt ON pt.id = ptl.tag_id
+         WHERE ptl.play_id = $1`,
+        [req.params.playId]
+      );
+      const tags = [];
+      for (const tag of tagRes.rows) {
+        await pool.query(
+          "INSERT INTO play_tag_links (play_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+          [rows[0].id, tag.id]
+        );
+        tags.push(tag.label);
+      }
+
+      res.status(201).json({ play: toPlayResponse(rows[0], { tags }) });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /teams/:teamId/plays/bulk/delete — soft delete multiple plays
+router.post(
+  "/:teamId/plays/bulk/delete",
+  requireAuth,
+  requireTeamRole("owner", "coach", "assistant_coach"),
+  async (req, res, next) => {
+    try {
+      const { playIds } = req.body;
+      if (!Array.isArray(playIds) || !playIds.length) {
+        return res.status(400).json({ error: "playIds must be a non-empty array" });
+      }
+      await pool.query(
+        "UPDATE plays SET archived_at = now(), updated_at = now() WHERE id = ANY($1) AND team_id = $2",
+        [playIds, req.params.teamId]
+      );
+      res.json({ ok: true });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /teams/:teamId/plays/bulk/move — move multiple plays to a folder
+router.post(
+  "/:teamId/plays/bulk/move",
+  requireAuth,
+  requireTeamRole("owner", "coach", "assistant_coach"),
+  async (req, res, next) => {
+    try {
+      const { playIds, folderId } = req.body;
+      if (!Array.isArray(playIds) || !playIds.length) {
+        return res.status(400).json({ error: "playIds must be a non-empty array" });
+      }
+      await pool.query(
+        "UPDATE plays SET folder_id = $1, updated_at = now() WHERE id = ANY($2) AND team_id = $3",
+        [folderId || null, playIds, req.params.teamId]
+      );
+      res.json({ ok: true });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /teams/:teamId/plays/bulk/tags — add tags to multiple plays
+router.post(
+  "/:teamId/plays/bulk/tags",
+  requireAuth,
+  requireTeamRole("owner", "coach", "assistant_coach"),
+  async (req, res, next) => {
+    try {
+      const { playIds, tags } = req.body;
+      if (!Array.isArray(playIds) || !playIds.length) {
+        return res.status(400).json({ error: "playIds must be a non-empty array" });
+      }
+      if (!Array.isArray(tags) || !tags.length) {
+        return res.status(400).json({ error: "tags must be a non-empty array" });
+      }
+
+      // Resolve tag IDs
+      const tagIds = [];
+      for (const label of tags) {
+        if (!label?.trim()) continue;
+        const normalized = label.trim().toLowerCase();
+        const tagRes = await pool.query(
+          `INSERT INTO play_tags (team_id, label, normalized_label)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (team_id, normalized_label) DO UPDATE SET label = EXCLUDED.label
+           RETURNING id`,
+          [req.params.teamId, label.trim(), normalized]
+        );
+        tagIds.push(tagRes.rows[0].id);
+      }
+
+      // Link tags to each play
+      for (const playId of playIds) {
+        for (const tagId of tagIds) {
+          await pool.query(
+            "INSERT INTO play_tag_links (play_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+            [playId, tagId]
+          );
+        }
+      }
+
+      res.json({ ok: true });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 // POST /teams/:teamId/plays/:playId/share — create a share link
 router.post(
   "/:teamId/plays/:playId/share",
