@@ -12,6 +12,9 @@ export default function Admin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [logging, setLogging] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: "", email: "", password: "", teamName: "", sport: "" });
+  const [creating, setCreating] = useState(false);
 
   const authed = Boolean(session);
 
@@ -93,6 +96,25 @@ export default function Admin() {
     }
   };
 
+  const handleCreateAccount = async (e) => {
+    e.preventDefault();
+    setError("");
+    setCreating(true);
+    try {
+      await adminFetch("/admin/create-account", {
+        method: "POST",
+        body: createForm,
+      });
+      setCreateForm({ name: "", email: "", password: "", teamName: "", sport: "" });
+      setShowCreate(false);
+      fetchUsers();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const handleDeleteAll = async () => {
     if (!window.confirm("DELETE ALL USERS? This cannot be undone!")) return;
     if (!window.confirm("Are you absolutely sure? ALL accounts will be permanently deleted.")) return;
@@ -164,6 +186,12 @@ export default function Admin() {
             <p className="text-sm text-BrandGray">{users.length} total accounts</p>
           </div>
           <div className="flex gap-2">
+            <button
+              onClick={() => setShowCreate(true)}
+              className="rounded-lg bg-BrandOrange px-3 py-1.5 text-xs font-semibold text-white transition hover:brightness-110"
+            >
+              Create Account
+            </button>
             <Link
               to="/admin/slate"
               className="rounded-lg border border-BrandOrange/40 px-3 py-1.5 text-xs font-semibold text-BrandOrange transition hover:border-BrandOrange hover:bg-BrandOrange/10"
@@ -254,6 +282,68 @@ export default function Admin() {
           </table>
         </div>
       </div>
+
+      {/* Create Account Modal */}
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowCreate(false)}>
+          <div className="w-full max-w-md rounded-xl border border-BrandGray2/20 bg-[#1e2228] p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="font-Manrope text-base font-bold">Create Account</h2>
+            <p className="mt-1 text-xs text-BrandGray">No email verification required. Leave team name blank to skip onboarding.</p>
+            <form onSubmit={handleCreateAccount} className="mt-4 flex flex-col gap-3">
+              <input
+                type="text"
+                value={createForm.name}
+                onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="Name *"
+                required
+                className="w-full rounded-lg border border-BrandGray2/40 bg-BrandBlack px-3.5 py-2.5 text-sm text-white outline-none placeholder:text-BrandGray focus:border-BrandOrange"
+              />
+              <input
+                type="email"
+                value={createForm.email}
+                onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
+                placeholder="Email *"
+                required
+                className="w-full rounded-lg border border-BrandGray2/40 bg-BrandBlack px-3.5 py-2.5 text-sm text-white outline-none placeholder:text-BrandGray focus:border-BrandOrange"
+              />
+              <input
+                type="text"
+                value={createForm.password}
+                onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}
+                placeholder="Password * (min 6 chars)"
+                required
+                minLength={6}
+                className="w-full rounded-lg border border-BrandGray2/40 bg-BrandBlack px-3.5 py-2.5 text-sm text-white outline-none placeholder:text-BrandGray focus:border-BrandOrange"
+              />
+              <div className="mt-1 border-t border-BrandGray2/20 pt-3">
+                <p className="mb-2 text-xs text-BrandGray">Optional: create a team (auto-onboards the user)</p>
+                <input
+                  type="text"
+                  value={createForm.teamName}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, teamName: e.target.value }))}
+                  placeholder="Team name"
+                  className="mb-2 w-full rounded-lg border border-BrandGray2/40 bg-BrandBlack px-3.5 py-2.5 text-sm text-white outline-none placeholder:text-BrandGray focus:border-BrandOrange"
+                />
+                <input
+                  type="text"
+                  value={createForm.sport}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, sport: e.target.value }))}
+                  placeholder="Sport (e.g. Rugby)"
+                  className="w-full rounded-lg border border-BrandGray2/40 bg-BrandBlack px-3.5 py-2.5 text-sm text-white outline-none placeholder:text-BrandGray focus:border-BrandOrange"
+                />
+              </div>
+              <div className="mt-2 flex justify-end gap-2">
+                <button type="button" onClick={() => setShowCreate(false)} className="rounded-lg border border-BrandGray2/40 px-3.5 py-2 text-sm text-BrandGray transition hover:text-white">
+                  Cancel
+                </button>
+                <button type="submit" disabled={creating} className="rounded-lg bg-BrandOrange px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50">
+                  {creating ? "Creating..." : "Create"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

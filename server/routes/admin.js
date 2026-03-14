@@ -85,4 +85,90 @@ router.delete("/users", requireAdmin, async (_req, res, next) => {
   }
 });
 
+// POST /admin/create-account — create a user with no verification required
+router.post("/create-account", requireAdmin, async (req, res, next) => {
+  try {
+    const { name, email, password, teamName, sport, role } = req.body;
+    if (!name?.trim() || !email?.trim() || !password) {
+      return res.status(400).json({ error: "name, email, and password are required" });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      // Create user with email already verified
+      const { rows: userRows } = await client.query(
+        `INSERT INTO users (name, email, password_hash, email_verified_at)
+         VALUES ($1, $2, $3, now())
+         RETURNING id, name, email, created_at`,
+        [name.trim(), email.trim().toLowerCase(), hash]
+      );
+      const user = userRows[0];
+
+      // Create default preferences
+      await client.query(
+        "INSERT INTO user_preferences (user_id) VALUES ($1) ON CONFLICT DO NOTHING",
+        [user.id]
+      );
+
+      // Optionally create a team and onboard
+      let team = null;
+      if (teamName?.trim()) {
+        const teamRes = await client.query(
+          `INSERT INTO teams (name, sport, owner_user_id)
+           VALUES ($1, $2, $3)
+           RETURNING id, name, sport`,
+          [teamName.trim(), sport?.trim() || null, user.id]
+        );
+        team = teamRes.rows[0];
+
+        await client.query(
+          "INSERT INTO team_settings (team_id) VALUES ($1)",
+          [team.id]
+        );
+
+        const memberRole = role || "owner";
+        await client.query(
+          `INSERT INTO team_memberships (team_id, user_id, role)
+           VALUES ($1, $2, $3)`,
+          [team.id, user.id, memberRole]
+        );
+
+        // Generate invite codes
+        const playerCode = crypto.randomBytes(4).toString("hex").toUpperCase();
+        const coachCode = crypto.randomBytes(4).toString("hex").toUpperCase();
+        await client.query(
+          `INSERT INTO team_invite_codes (team_id, role, code, created_by_user_id)
+           VALUES ($1, 'player', $2, $3), ($1, 'coach', $4, $3)`,
+          [team.id, playerCode, user.id, coachCode]
+        );
+
+        // Mark onboarded
+        await client.query(
+          "UPDATE users SET onboarded_at = now(), updated_at = now() WHERE id = $1",
+          [user.id]
+        );
+      }
+
+      await client.query("COMMIT");
+      res.status(201).json({ user, team });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    if (err.code === "23505") {
+      return res.status(409).json({ error: "Email already registered" });
+    }
+    next(err);
+  }
+});
+
 export default router;

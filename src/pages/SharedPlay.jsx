@@ -102,7 +102,7 @@ export default function SharedPlay() {
   const isCoach = user && ["owner", "coach", "assistant_coach"].includes(user.role);
 
   return (
-    <div className="app-themed min-h-screen bg-BrandBlack text-BrandText font-DmSans">
+    <div className="app-themed min-h-screen overflow-y-auto bg-BrandBlack text-BrandText font-DmSans touch-scroll" style={{ position: 'fixed', inset: 0, overscrollBehavior: 'none' }}>
       {/* Top bar */}
       <nav className="flex items-center justify-between px-6 py-4 md:px-12">
         <Link to="/">
