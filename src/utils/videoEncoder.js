@@ -44,6 +44,34 @@ const CODEC_CANDIDATES = [
 ];
 
 /**
+ * Maximum dimension (width or height) for video encoding.
+ * Mobile hardware encoders commonly fail above 1920px; we cap at 1920
+ * and scale the other axis proportionally to stay within safe limits.
+ */
+const MAX_ENCODE_DIMENSION = 1920;
+
+/**
+ * Clamp dimensions so neither exceeds MAX_ENCODE_DIMENSION, preserving aspect ratio.
+ * Also ensures both dimensions are even (required by H.264).
+ * @param {number} width
+ * @param {number} height
+ * @returns {{ width: number, height: number, scale: number }}
+ */
+export function clampEncodeDimensions(width, height) {
+  let scale = 1;
+  const maxDim = Math.max(width, height);
+  if (maxDim > MAX_ENCODE_DIMENSION) {
+    scale = MAX_ENCODE_DIMENSION / maxDim;
+  }
+  let w = Math.round(width * scale);
+  let h = Math.round(height * scale);
+  // Ensure even (H.264 requirement)
+  if (w % 2 !== 0) w += 1;
+  if (h % 2 !== 0) h += 1;
+  return { width: w, height: h, scale };
+}
+
+/**
  * Create a frame-by-frame MP4 encoder.
  *
  * Usage:
@@ -53,17 +81,20 @@ const CODEC_CANDIDATES = [
  *   }
  *   const blob = await enc.finish(); // MP4 Blob
  *
+ * Dimensions are automatically clamped to MAX_ENCODE_DIMENSION (1920) on the
+ * longest side to ensure compatibility with mobile hardware encoders.
+ *
  * @param {Object} opts
  * @param {number} opts.width - Frame width in pixels
  * @param {number} opts.height - Frame height in pixels
  * @param {number} opts.fps - Frames per second
  * @param {number} [opts.bitrate=5_000_000] - Target bitrate in bits/second
- * @returns {Promise<{addFrame: Function, finish: Function}>}
+ * @returns {Promise<{addFrame: Function, finish: Function, encodedWidth: number, encodedHeight: number}>}
  */
 export async function createMP4Encoder({ width, height, fps, bitrate = 5_000_000 }) {
-  // Ensure even dimensions (required by H.264 encoders)
-  const w = width % 2 === 0 ? width : width + 1;
-  const h = height % 2 === 0 ? height : height + 1;
+  const clamped = clampEncodeDimensions(width, height);
+  const w = clamped.width;
+  const h = clamped.height;
 
   const frameDurationMicros = Math.round(1_000_000 / fps);
 
@@ -120,12 +151,14 @@ export async function createMP4Encoder({ width, height, fps, bitrate = 5_000_000
 
   encoder.configure(chosenCandidate.config);
 
-  // Temp canvas for ensuring even dimensions
+  // Temp canvas for scaling/ensuring even dimensions
   let resizeCanvas = null;
   let resizeCtx = null;
   if (w !== width || h !== height) {
     resizeCanvas = new OffscreenCanvas(w, h);
     resizeCtx = resizeCanvas.getContext("2d");
+    resizeCtx.imageSmoothingEnabled = true;
+    resizeCtx.imageSmoothingQuality = "high";
   }
 
   /**
@@ -182,5 +215,7 @@ export async function createMP4Encoder({ width, height, fps, bitrate = 5_000_000
     finish,
     codec: chosenCandidate.webCodec,
     muxCodec: chosenCandidate.muxCodec,
+    encodedWidth: w,
+    encodedHeight: h,
   };
 }

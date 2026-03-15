@@ -1109,6 +1109,9 @@ function Slate({
           bitrate,
         });
         logVideoExport(`codec: ${mp4Encoder.codec} (mux: ${mp4Encoder.muxCodec})`);
+        if (mp4Encoder.encodedWidth !== frameW || mp4Encoder.encodedHeight !== frameH) {
+          logVideoExport(`resolution clamped: ${frameW}x${frameH} → ${mp4Encoder.encodedWidth}x${mp4Encoder.encodedHeight}`);
+        }
 
         // Encode first frame
         await mp4Encoder.addFrame(firstCanvas, 0);
