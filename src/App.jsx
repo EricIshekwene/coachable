@@ -73,11 +73,28 @@ function RequireOnboarded({ children }) {
   return children;
 }
 
+function LandingGate() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-BrandBlack">
+        <div className="h-10 w-10 rounded-full border-[3px] border-[#FF7A18]/30 border-t-[#FF7A18] animate-spin" />
+      </div>
+    );
+  }
+
+  if (user?.onboarded) return <Navigate to="/app" replace />;
+  if (user && !user.onboarded) return <Navigate to="/onboarding" replace />;
+
+  return <Landing />;
+}
+
 function AppRoutes() {
   return (
     <Routes>
       {/* Public */}
-      <Route path="/" element={<Landing />} />
+      <Route path="/" element={<LandingGate />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/login" element={<Login />} />
       <Route path="/admin" element={<Admin />} />
