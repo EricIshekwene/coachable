@@ -206,6 +206,19 @@ export default function Admin() {
               {loading ? "Loading..." : "Refresh"}
             </button>
             <button
+              onClick={async () => {
+                try {
+                  const data = await adminFetch("/admin/cleanup", { method: "POST" });
+                  setError("");
+                  if (data.cleaned > 0) fetchUsers();
+                  alert(`Cleaned up ${data.cleaned} stale account(s)`);
+                } catch (err) { setError(err.message); }
+              }}
+              className="rounded-lg border border-yellow-500/40 px-3 py-1.5 text-xs font-semibold text-yellow-400 transition hover:bg-yellow-500/10"
+            >
+              Cleanup Stale
+            </button>
+            <button
               onClick={handleDeleteAll}
               className="rounded-lg bg-red-600/20 px-3 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-600/30"
             >
@@ -237,9 +250,16 @@ export default function Admin() {
               {users.map((u) => (
                 <tr
                   key={u.id}
-                  className="border-b border-BrandGray2/10 transition hover:bg-[#1e2228]/50"
+                  className={`border-b border-BrandGray2/10 transition hover:bg-[#1e2228]/50 ${!u.onboarded_at ? "opacity-50" : ""}`}
                 >
-                  <td className="px-4 py-3 font-medium">{u.name}</td>
+                  <td className="px-4 py-3 font-medium">
+                    {u.name}
+                    {!u.onboarded_at && (
+                      <span className="ml-2 rounded bg-yellow-500/20 px-1.5 py-0.5 text-[9px] font-semibold text-yellow-400 uppercase">
+                        Not onboarded
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-BrandGray">{u.email}</td>
                   <td className="px-4 py-3 text-BrandGray">
                     {u.team_name ? (

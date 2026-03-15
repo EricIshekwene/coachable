@@ -60,13 +60,37 @@ router.get("/users", requireAdmin, async (_req, res, next) => {
   }
 });
 
+// Helper: fully delete a user and all their data
+async function deleteUserCascade(userId) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    // Clean up tables that reference users without ON DELETE CASCADE
+    await client.query("DELETE FROM folder_share_links WHERE created_by_user_id = $1", [userId]);
+    await client.query("DELETE FROM play_share_links WHERE created_by_user_id = $1", [userId]);
+    await client.query("UPDATE plays SET created_by_user_id = (SELECT owner_user_id FROM teams WHERE id = plays.team_id), updated_by_user_id = (SELECT owner_user_id FROM teams WHERE id = plays.team_id) WHERE created_by_user_id = $1 OR updated_by_user_id = $1", [userId]);
+    await client.query("UPDATE play_folders SET created_by_user_id = NULL WHERE created_by_user_id = $1", [userId]);
+    await client.query("UPDATE team_invites SET invited_by_user_id = (SELECT owner_user_id FROM teams WHERE id = team_invites.team_id) WHERE invited_by_user_id = $1", [userId]);
+    await client.query("UPDATE team_invites SET accepted_by_user_id = NULL WHERE accepted_by_user_id = $1", [userId]);
+    await client.query("UPDATE team_join_requests SET reviewed_by_user_id = NULL WHERE reviewed_by_user_id = $1", [userId]);
+    await client.query("DELETE FROM team_invite_codes WHERE created_by_user_id = $1", [userId]);
+    // Delete teams owned by this user (cascades to memberships, plays, folders, etc.)
+    await client.query("DELETE FROM teams WHERE owner_user_id = $1", [userId]);
+    // Delete the user (cascades to memberships, preferences, verification codes, etc.)
+    await client.query("DELETE FROM users WHERE id = $1", [userId]);
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 // DELETE /admin/users/:id — delete a single user and their owned teams
 router.delete("/users/:id", requireAdmin, async (req, res, next) => {
   try {
-    const { id } = req.params;
-    // Delete teams owned by this user (cascades to memberships, invites, plays, etc.)
-    await pool.query("DELETE FROM teams WHERE owner_user_id = $1", [id]);
-    await pool.query("DELETE FROM users WHERE id = $1", [id]);
+    await deleteUserCascade(req.params.id);
     res.json({ ok: true });
   } catch (err) {
     next(err);
@@ -170,5 +194,30 @@ router.post("/create-account", requireAdmin, async (req, res, next) => {
     next(err);
   }
 });
+
+// POST /admin/cleanup — delete non-onboarded accounts older than 24h
+router.post("/cleanup", requireAdmin, async (_req, res, next) => {
+  try {
+    const result = await cleanupStaleAccounts();
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Cleanup helper — exported for use by the auto-cleanup scheduler
+export async function cleanupStaleAccounts() {
+  const { rows } = await pool.query(
+    "SELECT id FROM users WHERE onboarded_at IS NULL AND created_at < now() - interval '24 hours'"
+  );
+  for (const row of rows) {
+    try {
+      await deleteUserCascade(row.id);
+    } catch (err) {
+      console.error(`Failed to cleanup user ${row.id}:`, err.message);
+    }
+  }
+  return { ok: true, cleaned: rows.length };
+}
 
 export default router;

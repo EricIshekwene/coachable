@@ -89,7 +89,7 @@ export default function Settings() {
 
   const isPlayer = user?.role === "player" || playerViewMode;
 
-  const initialTheme = localStorage.getItem("theme") || "dark";
+  const initialTheme = localStorage.getItem("theme") || "light";
   const initialNotifications = user?.notifications || {};
   const initialAssistantPermissions = user?.assistantPermissions || {};
   const initialTeamDefaults = {

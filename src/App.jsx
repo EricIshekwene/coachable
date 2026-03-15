@@ -133,7 +133,7 @@ function AppRoutes() {
 
 function ThemeInit() {
   useEffect(() => {
-    const saved = localStorage.getItem("theme") || "dark";
+    const saved = localStorage.getItem("theme") || "light";
     const resolved = saved === "system"
       ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
       : saved;

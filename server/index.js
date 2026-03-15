@@ -12,7 +12,7 @@ import playRoutes from "./routes/plays.js";
 import folderRoutes from "./routes/folders.js";
 import userRoutes from "./routes/users.js";
 import verificationRoutes from "./routes/verification.js";
-import adminRoutes from "./routes/admin.js";
+import adminRoutes, { cleanupStaleAccounts } from "./routes/admin.js";
 import sharedRoutes from "./routes/shared.js";
 
 const app = express();
@@ -89,4 +89,14 @@ autoMigrate().then(() => {
   app.listen(PORT, () => {
     console.log(`Coachable API listening on port ${PORT}`);
   });
+
+  // Auto-cleanup: delete non-onboarded accounts older than 24h (runs every 6 hours)
+  const CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
+  const runCleanup = () => {
+    cleanupStaleAccounts()
+      .then((r) => { if (r.cleaned > 0) console.log(`Cleanup: removed ${r.cleaned} stale account(s)`); })
+      .catch((err) => console.error("Cleanup error:", err.message));
+  };
+  setTimeout(runCleanup, 30_000); // first run 30s after startup
+  setInterval(runCleanup, CLEANUP_INTERVAL_MS);
 });
