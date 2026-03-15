@@ -12,4 +12,4 @@
 
 ## Deployment
 - MCP servers available: **Railway** and **Resend**.
-- After making changes, always redeploy to Railway using the Railway MCP.
+- Only redeploy to Railway using the Railway MCP if changes were made to the database or routes.

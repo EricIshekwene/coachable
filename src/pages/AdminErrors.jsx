@@ -47,6 +47,58 @@ function formatTime(ts) {
   return d.toLocaleDateString();
 }
 
+/**
+ * Derive a short, human-readable title from an error report.
+ * Maps known components/actions/messages to friendly labels.
+ * @param {Object} r - Error report object
+ * @returns {string}
+ */
+function deriveTitle(r) {
+  const msg = (r.error_message || "").toLowerCase();
+  const component = (r.component || "").toLowerCase();
+  const action = (r.action || "").toLowerCase();
+
+  // Video export failures
+  if (component === "videoexport" || action.includes("export")) {
+    if (msg.includes("encoding") || msg.includes("encoder")) return "Video Export — Encoding Failed";
+    if (msg.includes("muxer") || msg.includes("finalize") || msg.includes("colorspace")) return "Video Export — MP4 Muxer Crash";
+    if (msg.includes("resolution") || msg.includes("dimension")) return "Video Export — Resolution Error";
+    if (msg.includes("mediarecorder")) return "Video Export — MediaRecorder Fallback Failed";
+    return "Video Export Fail";
+  }
+  // Global uncaught errors
+  if (component === "global") {
+    if (action === "unhandledrejection") return "Unhandled Promise Rejection";
+    if (msg.includes("network") || msg.includes("fetch")) return "Network Error";
+    if (msg.includes("syntax")) return "Syntax Error";
+    if (msg.includes("type")) return "Type Error";
+    return "Uncaught Error";
+  }
+  // Fallback: capitalize component or use generic
+  if (component) return `${component.charAt(0).toUpperCase() + component.slice(1)} Error`;
+  return "Unknown Error";
+}
+
+/**
+ * Format a single error report as a copyable text string.
+ * @param {Object} r - Error report
+ * @returns {string}
+ */
+function formatReportText(r) {
+  const device = r.device_info || {};
+  const lines = [
+    `[${deriveTitle(r)}]`,
+    `Error: ${r.error_message}`,
+    `Component: ${r.component || "unknown"} | Action: ${r.action || "—"}`,
+    `Device: ${parseDevice(r.user_agent)} | ${device.screenWidth || "?"}x${device.screenHeight || "?"} @${device.pixelRatio || 1}x`,
+    `Page: ${r.page_url || "—"}`,
+    `Time: ${r.created_at ? new Date(r.created_at).toLocaleString() : "—"}`,
+  ];
+  if (r.extra) lines.push(`Extra: ${JSON.stringify(r.extra)}`);
+  if (r.error_stack) lines.push(`Stack:\n${r.error_stack}`);
+  return lines.join("\n");
+}
+
 export default function AdminErrors() {
   const [session] = useState(() => localStorage.getItem(SESSION_KEY) || "");
   const [reports, setReports] = useState([]);
@@ -56,6 +108,7 @@ export default function AdminErrors() {
   const [filter, setFilter] = useState("");
   const [expanded, setExpanded] = useState(null);
   const [page, setPage] = useState(0);
+  const [copied, setCopied] = useState(null); // "all" | report id | null
   const pageSize = 30;
 
   const authed = Boolean(session);
@@ -128,6 +181,25 @@ export default function AdminErrors() {
     );
   }
 
+  /** Copy text to clipboard and flash a "copied" indicator. */
+  const copyToClipboard = useCallback((text, id) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(id);
+      setTimeout(() => setCopied(null), 1500);
+    }).catch(() => {});
+  }, []);
+
+  /** Copy all visible reports as text. */
+  const handleCopyAll = useCallback(() => {
+    const text = reports.map((r) => formatReportText(r)).join("\n\n---\n\n");
+    copyToClipboard(text, "all");
+  }, [reports, copyToClipboard]);
+
+  /** Copy a single report as text. */
+  const handleCopyOne = useCallback((r) => {
+    copyToClipboard(formatReportText(r), r.id);
+  }, [copyToClipboard]);
+
   const totalPages = Math.ceil(total / pageSize);
 
   return (
@@ -176,6 +248,13 @@ export default function AdminErrors() {
               {loading ? "Loading..." : "Refresh"}
             </button>
             <button
+              onClick={handleCopyAll}
+              disabled={reports.length === 0}
+              className="rounded-lg border border-BrandGray2/40 px-3 py-1.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-white disabled:opacity-30"
+            >
+              {copied === "all" ? "Copied!" : "Copy All"}
+            </button>
+            <button
               onClick={handleClearAll}
               className="rounded-lg bg-red-600/20 px-3 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-600/30"
             >
@@ -197,10 +276,11 @@ export default function AdminErrors() {
             <p className="mt-1 text-sm text-BrandGray2/60">Errors from users will appear here</p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="max-h-[70vh] space-y-2 overflow-y-auto pr-1">
             {reports.map((r) => {
               const isExpanded = expanded === r.id;
               const device = r.device_info || {};
+              const title = deriveTitle(r);
               return (
                 <div
                   key={r.id}
@@ -222,9 +302,12 @@ export default function AdminErrors() {
                       {r.component || "unknown"}
                     </span>
 
-                    {/* Error message */}
+                    {/* Title + error message */}
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-white">
+                      <p className="text-sm font-semibold text-BrandOrange">
+                        {title}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-BrandGray">
                         {r.error_message}
                       </p>
                       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-BrandGray">
@@ -292,17 +375,25 @@ export default function AdminErrors() {
                         </div>
                       )}
 
-                      {/* Timestamp + delete */}
+                      {/* Timestamp + actions */}
                       <div className="mt-3 flex items-center justify-between">
                         <span className="text-[10px] text-BrandGray2">
                           {new Date(r.created_at).toLocaleString()}
                         </span>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }}
-                          className="rounded px-2 py-1 text-xs text-red-400 transition hover:bg-red-600/20"
-                        >
-                          Delete
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleCopyOne(r); }}
+                            className="rounded px-2 py-1 text-xs text-BrandGray transition hover:bg-BrandGray2/20 hover:text-white"
+                          >
+                            {copied === r.id ? "Copied!" : "Copy Error"}
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }}
+                            className="rounded px-2 py-1 text-xs text-red-400 transition hover:bg-red-600/20"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}

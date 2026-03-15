@@ -18,6 +18,15 @@ try {
 }
 
 /**
+ * Deduplication map: errorMessage → { count, firstSentAt }.
+ * Identical errors within DEDUP_WINDOW_MS are collapsed into a single report
+ * with an `occurrences` count in extra data.
+ * @type {Map<string, { count: number, firstSentAt: number }>}
+ */
+const _dedup = new Map();
+const DEDUP_WINDOW_MS = 10_000; // 10 seconds
+
+/**
  * Gather device/browser info from the current environment.
  * @returns {{ platform: string, screenWidth: number, screenHeight: number, pixelRatio: number, isMobile: boolean, standalone: boolean }}
  */
@@ -57,6 +66,20 @@ export function setErrorReporterUserId(userId) {
  */
 export function reportError({ errorMessage, errorStack, component, action, extra }) {
   try {
+    // ── Deduplication: collapse identical errors within a time window ──
+    const dedupKey = `${component}::${action}::${errorMessage}`;
+    const now = Date.now();
+    const existing = _dedup.get(dedupKey);
+    if (existing && now - existing.firstSentAt < DEDUP_WINDOW_MS) {
+      // Already reported this exact error recently — just count it
+      existing.count += 1;
+      return;
+    }
+    // Start a new dedup window. Include the count of suppressed duplicates
+    // from any previous window that just expired.
+    const occurrences = existing ? existing.count : 0;
+    _dedup.set(dedupKey, { count: 1, firstSentAt: now });
+
     const body = {
       errorMessage,
       errorStack: errorStack || null,
@@ -65,7 +88,10 @@ export function reportError({ errorMessage, errorStack, component, action, extra
       pageUrl: typeof window !== "undefined" ? window.location?.href : "",
       userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
       deviceInfo: getDeviceInfo(),
-      extra: extra || null,
+      extra: {
+        ...(extra || {}),
+        ...(occurrences > 1 ? { previousWindowOccurrences: occurrences } : {}),
+      },
       userId: _userId,
       sessionId: _sessionId,
     };

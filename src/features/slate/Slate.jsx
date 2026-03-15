@@ -36,7 +36,7 @@ import { getLogs as getAnimDebugLogs, log as logAnimDebug } from "../../animatio
 import { getLogs as getDrawDebugLogs, log as logDrawDebug } from "../../canvas/drawDebugLogger";
 import { getLogs as getKeyToolDebugLogs, log as logKeyToolDebug } from "../../canvas/keyboardToolDebugLogger";
 import { getLogs as getVideoExportDebugLogs, log as logVideoExport } from "../../utils/videoExportDebugLogger";
-import { supportsWebCodecsMP4, createMP4Encoder } from "../../utils/videoEncoder";
+import { supportsWebCodecsMP4, createMP4Encoder, isIOSDevice, convertWebMToMP4 } from "../../utils/videoEncoder";
 import { reportError } from "../../utils/errorReporter";
 import { getLogs as getPlaceBallDebugLogs, log as logPlaceBallDebug } from "./placeBallDebugLogger";
 import { getLogs as getRecordingDebugLogs, log as logRecordingDebug } from "./recordingDebugLogger";
@@ -1245,6 +1245,28 @@ function Slate({
 
         blob = new Blob(chunks, { type: mimeType });
         logVideoExport(`WebM blob: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
+
+        // On iOS, WebM is not playable — convert to MP4 via FFmpeg WASM
+        if (isIOSDevice() && mimeType.includes("webm")) {
+          logVideoExport(`iOS detected with WebM output — converting to MP4 via FFmpeg`);
+          onShowMessage?.("Converting video", "Converting to MP4 for iOS...", "info");
+          try {
+            blob = await convertWebMToMP4(blob, (p) => {
+              setExportProgress(p);
+            });
+            logVideoExport(`MP4 conversion complete: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
+          } catch (convertErr) {
+            logVideoExport(`FFmpeg conversion failed: ${convertErr?.message}`);
+            logVideoExport(`Falling back to WebM download (may not be playable on iOS)`);
+            reportError({
+              errorMessage: `WebM→MP4 conversion failed: ${convertErr?.message}`,
+              errorStack: convertErr?.stack,
+              component: "videoExport",
+              action: "convertWebMToMP4",
+              extra: { blobSize: blob.size, mimeType },
+            });
+          }
+        }
       }
 
       downloadVideo(blob, playName);
