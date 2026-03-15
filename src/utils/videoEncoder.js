@@ -142,6 +142,18 @@ export async function createMP4Encoder({ width, height, fps, bitrate = 5_000_000
 
   const encoder = new VideoEncoder({
     output: (chunk, meta) => {
+      // Safari/iOS omits decoderConfig in chunk metadata, which mp4-muxer
+      // requires (it reads colorSpace from it). Patch in a default if missing.
+      if (meta && !meta.decoderConfig) {
+        meta.decoderConfig = {
+          codec: chosenCandidate.config.codec,
+          codedWidth: w,
+          codedHeight: h,
+          colorSpace: { primaries: "bt709", transfer: "bt709", matrix: "bt709", fullRange: false },
+        };
+      } else if (meta?.decoderConfig && !meta.decoderConfig.colorSpace) {
+        meta.decoderConfig.colorSpace = { primaries: "bt709", transfer: "bt709", matrix: "bt709", fullRange: false };
+      }
       muxer.addVideoChunk(chunk, meta);
     },
     error: (e) => {
