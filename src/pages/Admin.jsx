@@ -198,6 +198,12 @@ export default function Admin() {
             >
               Open Slate
             </Link>
+            <Link
+              to="/admin/tests"
+              className="rounded-lg border border-purple-500/40 px-3 py-1.5 text-xs font-semibold text-purple-400 transition hover:border-purple-500 hover:bg-purple-500/10"
+            >
+              Tests
+            </Link>
             <button
               onClick={fetchUsers}
               disabled={loading}
