@@ -14,6 +14,7 @@ import userRoutes from "./routes/users.js";
 import verificationRoutes from "./routes/verification.js";
 import adminRoutes, { cleanupStaleAccounts } from "./routes/admin.js";
 import sharedRoutes from "./routes/shared.js";
+import errorReportRoutes from "./routes/errorReports.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -60,6 +61,7 @@ app.use("/users", userRoutes);
 app.use("/verification", verificationRoutes);
 app.use("/admin", adminRoutes);
 app.use("/shared", sharedRoutes);
+app.use("/error-reports", errorReportRoutes);
 
 // --------------- Error handler ---------------
 

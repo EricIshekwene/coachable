@@ -279,3 +279,25 @@ CREATE TABLE IF NOT EXISTS folder_share_links (
 );
 
 CREATE INDEX IF NOT EXISTS folder_share_links_folder_idx ON folder_share_links(folder_id);
+
+-- ============================================================
+-- 5. Error reports
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS error_reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  error_message TEXT NOT NULL,
+  error_stack TEXT,
+  component TEXT,
+  action TEXT,
+  page_url TEXT,
+  user_agent TEXT,
+  device_info JSONB,
+  extra JSONB,
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  session_id TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS error_reports_created_at_idx ON error_reports(created_at DESC);
+CREATE INDEX IF NOT EXISTS error_reports_component_idx ON error_reports(component);

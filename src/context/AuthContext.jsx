@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { apiFetch, setToken, clearToken, getToken } from "../utils/api";
+import { setErrorReporterUserId } from "../utils/errorReporter";
 
 const AuthContext = createContext(null);
 
@@ -70,6 +71,11 @@ export function AuthProvider({ children }) {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  // Sync user ID to error reporter so reports include who triggered them
+  useEffect(() => {
+    setErrorReporterUserId(user?.id || null);
+  }, [user?.id]);
 
   // When user changes and has a team, fetch team members
   useEffect(() => {

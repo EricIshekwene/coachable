@@ -37,6 +37,7 @@ import { getLogs as getDrawDebugLogs, log as logDrawDebug } from "../../canvas/d
 import { getLogs as getKeyToolDebugLogs, log as logKeyToolDebug } from "../../canvas/keyboardToolDebugLogger";
 import { getLogs as getVideoExportDebugLogs, log as logVideoExport } from "../../utils/videoExportDebugLogger";
 import { supportsWebCodecsMP4, createMP4Encoder } from "../../utils/videoEncoder";
+import { reportError } from "../../utils/errorReporter";
 import { getLogs as getPlaceBallDebugLogs, log as logPlaceBallDebug } from "./placeBallDebugLogger";
 import { getLogs as getRecordingDebugLogs, log as logRecordingDebug } from "./recordingDebugLogger";
 import { getLogs as getKfMoveDebugLogs, log as logKfMoveDebug } from "../../animation/keyframeMoveDebugLogger";
@@ -1259,6 +1260,18 @@ function Slate({
       logVideoExport(`=== VIDEO EXPORT FAILED ===`);
       logVideoExport(`error: ${errorMsg}`);
       if (errorStack) logVideoExport(`stack: ${errorStack}`);
+      reportError({
+        errorMessage: errorMsg,
+        errorStack,
+        component: "videoExport",
+        action: "exportVideo",
+        extra: {
+          worldRect: worldRect ? { x: worldRect.x, y: worldRect.y, w: worldRect.width, h: worldRect.height } : null,
+          durationSec,
+          quality,
+          useMP4: supportsWebCodecsMP4(),
+        },
+      });
       onShowMessage?.("Export failed", errorMsg, "error");
       setExportError(errorMsg);
       screenshotApiRef.current?.showOverlays?.();

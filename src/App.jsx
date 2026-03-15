@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { installGlobalErrorHandlers } from "./utils/errorReporter";
 import "./index.css";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -14,6 +15,7 @@ import Onboarding from "./pages/Onboarding";
 import VerifyEmail from "./pages/VerifyEmail";
 import Admin from "./pages/Admin";
 import AdminTests from "./pages/AdminTests";
+import AdminErrors from "./pages/AdminErrors";
 import AppLayout from "./layouts/AppLayout";
 import Plays from "./pages/app/Plays";
 import PlayNew from "./pages/app/PlayNew";
@@ -100,6 +102,7 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/admin" element={<Admin />} />
       <Route path="/admin/tests" element={<AdminTests />} />
+      <Route path="/admin/errors" element={<AdminErrors />} />
       <Route path="/shared/:token" element={<SharedPlay />} />
       <Route path="/shared/:token/view" element={<SharedPlayView />} />
       <Route path="/shared/folder/:token" element={<SharedFolder />} />
@@ -140,6 +143,7 @@ function ThemeInit() {
       ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
       : saved;
     document.documentElement.setAttribute("data-theme", resolved);
+    installGlobalErrorHandlers();
   }, []);
   return null;
 }

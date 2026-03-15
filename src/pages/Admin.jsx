@@ -204,6 +204,12 @@ export default function Admin() {
             >
               Tests
             </Link>
+            <Link
+              to="/admin/errors"
+              className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-semibold text-red-400 transition hover:border-red-500 hover:bg-red-500/10"
+            >
+              Error Reports
+            </Link>
             <button
               onClick={fetchUsers}
               disabled={loading}
