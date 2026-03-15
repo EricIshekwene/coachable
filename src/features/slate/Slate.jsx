@@ -131,8 +131,18 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const resolveRecorderMimeType = ({ preferRealtimeCodec = false } = {}) => {
   if (typeof MediaRecorder === "undefined") return null;
   const candidates = preferRealtimeCodec
-    ? ["video/webm;codecs=vp8", "video/webm;codecs=vp9", "video/webm"]
-    : ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+    ? [
+        "video/webm;codecs=vp8",
+        "video/webm;codecs=vp9",
+        "video/webm",
+        "video/mp4",          // Safari/iOS
+      ]
+    : [
+        "video/webm;codecs=vp9",
+        "video/webm;codecs=vp8",
+        "video/webm",
+        "video/mp4",          // Safari/iOS
+      ];
   return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || null;
 };
 
@@ -1086,7 +1096,7 @@ function Slate({
       // Render first frame to get dimensions
       renderPoseAtTime(0, { flushRenderer: true });
       api.flushRender?.();
-      const firstCanvas = api.captureFrameCanvas(worldRect, { pixelRatio, flush: true });
+      let firstCanvas = api.captureFrameCanvas(worldRect, { pixelRatio, flush: true });
       if (!firstCanvas) {
         throw new Error("captureFrameCanvas returned null on first frame");
       }
@@ -1098,57 +1108,72 @@ function Slate({
       logVideoExport(`totalFrames=${totalFrames} fps=${fps}`);
 
       let blob;
+      let useMediaRecorderFallback = !useMP4;
 
       if (useMP4) {
         // ── WebCodecs + mp4-muxer path (frame-perfect MP4) ──
-        logVideoExport(`using WebCodecs MP4 encoder`);
-        const mp4Encoder = await createMP4Encoder({
-          width: frameW,
-          height: frameH,
-          fps,
-          bitrate,
-        });
-        logVideoExport(`codec: ${mp4Encoder.codec} (mux: ${mp4Encoder.muxCodec})`);
-        if (mp4Encoder.encodedWidth !== frameW || mp4Encoder.encodedHeight !== frameH) {
-          logVideoExport(`resolution clamped: ${frameW}x${frameH} → ${mp4Encoder.encodedWidth}x${mp4Encoder.encodedHeight}`);
-        }
+        try {
+          logVideoExport(`using WebCodecs MP4 encoder`);
+          const mp4Encoder = await createMP4Encoder({
+            width: frameW,
+            height: frameH,
+            fps,
+            bitrate,
+          });
+          logVideoExport(`codec: ${mp4Encoder.codec} (mux: ${mp4Encoder.muxCodec})`);
+          if (mp4Encoder.encodedWidth !== frameW || mp4Encoder.encodedHeight !== frameH) {
+            logVideoExport(`resolution clamped: ${frameW}x${frameH} → ${mp4Encoder.encodedWidth}x${mp4Encoder.encodedHeight}`);
+          }
 
-        // Encode first frame
-        await mp4Encoder.addFrame(firstCanvas, 0);
-        setExportProgress(1 / totalFrames);
+          // Encode first frame
+          await mp4Encoder.addFrame(firstCanvas, 0);
+          setExportProgress(1 / totalFrames);
 
-        for (let i = 1; i < totalFrames; i++) {
-          const playTimeMs = (i / totalFrames) * playDurationMs;
+          for (let i = 1; i < totalFrames; i++) {
+            const playTimeMs = (i / totalFrames) * playDurationMs;
 
-          // Render animation state at this exact time
-          renderPoseAtTime(playTimeMs, { flushRenderer: true });
+            // Render animation state at this exact time
+            renderPoseAtTime(playTimeMs, { flushRenderer: true });
+            api.flushRender?.();
+
+            const frameCanvas = api.captureFrameCanvas(worldRect, { pixelRatio, flush: true });
+            if (!frameCanvas) {
+              throw new Error(`captureFrameCanvas null at frame ${i}/${totalFrames}`);
+            }
+
+            await mp4Encoder.addFrame(frameCanvas, i);
+
+            // Yield to browser every frame to keep UI responsive
+            if (i % 3 === 0) await waitForAnimationFrame();
+
+            if (i % 10 === 0) {
+              setExportProgress((i + 1) / totalFrames);
+            }
+            if (i % 30 === 0 || i === totalFrames - 1) {
+              logVideoExport(`frame ${i + 1}/${totalFrames} playTimeMs=${playTimeMs.toFixed(1)}`);
+            }
+          }
+
+          logVideoExport(`all ${totalFrames} frames encoded, finalizing MP4`);
+          setExportProgress(1);
+          blob = await mp4Encoder.finish();
+          logVideoExport(`MP4 blob: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
+        } catch (mp4Err) {
+          logVideoExport(`WebCodecs MP4 encoding failed: ${mp4Err?.message || mp4Err}`);
+          logVideoExport(`falling back to MediaRecorder`);
+          useMediaRecorderFallback = true;
+          setExportProgress(0);
+          // Re-render frame 0 and re-capture since the MP4 loop may have advanced
+          renderPoseAtTime(0, { flushRenderer: true });
           api.flushRender?.();
-
-          const frameCanvas = api.captureFrameCanvas(worldRect, { pixelRatio, flush: true });
-          if (!frameCanvas) {
-            throw new Error(`captureFrameCanvas null at frame ${i}/${totalFrames}`);
-          }
-
-          await mp4Encoder.addFrame(frameCanvas, i);
-
-          // Yield to browser every frame to keep UI responsive
-          if (i % 3 === 0) await waitForAnimationFrame();
-
-          if (i % 10 === 0) {
-            setExportProgress((i + 1) / totalFrames);
-          }
-          if (i % 30 === 0 || i === totalFrames - 1) {
-            logVideoExport(`frame ${i + 1}/${totalFrames} playTimeMs=${playTimeMs.toFixed(1)}`);
-          }
+          const reCapture = api.captureFrameCanvas(worldRect, { pixelRatio, flush: true });
+          if (reCapture) firstCanvas = reCapture;
         }
+      }
 
-        logVideoExport(`all ${totalFrames} frames encoded, finalizing MP4`);
-        setExportProgress(1);
-        blob = await mp4Encoder.finish();
-        logVideoExport(`MP4 blob: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
-      } else {
-        // ── MediaRecorder fallback (WebM) ──
-        logVideoExport(`WebCodecs unavailable, using MediaRecorder fallback`);
+      if (useMediaRecorderFallback) {
+        // ── MediaRecorder fallback (WebM on Chrome, MP4 on Safari) ──
+        logVideoExport(`using MediaRecorder fallback`);
 
         const mimeType = resolveRecorderMimeType({ preferRealtimeCodec: true });
         if (!mimeType) {
