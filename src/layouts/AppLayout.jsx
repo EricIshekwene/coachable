@@ -6,16 +6,15 @@ import lightLogo from "../assets/logos/coachable_Logo.png";
 import { FiBookOpen, FiUsers, FiUser, FiLogOut, FiSettings, FiEye, FiX } from "react-icons/fi";
 import useThemeColor from "../utils/useThemeColor";
 
-const coachNavItems = [
+const teamNavItems = [
   { to: "/app/plays", icon: FiBookOpen, label: "Plays" },
   { to: "/app/team", icon: FiUsers, label: "Team" },
   { to: "/app/profile", icon: FiUser, label: "Profile" },
   { to: "/app/settings", icon: FiSettings, label: "Settings" },
 ];
 
-const playerNavItems = [
+const soloNavItems = [
   { to: "/app/plays", icon: FiBookOpen, label: "Plays" },
-  { to: "/app/team", icon: FiUsers, label: "Team" },
   { to: "/app/profile", icon: FiUser, label: "Profile" },
   { to: "/app/settings", icon: FiSettings, label: "Settings" },
 ];
@@ -24,7 +23,8 @@ export default function AppLayout() {
   const { user, logout, playerViewMode, setPlayerViewMode } = useAuth();
   const navigate = useNavigate();
   const isCoachRole = user?.role === "coach" || user?.role === "owner";
-  const navItems = (!isCoachRole || playerViewMode) ? playerNavItems : coachNavItems;
+  const isPersonal = user?.isPersonalTeam;
+  const navItems = isPersonal ? soloNavItems : teamNavItems;
   const [isLight, setIsLight] = useState(document.documentElement.getAttribute("data-theme") === "light");
 
   useEffect(() => {
@@ -86,10 +86,16 @@ export default function AppLayout() {
         </Link>
 
         {/* Team badge */}
-        {user?.teamName && (
+        {user?.teamName && !isPersonal && (
           <div className="mx-4 mb-4 rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3 py-2">
             <p className="text-[10px] uppercase tracking-widest text-BrandGray2">Team</p>
             <p className="text-xs font-semibold truncate">{user.teamName}</p>
+          </div>
+        )}
+        {isPersonal && (
+          <div className="mx-4 mb-4 rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3 py-2">
+            <p className="text-[10px] uppercase tracking-widest text-BrandGray2">Solo Mode</p>
+            <p className="text-xs text-BrandGray2">Personal workspace</p>
           </div>
         )}
 
@@ -112,7 +118,7 @@ export default function AppLayout() {
             </div>
             <div className="min-w-0">
               <p className="truncate text-xs font-semibold">{user?.name || "Guest"}</p>
-              <p className="truncate text-[10px] text-BrandGray2">{playerViewMode ? "player" : (user?.role || "")}</p>
+              <p className="truncate text-[10px] text-BrandGray2">{isPersonal ? "solo" : playerViewMode ? "player" : (user?.role || "")}</p>
             </div>
           </div>
           <button

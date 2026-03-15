@@ -39,6 +39,7 @@ function mapApiUserToLocal(u) {
     sport: u.sport || "",
     seasonYear: u.seasonYear || String(new Date().getFullYear()),
     ownerId: u.ownerId || null,
+    isPersonalTeam: u.isPersonalTeam || false,
     onboarded: u.onboarded || false,
     notifications: {
       ...DEFAULT_NOTIFICATION_PREFERENCES,
@@ -123,7 +124,22 @@ export function AuthProvider({ children }) {
 
   const completeOnboarding = useCallback(
     async ({ teamName, teamAction, inviteCode, sport }) => {
-      if (teamAction === "create") {
+      if (teamAction === "solo") {
+        const data = await apiFetch("/onboarding/solo", {
+          method: "POST",
+        });
+        const team = data.team || {};
+        setUser((prev) => ({
+          ...prev,
+          role: "owner",
+          teamId: team.id,
+          teamName: team.name,
+          sport: "",
+          ownerId: prev.id,
+          isPersonalTeam: true,
+          onboarded: true,
+        }));
+      } else if (teamAction === "create") {
         const data = await apiFetch("/onboarding/create-team", {
           method: "POST",
           body: { teamName, sport },
@@ -136,6 +152,7 @@ export function AuthProvider({ children }) {
           teamName: team.name,
           sport: team.sport || "",
           ownerId: prev.id,
+          isPersonalTeam: false,
           onboarded: true,
         }));
       } else {
@@ -151,6 +168,7 @@ export function AuthProvider({ children }) {
           teamName: team.name,
           sport: team.sport || "",
           ownerId: team.ownerId || null,
+          isPersonalTeam: false,
           onboarded: true,
         }));
       }

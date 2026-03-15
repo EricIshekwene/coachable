@@ -88,6 +88,7 @@ export default function Settings() {
   const navigate = useNavigate();
 
   const isPlayer = user?.role === "player" || playerViewMode;
+  const isPersonal = user?.isPersonalTeam;
 
   const initialTheme = localStorage.getItem("theme") || "light";
   const initialNotifications = user?.notifications || {};
@@ -159,11 +160,14 @@ export default function Settings() {
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10 md:py-12">
       <h1 className="font-Manrope text-xl font-bold tracking-tight">Settings</h1>
       <p className="mt-1.5 text-sm text-BrandGray2">
-        {isPlayer
-          ? "Manage your notification preferences and app appearance."
-          : "Manage notifications, team defaults, and app appearance."}
+        {isPersonal
+          ? "Customize your app appearance."
+          : isPlayer
+            ? "Manage your notification preferences and app appearance."
+            : "Manage notifications, team defaults, and app appearance."}
       </p>
 
+      {!isPersonal && (
       <div className="mt-8 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-5">
         <div className="mb-4 flex items-center gap-2">
           <FiBell className="text-sm text-BrandOrange" />
@@ -215,8 +219,9 @@ export default function Settings() {
           )}
         </div>
       </div>
+      )}
 
-      {!isPlayer && (
+      {!isPlayer && !isPersonal && (
       <div className="mt-6 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-5">
         <div className="mb-4 flex items-center gap-2">
           <FiShield className="text-sm text-BrandOrange" />
@@ -246,7 +251,7 @@ export default function Settings() {
       </div>
       )}
 
-      {!isPlayer && (
+      {!isPlayer && !isPersonal && (
       <div className="mt-6 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-5">
         <div className="mb-4 flex items-center gap-2">
           <FiUsers className="text-sm text-BrandOrange" />
@@ -296,7 +301,7 @@ export default function Settings() {
       </div>
       )}
 
-      {(user?.role === "coach" || user?.role === "owner") && !playerViewMode && (
+      {(user?.role === "coach" || user?.role === "owner") && !playerViewMode && !isPersonal && (
         <div className="mt-6 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-5">
           <div className="mb-4 flex items-center gap-2">
             <FiEye className="text-sm text-BrandOrange" />

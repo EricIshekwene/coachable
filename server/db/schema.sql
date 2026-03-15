@@ -91,6 +91,12 @@ DO $$ BEGIN
 EXCEPTION WHEN undefined_column THEN NULL;
 END $$;
 
+-- Add is_personal flag for solo/casual users (safe to re-run)
+DO $$ BEGIN
+  ALTER TABLE teams ADD COLUMN is_personal BOOLEAN NOT NULL DEFAULT false;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
 -- ============================================================
 -- 2. Teams and membership
 -- ============================================================

@@ -94,7 +94,7 @@ router.post("/login", async (req, res, next) => {
     let membership = null;
     if (user.onboarded_at) {
       const memberRes = await pool.query(
-        `SELECT tm.role, tm.team_id, t.name AS team_name, t.sport, t.season_year, t.owner_user_id
+        `SELECT tm.role, tm.team_id, t.name AS team_name, t.sport, t.season_year, t.owner_user_id, t.is_personal
          FROM team_memberships tm
          JOIN teams t ON t.id = tm.team_id
          WHERE tm.user_id = $1
@@ -109,6 +109,7 @@ router.post("/login", async (req, res, next) => {
           sport: m.sport,
           seasonYear: m.season_year,
           ownerId: m.owner_user_id,
+          isPersonal: m.is_personal || false,
         };
         membership = { role: m.role };
       }
@@ -129,6 +130,7 @@ router.post("/login", async (req, res, next) => {
         sport: team?.sport || "",
         seasonYear: team?.seasonYear || String(new Date().getFullYear()),
         ownerId: team?.ownerId || null,
+        isPersonalTeam: team?.isPersonal || false,
       },
     });
   } catch (err) {
@@ -158,7 +160,7 @@ router.get("/me", requireAuth, async (req, res, next) => {
     let membership = null;
     if (user.onboarded_at) {
       const memberRes = await pool.query(
-        `SELECT tm.role, tm.team_id, t.name AS team_name, t.sport, t.season_year, t.owner_user_id
+        `SELECT tm.role, tm.team_id, t.name AS team_name, t.sport, t.season_year, t.owner_user_id, t.is_personal
          FROM team_memberships tm
          JOIN teams t ON t.id = tm.team_id
          WHERE tm.user_id = $1
@@ -173,6 +175,7 @@ router.get("/me", requireAuth, async (req, res, next) => {
           sport: m.sport,
           seasonYear: m.season_year,
           ownerId: m.owner_user_id,
+          isPersonal: m.is_personal || false,
         };
         membership = { role: m.role };
       }
@@ -198,6 +201,7 @@ router.get("/me", requireAuth, async (req, res, next) => {
         sport: team?.sport || "",
         seasonYear: team?.seasonYear || String(new Date().getFullYear()),
         ownerId: team?.ownerId || null,
+        isPersonalTeam: team?.isPersonal || false,
         notifications: {
           playersJoinTeam: prefs.notify_players_join_team ?? true,
           coachesMakeChanges: prefs.notify_coaches_make_changes ?? true,

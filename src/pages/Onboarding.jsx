@@ -5,7 +5,7 @@ import { useAppMessage } from "../context/AppMessageContext";
 import logo from "../assets/logos/full_Coachable_logo.png";
 import { MdOutlineCreateNewFolder } from "react-icons/md";
 import { FaRegHandshake } from "react-icons/fa6";
-import { FiArrowRight, FiChevronDown } from "react-icons/fi";
+import { FiArrowRight, FiChevronDown, FiEdit } from "react-icons/fi";
 
 const SPORTS = [
   "Rugby", "Soccer", "Basketball", "Football", "Baseball",
@@ -30,9 +30,11 @@ export default function Onboarding() {
   const navigate = useNavigate();
 
   const canAdvance =
-    teamAction === "create"
-      ? teamName.trim().length > 0
-      : inviteCode.trim().length > 0;
+    teamAction === "solo"
+      ? true
+      : teamAction === "create"
+        ? teamName.trim().length > 0
+        : inviteCode.trim().length > 0;
 
   const [submitting, setSubmitting] = useState(false);
 
@@ -60,6 +62,8 @@ export default function Onboarding() {
         return;
       }
     }
+
+    // Solo mode needs no validation
 
     setSubmitting(true);
     try {
@@ -152,13 +156,13 @@ export default function Onboarding() {
           <img src={logo} alt="Coachable" className="mb-10 h-7" />
 
           <h1 className="font-Manrope text-2xl font-bold tracking-tight text-BrandBlack">
-            Set up your team
+            Get started
           </h1>
           <p className="mt-1.5 text-sm text-BrandGray2">
-            Create a new team or join an existing one.
+            Create a team, join one, or jump straight into making plays.
           </p>
 
-          <div className="mt-8 grid grid-cols-2 gap-3">
+          <div className="mt-8 grid grid-cols-3 gap-3">
             <button type="button" onClick={() => setTeamAction("create")} className={optionCard(teamAction === "create")}>
               <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-lg transition ${teamAction === "create" ? "bg-BrandOrange/20" : "bg-BrandGray/10"}`}>
                 <MdOutlineCreateNewFolder className="text-xl text-BrandBlack" />
@@ -174,8 +178,17 @@ export default function Onboarding() {
               <p className="font-semibold text-sm text-BrandBlack">Join Team</p>
               <p className="text-xs text-BrandGray2 mt-0.5">Use invite code</p>
             </button>
+
+            <button type="button" onClick={() => setTeamAction("solo")} className={optionCard(teamAction === "solo")}>
+              <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-lg transition ${teamAction === "solo" ? "bg-BrandOrange/20" : "bg-BrandGray/10"}`}>
+                <FiEdit className="text-xl text-BrandBlack" />
+              </div>
+              <p className="font-semibold text-sm text-BrandBlack">Just Make Plays</p>
+              <p className="text-xs text-BrandGray2 mt-0.5">No team needed</p>
+            </button>
           </div>
 
+          {teamAction !== "solo" && (
           <div className="mt-6 flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-BrandBlack">
@@ -244,6 +257,15 @@ export default function Onboarding() {
               </div>
             )}
           </div>
+          )}
+
+          {teamAction === "solo" && (
+            <div className="mt-6 rounded-lg border border-BrandGray/20 bg-BrandGray/5 px-4 py-3">
+              <p className="text-sm text-BrandGray2">
+                You can create and edit plays right away. You can always create or join a team later from Settings.
+              </p>
+            </div>
+          )}
 
           {/* Finish button */}
           <div className="mt-8">
@@ -253,7 +275,7 @@ export default function Onboarding() {
               onClick={handleFinish}
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-BrandBlack py-2.5 text-sm font-semibold text-white transition hover:bg-BrandBlack2 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Finish setup
+              {teamAction === "solo" ? "Get started" : "Finish setup"}
               <FiArrowRight className="text-sm" />
             </button>
           </div>
@@ -267,9 +289,11 @@ export default function Onboarding() {
             <MdOutlineCreateNewFolder className="text-3xl text-BrandOrange" />
           </div>
           <p className="max-w-xs text-center text-sm leading-relaxed text-BrandGray2">
-            {teamAction === "create"
-              ? "As the team creator, you'll be the coach. You can invite players after setup."
-              : "Your invite code determines your role. Ask your coach for the right code."}
+            {teamAction === "solo"
+              ? "Start designing plays instantly. You can create or join a team anytime."
+              : teamAction === "create"
+                ? "As the team creator, you'll be the coach. You can invite players after setup."
+                : "Your invite code determines your role. Ask your coach for the right code."}
           </p>
         </div>
       </div>

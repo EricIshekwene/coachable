@@ -98,6 +98,24 @@ function InviteCodeSection({ role, code, copiedRole, onCopy, onRotate, onSendInv
 export default function Team() {
   const { user, teamMembers, removeMember } = useAuth();
   const { showMessage } = useAppMessage();
+
+  // Solo users don't have a real team — show a CTA instead
+  if (user?.isPersonalTeam) {
+    return (
+      <div className="mx-auto max-w-lg px-6 py-16 text-center">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-BrandGray2/10">
+          <FiUser className="text-2xl text-BrandGray2" />
+        </div>
+        <h1 className="mt-6 font-Manrope text-xl font-bold tracking-tight">You're in solo mode</h1>
+        <p className="mt-2 text-sm text-BrandGray">
+          You're creating plays on your own. Create or join a team to collaborate with coaches and players.
+        </p>
+        <p className="mt-4 text-xs text-BrandGray2">
+          You can create or join a team from Settings.
+        </p>
+      </div>
+    );
+  }
   const isOwner = user?.role === "owner" || user?.id === user?.ownerId;
   const isCoach = user?.role === "coach" || isOwner;
   const [copiedRole, setCopiedRole] = useState(null);

@@ -156,4 +156,70 @@ router.post("/join-team", requireAuth, async (req, res, next) => {
   }
 });
 
+// POST /onboarding/solo — skip team, create personal workspace
+router.post("/solo", requireAuth, async (req, res, next) => {
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      // Get user name for the personal workspace
+      const userRes = await client.query(
+        "SELECT name FROM users WHERE id = $1",
+        [req.userId]
+      );
+      const userName = userRes.rows[0]?.name || "My";
+
+      // Create a personal team (hidden workspace)
+      const teamRes = await client.query(
+        `INSERT INTO teams (name, sport, owner_user_id, is_personal)
+         VALUES ($1, NULL, $2, true)
+         RETURNING id, name, sport, season_year, owner_user_id, created_at`,
+        [`${userName}'s Plays`, req.userId]
+      );
+      const team = teamRes.rows[0];
+
+      // Create team settings defaults
+      await client.query(
+        "INSERT INTO team_settings (team_id) VALUES ($1)",
+        [team.id]
+      );
+
+      // Create membership as owner
+      await client.query(
+        `INSERT INTO team_memberships (team_id, user_id, role)
+         VALUES ($1, $2, 'owner')`,
+        [team.id, req.userId]
+      );
+
+      // Mark user onboarded
+      await client.query(
+        "UPDATE users SET onboarded_at = now(), updated_at = now() WHERE id = $1",
+        [req.userId]
+      );
+
+      await client.query("COMMIT");
+
+      res.status(201).json({
+        team: {
+          id: team.id,
+          name: team.name,
+          sport: null,
+          seasonYear: team.season_year,
+          ownerId: team.owner_user_id,
+          isPersonal: true,
+        },
+        role: "owner",
+      });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
