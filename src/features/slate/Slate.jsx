@@ -180,8 +180,6 @@ function Slate({
   onReady,
   viewOnly: viewOnlyProp = false,
   adminMode = false,
-  slateTheme = "dark",
-  onSlateThemeToggle,
 }) {
   const [viewOnlyLocal, setViewOnlyLocal] = useState(viewOnlyProp);
   const viewOnly = viewOnlyProp || viewOnlyLocal;
@@ -3003,8 +3001,6 @@ function Slate({
         onResumeRecording={recording.resumeRecording}
         onClearPlayerRecording={recording.clearPlayerRecording}
         onClearAllRecordings={recording.clearAllRecordings}
-        slateTheme={slateTheme}
-        onSlateThemeToggle={onSlateThemeToggle}
       /></div>}
       {!viewOnly && (
         <>

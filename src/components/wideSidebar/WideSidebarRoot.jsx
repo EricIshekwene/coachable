@@ -177,11 +177,11 @@ export default function WideSidebarRoot({
             <div className="flex items-center justify-between px-1 mb-1">
                 {onNavigateHome ? (
                     <button type="button" onClick={onNavigateHome} className="inline-flex">
-                        <img src={coachableLogo} alt="Coachable" className="h-5 sm:h-6 w-auto" />
+                        <img src={coachableLogo} alt="Coachable" className="h-5 sm:h-6 w-auto " />
                     </button>
                 ) : (
                     <Link to="/app" className="inline-flex">
-                        <img src={coachableLogo} alt="Coachable" className="h-5 sm:h-6 w-auto" />
+                        <img src={coachableLogo} alt="Coachable" className="h-5 sm:h-6 w-auto " />
                     </Link>
                 )}
                 <button

@@ -76,7 +76,6 @@ export default function AdminPlayEditPage() {
   const [ready, setReady] = useState(false);
   const [loadingPlay, setLoadingPlay] = useState(true);
   const [existingPlay, setExistingPlay] = useState(null);
-
   // Track the persisted play ID (may differ from URL param when "new" → created)
   const persistedIdRef = useRef(playId === "new" ? null : playId);
   const isNew = playId === "new";
@@ -182,6 +181,7 @@ export default function AdminPlayEditPage() {
         onThumbnailSave={handleThumbnailSave}
         onNavigateHome={handleNavigateHome}
         onReady={() => setReady(true)}
+        adminMode
       />
     </div>
   );

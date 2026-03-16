@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/logos/full_Coachable_logo.png";
 import {
-  FiPlus, FiEdit2, FiTrash2, FiStar, FiLogOut, FiFolder, FiFolderPlus,
+  FiPlus, FiEdit2, FiTrash2, FiLogOut, FiFolder, FiFolderPlus,
   FiChevronRight, FiLink, FiCheck, FiX, FiEdit3,
 } from "react-icons/fi";
 import PlayPreviewCard from "../components/PlayPreviewCard";
@@ -51,23 +51,6 @@ async function deletePlay(session, id) {
     headers: { "x-admin-session": session },
   });
   if (!res.ok) throw new Error("Failed to delete play");
-}
-
-/**
- * Toggle the featured status of a platform play.
- * @param {string} session - Admin session token
- * @param {string} id - Platform play ID
- * @param {boolean} isFeatured - New featured value
- * @returns {Promise<Object>} Updated play object
- */
-async function toggleFeatured(session, id, isFeatured) {
-  const res = await fetch(`${API_URL}/admin/plays/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json", "x-admin-session": session },
-    body: JSON.stringify({ isFeatured }),
-  });
-  if (!res.ok) throw new Error("Failed to update play");
-  return (await res.json()).play;
 }
 
 /**
@@ -219,17 +202,15 @@ function FolderItem({ folder, isActive, onClick, onRename, onDelete }) {
 }
 
 /**
- * A single platform play card with edit, copy link, feature toggle, move, and delete actions.
+ * A single platform play card with edit, copy link, move, and delete actions.
  * @param {Object} props
  * @param {Object} props.play - Platform play object
  * @param {Object[]} props.folders - All folders for the move dropdown
  * @param {Function} props.onEdit - Called with play to navigate to editor
  * @param {Function} props.onDelete - Called with play to delete
- * @param {Function} props.onToggleFeatured - Called with play to toggle featured
  * @param {Function} props.onMove - Called with (play, folderId) to move to folder
  */
-function PlayCard({ play, folders, onEdit, onDelete, onToggleFeatured, onMove }) {
-  const [toggling, setToggling] = useState(false);
+function PlayCard({ play, folders, onEdit, onDelete, onMove }) {
   const [copied, setCopied] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const moveRef = useRef(null);
@@ -242,11 +223,6 @@ function PlayCard({ play, folders, onEdit, onDelete, onToggleFeatured, onMove })
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [moveOpen]);
-
-  const handleToggle = async () => {
-    setToggling(true);
-    try { await onToggleFeatured(play); } finally { setToggling(false); }
-  };
 
   /**
    * Copy the public shareable link for this platform play to clipboard.
@@ -274,11 +250,6 @@ function PlayCard({ play, folders, onEdit, onDelete, onToggleFeatured, onMove })
           minSpanPx={100}
           showHoverHint={false}
         />
-        {play.isFeatured && (
-          <span className="absolute left-2.5 top-2.5 flex items-center gap-1 rounded-full bg-BrandOrange/90 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
-            <FiStar className="text-[9px]" /> Featured
-          </span>
-        )}
         {play.sport && (
           <span className="absolute right-2.5 top-2.5 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white/80 backdrop-blur-sm">
             {play.sport}
@@ -325,20 +296,6 @@ function PlayCard({ play, folders, onEdit, onDelete, onToggleFeatured, onMove })
             }`}
           >
             {copied ? <FiCheck className="text-sm" /> : <FiLink className="text-sm" />}
-          </button>
-
-          {/* Feature toggle */}
-          <button
-            onClick={handleToggle}
-            disabled={toggling}
-            title={play.isFeatured ? "Remove from landing page" : "Show on landing page"}
-            className={`flex items-center justify-center rounded-lg border px-2.5 py-2 text-xs transition ${
-              play.isFeatured
-                ? "border-BrandOrange/40 bg-BrandOrange/15 text-BrandOrange hover:bg-BrandOrange/25"
-                : "border-white/10 bg-white/4 text-BrandGray2 hover:text-white"
-            } disabled:opacity-50`}
-          >
-            <FiStar className="text-sm" />
           </button>
 
           {/* Move to folder */}
@@ -470,13 +427,6 @@ export default function AdminPlaysPage() {
     } catch (err) { setError(err.message); }
   };
 
-  const handleToggleFeatured = async (play) => {
-    try {
-      const updated = await toggleFeatured(session, play.id, !play.isFeatured);
-      setPlays((prev) => prev.map((p) => (p.id === play.id ? updated : p)));
-    } catch (err) { setError(err.message); }
-  };
-
   /** Move a play to a folder or remove it from any folder. */
   const handleMove = async (play, folderId) => {
     try {
@@ -529,7 +479,6 @@ export default function AdminPlaysPage() {
     );
   });
 
-  const featuredCount = plays.filter((p) => p.isFeatured).length;
   const currentFolder = folders.find((f) => f.id === currentFolderId);
 
   return (
@@ -548,7 +497,6 @@ export default function AdminPlaysPage() {
           <h1 className="font-Manrope text-sm font-bold text-white/80">Platform Plays</h1>
           <div className="flex items-center gap-3 text-xs text-BrandGray2">
             <span>{plays.length} total</span>
-            {featuredCount > 0 && <span className="text-BrandOrange">{featuredCount} featured</span>}
           </div>
           <div className="ml-auto flex items-center gap-2">
             <button
@@ -718,51 +666,18 @@ export default function AdminPlaysPage() {
 
           {/* Play grid */}
           {!loading && visiblePlays.length > 0 && (
-            <>
-              {/* Featured section */}
-              {visiblePlays.some((p) => p.isFeatured) && (
-                <div className="mb-8">
-                  <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-BrandOrange/70">
-                    Featured on landing page
-                  </h2>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {visiblePlays.filter((p) => p.isFeatured).map((play) => (
-                      <PlayCard
-                        key={play.id}
-                        play={play}
-                        folders={folders}
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                        onToggleFeatured={handleToggleFeatured}
-                        onMove={handleMove}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Unfeatured section */}
-              {visiblePlays.some((p) => !p.isFeatured) && (
-                <div>
-                  <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-BrandGray2">
-                    {visiblePlays.some((p) => p.isFeatured) ? "Not featured" : "All plays"}
-                  </h2>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {visiblePlays.filter((p) => !p.isFeatured).map((play) => (
-                      <PlayCard
-                        key={play.id}
-                        play={play}
-                        folders={folders}
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                        onToggleFeatured={handleToggleFeatured}
-                        onMove={handleMove}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {visiblePlays.map((play) => (
+                <PlayCard
+                  key={play.id}
+                  play={play}
+                  folders={folders}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onMove={handleMove}
+                />
+              ))}
+            </div>
           )}
         </div>
       </div>

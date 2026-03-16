@@ -36,14 +36,11 @@ import PlatformPlayView from "./pages/PlatformPlayView";
 
 function SlateRoot({ adminMode = false }) {
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
-  const [slateTheme, setSlateTheme] = useState("dark");
-  const handleSlateThemeToggle = () => setSlateTheme(t => t === "dark" ? "light" : "dark");
-  useThemeColor(slateTheme === "light" ? "#f8f9fa" : "#121212");
+  useThemeColor("#121212");
   return (
     <div
       className="w-full bg-BrandBlack flex flex-row justify-between relative overflow-hidden"
       style={{ height: "100dvh" }}
-      data-slate-theme={slateTheme}
     >
       <MessagePopup
         message={messagePopup.message}
@@ -57,8 +54,6 @@ function SlateRoot({ adminMode = false }) {
         <Slate
           onShowMessage={showMessage}
           adminMode={adminMode}
-          slateTheme={slateTheme}
-          onSlateThemeToggle={handleSlateThemeToggle}
         />
       </MobileViewOnlyGate>
     </div>
