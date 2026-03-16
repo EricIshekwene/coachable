@@ -8,7 +8,7 @@
 
 import { Muxer, ArrayBufferTarget } from "mp4-muxer";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
-import { fetchFile } from "@ffmpeg/util";
+import { fetchFile, toBlobURL } from "@ffmpeg/util";
 
 /**
  * Check if the browser supports WebCodecs-based encoding.
@@ -51,6 +51,14 @@ const CODEC_CANDIDATES = [
  * and scale the other axis proportionally to stay within safe limits.
  */
 const MAX_ENCODE_DIMENSION = 1920;
+const DEFAULT_CHUNK_COLOR_SPACE = {
+  primaries: "bt709",
+  transfer: "bt709",
+  matrix: "bt709",
+  fullRange: false,
+};
+const FFMPEG_CORE_VERSION = "0.12.9";
+const FFMPEG_CORE_BASE_URL = `https://unpkg.com/@ffmpeg/core@${FFMPEG_CORE_VERSION}/dist/umd`;
 
 /**
  * Clamp dimensions so neither exceeds MAX_ENCODE_DIMENSION, preserving aspect ratio.
@@ -141,36 +149,56 @@ export async function createMP4Encoder({ width, height, fps, bitrate = 5_000_000
   });
 
   let encoderError = null;
+  let lastMuxedTimestamp = 0;
+  let lastMuxedDuration = frameDurationMicros;
+  let muxedChunkCount = 0;
 
   const encoder = new VideoEncoder({
     output: (chunk, meta) => {
+      if (encoderError) return;
+
       try {
-        // Safari/iOS omits decoderConfig in chunk metadata, which mp4-muxer
-        // requires (it reads colorSpace from it). Patch in a default if missing.
-        if (meta && !meta.decoderConfig) {
-          meta.decoderConfig = {
-            codec: chosenCandidate.config.codec,
-            codedWidth: w,
-            codedHeight: h,
-            colorSpace: { primaries: "bt709", transfer: "bt709", matrix: "bt709", fullRange: false },
-          };
-        } else if (meta?.decoderConfig && !meta.decoderConfig.colorSpace) {
-          meta.decoderConfig.colorSpace = { primaries: "bt709", transfer: "bt709", matrix: "bt709", fullRange: false };
+        const safeMeta = meta ? { ...meta } : {};
+        const decoderConfig = safeMeta.decoderConfig
+          ? { ...safeMeta.decoderConfig }
+          : {
+              codec: chosenCandidate.config.codec,
+              codedWidth: w,
+              codedHeight: h,
+            };
+
+        // Safari/iOS may omit decoderConfig or colorSpace metadata entirely.
+        if (!decoderConfig.colorSpace) {
+          decoderConfig.colorSpace = DEFAULT_CHUNK_COLOR_SPACE;
         }
+        safeMeta.decoderConfig = decoderConfig;
+
         // Some encoders (notably Safari/iOS) produce chunks with duration = -1,
         // undefined, or NaN. mp4-muxer requires a non-negative real number.
-        // Always use addVideoChunkRaw so we can guarantee a valid duration.
+        // Timestamp can also be invalid, so we sanitize both values here.
         const dur = (chunk.duration != null && Number.isFinite(chunk.duration) && chunk.duration >= 0)
           ? chunk.duration
           : frameDurationMicros;
+        const fallbackTimestamp = muxedChunkCount === 0
+          ? 0
+          : lastMuxedTimestamp + lastMuxedDuration;
+        const rawTimestamp = (chunk.timestamp != null && Number.isFinite(chunk.timestamp) && chunk.timestamp >= 0)
+          ? chunk.timestamp
+          : fallbackTimestamp;
+        const ts = Math.max(0, rawTimestamp, fallbackTimestamp);
         const buf = new Uint8Array(chunk.byteLength);
         chunk.copyTo(buf);
-        muxer.addVideoChunkRaw(buf, chunk.type, chunk.timestamp, dur, meta);
+        muxer.addVideoChunkRaw(buf, chunk.type, ts, dur, safeMeta);
+        lastMuxedTimestamp = ts;
+        lastMuxedDuration = dur;
+        muxedChunkCount += 1;
       } catch (outputErr) {
         // Capture muxer errors so they don't bubble as unhandled exceptions
         // (which would fire hundreds of global error reports per frame).
         // The error is surfaced via encoderError and checked in addFrame/finish.
-        encoderError = outputErr;
+        encoderError = outputErr instanceof Error
+          ? outputErr
+          : new Error(String(outputErr));
       }
     },
     error: (e) => {
@@ -213,6 +241,7 @@ export async function createMP4Encoder({ width, height, fps, bitrate = 5_000_000
     const frame = new VideoFrame(source, { timestamp });
     encoder.encode(frame, { keyFrame: isKey });
     frame.close();
+    if (encoderError) throw encoderError;
 
     // Prevent encoder queue from growing too large — back-pressure
     if (encoder.encodeQueueSize > 5) {
@@ -224,6 +253,8 @@ export async function createMP4Encoder({ width, height, fps, bitrate = 5_000_000
         check();
       });
     }
+
+    if (encoderError) throw encoderError;
   }
 
   /**
@@ -232,9 +263,15 @@ export async function createMP4Encoder({ width, height, fps, bitrate = 5_000_000
    */
   async function finish() {
     if (encoderError) throw encoderError;
-    await encoder.flush();
-    encoder.close();
-    muxer.finalize();
+    try {
+      await encoder.flush();
+      if (encoderError) throw encoderError;
+      muxer.finalize();
+    } finally {
+      if (encoder.state !== "closed") {
+        encoder.close();
+      }
+    }
     const buffer = target.buffer;
     return new Blob([buffer], { type: "video/mp4" });
   }
@@ -255,8 +292,12 @@ export async function createMP4Encoder({ width, height, fps, bitrate = 5_000_000
  */
 export function isIOSDevice() {
   if (typeof navigator === "undefined") return false;
-  return /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const userAgent = navigator.userAgent || "";
+  const platform = navigator.userAgentData?.platform || navigator.platform || "";
+  const maxTouchPoints = Number(navigator.maxTouchPoints) || 0;
+  return /iPhone|iPad|iPod/i.test(userAgent) ||
+    /iPhone|iPad|iPod/i.test(platform) ||
+    ((platform === "MacIntel" || /Macintosh/i.test(userAgent)) && maxTouchPoints > 1);
 }
 
 /** Singleton FFmpeg instance (lazy-loaded). */
@@ -273,9 +314,20 @@ async function getFFmpeg() {
 
   _ffmpegLoading = (async () => {
     const ffmpeg = new FFmpeg();
-    await ffmpeg.load();
-    _ffmpeg = ffmpeg;
-    return ffmpeg;
+    try {
+      const [coreURL, wasmURL] = await Promise.all([
+        toBlobURL(`${FFMPEG_CORE_BASE_URL}/ffmpeg-core.js`, "text/javascript"),
+        toBlobURL(`${FFMPEG_CORE_BASE_URL}/ffmpeg-core.wasm`, "application/wasm"),
+      ]);
+      await ffmpeg.load({ coreURL, wasmURL });
+      _ffmpeg = ffmpeg;
+      return ffmpeg;
+    } catch (error) {
+      _ffmpegLoading = null;
+      throw new Error(
+        `FFmpeg core failed to load: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
   })();
 
   return _ffmpegLoading;
@@ -284,46 +336,78 @@ async function getFFmpeg() {
 /**
  * Convert a WebM blob to MP4 using FFmpeg WASM.
  * This is used on iOS where WebM is not playable but MediaRecorder
- * only produces WebM. The conversion re-muxes without re-encoding
- * when possible, preserving quality.
+ * only produces WebM. The conversion re-encodes to H.264 MP4 for
+ * broad Safari compatibility.
  *
  * @param {Blob} webmBlob - The WebM video blob
  * @param {Function} [onProgress] - Optional progress callback (0-1)
  * @returns {Promise<Blob>} MP4 blob
  */
 export async function convertWebMToMP4(webmBlob, onProgress) {
-  const ffmpeg = await getFFmpeg();
-
-  // Write input file
-  const inputData = await fetchFile(webmBlob);
-  await ffmpeg.writeFile("input.webm", inputData);
-
-  // Set up progress reporting
-  if (onProgress) {
-    ffmpeg.on("progress", ({ progress }) => {
-      onProgress(Math.min(1, Math.max(0, progress)));
-    });
+  if (!(webmBlob instanceof Blob) || webmBlob.size === 0) {
+    throw new Error("WebM blob is empty");
+  }
+  if (typeof Worker === "undefined" || typeof WebAssembly === "undefined") {
+    throw new Error("FFmpeg conversion is unavailable in this browser");
   }
 
-  // Convert: re-encode to H.264 + AAC in MP4 container
-  // Using -c:v libx264 for maximum iOS compatibility
-  await ffmpeg.exec([
-    "-i", "input.webm",
-    "-c:v", "libx264",
-    "-preset", "fast",
-    "-crf", "18",       // High quality (lower = better, 18 is visually lossless)
-    "-pix_fmt", "yuv420p",
-    "-movflags", "+faststart",
-    "-an",               // No audio
-    "output.mp4",
-  ]);
+  const ffmpeg = await getFFmpeg();
+  const progressHandler = onProgress
+    ? ({ progress }) => {
+        onProgress(Math.min(1, Math.max(0, progress)));
+      }
+    : null;
+  const logLines = [];
+  const logHandler = ({ message }) => {
+    if (typeof message === "string" && message.trim()) {
+      logLines.push(message.trim());
+      if (logLines.length > 20) logLines.shift();
+    }
+  };
 
-  // Read output
-  const outputData = await ffmpeg.readFile("output.mp4");
+  ffmpeg.on("log", logHandler);
+  if (progressHandler) {
+    ffmpeg.on("progress", progressHandler);
+  }
 
-  // Clean up
-  await ffmpeg.deleteFile("input.webm");
-  await ffmpeg.deleteFile("output.mp4");
+  try {
+    // Write input file
+    const inputData = await fetchFile(webmBlob);
+    await ffmpeg.writeFile("input.webm", inputData);
 
-  return new Blob([outputData], { type: "video/mp4" });
+    // Convert: re-encode to H.264 + AAC in MP4 container
+    // Using -c:v libx264 for maximum iOS compatibility.
+    const exitCode = await ffmpeg.exec([
+      "-i", "input.webm",
+      "-c:v", "libx264",
+      "-preset", "fast",
+      "-crf", "18",
+      "-pix_fmt", "yuv420p",
+      "-movflags", "+faststart",
+      "-an",
+      "output.mp4",
+    ]);
+    if (exitCode !== 0) {
+      const tail = logLines.slice(-3).join(" | ");
+      throw new Error(tail ? `ffmpeg exited with code ${exitCode}: ${tail}` : `ffmpeg exited with code ${exitCode}`);
+    }
+
+    const outputData = await ffmpeg.readFile("output.mp4");
+    return new Blob([outputData], { type: "video/mp4" });
+  } finally {
+    ffmpeg.off("log", logHandler);
+    if (progressHandler) {
+      ffmpeg.off("progress", progressHandler);
+    }
+    try {
+      await ffmpeg.deleteFile("input.webm");
+    } catch {
+      // Ignore cleanup errors.
+    }
+    try {
+      await ffmpeg.deleteFile("output.mp4");
+    } catch {
+      // Ignore cleanup errors.
+    }
+  }
 }

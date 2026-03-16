@@ -129,21 +129,19 @@ const KEYBOARD_NUDGE_BY_KEY = {
 const waitForAnimationFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const resolveRecorderMimeType = ({ preferRealtimeCodec = false } = {}) => {
+const resolveRecorderMimeType = ({ preferRealtimeCodec = false, preferMp4 = false } = {}) => {
   if (typeof MediaRecorder === "undefined") return null;
-  const candidates = preferRealtimeCodec
-    ? [
-        "video/webm;codecs=vp8",
-        "video/webm;codecs=vp9",
-        "video/webm",
-        "video/mp4",          // Safari/iOS
-      ]
-    : [
-        "video/webm;codecs=vp9",
-        "video/webm;codecs=vp8",
-        "video/webm",
-        "video/mp4",          // Safari/iOS
-      ];
+  const mp4Candidates = [
+    "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+    "video/mp4;codecs=avc1.42E01E",
+    "video/mp4",
+  ];
+  const webmCandidates = preferRealtimeCodec
+    ? ["video/webm;codecs=vp8", "video/webm;codecs=vp9", "video/webm"]
+    : ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+  const candidates = preferMp4
+    ? [...mp4Candidates, ...webmCandidates]
+    : [...webmCandidates, ...mp4Candidates];
   return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || null;
 };
 
@@ -1067,10 +1065,16 @@ function Slate({
     const fps = Math.max(1, Number(quality.fps) || 30);
     const pixelRatio = Math.max(0.5, Number(quality.pixelRatio) || 2);
     const bitrate = Math.max(250_000, Number(quality.bitrate) || 5_000_000);
-    const useMP4 = supportsWebCodecsMP4();
+    const isIOS = isIOSDevice();
+    const recorderMimeType = resolveRecorderMimeType({
+      preferRealtimeCodec: true,
+      preferMp4: isIOS,
+    });
+    const preferRecorderMP4 = isIOS && recorderMimeType?.includes("mp4");
+    const useMP4 = supportsWebCodecsMP4() && !preferRecorderMP4;
 
     logVideoExport(
-      `playDurationMs=${playDurationMs} durationSec=${requestedDurationSec} fps=${fps} pixelRatio=${pixelRatio} bitrate=${bitrate} useMP4=${useMP4}`
+      `playDurationMs=${playDurationMs} durationSec=${requestedDurationSec} fps=${fps} pixelRatio=${pixelRatio} bitrate=${bitrate} useMP4=${useMP4} isIOS=${isIOS} recorderMimeType=${recorderMimeType || "none"}`
     );
 
     setIsExporting(true);
@@ -1110,6 +1114,10 @@ function Slate({
 
       let blob;
       let useMediaRecorderFallback = !useMP4;
+
+      if (preferRecorderMP4) {
+        logVideoExport(`skipping WebCodecs on iOS because MediaRecorder MP4 is available`);
+      }
 
       if (useMP4) {
         // ── WebCodecs + mp4-muxer path (frame-perfect MP4) ──
@@ -1176,7 +1184,7 @@ function Slate({
         // ── MediaRecorder fallback (WebM on Chrome, MP4 on Safari) ──
         logVideoExport(`using MediaRecorder fallback`);
 
-        const mimeType = resolveRecorderMimeType({ preferRealtimeCodec: true });
+        const mimeType = recorderMimeType;
         if (!mimeType) {
           throw new Error("Browser supports neither WebCodecs nor MediaRecorder");
         }
@@ -1187,6 +1195,9 @@ function Slate({
         offscreen.width = frameW;
         offscreen.height = frameH;
         const ctx = offscreen.getContext("2d");
+        if (!ctx) {
+          throw new Error("Could not create 2D recording context");
+        }
         ctx.drawImage(firstCanvas, 0, 0);
 
         const stream = offscreen.captureStream(0);
@@ -1244,10 +1255,10 @@ function Slate({
         if (chunks.length === 0) throw new Error("MediaRecorder produced 0 data chunks");
 
         blob = new Blob(chunks, { type: mimeType });
-        logVideoExport(`WebM blob: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
+        logVideoExport(`recorded blob (${mimeType}): ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
 
         // On iOS, WebM is not playable — convert to MP4 via FFmpeg WASM
-        if (isIOSDevice() && mimeType.includes("webm")) {
+        if (isIOS && mimeType.includes("webm")) {
           logVideoExport(`iOS detected with WebM output — converting to MP4 via FFmpeg`);
           onShowMessage?.("Converting video", "Converting to MP4 for iOS...", "info");
           try {
@@ -1257,16 +1268,36 @@ function Slate({
             logVideoExport(`MP4 conversion complete: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
           } catch (convertErr) {
             logVideoExport(`FFmpeg conversion failed: ${convertErr?.message}`);
-            logVideoExport(`Falling back to WebM download (may not be playable on iOS)`);
             reportError({
-              errorMessage: `WebM→MP4 conversion failed: ${convertErr?.message}`,
+              errorMessage: `WebM to MP4 conversion failed: ${convertErr?.message}`,
               errorStack: convertErr?.stack,
               component: "videoExport",
               action: "convertWebMToMP4",
               extra: { blobSize: blob.size, mimeType },
             });
+            throw new Error(
+              `iOS export could not produce MP4: ${convertErr?.message || "conversion failed"}`
+            );
           }
         }
+      }
+
+      if (blob?.type?.includes("webm")) {
+        reportError({
+          errorMessage: "Video export fell back to WebM output",
+          component: "videoExport",
+          action: "webmFallback",
+          extra: {
+            worldRect: worldRect ? { x: worldRect.x, y: worldRect.y, w: worldRect.width, h: worldRect.height } : null,
+            durationSec,
+            quality,
+            useMP4,
+            isIOS,
+            recorderMimeType,
+            finalBlobType: blob.type,
+            blobSize: blob.size,
+          },
+        });
       }
 
       downloadVideo(blob, playName);
@@ -1291,7 +1322,9 @@ function Slate({
           worldRect: worldRect ? { x: worldRect.x, y: worldRect.y, w: worldRect.width, h: worldRect.height } : null,
           durationSec,
           quality,
-          useMP4: supportsWebCodecsMP4(),
+          useMP4,
+          isIOS,
+          recorderMimeType,
         },
       });
       onShowMessage?.("Export failed", errorMsg, "error");

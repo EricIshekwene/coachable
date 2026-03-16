@@ -1,0 +1,111 @@
+VIDEO EXPORT BUG REPORT — FOR CODEX TO FIX
+============================================
+
+PROJECT: Coachable Plays — React + Vite sports play designer
+STACK: React 19, Vite 7, react-konva, mp4-muxer (v5.2.2), @ffmpeg/ffmpeg, @ffmpeg/util
+
+There are 3 bugs to fix. All related to video export.
+
+---
+
+BUG 1: mp4-muxer crashes with invalid chunk duration
+-----------------------------------------------------
+FILE: src/utils/videoEncoder.js
+
+PROBLEM:
+The VideoEncoder output callback feeds chunks to mp4-muxer. On some browsers
+(especially Safari/iOS), EncodedVideoChunk.duration is -1, undefined, or NaN.
+mp4-muxer's addVideoChunkRaw throws:
+  "addVideoChunkRaw's fourth argument (duration) must be a non-negative real number."
+
+CURRENT ATTEMPT (not working):
+We switched from muxer.addVideoChunk(chunk, meta) to muxer.addVideoChunkRaw()
+with a fallback duration. The output callback is wrapped in try/catch. But the
+error is STILL happening — possibly because:
+- The try/catch or duration fallback logic has a bug
+- The chunk.timestamp might also be invalid (negative or NaN)
+- The output callback might be throwing before our try/catch runs
+
+WHAT NEEDS TO HAPPEN:
+- Ensure chunk.timestamp is also validated (non-negative finite number)
+- Ensure the duration fallback actually works (frameDurationMicros is in scope
+  via closure from createMP4Encoder)
+- Verify the try/catch is correctly wrapping ALL code in the output callback
+- If an error occurs in the output callback, it should set encoderError and NOT
+  throw (so it doesn't become an unhandled exception caught by window.onerror)
+
+---
+
+BUG 2: Error reporter sends hundreds of duplicate reports
+----------------------------------------------------------
+FILE: src/utils/errorReporter.js
+
+PROBLEM:
+When the video encoder output callback throws (Bug 1), it fires once PER ENCODED
+FRAME. A 30fps 10-second video = 300 frames = 300 identical error reports sent
+to the server. The global error handler (window.addEventListener("error")) fires
+for each one.
+
+CURRENT ATTEMPT (not working):
+Added a deduplication map (_dedup) that collapses identical errors within a
+10-second window (DEDUP_WINDOW_MS). The dedup key is `${component}::${action}::${errorMessage}`.
+But it's still sending hundreds of reports, meaning the dedup logic is not working.
+
+WHAT NEEDS TO HAPPEN:
+- Check that the dedup logic actually prevents the fetch() call on duplicate errors
+- The flow should be: first occurrence → send report + store in _dedup map.
+  Subsequent identical errors within 10s → increment count, do NOT call fetch().
+- Make sure the dedup key is stable (the error message text must be exactly the
+  same each time for the key to match)
+- Consider also throttling the global error handlers themselves (e.g., max 5
+  reports per 10 seconds regardless of error type)
+
+---
+
+BUG 3: iOS exports WebM instead of MP4
+----------------------------------------
+FILES: src/utils/videoEncoder.js, src/features/slate/Slate.jsx
+
+PROBLEM:
+When WebCodecs MP4 encoding fails on iOS (Bug 1), the code falls back to
+MediaRecorder which produces WebM. iOS Safari cannot play WebM files.
+We added FFmpeg WASM conversion (convertWebMToMP4) but it's not working —
+iOS still downloads .webm files.
+
+CURRENT ATTEMPT:
+- Installed @ffmpeg/ffmpeg and @ffmpeg/util
+- Added convertWebMToMP4() function in videoEncoder.js
+- Added isIOSDevice() detection
+- In Slate.jsx, after MediaRecorder produces a WebM blob, if isIOSDevice()
+  is true, we call convertWebMToMP4(blob)
+- But the conversion is either not being reached, failing silently, or the
+  isIOSDevice() check is failing
+
+WHAT NEEDS TO HAPPEN:
+- Verify isIOSDevice() correctly detects iOS Safari (check both iPhone UA
+  and iPad with "MacIntel" + maxTouchPoints > 1)
+- The FFmpeg WASM conversion might fail because:
+  * SharedArrayBuffer is not available (needs COOP/COEP headers)
+  * The ffmpeg.load() call fails to fetch the WASM binary
+  * The conversion command fails
+- If FFmpeg WASM doesn't work reliably on iOS Safari, consider alternatives:
+  * Use a different MediaRecorder mimeType on iOS (Safari supports
+    MediaRecorder with "video/mp4" on iOS 17.1+)
+  * Check MediaRecorder.isTypeSupported("video/mp4") on iOS first
+  * If MP4 MediaRecorder is available, use it directly instead of WebM
+- The resolveRecorderMimeType() function in Slate.jsx (around line 130) already
+  has candidate lists — make sure "video/mp4" candidates are tried FIRST on iOS
+
+KEY FILE LOCATIONS:
+- src/utils/videoEncoder.js — encoder, converter, device detection
+- src/utils/errorReporter.js — error dedup logic
+- src/features/slate/Slate.jsx — export flow (recordVideoExport around line 1047),
+  resolveRecorderMimeType around line 130
+- src/utils/exportPlay.js — downloadVideo function (line 136)
+
+TESTING:
+- Test on Mac Chrome: should produce MP4 via WebCodecs, no error reports
+- Test on iOS Safari: should either produce MP4 via WebCodecs, or fallback to
+  MediaRecorder MP4, or fallback to MediaRecorder WebM + FFmpeg conversion to MP4
+- Error reports page: /admin/errors — should show at most 1-2 reports per failed
+  export, not hundreds

@@ -10,7 +10,7 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 let _userId = null;
 let _sessionId = null;
 
-// Generate a unique session ID for this browser tab
+// Generate a unique session ID for this browser tab.
 try {
   _sessionId = crypto.randomUUID();
 } catch {
@@ -18,13 +18,50 @@ try {
 }
 
 /**
- * Deduplication map: errorMessage → { count, firstSentAt }.
- * Identical errors within DEDUP_WINDOW_MS are collapsed into a single report
- * with an `occurrences` count in extra data.
- * @type {Map<string, { count: number, firstSentAt: number }>}
+ * Deduplication map: stable fingerprint -> { count, firstSentAt, lastSeenAt }.
+ * Identical errors within DEDUP_WINDOW_MS are collapsed into a single report.
+ * @type {Map<string, { count: number, firstSentAt: number, lastSeenAt: number }>}
  */
 const _dedup = new Map();
-const DEDUP_WINDOW_MS = 10_000; // 10 seconds
+const DEDUP_WINDOW_MS = 10_000;
+const GLOBAL_THROTTLE_WINDOW_MS = 10_000;
+const GLOBAL_THROTTLE_MAX_REPORTS = 5;
+const _globalReportTimestamps = [];
+
+function normalizeErrorMessage(value) {
+  const normalized = String(value ?? "")
+    .replace(/^Uncaught\s+/i, "")
+    .replace(/^Unhandled(?:\s+promise)?\s+rejection:\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized || "Unknown error";
+}
+
+function buildDedupKey({ component, action, errorMessage, errorStack }) {
+  const normalizedMessage = normalizeErrorMessage(
+    errorMessage || String(errorStack || "").split("\n")[0]
+  );
+  return `${component || "unknown"}::${action || "unknown"}::${normalizedMessage}`;
+}
+
+function pruneDedupEntries(now = Date.now()) {
+  for (const [key, entry] of _dedup.entries()) {
+    if (now - entry.lastSeenAt >= DEDUP_WINDOW_MS * 2) {
+      _dedup.delete(key);
+    }
+  }
+}
+
+function shouldThrottleGlobalReport(now = Date.now()) {
+  while (_globalReportTimestamps.length && now - _globalReportTimestamps[0] >= GLOBAL_THROTTLE_WINDOW_MS) {
+    _globalReportTimestamps.shift();
+  }
+  if (_globalReportTimestamps.length >= GLOBAL_THROTTLE_MAX_REPORTS) {
+    return true;
+  }
+  _globalReportTimestamps.push(now);
+  return false;
+}
 
 /**
  * Gather device/browser info from the current environment.
@@ -41,7 +78,14 @@ function getDeviceInfo() {
       standalone: window?.matchMedia?.("(display-mode: standalone)")?.matches || false,
     };
   } catch {
-    return { platform: "unknown", screenWidth: 0, screenHeight: 0, pixelRatio: 1, isMobile: false, standalone: false };
+    return {
+      platform: "unknown",
+      screenWidth: 0,
+      screenHeight: 0,
+      pixelRatio: 1,
+      isMobile: false,
+      standalone: false,
+    };
   }
 }
 
@@ -55,33 +99,40 @@ export function setErrorReporterUserId(userId) {
 
 /**
  * Send an error report to the backend.
- * Fire-and-forget — never throws, never blocks the UI.
+ * Fire-and-forget: never throws, never blocks the UI.
  *
  * @param {Object} opts
  * @param {string} opts.errorMessage - Human-readable error description
  * @param {string} [opts.errorStack] - Stack trace if available
- * @param {string} [opts.component] - Component or module name (e.g., "videoExport", "playEditor")
- * @param {string} [opts.action] - What the user was doing (e.g., "exportVideo", "savePlay")
- * @param {Object} [opts.extra] - Any additional structured data (codec info, dimensions, etc.)
+ * @param {string} [opts.component] - Component or module name (for example "videoExport")
+ * @param {string} [opts.action] - What the user was doing (for example "exportVideo")
+ * @param {Object} [opts.extra] - Additional structured context
  */
 export function reportError({ errorMessage, errorStack, component, action, extra }) {
   try {
-    // ── Deduplication: collapse identical errors within a time window ──
-    const dedupKey = `${component}::${action}::${errorMessage}`;
+    const normalizedMessage = normalizeErrorMessage(errorMessage);
     const now = Date.now();
+
+    pruneDedupEntries(now);
+
+    const dedupKey = buildDedupKey({
+      component,
+      action,
+      errorMessage: normalizedMessage,
+      errorStack,
+    });
     const existing = _dedup.get(dedupKey);
     if (existing && now - existing.firstSentAt < DEDUP_WINDOW_MS) {
-      // Already reported this exact error recently — just count it
       existing.count += 1;
+      existing.lastSeenAt = now;
       return;
     }
-    // Start a new dedup window. Include the count of suppressed duplicates
-    // from any previous window that just expired.
+
     const occurrences = existing ? existing.count : 0;
-    _dedup.set(dedupKey, { count: 1, firstSentAt: now });
+    _dedup.set(dedupKey, { count: 1, firstSentAt: now, lastSeenAt: now });
 
     const body = {
-      errorMessage,
+      errorMessage: normalizedMessage,
       errorStack: errorStack || null,
       component: component || null,
       action: action || null,
@@ -96,22 +147,21 @@ export function reportError({ errorMessage, errorStack, component, action, extra
       sessionId: _sessionId,
     };
 
-    // Fire-and-forget POST — don't await, don't throw
     fetch(`${API_URL}/error-reports`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }).catch(() => {
-      // Silently ignore — we can't report an error about error reporting
+      // Silently ignore. Reporting failures should never recurse.
     });
   } catch {
-    // Never throw from the error reporter
+    // Never throw from the error reporter.
   }
 }
 
 /**
  * Install global error handlers (window.onerror + unhandledrejection).
- * Call once at app startup. Safe to call multiple times — only installs once.
+ * Call once at app startup. Safe to call multiple times.
  */
 let _installed = false;
 export function installGlobalErrorHandlers() {
@@ -119,8 +169,9 @@ export function installGlobalErrorHandlers() {
   _installed = true;
 
   window.addEventListener("error", (event) => {
+    if (shouldThrottleGlobalReport()) return;
     reportError({
-      errorMessage: event.message || "Unknown error",
+      errorMessage: normalizeErrorMessage(event.message),
       errorStack: event.error?.stack || `${event.filename}:${event.lineno}:${event.colno}`,
       component: "global",
       action: "uncaughtError",
@@ -128,9 +179,10 @@ export function installGlobalErrorHandlers() {
   });
 
   window.addEventListener("unhandledrejection", (event) => {
+    if (shouldThrottleGlobalReport()) return;
     const err = event.reason;
     reportError({
-      errorMessage: err?.message || String(err) || "Unhandled promise rejection",
+      errorMessage: normalizeErrorMessage(err?.message || String(err)),
       errorStack: err?.stack || null,
       component: "global",
       action: "unhandledRejection",
