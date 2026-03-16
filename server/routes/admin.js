@@ -211,6 +211,7 @@ router.post("/cleanup", requireAdmin, async (_req, res, next) => {
 function toPlatformPlayResponse(row) {
   return {
     id: row.id,
+    folderId: row.folder_id || null,
     title: row.title,
     description: row.description || "",
     sport: row.sport || null,
@@ -218,6 +219,18 @@ function toPlatformPlayResponse(row) {
     thumbnail: row.thumbnail_url || null,
     tags: row.tags || [],
     isFeatured: row.is_featured,
+    sortOrder: row.sort_order,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/** Build a canonical platform play folder response from a DB row. */
+function toPlatformFolderResponse(row) {
+  return {
+    id: row.id,
+    parentId: row.parent_id || null,
+    name: row.name,
     sortOrder: row.sort_order,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -253,13 +266,13 @@ router.get("/plays/:id", requireAdmin, async (req, res, next) => {
 // POST /admin/plays — create a platform play
 router.post("/plays", requireAdmin, async (req, res, next) => {
   try {
-    const { title, description, sport, playData, thumbnail, tags, isFeatured, sortOrder } = req.body;
+    const { title, description, sport, playData, thumbnail, tags, isFeatured, sortOrder, folderId } = req.body;
     if (!title?.trim()) return res.status(400).json({ error: "title is required" });
 
     const { rows } = await pool.query(
       `INSERT INTO platform_plays
-         (title, description, sport, play_data, thumbnail_url, tags, is_featured, sort_order)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         (title, description, sport, play_data, thumbnail_url, tags, is_featured, sort_order, folder_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
       [
         title.trim(),
@@ -270,6 +283,7 @@ router.post("/plays", requireAdmin, async (req, res, next) => {
         tags || [],
         isFeatured ?? false,
         sortOrder ?? 0,
+        folderId || null,
       ]
     );
     res.status(201).json({ play: toPlatformPlayResponse(rows[0]) });
@@ -281,7 +295,7 @@ router.post("/plays", requireAdmin, async (req, res, next) => {
 // PATCH /admin/plays/:id — update a platform play
 router.patch("/plays/:id", requireAdmin, async (req, res, next) => {
   try {
-    const { title, description, sport, playData, thumbnail, tags, isFeatured, sortOrder } = req.body;
+    const { title, description, sport, playData, thumbnail, tags, isFeatured, sortOrder, folderId } = req.body;
 
     const setClauses = ["updated_at = now()"];
     const values = [];
@@ -295,6 +309,7 @@ router.patch("/plays/:id", requireAdmin, async (req, res, next) => {
     if (tags !== undefined) { setClauses.push(`tags = $${idx++}`); values.push(tags); }
     if (isFeatured !== undefined) { setClauses.push(`is_featured = $${idx++}`); values.push(Boolean(isFeatured)); }
     if (sortOrder !== undefined) { setClauses.push(`sort_order = $${idx++}`); values.push(sortOrder); }
+    if (folderId !== undefined) { setClauses.push(`folder_id = $${idx++}`); values.push(folderId || null); }
 
     values.push(req.params.id);
     const { rows } = await pool.query(
@@ -312,6 +327,74 @@ router.patch("/plays/:id", requireAdmin, async (req, res, next) => {
 router.delete("/plays/:id", requireAdmin, async (req, res, next) => {
   try {
     await pool.query("DELETE FROM platform_plays WHERE id = $1", [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Platform play folders ────────────────────────────────────────────────────
+
+// GET /admin/platform-folders — list all platform play folders
+router.get("/platform-folders", requireAdmin, async (_req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT * FROM platform_play_folders ORDER BY sort_order ASC, name ASC"
+    );
+    res.json({ folders: rows.map(toPlatformFolderResponse) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /admin/platform-folders — create a platform play folder
+router.post("/platform-folders", requireAdmin, async (req, res, next) => {
+  try {
+    const { name, parentId, sortOrder } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: "name is required" });
+    const { rows } = await pool.query(
+      `INSERT INTO platform_play_folders (name, parent_id, sort_order)
+       VALUES ($1, $2, $3) RETURNING *`,
+      [name.trim(), parentId || null, sortOrder ?? 0]
+    );
+    res.status(201).json({ folder: toPlatformFolderResponse(rows[0]) });
+  } catch (err) {
+    if (err.code === "23505") {
+      return res.status(409).json({ error: "A folder with that name already exists here" });
+    }
+    next(err);
+  }
+});
+
+// PATCH /admin/platform-folders/:id — rename or reorder a folder
+router.patch("/platform-folders/:id", requireAdmin, async (req, res, next) => {
+  try {
+    const { name, sortOrder, parentId } = req.body;
+    const setClauses = ["updated_at = now()"];
+    const values = [];
+    let idx = 1;
+    if (name !== undefined) { setClauses.push(`name = $${idx++}`); values.push(name.trim()); }
+    if (sortOrder !== undefined) { setClauses.push(`sort_order = $${idx++}`); values.push(sortOrder); }
+    if (parentId !== undefined) { setClauses.push(`parent_id = $${idx++}`); values.push(parentId || null); }
+    values.push(req.params.id);
+    const { rows } = await pool.query(
+      `UPDATE platform_play_folders SET ${setClauses.join(", ")} WHERE id = $${idx} RETURNING *`,
+      values
+    );
+    if (!rows.length) return res.status(404).json({ error: "Folder not found" });
+    res.json({ folder: toPlatformFolderResponse(rows[0]) });
+  } catch (err) {
+    if (err.code === "23505") {
+      return res.status(409).json({ error: "A folder with that name already exists here" });
+    }
+    next(err);
+  }
+});
+
+// DELETE /admin/platform-folders/:id — delete a folder (plays become un-foldered)
+router.delete("/platform-folders/:id", requireAdmin, async (req, res, next) => {
+  try {
+    await pool.query("DELETE FROM platform_play_folders WHERE id = $1", [req.params.id]);
     res.json({ ok: true });
   } catch (err) {
     next(err);

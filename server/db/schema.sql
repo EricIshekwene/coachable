@@ -306,8 +306,22 @@ CREATE INDEX IF NOT EXISTS error_reports_component_idx ON error_reports(componen
 -- 6. Platform plays (admin-curated, not team-scoped)
 -- ============================================================
 
+CREATE TABLE IF NOT EXISTS platform_play_folders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  parent_id UUID REFERENCES platform_play_folders(id) ON DELETE SET NULL,
+  name TEXT NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (parent_id, name)
+);
+
+CREATE INDEX IF NOT EXISTS platform_play_folders_parent_idx
+  ON platform_play_folders(parent_id);
+
 CREATE TABLE IF NOT EXISTS platform_plays (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  folder_id UUID REFERENCES platform_play_folders(id) ON DELETE SET NULL,
   title TEXT NOT NULL,
   description TEXT NOT NULL DEFAULT '',
   sport TEXT,
@@ -320,5 +334,14 @@ CREATE TABLE IF NOT EXISTS platform_plays (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Safe migration: add folder_id to existing platform_plays table
+DO $$ BEGIN
+  ALTER TABLE platform_plays ADD COLUMN folder_id UUID REFERENCES platform_play_folders(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
 CREATE INDEX IF NOT EXISTS platform_plays_featured_idx
   ON platform_plays(is_featured, sort_order);
+
+CREATE INDEX IF NOT EXISTS platform_plays_folder_idx
+  ON platform_plays(folder_id);

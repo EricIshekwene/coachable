@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -10,6 +10,7 @@ import {
   FiUsers,
   FiXCircle,
 } from "react-icons/fi";
+import ConfirmModal from "../../components/subcomponents/ConfirmModal";
 
 export default function Profile() {
   const {
@@ -37,6 +38,27 @@ export default function Profile() {
   const [showJoinSuccess, setShowJoinSuccess] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showLeftTeam, setShowLeftTeam] = useState(false);
+
+  const [confirmModal, setConfirmModal] = useState({ open: false });
+  const confirmResolveRef = useRef(null);
+
+  /** Open a custom confirmation modal and return a promise resolving to true/false. */
+  const openConfirm = useCallback((opts) => {
+    return new Promise((resolve) => {
+      confirmResolveRef.current = resolve;
+      setConfirmModal({ open: true, ...opts });
+    });
+  }, []);
+
+  const handleConfirmOk = () => {
+    setConfirmModal({ open: false });
+    confirmResolveRef.current?.(true);
+  };
+
+  const handleConfirmCancel = () => {
+    setConfirmModal({ open: false });
+    confirmResolveRef.current?.(false);
+  };
 
   const owner = useMemo(
     () => teamMembers.find((member) => member.id === user?.ownerId),
@@ -84,14 +106,14 @@ export default function Profile() {
     }
   };
 
-  const handleTransferOwnership = () => {
+  const handleTransferOwnership = async () => {
     if (!selectedOwnerId) return;
 
     const nextOwner = transferCandidates.find((member) => member.id === selectedOwnerId);
     if (!nextOwner) return;
 
-    const confirmed = window.confirm(`Transfer ownership to ${nextOwner.name}?`);
-    if (!confirmed) return;
+    const ok = await openConfirm({ message: `Transfer ownership to ${nextOwner.name}?`, confirmLabel: "Transfer" });
+    if (!ok) return;
 
     const didTransfer = transferOwnership(selectedOwnerId);
     if (!didTransfer) return;
@@ -102,6 +124,15 @@ export default function Profile() {
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-8 md:px-10 md:py-12">
+      <ConfirmModal
+        open={confirmModal.open}
+        message={confirmModal.message}
+        subtitle={confirmModal.subtitle}
+        confirmLabel={confirmModal.confirmLabel}
+        danger={confirmModal.danger}
+        onConfirm={handleConfirmOk}
+        onCancel={handleConfirmCancel}
+      />
       <h1 className="font-Manrope text-xl font-bold tracking-tight">Profile</h1>
 
       <div className="mt-8 flex items-center gap-4">

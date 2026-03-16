@@ -4,9 +4,10 @@
  *
  * @module AdminErrors
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import logo from "../assets/logos/full_Coachable_logo.png";
+import ConfirmModal from "../components/subcomponents/ConfirmModal";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -111,6 +112,27 @@ export default function AdminErrors() {
   const [copied, setCopied] = useState(null); // "all" | report id | null
   const pageSize = 30;
 
+  const [confirmModal, setConfirmModal] = useState({ open: false });
+  const confirmResolveRef = useRef(null);
+
+  /** Open a custom confirmation modal and return a promise resolving to true/false. */
+  const openConfirm = useCallback((opts) => {
+    return new Promise((resolve) => {
+      confirmResolveRef.current = resolve;
+      setConfirmModal({ open: true, ...opts });
+    });
+  }, []);
+
+  const handleConfirmOk = () => {
+    setConfirmModal({ open: false });
+    confirmResolveRef.current?.(true);
+  };
+
+  const handleConfirmCancel = () => {
+    setConfirmModal({ open: false });
+    confirmResolveRef.current?.(false);
+  };
+
   const authed = Boolean(session);
 
   const fetchReports = useCallback(async () => {
@@ -155,7 +177,8 @@ export default function AdminErrors() {
   };
 
   const handleClearAll = async () => {
-    if (!window.confirm("Clear ALL error reports? This cannot be undone.")) return;
+    const ok = await openConfirm({ message: "Clear ALL error reports?", subtitle: "This cannot be undone.", confirmLabel: "Clear All", danger: true });
+    if (!ok) return;
     try {
       await fetch(`${API_URL}/error-reports`, {
         method: "DELETE",
@@ -204,6 +227,15 @@ export default function AdminErrors() {
 
   return (
     <div className="min-h-screen bg-BrandBlack font-DmSans text-white">
+      <ConfirmModal
+        open={confirmModal.open}
+        message={confirmModal.message}
+        subtitle={confirmModal.subtitle}
+        confirmLabel={confirmModal.confirmLabel}
+        danger={confirmModal.danger}
+        onConfirm={handleConfirmOk}
+        onCancel={handleConfirmCancel}
+      />
       {/* Header */}
       <div className="flex items-center justify-between border-b border-BrandGray2/20 px-6 py-4">
         <div className="flex items-center gap-3">

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { apiFetch } from "../utils/api";
 import logo from "../assets/logos/full_Coachable_logo.png";
+import ConfirmModal from "../components/subcomponents/ConfirmModal";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -127,6 +128,32 @@ export default function Admin() {
   const [expandedError, setExpandedError] = useState(null);
   const [copied, setCopied] = useState(null);
 
+  // ── Confirm modal ──
+  const [confirmModal, setConfirmModal] = useState({ open: false });
+  const confirmResolveRef = useRef(null);
+
+  /**
+   * Open a confirmation modal and return a promise that resolves to
+   * true (confirmed) or false (cancelled).
+   * @param {Object} opts - Modal options forwarded to ConfirmModal
+   */
+  const openConfirm = useCallback((opts) => {
+    return new Promise((resolve) => {
+      confirmResolveRef.current = resolve;
+      setConfirmModal({ open: true, ...opts });
+    });
+  }, []);
+
+  const handleConfirmOk = () => {
+    setConfirmModal({ open: false });
+    confirmResolveRef.current?.(true);
+  };
+
+  const handleConfirmCancel = () => {
+    setConfirmModal({ open: false });
+    confirmResolveRef.current?.(false);
+  };
+
   // ── Admin fetch helper ──
   const adminFetch = useCallback(
     async (path, options = {}) => {
@@ -190,7 +217,8 @@ export default function Admin() {
   }, [adminFetch]);
 
   const handleDeleteUser = async (id, name) => {
-    if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    const ok = await openConfirm({ message: `Delete "${name}"?`, subtitle: "This cannot be undone.", confirmLabel: "Delete", danger: true });
+    if (!ok) return;
     try {
       await adminFetch(`/admin/users/${id}`, { method: "DELETE" });
       setUsers((prev) => prev.filter((u) => u.id !== id));
@@ -216,8 +244,10 @@ export default function Admin() {
   };
 
   const handleDeleteAll = async () => {
-    if (!window.confirm("DELETE ALL USERS? This cannot be undone!")) return;
-    if (!window.confirm("Are you absolutely sure? ALL accounts will be permanently deleted.")) return;
+    const ok1 = await openConfirm({ message: "Delete ALL users?", subtitle: "This cannot be undone!", confirmLabel: "Delete All", danger: true });
+    if (!ok1) return;
+    const ok2 = await openConfirm({ message: "Are you absolutely sure?", subtitle: "ALL accounts will be permanently deleted.", confirmLabel: "Yes, Delete All", danger: true });
+    if (!ok2) return;
     try {
       await adminFetch("/admin/users", { method: "DELETE" });
       setUsers([]);
@@ -241,7 +271,8 @@ export default function Admin() {
   }, [adminFetch]);
 
   const handleDeletePlatformPlay = async (id, title) => {
-    if (!window.confirm(`Delete play "${title}"? This cannot be undone.`)) return;
+    const ok = await openConfirm({ message: `Delete play "${title}"?`, subtitle: "This cannot be undone.", confirmLabel: "Delete", danger: true });
+    if (!ok) return;
     try {
       await adminFetch(`/admin/plays/${id}`, { method: "DELETE" });
       setPlatformPlays((prev) => prev.filter((p) => p.id !== id));
@@ -353,7 +384,8 @@ export default function Admin() {
   };
 
   const handleClearErrors = async () => {
-    if (!window.confirm("Clear ALL error reports? This cannot be undone.")) return;
+    const ok = await openConfirm({ message: "Clear ALL error reports?", subtitle: "This cannot be undone.", confirmLabel: "Clear All", danger: true });
+    if (!ok) return;
     try {
       await fetch(`${API_URL}/error-reports`, {
         method: "DELETE",
@@ -451,6 +483,15 @@ export default function Admin() {
   // ──────────────────────────────────────────────────────────────────────────
   return (
     <div className="h-screen overflow-y-auto bg-[#13151a] font-DmSans text-white">
+      <ConfirmModal
+        open={confirmModal.open}
+        message={confirmModal.message}
+        subtitle={confirmModal.subtitle}
+        confirmLabel={confirmModal.confirmLabel}
+        danger={confirmModal.danger}
+        onConfirm={handleConfirmOk}
+        onCancel={handleConfirmCancel}
+      />
       {/* ── Sticky Header ── */}
       <div className="sticky top-0 z-20 border-b border-white/6 bg-[#13151a]/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">

@@ -32,6 +32,7 @@ import MobileViewOnlyGate from "./components/MobileViewOnlyGate";
 import SharedPlay from "./pages/SharedPlay";
 import SharedPlayView from "./pages/SharedPlayView";
 import SharedFolder from "./pages/SharedFolder";
+import PlatformPlayView from "./pages/PlatformPlayView";
 
 function SlateRoot({ adminMode = false }) {
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
@@ -111,11 +112,13 @@ function AppRoutes() {
     <Routes>
       {/* Public */}
       <Route path="/" element={<LandingGate />} />
+      <Route path="/home" element={<Landing />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/login" element={<Login />} />
       <Route path="/admin" element={<Admin />} />
       <Route path="/admin/tests" element={<AdminTests />} />
       <Route path="/admin/errors" element={<AdminErrors />} />
+      <Route path="/platform-play/:playId" element={<PlatformPlayView />} />
       <Route path="/shared/:token" element={<SharedPlay />} />
       <Route path="/shared/:token/view" element={<SharedPlayView />} />
       <Route path="/shared/folder/:token" element={<SharedFolder />} />
