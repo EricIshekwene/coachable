@@ -205,6 +205,121 @@ router.post("/cleanup", requireAdmin, async (_req, res, next) => {
   }
 });
 
+// ── Platform plays ──────────────────────────────────────────────────────────
+
+/** Build a canonical platform play response from a DB row. */
+function toPlatformPlayResponse(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description || "",
+    sport: row.sport || null,
+    playData: row.play_data || null,
+    thumbnail: row.thumbnail_url || null,
+    tags: row.tags || [],
+    isFeatured: row.is_featured,
+    sortOrder: row.sort_order,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+// GET /admin/plays — list all platform plays
+router.get("/plays", requireAdmin, async (_req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT * FROM platform_plays ORDER BY sort_order ASC, created_at DESC"
+    );
+    res.json({ plays: rows.map(toPlatformPlayResponse) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /admin/plays/:id — get a single platform play (for loading in editor)
+router.get("/plays/:id", requireAdmin, async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT * FROM platform_plays WHERE id = $1",
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Play not found" });
+    res.json({ play: toPlatformPlayResponse(rows[0]) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /admin/plays — create a platform play
+router.post("/plays", requireAdmin, async (req, res, next) => {
+  try {
+    const { title, description, sport, playData, thumbnail, tags, isFeatured, sortOrder } = req.body;
+    if (!title?.trim()) return res.status(400).json({ error: "title is required" });
+
+    const { rows } = await pool.query(
+      `INSERT INTO platform_plays
+         (title, description, sport, play_data, thumbnail_url, tags, is_featured, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING *`,
+      [
+        title.trim(),
+        description?.trim() || "",
+        sport?.trim() || null,
+        playData || null,
+        thumbnail || null,
+        tags || [],
+        isFeatured ?? false,
+        sortOrder ?? 0,
+      ]
+    );
+    res.status(201).json({ play: toPlatformPlayResponse(rows[0]) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /admin/plays/:id — update a platform play
+router.patch("/plays/:id", requireAdmin, async (req, res, next) => {
+  try {
+    const { title, description, sport, playData, thumbnail, tags, isFeatured, sortOrder } = req.body;
+
+    const setClauses = ["updated_at = now()"];
+    const values = [];
+    let idx = 1;
+
+    if (title !== undefined) { setClauses.push(`title = $${idx++}`); values.push(title.trim()); }
+    if (description !== undefined) { setClauses.push(`description = $${idx++}`); values.push(description.trim()); }
+    if (sport !== undefined) { setClauses.push(`sport = $${idx++}`); values.push(sport?.trim() || null); }
+    if (playData !== undefined) { setClauses.push(`play_data = $${idx++}`); values.push(playData); }
+    if (thumbnail !== undefined) { setClauses.push(`thumbnail_url = $${idx++}`); values.push(thumbnail || null); }
+    if (tags !== undefined) { setClauses.push(`tags = $${idx++}`); values.push(tags); }
+    if (isFeatured !== undefined) { setClauses.push(`is_featured = $${idx++}`); values.push(Boolean(isFeatured)); }
+    if (sortOrder !== undefined) { setClauses.push(`sort_order = $${idx++}`); values.push(sortOrder); }
+
+    values.push(req.params.id);
+    const { rows } = await pool.query(
+      `UPDATE platform_plays SET ${setClauses.join(", ")} WHERE id = $${idx} RETURNING *`,
+      values
+    );
+    if (!rows.length) return res.status(404).json({ error: "Play not found" });
+    res.json({ play: toPlatformPlayResponse(rows[0]) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /admin/plays/:id — delete a platform play
+router.delete("/plays/:id", requireAdmin, async (req, res, next) => {
+  try {
+    await pool.query("DELETE FROM platform_plays WHERE id = $1", [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Cleanup ─────────────────────────────────────────────────────────────────
+
 // Cleanup helper — exported for use by the auto-cleanup scheduler
 export async function cleanupStaleAccounts() {
   const { rows } = await pool.query(

@@ -301,3 +301,24 @@ CREATE TABLE IF NOT EXISTS error_reports (
 
 CREATE INDEX IF NOT EXISTS error_reports_created_at_idx ON error_reports(created_at DESC);
 CREATE INDEX IF NOT EXISTS error_reports_component_idx ON error_reports(component);
+
+-- ============================================================
+-- 6. Platform plays (admin-curated, not team-scoped)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS platform_plays (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  sport TEXT,
+  play_data JSONB,
+  thumbnail_url TEXT,
+  tags TEXT[] DEFAULT '{}',
+  is_featured BOOLEAN NOT NULL DEFAULT false,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS platform_plays_featured_idx
+  ON platform_plays(is_featured, sort_order);

@@ -36,6 +36,7 @@ export default function WideSidebarRoot({
     customPrefabs,
     playName,
     onCollapse,
+    onNavigateHome,
 }) {
     const [selectedTool, setSelectedTool] = useState("select");
     const [selectToolType, setSelectToolType] = useState("select");
@@ -174,9 +175,15 @@ export default function WideSidebarRoot({
         >
             {/* Logo + collapse button */}
             <div className="flex items-center justify-between px-1 mb-1">
-                <Link to="/app" className="inline-flex">
-                    <img src={coachableLogo} alt="Coachable" className="h-5 sm:h-6 w-auto" />
-                </Link>
+                {onNavigateHome ? (
+                    <button type="button" onClick={onNavigateHome} className="inline-flex">
+                        <img src={coachableLogo} alt="Coachable" className="h-5 sm:h-6 w-auto" />
+                    </button>
+                ) : (
+                    <Link to="/app" className="inline-flex">
+                        <img src={coachableLogo} alt="Coachable" className="h-5 sm:h-6 w-auto" />
+                    </Link>
+                )}
                 <button
                     type="button"
                     onClick={onCollapse}

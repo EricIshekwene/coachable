@@ -19,6 +19,7 @@ export default function WideSidebar({
     customPrefabs,
     playName,
     onCollapse,
+    onNavigateHome,
 }) {
     return (
         <WideSidebarRoot
@@ -40,6 +41,7 @@ export default function WideSidebar({
             customPrefabs={customPrefabs}
             playName={playName}
             onCollapse={onCollapse}
+            onNavigateHome={onNavigateHome}
         />
     );
 }

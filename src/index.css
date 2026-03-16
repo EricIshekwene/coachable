@@ -44,6 +44,15 @@ html, body {
     --color-BrandText: #1a1a1a;
 }
 
+/* Slate-scoped light theme — applies when data-slate-theme="light" on the slate root */
+[data-slate-theme="light"] {
+    --color-BrandBlack: #f8f9fa;
+    --color-BrandBlack2: #e9ecef;
+    --color-BrandGray: #6b7280;
+    --color-BrandGray2: #9ca3af;
+    --color-BrandText: #1a1a1a;
+}
+
 @font-face {
     font-family: 'Manrope';
     src: url('/src/assets/fonts/Manrope-Regular.ttf') format('truetype');

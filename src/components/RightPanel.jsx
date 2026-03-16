@@ -1,4 +1,5 @@
 ﻿import React from "react";
+import { FiSun, FiMoon } from "react-icons/fi";
 import PlayNameEditor from "./rightPanel/PlayNameEditor";
 import FieldSettingsSection from "./rightPanel/FieldSettingsSection";
 import DrawingStyleSection from "./rightPanel/DrawingStyleSection";
@@ -97,6 +98,9 @@ export default function RightPanel({
   onResumeRecording,
   onClearPlayerRecording,
   onClearAllRecordings,
+  // Theme toggle
+  slateTheme = "dark",
+  onSlateThemeToggle,
 }) {
   return (
     <aside
@@ -213,6 +217,32 @@ export default function RightPanel({
             />
           ) : (
             <AllPlayersSection value={allPlayersDisplay} onChange={onAllPlayersDisplayChange} />
+          )}
+
+          {onSlateThemeToggle && (
+            <button
+              onClick={onSlateThemeToggle}
+              className="flex items-center justify-between w-full rounded-md px-2 py-1.5 text-xs text-BrandGray hover:bg-BrandBlack2 hover:text-BrandText transition-colors"
+              title={slateTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              <span className="font-medium">{slateTheme === "dark" ? "Dark" : "Light"}</span>
+              <div className="relative flex items-center">
+                <div
+                  className={`w-8 h-4 rounded-full transition-colors duration-200 ${
+                    slateTheme === "light" ? "bg-BrandOrange" : "bg-BrandGray2"
+                  }`}
+                >
+                  <div
+                    className="absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all duration-200"
+                    style={{ left: slateTheme === "light" ? "17px" : "2px" }}
+                  />
+                </div>
+                {slateTheme === "light"
+                  ? <FiSun className="ml-1.5 text-BrandOrange" size={11} />
+                  : <FiMoon className="ml-1.5 text-BrandGray" size={11} />
+                }
+              </div>
+            </button>
           )}
 
           <AdvancedSettingsButton isOpen={advancedSettingsOpen} onOpen={onOpenAdvancedSettings} />

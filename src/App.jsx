@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { installGlobalErrorHandlers } from "./utils/errorReporter";
 import "./index.css";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
@@ -16,6 +16,8 @@ import VerifyEmail from "./pages/VerifyEmail";
 import Admin from "./pages/Admin";
 import AdminTests from "./pages/AdminTests";
 import AdminErrors from "./pages/AdminErrors";
+import AdminPlayEditPage from "./pages/AdminPlayEditPage";
+import AdminPlaysPage from "./pages/AdminPlaysPage";
 import AppLayout from "./layouts/AppLayout";
 import Plays from "./pages/app/Plays";
 import PlayNew from "./pages/app/PlayNew";
@@ -33,9 +35,15 @@ import SharedFolder from "./pages/SharedFolder";
 
 function SlateRoot({ adminMode = false }) {
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
-  useThemeColor("#121212");
+  const [slateTheme, setSlateTheme] = useState("dark");
+  const handleSlateThemeToggle = () => setSlateTheme(t => t === "dark" ? "light" : "dark");
+  useThemeColor(slateTheme === "light" ? "#f8f9fa" : "#121212");
   return (
-    <div className="w-full bg-BrandBlack flex flex-row justify-between relative overflow-hidden" style={{ height: "100dvh" }}>
+    <div
+      className="w-full bg-BrandBlack flex flex-row justify-between relative overflow-hidden"
+      style={{ height: "100dvh" }}
+      data-slate-theme={slateTheme}
+    >
       <MessagePopup
         message={messagePopup.message}
         subtitle={messagePopup.subtitle}
@@ -45,7 +53,12 @@ function SlateRoot({ adminMode = false }) {
         onClose={hideMessage}
       />
       <MobileViewOnlyGate>
-        <Slate onShowMessage={showMessage} adminMode={adminMode} />
+        <Slate
+          onShowMessage={showMessage}
+          adminMode={adminMode}
+          slateTheme={slateTheme}
+          onSlateThemeToggle={handleSlateThemeToggle}
+        />
       </MobileViewOnlyGate>
     </div>
   );
@@ -58,7 +71,7 @@ function RequireAuth({ children }) {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-BrandBlack">
-        <div className="h-10 w-10 rounded-full border-[3px] border-[#FF7A18]/30 border-t-[#FF7A18] animate-spin" />
+        <div className="h-10 w-10 rounded-full border-[3px] border-BrandOrange/30 border-t-BrandOrange animate-spin" />
       </div>
     );
   }
@@ -82,7 +95,7 @@ function LandingGate() {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-BrandBlack">
-        <div className="h-10 w-10 rounded-full border-[3px] border-[#FF7A18]/30 border-t-[#FF7A18] animate-spin" />
+        <div className="h-10 w-10 rounded-full border-[3px] border-BrandOrange/30 border-t-BrandOrange animate-spin" />
       </div>
     );
   }
@@ -113,6 +126,8 @@ function AppRoutes() {
       {/* Standalone slate editor (no auth required) */}
       <Route path="/slate" element={<SlateRoot />} />
       <Route path="/admin/slate" element={<SlateRoot adminMode />} />
+      <Route path="/admin/app" element={<AdminPlaysPage />} />
+      <Route path="/admin/plays/:playId/edit" element={<AdminPlayEditPage />} />
 
       {/* Full-screen play editor (outside AppLayout — no nav chrome) */}
       <Route path="/app/plays/:playId/edit" element={<RequireAuth><RequireOnboarded><PlayEditPage /></RequireOnboarded></RequireAuth>} />
