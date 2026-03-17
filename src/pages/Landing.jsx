@@ -62,7 +62,7 @@ export default function Landing() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-BrandBlack text-white font-DmSans">
+    <div className="bg-BrandBlack text-white font-DmSans hide-scroll" style={{ height: "100dvh", overflowY: "auto" }}>
       {/* Nav */}
       <nav className="flex items-center px-6 py-4 md:px-12 lg:px-20">
         {/* Left: Logo */}
