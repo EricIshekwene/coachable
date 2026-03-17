@@ -67,7 +67,7 @@ export default function Landing() {
       <nav className="flex items-center px-6 py-4 md:px-12 lg:px-20">
         {/* Left: Logo */}
         <div className="flex flex-1 items-center">
-          <img src={logo} alt="Coachable" className="h-10 md:h-12" />
+          <img src={logo} alt="Coachable" className="h-7 md:h-8" />
         </div>
 
         {/* Center nav links */}
