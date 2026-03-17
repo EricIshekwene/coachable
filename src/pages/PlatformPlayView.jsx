@@ -62,7 +62,8 @@ export default function PlatformPlayView() {
 
   return (
     <div
-      className={`min-h-screen font-DmSans ${isLight ? "bg-white text-gray-900" : "bg-[#121212] text-white"}`}
+      className={`hide-scroll font-DmSans ${isLight ? "bg-white text-gray-900" : "bg-BrandBlack text-white"}`}
+      style={{ height: "100dvh", overflowY: "auto" }}
     >
       {/* Header */}
       <div className={`border-b ${borderColor} px-6 py-4`}>

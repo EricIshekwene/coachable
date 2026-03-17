@@ -226,7 +226,7 @@ export default function AdminErrors() {
   const totalPages = Math.ceil(total / pageSize);
 
   return (
-    <div className="min-h-screen bg-BrandBlack font-DmSans text-white">
+    <div className="hide-scroll bg-BrandBlack font-DmSans text-white" style={{ height: "100dvh", overflowY: "auto" }}>
       <ConfirmModal
         open={confirmModal.open}
         message={confirmModal.message}

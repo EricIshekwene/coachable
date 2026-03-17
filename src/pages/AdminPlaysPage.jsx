@@ -482,7 +482,7 @@ export default function AdminPlaysPage() {
   const currentFolder = folders.find((f) => f.id === currentFolderId);
 
   return (
-    <div className="min-h-screen bg-[#13151a] font-DmSans text-white">
+    <div className="hide-scroll bg-[#13151a] font-DmSans text-white" style={{ height: "100dvh", overflowY: "auto" }}>
       {/* Header */}
       <div className="sticky top-0 z-20 border-b border-white/6 bg-[#13151a]/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-6 py-3.5">
