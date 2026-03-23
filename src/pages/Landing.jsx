@@ -7,10 +7,8 @@ import { createPlay } from "../utils/apiPlays";
 
 // Local photography assets
 import filmSessionLong from "../assets/pictures/film_session_long.png";
-import rugbyCoachIpadLong from "../assets/pictures/Rugby_coach_holding_ipad_long.png";
 import coachStudyingLong from "../assets/pictures/coach_studying_long.png";
 import coachesTogetherLong from "../assets/pictures/coaches_together_long.png";
-import sportsHuddleLong from "../assets/pictures/sports_huddle_long.png";
 import oldWhiteboardLong from "../assets/pictures/old_whiteboard_long.png";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -22,10 +20,9 @@ const RESOURCES_ITEMS = [
 ];
 
 const STATS = [
-  { value: "50K+", label: "Coaches Active" },
-  { value: "1.2M", label: "Plays Designed" },
   { value: "98%", label: "Team Retention" },
-  { value: "15+", label: "Sports Supported" },
+  { value: "12+", label: "Team Sports Supported" },
+  { value: "3+", label: "Hours of Practice Saved a Week" },
 ];
 
 /**
@@ -203,7 +200,29 @@ export default function Landing() {
                 See it in action
               </Link>
             </div>
+
           </div>
+        </div>
+      </section>
+
+      {/* ── Trusted By ── */}
+      <section className="py-14 bg-BrandBlack border-y border-BrandGray2/10">
+        <div className="max-w-5xl mx-auto px-6 md:px-12">
+          <p className="text-center text-sm uppercase tracking-widest font-semibold text-BrandGray mb-10">
+            Trusted by university programs and private coaches alike
+          </p>
+          {/* Schools — force single line, scroll on very small screens */}
+          <div className="flex items-center justify-center gap-8 overflow-x-auto hide-scroll pb-1">
+            {["Ohio State", "Penn State", "Queens", "Principia", "Belmont Abbey"].map((school, i) => (
+              <span key={school} className="flex items-center gap-8 shrink-0">
+                <span className="font-Manrope text-2xl font-bold text-white hover:text-BrandOrange transition-colors whitespace-nowrap">
+                  {school}
+                </span>
+                {i < 4 && <span className="w-1.5 h-1.5 rounded-full bg-BrandOrange/50 shrink-0" />}
+              </span>
+            ))}
+          </div>
+          <p className="text-center mt-6 font-Manrope text-2xl font-bold text-BrandGray">& more</p>
         </div>
       </section>
 
@@ -219,16 +238,42 @@ export default function Landing() {
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
 
-            {/* Visualize — large landscape card */}
-            <div className="md:col-span-8 group relative overflow-hidden rounded-2xl min-h-95 flex flex-col justify-end">
-              <img
-                src={rugbyCoachIpadLong}
-                alt="Coach designing plays on tablet"
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-linear-to-t from-BrandBlack via-BrandBlack/50 to-transparent" />
-              <div className="absolute inset-0 bg-linear-to-r from-BrandBlack/40 to-transparent" />
-              <div className="relative z-10 p-8">
+            {/* Visualize — large landscape card, dark styled */}
+            <div className="md:col-span-8 group relative overflow-hidden rounded-2xl min-h-95 flex flex-col justify-between bg-BrandBlack border border-BrandGray2/10">
+              {/* Shine sweep */}
+              <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-white/3 blur-2xl pointer-events-none" />
+              {/* Orange glow */}
+              <div className="absolute -bottom-24 -left-16 w-72 h-72 rounded-full bg-BrandOrange/8 blur-3xl pointer-events-none" />
+
+              {/* Mock canvas preview */}
+              <div className="relative z-10 flex-1 p-8 flex items-center justify-center">
+                <div className="w-full max-w-xs aspect-video rounded-xl border border-BrandGray2/30 bg-BrandBlack/60 flex items-center justify-center relative overflow-hidden shadow-2xl">
+                  {/* Field lines suggestion */}
+                  <div className="absolute inset-0 opacity-20">
+                    <div className="absolute top-1/2 left-0 right-0 h-px bg-BrandGray2" />
+                    <div className="absolute top-0 bottom-0 left-1/2 w-px bg-BrandGray2" />
+                    <div className="absolute top-1/2 left-1/2 w-16 h-16 rounded-full border border-BrandGray2 -translate-x-1/2 -translate-y-1/2" />
+                  </div>
+                  {/* Player dots */}
+                  <div className="absolute top-1/3 left-1/4 w-3 h-3 rounded-full bg-BrandOrange shadow-lg shadow-BrandOrange/40" />
+                  <div className="absolute top-1/2 left-1/3 w-3 h-3 rounded-full bg-BrandOrange shadow-lg shadow-BrandOrange/40" />
+                  <div className="absolute top-2/3 left-1/4 w-3 h-3 rounded-full bg-BrandOrange shadow-lg shadow-BrandOrange/40" />
+                  <div className="absolute top-1/3 left-2/3 w-3 h-3 rounded-full bg-white/60" />
+                  <div className="absolute top-1/2 left-3/4 w-3 h-3 rounded-full bg-white/60" />
+                  <div className="absolute top-2/3 left-2/3 w-3 h-3 rounded-full bg-white/60" />
+                  {/* Arrow suggestion */}
+                  <svg className="absolute inset-0 w-full h-full opacity-40" viewBox="0 0 200 120">
+                    <path d="M 50 40 Q 100 60 140 40" stroke="#FF7A18" strokeWidth="1.5" fill="none" strokeDasharray="4 2" markerEnd="url(#arrowhead)" />
+                    <defs>
+                      <marker id="arrowhead" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+                        <path d="M 0 0 L 6 3 L 0 6 z" fill="#FF7A18" />
+                      </marker>
+                    </defs>
+                  </svg>
+                </div>
+              </div>
+
+              <div className="relative z-10 p-8 pt-0">
                 <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-lg bg-BrandOrange/20">
                   <FiLayers className="text-BrandOrange text-lg" />
                 </div>
@@ -263,7 +308,7 @@ export default function Landing() {
               <img
                 src={coachesTogetherLong}
                 alt="Coaching staff collaborating"
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                className="absolute inset-0 w-full h-full object-cover object-right transition-transform duration-700 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-linear-to-t from-BrandBlack via-BrandBlack/60 to-BrandBlack/20" />
               <div className="relative z-10 p-8 flex flex-col h-full justify-end">
@@ -277,16 +322,43 @@ export default function Landing() {
               </div>
             </div>
 
-            {/* Share — large landscape card */}
-            <div className="md:col-span-8 group relative overflow-hidden rounded-2xl min-h-95 flex flex-col justify-end">
-              <img
-                src={sportsHuddleLong}
-                alt="Team huddle reviewing plays"
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-linear-to-t from-BrandBlack via-BrandBlack/50 to-transparent" />
-              <div className="absolute inset-0 bg-linear-to-r from-BrandBlack/30 to-transparent" />
-              <div className="relative z-10 p-8">
+            {/* Share — large landscape card, dark styled */}
+            <div className="md:col-span-8 group relative overflow-hidden rounded-2xl min-h-95 flex flex-col justify-between bg-BrandBlack border border-BrandGray2/10">
+              {/* Shine sweep */}
+              <div className="absolute -top-32 right-0 w-96 h-96 rounded-full bg-white/3 blur-2xl pointer-events-none" />
+              {/* Orange glow */}
+              <div className="absolute -bottom-16 right-8 w-72 h-72 rounded-full bg-BrandOrange/8 blur-3xl pointer-events-none" />
+
+              {/* Mock sharing UI */}
+              <div className="relative z-10 flex-1 p-8 flex items-center justify-center">
+                <div className="w-full max-w-sm space-y-2">
+                  {/* Link share row */}
+                  <div className="flex items-center gap-3 rounded-xl border border-BrandGray2/30 bg-BrandBlack/60 px-4 py-3">
+                    <div className="flex-1 truncate text-xs text-BrandGray font-mono">coachable.app/play/linebacker-blitz</div>
+                    <div className="shrink-0 rounded-md bg-BrandOrange/20 px-2.5 py-1 text-[10px] font-semibold text-BrandOrange">Copy</div>
+                  </div>
+                  {/* Player avatars */}
+                  <div className="flex items-center gap-3 rounded-xl border border-BrandGray2/20 bg-BrandBlack/40 px-4 py-3">
+                    <div className="flex -space-x-2">
+                      {["#FF7A18","#4FA85D","#9AA0A6","#2a2e34"].map((c, i) => (
+                        <div key={i} className="w-7 h-7 rounded-full border-2 border-BrandBlack2 flex items-center justify-center text-[9px] font-bold text-white" style={{ backgroundColor: c }}>{["JR","KD","MT","+3"][i]}</div>
+                      ))}
+                    </div>
+                    <span className="text-xs text-BrandGray">4 teammates have access</span>
+                    <div className="ml-auto w-2 h-2 rounded-full bg-BrandGreen animate-pulse" />
+                  </div>
+                  {/* Permission row */}
+                  <div className="flex items-center justify-between rounded-xl border border-BrandGray2/20 bg-BrandBlack/40 px-4 py-3">
+                    <span className="text-xs text-BrandGray">View only</span>
+                    <div className="flex gap-1">
+                      <div className="rounded-md bg-BrandOrange/20 px-2 py-0.5 text-[10px] text-BrandOrange font-semibold">View</div>
+                      <div className="rounded-md bg-BrandGray2/20 px-2 py-0.5 text-[10px] text-BrandGray2">Edit</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative z-10 p-8 pt-0">
                 <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-lg bg-BrandOrange/20">
                   <FiUsers className="text-BrandOrange text-lg" />
                 </div>
@@ -303,7 +375,7 @@ export default function Landing() {
 
       {/* ── Stats Strip ── */}
       <section className="py-20 bg-BrandBlack2/40 border-y border-BrandGray2/10">
-        <div className="max-w-5xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-10 text-center">
+        <div className="max-w-4xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-10 text-center">
           {STATS.map(({ value, label }) => (
             <div key={label}>
               <div className="font-Manrope text-4xl md:text-5xl font-bold text-white mb-1">{value}</div>
