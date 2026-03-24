@@ -119,6 +119,7 @@ function KonvaCanvasRoot({
   drawTextAlign,
   drawArrowHeadType,
   drawStabilization = 0,
+  drawArrowTip = false,
   eraserSize = 10,
   drawShapeType = "rect",
   drawShapeStrokeColor = "#FFFFFF",
@@ -135,7 +136,6 @@ function KonvaCanvasRoot({
   textEditing,
   onTextEditingChange,
   drawingHookRef,
-  onDrawSubToolChange,
   screenshotMode = false,
   screenshotRegion,
   onScreenshotRegionChange,
@@ -333,6 +333,7 @@ function KonvaCanvasRoot({
     drawTextAlign,
     drawArrowHeadType,
     drawStabilization,
+    drawArrowTip,
     eraserSize,
     drawShapeType,
     drawShapeStrokeColor,
@@ -343,7 +344,6 @@ function KonvaCanvasRoot({
     textEditing,
     onTextEditingChange,
     onSelectedDrawingIdsChange,
-    onDrawSubToolChange,
     fieldBounds,
     drawGuides,
     clearGuides,
@@ -1451,6 +1451,35 @@ function KonvaCanvasRoot({
     const opacity = isErasing ? Math.min(0.3, drawingOpacity) : drawingOpacity;
 
     if (d.type === "stroke") {
+      if (d.arrowTip && d.points?.length >= 4) {
+        const strokeColor = d.color || "#FFFFFF";
+        const tipHeadPoints = getChevronHeadPoints(d.points, 12, 10);
+        return (
+          <React.Fragment key={key}>
+            <Line
+              points={d.points}
+              stroke={strokeColor}
+              strokeWidth={d.strokeWidth || 3}
+              lineCap="round"
+              lineJoin="round"
+              tension={d.tension ?? 0.3}
+              opacity={opacity}
+              listening={false}
+            />
+            {tipHeadPoints && (
+              <Line
+                points={tipHeadPoints}
+                stroke={strokeColor}
+                strokeWidth={d.strokeWidth || 3}
+                lineCap="round"
+                lineJoin="round"
+                opacity={opacity}
+                listening={false}
+              />
+            )}
+          </React.Fragment>
+        );
+      }
       return (
         <Line
           key={key}

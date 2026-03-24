@@ -67,6 +67,8 @@ export default function RightPanel({
   onDrawArrowHeadTypeChange,
   drawStabilization,
   onDrawStabilizationChange,
+  drawArrowTip,
+  onDrawArrowTipChange,
   selectedDrawing,
   selectedDrawings,
   onUpdateDrawing,
@@ -148,6 +150,8 @@ export default function RightPanel({
               onArrowHeadTypeChange={onDrawArrowHeadTypeChange}
               drawStabilization={drawStabilization}
               onStabilizationChange={onDrawStabilizationChange}
+              drawArrowTip={drawArrowTip}
+              onArrowTipChange={onDrawArrowTipChange}
               selectedDrawing={selectedDrawing}
               selectedDrawings={selectedDrawings}
               onUpdateDrawing={onUpdateDrawing}

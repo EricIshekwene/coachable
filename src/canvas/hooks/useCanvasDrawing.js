@@ -38,6 +38,7 @@ export function useCanvasDrawing({
   drawTextAlign,
   drawArrowHeadType,
   drawStabilization = 0,
+  drawArrowTip = false,
   eraserSize = 10,
   drawShapeType = "rect",
   drawShapeStrokeColor = drawColor,
@@ -48,7 +49,6 @@ export function useCanvasDrawing({
   textEditing,
   onTextEditingChange,
   onSelectedDrawingIdsChange,
-  onDrawSubToolChange,
   // Snap support
   fieldBounds,
   drawGuides,
@@ -236,12 +236,9 @@ export function useCanvasDrawing({
     setActiveDrawing(null);
     setCustomPreviewLine(null);
     clearGuides?.();
-    const newId = onAddDrawing?.(shape);
-    if (newId) {
-      onDrawSubToolChange?.("select", { selectIds: [newId] });
-    }
+    onAddDrawing?.(shape);
     logDrawDebug(`customShape commit points=${shape.points.length / 2}`);
-  }, [onAddDrawing, onDrawSubToolChange, clearGuides]);
+  }, [onAddDrawing, clearGuides]);
 
   const cancelCustomShape = useCallback(() => {
     if (customShapeRef.current) {
@@ -280,6 +277,7 @@ export function useCanvasDrawing({
           opacity: drawOpacity,
           strokeWidth: drawStrokeWidth,
           tension: drawTension,
+          arrowTip: drawArrowTip || undefined,
         };
         // Initialize stabilization state
         const level = drawStabilization / 100;
@@ -392,10 +390,6 @@ export function useCanvasDrawing({
         logDrawDebug(
           `text create id=${newId} worldX=${round2(world.x)} worldY=${round2(world.y)} color=${drawColor} fontSize=${drawFontSize} align=${drawTextAlign}`
         );
-        // Switch to select sub-tool and auto-select the new text drawing
-        if (newId) {
-          onDrawSubToolChange?.("select", { selectIds: [newId] });
-        }
         return true;
       }
 
@@ -434,7 +428,6 @@ export function useCanvasDrawing({
       drawTextAlign,
       onAddDrawing,
       onSelectedDrawingIdsChange,
-      onDrawSubToolChange,
       commitCustomShape,
       snapDrawingPoint,
     ]
@@ -610,21 +603,15 @@ export function useCanvasDrawing({
       // Remove internal start coordinates before saving
       const { _startX, _startY, ...cleanDrawing } = drawing;
       logDrawDebug(`shape commit type=${cleanDrawing.shapeType} w=${round2(cleanDrawing.width)} h=${round2(cleanDrawing.height)}`);
-      const newId = onAddDrawing?.(cleanDrawing);
-      if (newId) {
-        onDrawSubToolChange?.("select", { selectIds: [newId] });
-      }
+      onAddDrawing?.(cleanDrawing);
       return true;
     } else {
       logDrawDebug(`draw commit points=${drawing.points.length / 2} tension=${drawing.tension ?? 0.3}`);
     }
 
-    const newId = onAddDrawing?.(drawing);
-    if (newId) {
-      onDrawSubToolChange?.("select", { selectIds: [newId] });
-    }
+    onAddDrawing?.(drawing);
     return true;
-  }, [onAddDrawing, onRemoveDrawing, onRemoveMultipleDrawings, onDrawSubToolChange, clearGuides]);
+  }, [onAddDrawing, onRemoveDrawing, onRemoveMultipleDrawings, clearGuides]);
 
   const commitText = useCallback(
     (text) => {

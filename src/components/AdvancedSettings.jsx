@@ -9,7 +9,6 @@ import BallSettingsSection from "./advancedSettings/BallSettingsSection";
 import ExportVideoSettingsSection from "./advancedSettings/ExportVideoSettingsSection";
 import AnimationSettingsSection from "./advancedSettings/AnimationSettingsSection";
 import LoggerSettingsSection from "./advancedSettings/LoggerSettingsSection";
-import SavePrefabButton from "./rightPanel/SavePrefabButton";
 import PlayPreviewCard from "./PlayPreviewCard";
 import DebugPanel from "./rightPanel/DebugPanel";
 import { SPORT_DEFAULTS } from "../features/slate/hooks/useAdvancedSettings";
@@ -225,7 +224,6 @@ export default function AdvancedSettings({
                     )}
                 </div>
                 )}
-                <SavePrefabButton />
             </aside>
             {/* Reset to Default - Fixed at bottom */}
             <div className="w-36 sm:w-40 md:w-48 lg:w-52 xl:w-56 px-2 sm:px-2.5 md:px-3 py-2 sm:py-2.5 bg-BrandBlack border-t border-BrandGray2">

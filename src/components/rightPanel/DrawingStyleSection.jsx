@@ -199,8 +199,8 @@ function FontSizeDropdown({ value, onChange }) {
 }
 
 function DrawSubToolStyle({
-  drawColor, drawOpacity, drawStrokeWidth, drawTension, drawStabilization,
-  onColorChange, onOpacityChange, onStrokeWidthChange, onTensionChange, onStabilizationChange,
+  drawColor, drawOpacity, drawStrokeWidth, drawTension, drawStabilization, drawArrowTip,
+  onColorChange, onOpacityChange, onStrokeWidthChange, onTensionChange, onStabilizationChange, onArrowTipChange,
 }) {
   return (
     <>
@@ -210,6 +210,33 @@ function DrawSubToolStyle({
       <SliderControl label="Brush Size" value={drawStrokeWidth} onChange={onStrokeWidthChange} min={1} max={20} step={1} />
       <SliderControl label="Smoothing" value={drawTension} onChange={onTensionChange} min={0} max={1} step={0.1} />
       <SliderControl label="Stabilization" value={drawStabilization} onChange={onStabilizationChange} min={0} max={100} step={5} />
+      <div className="flex items-center gap-2 mt-1">
+        <button
+          onClick={() => onArrowTipChange?.(!drawArrowTip)}
+          className={`
+            flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] sm:text-xs font-DmSans transition-all duration-100
+            ${drawArrowTip
+              ? "bg-BrandOrange text-BrandBlack"
+              : "text-BrandOrange hover:bg-BrandBlack2 border border-BrandGray2"
+            }
+          `}
+        >
+          <svg width="20" height="12" viewBox="0 0 20 12" className="block">
+            <path
+              d="M2 8 Q6 2 10 6 Q14 10 18 4"
+              fill="none"
+              stroke={drawArrowTip ? "#1a1a1a" : "#FF7A18"}
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+            <polygon
+              points="15,2 19,4 16,7"
+              fill={drawArrowTip ? "#1a1a1a" : "#FF7A18"}
+            />
+          </svg>
+          Arrow Tip
+        </button>
+      </div>
     </>
   );
 }
@@ -428,6 +455,33 @@ function SelectedDrawingStyle({ selectedDrawing, onUpdateDrawing }) {
         <SliderControl label="Opacity" value={d.opacity ?? 1} onChange={(o) => update({ opacity: o })} min={0} max={100} step={10} isPercentage />
         <SliderControl label="Brush Size" value={d.strokeWidth || 3} onChange={(w) => update({ strokeWidth: w })} min={1} max={20} step={1} />
         <SliderControl label="Stabilization" value={d.tension ?? 0.3} onChange={(t) => update({ tension: t })} min={0} max={1} step={0.1} />
+        <div className="flex items-center gap-2 mt-1">
+          <button
+            onClick={() => update({ arrowTip: !d.arrowTip })}
+            className={`
+              flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] sm:text-xs font-DmSans transition-all duration-100
+              ${d.arrowTip
+                ? "bg-BrandOrange text-BrandBlack"
+                : "text-BrandOrange hover:bg-BrandBlack2 border border-BrandGray2"
+              }
+            `}
+          >
+            <svg width="20" height="12" viewBox="0 0 20 12" className="block">
+              <path
+                d="M2 8 Q6 2 10 6 Q14 10 18 4"
+                fill="none"
+                stroke={d.arrowTip ? "#1a1a1a" : "#FF7A18"}
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+              <polygon
+                points="15,2 19,4 16,7"
+                fill={d.arrowTip ? "#1a1a1a" : "#FF7A18"}
+              />
+            </svg>
+            Arrow Tip
+          </button>
+        </div>
       </>
     );
   }
@@ -556,6 +610,7 @@ export default function DrawingStyleSection({
   drawTextAlign,
   drawArrowHeadType,
   drawStabilization = 0,
+  drawArrowTip = false,
   drawShapeStrokeColor = "#FFFFFF",
   onColorChange,
   onOpacityChange,
@@ -565,6 +620,7 @@ export default function DrawingStyleSection({
   onTextAlignChange,
   onArrowHeadTypeChange,
   onStabilizationChange,
+  onArrowTipChange,
   onShapeStrokeColorChange,
   selectedDrawing,
   selectedDrawings = [],
@@ -617,11 +673,13 @@ export default function DrawingStyleSection({
           drawStrokeWidth={drawStrokeWidth}
           drawTension={drawTension}
           drawStabilization={drawStabilization}
+          drawArrowTip={drawArrowTip}
           onColorChange={onColorChange}
           onOpacityChange={onOpacityChange}
           onStrokeWidthChange={onStrokeWidthChange}
           onTensionChange={onTensionChange}
           onStabilizationChange={onStabilizationChange}
+          onArrowTipChange={onArrowTipChange}
         />
       )}
 

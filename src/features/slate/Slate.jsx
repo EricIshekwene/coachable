@@ -242,6 +242,7 @@ function Slate({
   const [drawTextAlign, setDrawTextAlign] = useState("left");
   const [drawArrowHeadType, setDrawArrowHeadType] = useState("standard");
   const [drawStabilization, setDrawStabilization] = useState(0);
+  const [drawArrowTip, setDrawArrowTip] = useState(false);
   const [eraserSize, setEraserSize] = useState(10);
   const [drawShapeType, setDrawShapeType] = useState("rect");
   const [drawShapeStrokeColor, setDrawShapeStrokeColor] = useState("#FFFFFF");
@@ -2767,6 +2768,7 @@ function Slate({
           drawTextAlign={drawTextAlign}
           drawArrowHeadType={drawArrowHeadType}
           drawStabilization={drawStabilization}
+          drawArrowTip={drawArrowTip}
           eraserSize={eraserSize}
           drawShapeType={drawShapeType}
           drawShapeStrokeColor={drawShapeStrokeColor}
@@ -2783,7 +2785,6 @@ function Slate({
           textEditing={textEditing}
           onTextEditingChange={setTextEditing}
           drawingHookRef={drawingHookRef}
-          onDrawSubToolChange={handleDrawSubToolChange}
           screenshotMode={screenshotMode}
           screenshotRegion={screenshotRegion}
           onScreenshotRegionChange={handleScreenshotRegionChange}
@@ -2944,6 +2945,8 @@ function Slate({
         onDrawArrowHeadTypeChange={handleDrawArrowHeadTypeChange}
         drawStabilization={drawStabilization}
         onDrawStabilizationChange={setDrawStabilization}
+        drawArrowTip={drawArrowTip}
+        onDrawArrowTipChange={setDrawArrowTip}
         selectedDrawing={selectedDrawing}
         selectedDrawings={selectedDrawings}
         onUpdateDrawing={drawingsState.updateDrawing}
