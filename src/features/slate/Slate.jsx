@@ -237,11 +237,12 @@ function Slate({
   const [drawColor, setDrawColor] = useState("#FFFFFF");
   const [drawOpacity, setDrawOpacity] = useState(1);
   const [drawStrokeWidth, setDrawStrokeWidth] = useState(3);
-  const [drawTension, setDrawTension] = useState(0.3);
+  const [drawSmoothing, setDrawSmoothing] = useState(30);
+  const drawTension = drawSmoothing / 100;       // 0-1 for Konva line tension
+  const drawStabilization = drawSmoothing;        // 0-100 for pull-string algorithm
   const [drawFontSize, setDrawFontSize] = useState(18);
   const [drawTextAlign, setDrawTextAlign] = useState("left");
   const [drawArrowHeadType, setDrawArrowHeadType] = useState("standard");
-  const [drawStabilization, setDrawStabilization] = useState(0);
   const [drawArrowTip, setDrawArrowTip] = useState(false);
   const [eraserSize, setEraserSize] = useState(10);
   const [drawShapeType, setDrawShapeType] = useState("rect");
@@ -1437,11 +1438,11 @@ function Slate({
     });
   }, []);
 
-  const handleDrawTensionChange = useCallback((nextTension) => {
-    setDrawTension((prevTension) => {
-      if (prevTension === nextTension) return prevTension;
-      logDrawDebug(`style tension prev=${prevTension} next=${nextTension}`);
-      return nextTension;
+  const handleDrawSmoothingChange = useCallback((nextSmoothing) => {
+    setDrawSmoothing((prev) => {
+      if (prev === nextSmoothing) return prev;
+      logDrawDebug(`style smoothing prev=${prev} next=${nextSmoothing}`);
+      return nextSmoothing;
     });
   }, []);
 
@@ -2932,19 +2933,17 @@ function Slate({
         drawColor={drawColor}
         drawOpacity={drawOpacity}
         drawStrokeWidth={drawStrokeWidth}
-        drawTension={drawTension}
+        drawSmoothing={drawSmoothing}
         drawFontSize={drawFontSize}
         drawTextAlign={drawTextAlign}
         drawArrowHeadType={drawArrowHeadType}
         onDrawColorChange={handleDrawColorChange}
         onDrawOpacityChange={handleDrawOpacityChange}
         onDrawStrokeWidthChange={handleDrawStrokeWidthChange}
-        onDrawTensionChange={handleDrawTensionChange}
+        onDrawSmoothingChange={handleDrawSmoothingChange}
         onDrawFontSizeChange={handleDrawFontSizeChange}
         onDrawTextAlignChange={handleDrawTextAlignChange}
         onDrawArrowHeadTypeChange={handleDrawArrowHeadTypeChange}
-        drawStabilization={drawStabilization}
-        onDrawStabilizationChange={setDrawStabilization}
         drawArrowTip={drawArrowTip}
         onDrawArrowTipChange={setDrawArrowTip}
         selectedDrawing={selectedDrawing}

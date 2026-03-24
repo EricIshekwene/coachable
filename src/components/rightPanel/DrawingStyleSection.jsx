@@ -199,8 +199,8 @@ function FontSizeDropdown({ value, onChange }) {
 }
 
 function DrawSubToolStyle({
-  drawColor, drawOpacity, drawStrokeWidth, drawTension, drawStabilization, drawArrowTip, drawArrowHeadType,
-  onColorChange, onOpacityChange, onStrokeWidthChange, onTensionChange, onStabilizationChange, onArrowTipChange, onArrowHeadTypeChange,
+  drawColor, drawOpacity, drawStrokeWidth, drawSmoothing, drawArrowTip, drawArrowHeadType,
+  onColorChange, onOpacityChange, onStrokeWidthChange, onSmoothingChange, onArrowTipChange, onArrowHeadTypeChange,
 }) {
   return (
     <>
@@ -208,8 +208,7 @@ function DrawSubToolStyle({
       <ColorSwatches value={drawColor} onChange={onColorChange} />
       <SliderControl label="Opacity" value={drawOpacity} onChange={onOpacityChange} min={0} max={100} step={10} isPercentage />
       <SliderControl label="Brush Size" value={drawStrokeWidth} onChange={onStrokeWidthChange} min={1} max={20} step={1} />
-      <SliderControl label="Smoothing" value={drawTension} onChange={onTensionChange} min={0} max={1} step={0.1} />
-      <SliderControl label="Stabilization" value={drawStabilization} onChange={onStabilizationChange} min={0} max={100} step={5} />
+      <SliderControl label="Smoothing" value={drawSmoothing} onChange={onSmoothingChange} min={0} max={100} step={5} />
       <div className="flex items-center gap-2 mt-1">
         <button
           onClick={() => onArrowTipChange?.(!drawArrowTip)}
@@ -651,21 +650,19 @@ export default function DrawingStyleSection({
   drawColor,
   drawOpacity = 1,
   drawStrokeWidth,
-  drawTension,
+  drawSmoothing = 30,
   drawFontSize,
   drawTextAlign,
   drawArrowHeadType,
-  drawStabilization = 0,
   drawArrowTip = false,
   drawShapeStrokeColor = "#FFFFFF",
   onColorChange,
   onOpacityChange,
   onStrokeWidthChange,
-  onTensionChange,
+  onSmoothingChange,
   onFontSizeChange,
   onTextAlignChange,
   onArrowHeadTypeChange,
-  onStabilizationChange,
   onArrowTipChange,
   onShapeStrokeColorChange,
   selectedDrawing,
@@ -717,15 +714,13 @@ export default function DrawingStyleSection({
           drawColor={drawColor}
           drawOpacity={drawOpacity}
           drawStrokeWidth={drawStrokeWidth}
-          drawTension={drawTension}
-          drawStabilization={drawStabilization}
+          drawSmoothing={drawSmoothing}
           drawArrowTip={drawArrowTip}
           drawArrowHeadType={drawArrowHeadType}
           onColorChange={onColorChange}
           onOpacityChange={onOpacityChange}
           onStrokeWidthChange={onStrokeWidthChange}
-          onTensionChange={onTensionChange}
-          onStabilizationChange={onStabilizationChange}
+          onSmoothingChange={onSmoothingChange}
           onArrowTipChange={onArrowTipChange}
           onArrowHeadTypeChange={onArrowHeadTypeChange}
         />

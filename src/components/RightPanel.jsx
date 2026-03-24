@@ -54,19 +54,17 @@ export default function RightPanel({
   drawColor,
   drawOpacity,
   drawStrokeWidth,
-  drawTension,
+  drawSmoothing,
   drawFontSize,
   drawTextAlign,
   drawArrowHeadType,
   onDrawColorChange,
   onDrawOpacityChange,
   onDrawStrokeWidthChange,
-  onDrawTensionChange,
+  onDrawSmoothingChange,
   onDrawFontSizeChange,
   onDrawTextAlignChange,
   onDrawArrowHeadTypeChange,
-  drawStabilization,
-  onDrawStabilizationChange,
   drawArrowTip,
   onDrawArrowTipChange,
   selectedDrawing,
@@ -137,19 +135,17 @@ export default function RightPanel({
               drawColor={drawColor}
               drawOpacity={drawOpacity}
               drawStrokeWidth={drawStrokeWidth}
-              drawTension={drawTension}
+              drawSmoothing={drawSmoothing}
               drawFontSize={drawFontSize}
               drawTextAlign={drawTextAlign}
               drawArrowHeadType={drawArrowHeadType}
               onColorChange={onDrawColorChange}
               onOpacityChange={onDrawOpacityChange}
               onStrokeWidthChange={onDrawStrokeWidthChange}
-              onTensionChange={onDrawTensionChange}
+              onSmoothingChange={onDrawSmoothingChange}
               onFontSizeChange={onDrawFontSizeChange}
               onTextAlignChange={onDrawTextAlignChange}
               onArrowHeadTypeChange={onDrawArrowHeadTypeChange}
-              drawStabilization={drawStabilization}
-              onStabilizationChange={onDrawStabilizationChange}
               drawArrowTip={drawArrowTip}
               onArrowTipChange={onDrawArrowTipChange}
               selectedDrawing={selectedDrawing}
