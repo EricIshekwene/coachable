@@ -1,8 +1,10 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { IoFootball } from "react-icons/io5";
 import { TbLayoutSidebarLeftCollapse } from "react-icons/tb";
+import { FiUser, FiX } from "react-icons/fi";
+import { useAuth } from "../../context/AuthContext";
 import coachableLogo from "../../assets/logos/White_Coachable_Logo.png";
 import coneIcon from "../../assets/objects/cone.png";
 import SelectToolSection from "../sidebar/SelectToolSection";
@@ -13,6 +15,102 @@ import PrefabsSection from "../sidebar/PrefabsSection";
 import HistoryActionsSection from "../sidebar/HistoryActionsSection";
 import { WideSidebarRowButton } from "../subcomponents/Buttons";
 import { Popover } from "../subcomponents/Popovers";
+
+/** Auto-show delay for guest save-progress popup (3 minutes). */
+const GUEST_POPUP_DELAY_MS = 3 * 60 * 1000;
+
+/**
+ * Profile strip pinned below the History section in the sidebar.
+ * - Logged in: avatar + first name, click → /app
+ * - Not logged in: person icon + "Guest", click → save-progress popup
+ * - Admin mode: admin icon + "Admin", click → /admin
+ * @param {{ adminMode: boolean }} props
+ */
+function ProfileStrip({ adminMode }) {
+    const { user } = useAuth();
+    const navigate = useNavigate();
+    const [showPopup, setShowPopup] = useState(false);
+    const timerRef = useRef(null);
+    const profileButtonRef = useRef(null);
+
+    const isLoggedIn = !!user;
+    const letter = user?.name ? user.name.trim()[0].toUpperCase() : null;
+    const firstName = user?.name ? user.name.trim().split(/\s+/)[0] : null;
+
+    // Auto-show popup after 3 minutes for guests
+    useEffect(() => {
+        if (adminMode || isLoggedIn) return;
+        timerRef.current = setTimeout(() => setShowPopup(true), GUEST_POPUP_DELAY_MS);
+        return () => clearTimeout(timerRef.current);
+    }, [adminMode, isLoggedIn]);
+
+    const handleClick = () => {
+        if (adminMode) {
+            navigate("/admin");
+        } else if (isLoggedIn) {
+            navigate("/app");
+        } else {
+            setShowPopup((v) => !v);
+        }
+    };
+
+    return (
+        <div className="relative mt-1 border-t border-BrandGray2/40">
+            <button
+                ref={profileButtonRef}
+                type="button"
+                onClick={handleClick}
+                className="flex w-full items-center gap-2 px-2 py-2 rounded-md transition hover:bg-BrandBlack2/60"
+            >
+                {adminMode ? (
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-BrandOrange/20 text-[11px] font-bold text-BrandOrange select-none">
+                        A
+                    </div>
+                ) : letter ? (
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-BrandOrange/20 text-[11px] font-bold text-BrandOrange select-none">
+                        {letter}
+                    </div>
+                ) : (
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-BrandGray2/20 text-BrandGray">
+                        <FiUser className="text-sm" />
+                    </div>
+                )}
+                <span className="truncate text-[11px] text-BrandGray leading-none font-DmSans">
+                    {adminMode ? "Admin" : firstName ?? "Guest"}
+                </span>
+            </button>
+
+            {/* Save-progress popup for guests — uses Popover portal so it escapes sidebar overflow */}
+            <Popover
+                isOpen={showPopup && !isLoggedIn && !adminMode}
+                onClose={() => setShowPopup(false)}
+                anchorRef={profileButtonRef}
+                topOffset="top-0"
+            >
+                <div className="ml-2 w-[200px] rounded-lg bg-BrandBlack border border-BrandGray2/80 p-3 sm:p-4 shadow-[0_16px_30px_-20px_rgba(0,0,0,0.95)] font-DmSans">
+                    <p className="text-xs sm:text-sm font-semibold text-BrandWhite mb-1">Save your progress</p>
+                    <p className="text-[11px] text-BrandGray2 leading-relaxed mb-3">
+                        Create an account or log in to keep your plays.
+                    </p>
+                    <div className="flex flex-col gap-1.5">
+                        <Link
+                            to="/signup"
+                            className="flex items-center justify-center rounded-md bg-BrandOrange px-3 py-2 text-xs font-semibold text-white transition hover:brightness-110"
+                        >
+                            Create account
+                        </Link>
+                        <Link
+                            to="/login"
+                            className="flex items-center justify-center rounded-md border border-BrandGray2/40 px-3 py-2 text-xs text-BrandGray transition hover:border-BrandGray hover:text-white"
+                        >
+                            Log in
+                        </Link>
+                    </div>
+                </div>
+            </Popover>
+        </div>
+    );
+}
 
 const iconClass = "text-BrandOrange text-xl sm:text-2xl md:text-3xl";
 const selectedIconClass = "text-BrandBlack text-xl sm:text-2xl md:text-3xl";
@@ -37,6 +135,7 @@ export default function WideSidebarRoot({
     playName,
     onCollapse,
     onNavigateHome,
+    adminMode = false,
 }) {
     const [selectedTool, setSelectedTool] = useState("select");
     const [selectToolType, setSelectToolType] = useState("select");
@@ -330,6 +429,7 @@ export default function WideSidebarRoot({
                     hoveredTooltip={hoveredTooltip}
                     onHoverTooltip={setHoveredTooltip}
                 />
+                <ProfileStrip adminMode={adminMode} />
             </div>
         </aside>
     );

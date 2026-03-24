@@ -135,8 +135,8 @@ export default function Profile() {
       />
       <h1 className="font-Manrope text-xl font-bold tracking-tight">Profile</h1>
 
-      <div className="mt-8 flex items-center gap-4">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-BrandOrange/15 text-xl font-bold text-BrandOrange">
+      <div className="mt-8 flex items-center gap-4 rounded-xl bg-BrandOrange/10 px-5 py-4">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-BrandOrange/20 text-xl font-bold text-BrandOrange">
           {user?.name?.[0] || "?"}
         </div>
         <div>

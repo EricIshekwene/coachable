@@ -2730,6 +2730,7 @@ function Slate({
             playName={playName}
             onCollapse={() => setViewOnlyLocal(true)}
             onNavigateHome={onNavigateHome}
+            adminMode={adminMode}
           />
         </div>
       )}

@@ -193,7 +193,7 @@ export default function Landing() {
                 <FiArrowRight className="transition group-hover:translate-x-0.5" />
               </Link>
               <Link
-                to="/login"
+                to="/slate"
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-BrandGray2/50 bg-white/5 backdrop-blur-sm px-8 py-4 text-sm text-BrandGray transition hover:border-BrandGray/60 hover:text-white hover:bg-white/10"
               >
                 <FiPlay className="text-xs" />

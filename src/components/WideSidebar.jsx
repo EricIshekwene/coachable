@@ -20,6 +20,7 @@ export default function WideSidebar({
     playName,
     onCollapse,
     onNavigateHome,
+    adminMode,
 }) {
     return (
         <WideSidebarRoot
@@ -42,6 +43,7 @@ export default function WideSidebar({
             playName={playName}
             onCollapse={onCollapse}
             onNavigateHome={onNavigateHome}
+            adminMode={adminMode}
         />
     );
 }
