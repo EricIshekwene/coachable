@@ -278,6 +278,7 @@ export function useCanvasDrawing({
           strokeWidth: drawStrokeWidth,
           tension: drawTension,
           arrowTip: drawArrowTip || undefined,
+          arrowHeadType: drawArrowTip ? drawArrowHeadType : undefined,
         };
         // Initialize stabilization state
         const level = drawStabilization / 100;

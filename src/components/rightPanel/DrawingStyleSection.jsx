@@ -199,8 +199,8 @@ function FontSizeDropdown({ value, onChange }) {
 }
 
 function DrawSubToolStyle({
-  drawColor, drawOpacity, drawStrokeWidth, drawTension, drawStabilization, drawArrowTip,
-  onColorChange, onOpacityChange, onStrokeWidthChange, onTensionChange, onStabilizationChange, onArrowTipChange,
+  drawColor, drawOpacity, drawStrokeWidth, drawTension, drawStabilization, drawArrowTip, drawArrowHeadType,
+  onColorChange, onOpacityChange, onStrokeWidthChange, onTensionChange, onStabilizationChange, onArrowTipChange, onArrowHeadTypeChange,
 }) {
   return (
     <>
@@ -237,6 +237,29 @@ function DrawSubToolStyle({
           Arrow Tip
         </button>
       </div>
+      {drawArrowTip && (
+        <>
+          <SectionLabel>Arrow Head</SectionLabel>
+          <div className="flex gap-1 flex-wrap">
+            {ARROW_HEAD_TYPES.map((t) => (
+              <button
+                key={t.value}
+                onClick={() => onArrowHeadTypeChange?.(t.value)}
+                title={t.label}
+                className={`
+                  p-1 rounded-md transition-all duration-100
+                  ${drawArrowHeadType === t.value
+                    ? "bg-BrandOrange"
+                    : "hover:bg-BrandBlack2 border border-BrandGray2"
+                  }
+                `}
+              >
+                <ArrowHeadPreview type={t.value} isActive={drawArrowHeadType === t.value} />
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </>
   );
 }
@@ -482,6 +505,29 @@ function SelectedDrawingStyle({ selectedDrawing, onUpdateDrawing }) {
             Arrow Tip
           </button>
         </div>
+        {d.arrowTip && (
+          <>
+            <SectionLabel>Arrow Head</SectionLabel>
+            <div className="flex gap-1 flex-wrap">
+              {ARROW_HEAD_TYPES.map((t) => (
+                <button
+                  key={t.value}
+                  onClick={() => update({ arrowHeadType: t.value })}
+                  title={t.label}
+                  className={`
+                    p-1 rounded-md transition-all duration-100
+                    ${(d.arrowHeadType || "standard") === t.value
+                      ? "bg-BrandOrange"
+                      : "hover:bg-BrandBlack2 border border-BrandGray2"
+                    }
+                  `}
+                >
+                  <ArrowHeadPreview type={t.value} isActive={(d.arrowHeadType || "standard") === t.value} />
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </>
     );
   }
@@ -674,12 +720,14 @@ export default function DrawingStyleSection({
           drawTension={drawTension}
           drawStabilization={drawStabilization}
           drawArrowTip={drawArrowTip}
+          drawArrowHeadType={drawArrowHeadType}
           onColorChange={onColorChange}
           onOpacityChange={onOpacityChange}
           onStrokeWidthChange={onStrokeWidthChange}
           onTensionChange={onTensionChange}
           onStabilizationChange={onStabilizationChange}
           onArrowTipChange={onArrowTipChange}
+          onArrowHeadTypeChange={onArrowHeadTypeChange}
         />
       )}
 

@@ -1413,33 +1413,76 @@ function KonvaCanvasRoot({
     none: { pointerLength: 0, pointerWidth: 0 },
   };
 
-  const getChevronHeadPoints = (points, pointerLength, pointerWidth) => {
+  /** Larger arrowhead sizes for freehand stroke tips */
+  const STROKE_TIP_STYLES = {
+    standard: { pointerLength: 18, pointerWidth: 14 },
+    thin: { pointerLength: 20, pointerWidth: 8 },
+    wide: { pointerLength: 16, pointerWidth: 22 },
+    chevron: { pointerLength: 22, pointerWidth: 26 },
+    none: { pointerLength: 0, pointerWidth: 0 },
+  };
+
+  /**
+   * Walks backward along a flat points array to find a point at least `minDist` px
+   * from the tip. Returns the unit direction vector (ux, uy) pointing toward the tip.
+   * Falls back to the immediate previous point if nothing is far enough.
+   */
+  const getStrokeTipDirection = (points, minDist = 30) => {
     if (!Array.isArray(points) || points.length < 4) return null;
     const tipX = points[points.length - 2];
     const tipY = points[points.length - 1];
-    const prevX = points[points.length - 4];
-    const prevY = points[points.length - 3];
-    const dx = tipX - prevX;
-    const dy = tipY - prevY;
-    const segmentLength = Math.hypot(dx, dy);
-    if (segmentLength < 0.001) return null;
+    // Walk backward to find a point far enough away for a stable direction
+    for (let i = points.length - 4; i >= 0; i -= 2) {
+      const dx = tipX - points[i];
+      const dy = tipY - points[i + 1];
+      const dist = Math.hypot(dx, dy);
+      if (dist >= minDist) {
+        return { tipX, tipY, ux: dx / dist, uy: dy / dist };
+      }
+    }
+    // Fallback: use whatever distance we have from the first point
+    const dx = tipX - points[0];
+    const dy = tipY - points[1];
+    const dist = Math.hypot(dx, dy);
+    if (dist < 0.001) return null;
+    return { tipX, tipY, ux: dx / dist, uy: dy / dist };
+  };
 
-    const ux = dx / segmentLength;
-    const uy = dy / segmentLength;
+  /**
+   * Builds a chevron (open V) arrowhead as a flat points array.
+   */
+  const getChevronHeadPoints = (points, pointerLength, pointerWidth) => {
+    const dir = getStrokeTipDirection(points, pointerLength);
+    if (!dir) return null;
+    const { tipX, tipY, ux, uy } = dir;
     const normalX = -uy;
     const normalY = ux;
-    const headLength = Math.min(pointerLength, segmentLength);
-    const halfHeadWidth = pointerWidth / 2;
-    const baseX = tipX - ux * headLength;
-    const baseY = tipY - uy * headLength;
-
+    const halfW = pointerWidth / 2;
+    const baseX = tipX - ux * pointerLength;
+    const baseY = tipY - uy * pointerLength;
     return [
-      baseX + normalX * halfHeadWidth,
-      baseY + normalY * halfHeadWidth,
-      tipX,
-      tipY,
-      baseX - normalX * halfHeadWidth,
-      baseY - normalY * halfHeadWidth,
+      baseX + normalX * halfW, baseY + normalY * halfW,
+      tipX, tipY,
+      baseX - normalX * halfW, baseY - normalY * halfW,
+    ];
+  };
+
+  /**
+   * Builds a filled triangle arrowhead as a flat points array (for polygon rendering).
+   */
+  const getFilledHeadPoints = (points, pointerLength, pointerWidth) => {
+    const dir = getStrokeTipDirection(points, pointerLength);
+    if (!dir) return null;
+    const { tipX, tipY, ux, uy } = dir;
+    const normalX = -uy;
+    const normalY = ux;
+    const halfW = pointerWidth / 2;
+    const baseX = tipX - ux * pointerLength;
+    const baseY = tipY - uy * pointerLength;
+    return [
+      baseX + normalX * halfW, baseY + normalY * halfW,
+      tipX, tipY,
+      baseX - normalX * halfW, baseY - normalY * halfW,
     ];
   };
 
@@ -1451,47 +1494,60 @@ function KonvaCanvasRoot({
     const opacity = isErasing ? Math.min(0.3, drawingOpacity) : drawingOpacity;
 
     if (d.type === "stroke") {
-      if (d.arrowTip && d.points?.length >= 4) {
-        const strokeColor = d.color || "#FFFFFF";
-        const tipHeadPoints = getChevronHeadPoints(d.points, 12, 10);
-        return (
-          <React.Fragment key={key}>
-            <Line
-              points={d.points}
-              stroke={strokeColor}
-              strokeWidth={d.strokeWidth || 3}
-              lineCap="round"
-              lineJoin="round"
-              tension={d.tension ?? 0.3}
-              opacity={opacity}
-              listening={false}
-            />
-            {tipHeadPoints && (
-              <Line
-                points={tipHeadPoints}
-                stroke={strokeColor}
-                strokeWidth={d.strokeWidth || 3}
-                lineCap="round"
-                lineJoin="round"
-                opacity={opacity}
-                listening={false}
-              />
-            )}
-          </React.Fragment>
-        );
-      }
-      return (
+      const strokeColor = d.color || "#FFFFFF";
+      const sw = d.strokeWidth || 3;
+      const strokeLine = (
         <Line
-          key={key}
+          key={d.arrowTip ? undefined : key}
           points={d.points}
-          stroke={d.color || "#FFFFFF"}
-          strokeWidth={d.strokeWidth || 3}
+          stroke={strokeColor}
+          strokeWidth={sw}
           lineCap="round"
           lineJoin="round"
           tension={d.tension ?? 0.3}
           opacity={opacity}
           listening={false}
         />
+      );
+      if (!d.arrowTip || !d.points || d.points.length < 4) {
+        return strokeLine;
+      }
+      const headType = d.arrowHeadType || "standard";
+      if (headType === "none") {
+        return strokeLine;
+      }
+      const tipStyle = STROKE_TIP_STYLES[headType] || STROKE_TIP_STYLES.standard;
+      const isChevron = headType === "chevron";
+      const headPts = isChevron
+        ? getChevronHeadPoints(d.points, tipStyle.pointerLength, tipStyle.pointerWidth)
+        : getFilledHeadPoints(d.points, tipStyle.pointerLength, tipStyle.pointerWidth);
+      return (
+        <React.Fragment key={key}>
+          {strokeLine}
+          {headPts && (
+            isChevron ? (
+              <Line
+                points={headPts}
+                stroke={strokeColor}
+                strokeWidth={Math.max(sw, 2.5)}
+                lineCap="round"
+                lineJoin="round"
+                opacity={opacity}
+                listening={false}
+              />
+            ) : (
+              <Line
+                points={headPts}
+                fill={strokeColor}
+                stroke={strokeColor}
+                strokeWidth={1}
+                closed
+                opacity={opacity}
+                listening={false}
+              />
+            )
+          )}
+        </React.Fragment>
       );
     }
     if (d.type === "arrow") {
