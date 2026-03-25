@@ -16,7 +16,7 @@ export default function PlayerSettingsSection({ value = {}, onChange }) {
             {/* Default Player Size */}
             <div className="flex flex-col w-full items-start justify-start gap-1 sm:gap-1.5">
                 <p className="text-BrandWhite text-xs sm:text-sm font-DmSans">Default Player Size (px)</p>
-                <div className="w-full px-1 flex flex-row gap-1 px-1 justify-between">
+                <div className="w-full px-1 flex flex-row gap-4 px-1 justify-between">
                     <Slider
                         min={10}
                         max={50}

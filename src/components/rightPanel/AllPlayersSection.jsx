@@ -20,8 +20,7 @@ export default function AllPlayersSection({ value, onChange }) {
         <p className="text-BrandOrange text-[10px] sm:text-xs md:text-sm font-DmSans"> Size: {playerSize}%</p>
       </div>
 
-      {/* Prevent slider thumb from causing horizontal overflow */}
-      <div className="w-full min-w-0 overflow-x-hidden overflow-y-hidden flex items-center justify-start px-2">
+      <div className="w-full min-w-0 overflow-visible flex items-center justify-start px-2">
         <Slider
           min={5}
           max={200}
