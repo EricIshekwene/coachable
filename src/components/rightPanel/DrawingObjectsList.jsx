@@ -44,7 +44,7 @@ export default function DrawingObjectsList({
   return (
     <div className="flex flex-col border-b border-BrandGray2 pb-1.5 sm:pb-2 items-start justify-center gap-0.5">
       <div className="text-BrandOrange text-xs sm:text-sm md:text-base font-DmSans font-bold mb-0.5">
-        Objects
+        Drawings
       </div>
       <div className="flex flex-col w-full gap-0.5 max-h-32 overflow-y-auto hide-scroll">
         {drawings.map((d, i) => {

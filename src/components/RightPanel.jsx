@@ -178,6 +178,15 @@ export default function RightPanel({
             />
           )}
 
+          {canvasTool === "pen" && (
+            <DrawingObjectsList
+              drawings={drawings}
+              selectedDrawingIds={selectedDrawingIds}
+              onSelectedDrawingIdsChange={onSelectedDrawingIdsChange}
+              onRemoveDrawing={onRemoveDrawing}
+            />
+          )}
+
           <PlayersSection
             playersById={playersById}
             representedPlayerIds={representedPlayerIds}
@@ -194,12 +203,14 @@ export default function RightPanel({
             onDeleteBall={onDeleteBall}
           />
 
-          <DrawingObjectsList
-            drawings={drawings}
-            selectedDrawingIds={selectedDrawingIds}
-            onSelectedDrawingIdsChange={onSelectedDrawingIdsChange}
-            onRemoveDrawing={onRemoveDrawing}
-          />
+          {canvasTool !== "pen" && (
+            <DrawingObjectsList
+              drawings={drawings}
+              selectedDrawingIds={selectedDrawingIds}
+              onSelectedDrawingIdsChange={onSelectedDrawingIdsChange}
+              onRemoveDrawing={onRemoveDrawing}
+            />
+          )}
 
           {selectedPlayerIds?.length > 0 ? (
             <SelectedPlayersSection
