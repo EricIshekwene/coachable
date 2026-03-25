@@ -61,6 +61,26 @@ function deriveTitle(r) {
   return "Unknown Error";
 }
 
+/**
+ * Format a single error report as a copyable text string.
+ * @param {Object} r - Error report
+ * @returns {string}
+ */
+function formatReportText(r) {
+  const device = r.device_info || {};
+  const lines = [
+    `[${deriveTitle(r)}]`,
+    `Error: ${r.error_message}`,
+    `Component: ${r.component || "unknown"} | Action: ${r.action || "—"}`,
+    `Device: ${parseDevice(r.user_agent)} | ${device.screenWidth || "?"}x${device.screenHeight || "?"} @${device.pixelRatio || 1}x`,
+    `Page: ${r.page_url || "—"}`,
+    `Time: ${r.created_at ? new Date(r.created_at).toLocaleString() : "—"}`,
+  ];
+  if (r.extra && Object.keys(r.extra).length > 0) lines.push(`Extra: ${JSON.stringify(r.extra)}`);
+  if (r.error_stack) lines.push(`Stack:\n${r.error_stack}`);
+  return lines.join("\n");
+}
+
 // ── Shared UI helpers ──────────────────────────────────────────────────────
 function SectionHeader({ title, badge, badgeColor = "bg-BrandOrange/20 text-BrandOrange", children }) {
   return (
@@ -535,10 +555,28 @@ export default function Admin() {
           <StatCard label="Featured Plays" value={platformPlays.filter((p) => p.isFeatured).length} color="text-BrandOrange" />
         </div>
 
+        {/* ── Quick Nav ── */}
+        <div className="flex flex-wrap gap-2">
+          {[
+            { label: "Users", href: "#users" },
+            { label: "Plays", href: "#plays" },
+            { label: "Tests", href: "#tests" },
+            { label: "Error Reports", href: "#errors" },
+          ].map((nav) => (
+            <a
+              key={nav.label}
+              href={nav.href}
+              className="rounded-lg border border-white/8 bg-white/4 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/8"
+            >
+              {nav.label}
+            </a>
+          ))}
+        </div>
+
         {/* ══════════════════════════════════════════════════════════════════
             USERS SECTION
         ══════════════════════════════════════════════════════════════════ */}
-        <section>
+        <section id="users" style={{ scrollMarginTop: "4rem" }}>
           <SectionHeader title="Users" badge={`${users.length}`} badgeColor="bg-white/6 text-BrandGray">
             <button
               onClick={handleDeleteAll}
@@ -649,7 +687,7 @@ export default function Admin() {
         {/* ══════════════════════════════════════════════════════════════════
             PLATFORM PLAYS SECTION
         ══════════════════════════════════════════════════════════════════ */}
-        <section>
+        <section id="plays" style={{ scrollMarginTop: "4rem" }}>
           <SectionHeader title="Platform Plays" badge={`${platformPlays.length}`} badgeColor="bg-BrandOrange/15 text-BrandOrange">
             <button
               onClick={() => window.open(`/admin/plays/new/edit`, "_self")}
@@ -784,7 +822,7 @@ export default function Admin() {
         {/* ══════════════════════════════════════════════════════════════════
             TESTS SECTION
         ══════════════════════════════════════════════════════════════════ */}
-        <section>
+        <section id="tests" style={{ scrollMarginTop: "4rem" }}>
           <SectionHeader title="Tests" badge={allSuites ? `${totalTestCount} tests` : "Loading..."} badgeColor="bg-purple-500/15 text-purple-400">
             <button
               onClick={runTests}
@@ -951,15 +989,26 @@ export default function Admin() {
         {/* ══════════════════════════════════════════════════════════════════
             ERROR REPORTS SECTION
         ══════════════════════════════════════════════════════════════════ */}
-        <section>
+        <section id="errors" style={{ scrollMarginTop: "4rem" }}>
           <SectionHeader title="Error Reports" badge={errorTotal > 0 ? `${errorTotal}` : "None"} badgeColor={errorTotal > 0 ? "bg-red-500/15 text-red-400" : "bg-white/6 text-BrandGray2"}>
             {errors.length > 0 && (
-              <button
-                onClick={handleClearErrors}
-                className="rounded-lg bg-red-600/10 px-3 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-600/20"
-              >
-                Clear All
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const text = errors.map((r) => formatReportText(r)).join("\n\n---\n\n");
+                    copyToClipboard(text, "all-errors");
+                  }}
+                  className="rounded-lg border border-BrandOrange/40 bg-BrandOrange/10 px-3 py-1.5 text-xs font-semibold text-BrandOrange transition hover:bg-BrandOrange/20"
+                >
+                  {copied === "all-errors" ? "Copied!" : "Copy Reports"}
+                </button>
+                <button
+                  onClick={handleClearErrors}
+                  className="rounded-lg bg-red-600/10 px-3 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-600/20"
+                >
+                  Clear All
+                </button>
+              </div>
             )}
           </SectionHeader>
 

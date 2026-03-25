@@ -258,9 +258,18 @@ export default function AdminErrors() {
       <div className="mx-auto max-w-5xl px-6 py-8">
         {/* Controls */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="font-Manrope text-xl font-bold">Error Reports</h2>
-            <p className="text-sm text-BrandGray">{total} total report{total !== 1 ? "s" : ""}</p>
+          <div className="flex items-center gap-3">
+            <div>
+              <h2 className="font-Manrope text-xl font-bold">Error Reports</h2>
+              <p className="text-sm text-BrandGray">{total} total report{total !== 1 ? "s" : ""}</p>
+            </div>
+            <button
+              onClick={handleCopyAll}
+              disabled={reports.length === 0}
+              className="rounded-lg border border-BrandOrange/40 bg-BrandOrange/10 px-3 py-1.5 text-xs font-semibold text-BrandOrange transition hover:bg-BrandOrange/20 disabled:opacity-30"
+            >
+              {copied === "all" ? "Copied!" : "Copy Reports"}
+            </button>
           </div>
           <div className="flex flex-wrap gap-2">
             <select
@@ -278,13 +287,6 @@ export default function AdminErrors() {
               className="rounded-lg border border-BrandGray2/40 px-3 py-1.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-white disabled:opacity-50"
             >
               {loading ? "Loading..." : "Refresh"}
-            </button>
-            <button
-              onClick={handleCopyAll}
-              disabled={reports.length === 0}
-              className="rounded-lg border border-BrandGray2/40 px-3 py-1.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-white disabled:opacity-30"
-            >
-              {copied === "all" ? "Copied!" : "Copy All"}
             </button>
             <button
               onClick={handleClearAll}

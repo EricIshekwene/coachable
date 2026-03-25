@@ -177,6 +177,7 @@ function Slate({
   initialPlayName,
   onNavigateHome,
   onPlayDataChange,
+  flushRef: externalFlushRef,
   onReady,
   viewOnly: viewOnlyProp = false,
   adminMode = false,
@@ -906,22 +907,46 @@ function Slate({
     });
   }, [playName, advancedSettings, entities, fieldViewport, animationData, speedMultiplier, autoplayEnabled, drawingsState.drawings]);
 
-  const handleSaveNow = useCallback(
-    ({ source = "manual", showToast = true } = {}) => {
-      if (!onPlayDataChange) return false;
-      onPlayDataChange(playbookPlayData, playName, { source });
-      logPersistence("saveNow persisted", {
-        source,
+  /**
+   * Persists the current play data to localStorage for crash recovery.
+   * Called on every change via debounced autosave effect.
+   * Database writes happen only on page unload / visibility change (handled by parent page).
+   */
+  const persistToLocalStorage = useCallback(() => {
+    if (!playId) return;
+    try {
+      const payload = { playData: playbookPlayData, playName, savedAt: Date.now() };
+      localStorage.setItem(`coachable_play_${playId}`, JSON.stringify(payload));
+      logPersistence("localStorage persisted", {
+        playId,
         playName,
         summary: summarizePersistedPlayData(playbookPlayData),
       });
-      if (showToast) {
-        onShowMessage?.("Play saved", "Saved to local storage.", "success");
-      }
-      return true;
-    },
-    [onPlayDataChange, playbookPlayData, playName, onShowMessage]
-  );
+    } catch (err) {
+      logPersistence("localStorage persist failed", { error: err?.message });
+    }
+  }, [playId, playbookPlayData, playName]);
+
+  /**
+   * Flushes play data to the database via the parent-provided callback.
+   * Called by the parent page component on unload / visibility change.
+   */
+  const flushToDatabase = useCallback(() => {
+    if (!onPlayDataChange) return false;
+    onPlayDataChange(playbookPlayData, playName, { source: "flush" });
+    logPersistence("flushToDatabase", {
+      playName,
+      summary: summarizePersistedPlayData(playbookPlayData),
+    });
+    return true;
+  }, [onPlayDataChange, playbookPlayData, playName]);
+
+  // Expose flushToDatabase to parent via ref
+  const flushRef = useRef(flushToDatabase);
+  useEffect(() => {
+    flushRef.current = flushToDatabase;
+    if (externalFlushRef) externalFlushRef.current = flushToDatabase;
+  }, [flushToDatabase, externalFlushRef]);
 
   const onSaveToPlaybook = useCallback(() => {
     // Always open the SaveToPlaybookModal (autosave handles persistence separately).
@@ -2480,14 +2505,14 @@ function Slate({
     onReady?.();
   });
 
-  // Autosave: debounced persist on playData or playName change.
+  // Autosave: debounced persist to localStorage on playData or playName change.
   useEffect(() => {
-    if (!onPlayDataChange || !editorReadyRef.current) return;
+    if (!playId || !editorReadyRef.current) return;
     const timeoutId = setTimeout(() => {
-      handleSaveNow({ source: "autosave", showToast: false });
-    }, 1200);
+      persistToLocalStorage();
+    }, 800);
     return () => clearTimeout(timeoutId);
-  }, [playbookPlayData, playName, onPlayDataChange, handleSaveNow]);
+  }, [playbookPlayData, playName, playId, persistToLocalStorage]);
 
   const handleImportClick = () => {
     importInputRef.current?.click();
@@ -2517,11 +2542,9 @@ function Slate({
       const tagName = e.target?.tagName || "UNKNOWN";
       const isTypingTarget =
         tagName === "INPUT" || tagName === "TEXTAREA" || e.target?.isContentEditable;
-      const isSaveShortcut = (e.ctrlKey || e.metaKey) && String(e.key || "").toLowerCase() === "s";
-
-      if (isSaveShortcut) {
+      // Prevent browser save dialog on Ctrl+S / Cmd+S
+      if ((e.ctrlKey || e.metaKey) && String(e.key || "").toLowerCase() === "s") {
         e.preventDefault();
-        handleSaveNow({ source: "shortcut", showToast: true });
         return;
       }
 
@@ -2667,7 +2690,6 @@ function Slate({
     recording.stopRecording,
     recording.cancelRecording,
     recording.stopPreview,
-    handleSaveNow,
   ]);
 
   const handleAnimationRendererReady = useCallback(() => {
@@ -2990,7 +3012,6 @@ function Slate({
         onSelectedPlayersColorChange={entities.handleSelectedPlayersColorChange}
         advancedSettingsOpen={showAdvancedSettings}
         onOpenAdvancedSettings={() => setShowAdvancedSettings(true)}
-        onSaveNow={() => handleSaveNow({ source: "manual", showToast: true })}
         onSaveToPlaybook={onSaveToPlaybook}
         onImport={handleImportClick}
         onScreenshot={handleScreenshotExportClick}

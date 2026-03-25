@@ -7,6 +7,7 @@ import useThemeColor from "../utils/useThemeColor";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 const SESSION_KEY = "coachable_admin_session";
+const LS_PREFIX = "coachable_play_";
 
 /**
  * Fetches a platform play from the admin API.
@@ -65,9 +66,36 @@ async function adminUpdatePlay(session, id, payload) {
 }
 
 /**
+ * Reads cached play data from localStorage for crash recovery.
+ * @param {string} playId - The play ID
+ * @returns {{ playData: Object, playName: string } | null}
+ */
+function recoverFromLocalStorage(playId) {
+  try {
+    const raw = localStorage.getItem(`${LS_PREFIX}${playId}`);
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    if (!cached?.playData || !cached?.savedAt) return null;
+    return cached;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Clears the localStorage cache for a given play ID.
+ * @param {string} playId
+ */
+function clearLocalStorageCache(playId) {
+  try {
+    localStorage.removeItem(`${LS_PREFIX}${playId}`);
+  } catch { /* ignore */ }
+}
+
+/**
  * Admin play editor page — wraps the Slate editor with platform-play save/load.
  * Accessible at /admin/plays/:playId/edit where playId is a UUID or "new".
- * Reads the admin session from localStorage and uses the admin API.
+ * Uses localStorage-first autosave and flushes to DB on unload/visibility change.
  */
 export default function AdminPlayEditPage() {
   const { playId } = useParams();
@@ -76,8 +104,10 @@ export default function AdminPlayEditPage() {
   const [ready, setReady] = useState(false);
   const [loadingPlay, setLoadingPlay] = useState(true);
   const [existingPlay, setExistingPlay] = useState(null);
+  const [recoveredData, setRecoveredData] = useState(undefined);
   // Track the persisted play ID (may differ from URL param when "new" → created)
   const persistedIdRef = useRef(playId === "new" ? null : playId);
+  const flushRef = useRef(null);
   const isNew = playId === "new";
 
   useThemeColor("#121212");
@@ -86,18 +116,30 @@ export default function AdminPlayEditPage() {
 
   // Load play data if editing an existing play
   useEffect(() => {
-    if (isNew) { setLoadingPlay(false); return; }
+    if (isNew) {
+      setLoadingPlay(false);
+      return;
+    }
     if (!session) { setLoadingPlay(false); return; }
     setLoadingPlay(true);
     adminFetchPlay(session, playId)
-      .then((p) => setExistingPlay(p))
-      .catch(() => setExistingPlay(null))
+      .then((p) => {
+        setExistingPlay(p);
+        const recovered = recoverFromLocalStorage(playId);
+        if (recovered && recovered.savedAt > new Date(p.updated_at || 0).getTime()) {
+          setRecoveredData(recovered);
+        }
+      })
+      .catch(() => {
+        setExistingPlay(null);
+        setRecoveredData(recoverFromLocalStorage(playId));
+      })
       .finally(() => setLoadingPlay(false));
   }, [playId, isNew, session]);
 
   /**
-   * Called by Slate whenever the play data or name changes.
-   * Creates the play on first save, then patches on subsequent saves.
+   * Called by Slate's flushToDatabase to persist play data to the server.
+   * Creates the play on first flush, then patches on subsequent flushes.
    */
   const handlePlayDataChange = useCallback(
     async (playData, playName) => {
@@ -112,6 +154,7 @@ export default function AdminPlayEditPage() {
           // Subsequent saves — update
           await adminUpdatePlay(session, persistedIdRef.current, { title, playData });
         }
+        if (persistedIdRef.current) clearLocalStorageCache(persistedIdRef.current);
       } catch {
         showMessage("Failed to save play", "", "error");
       }
@@ -132,7 +175,24 @@ export default function AdminPlayEditPage() {
     [session]
   );
 
+  // Flush to DB on page unload and visibility change
+  useEffect(() => {
+    const flush = () => flushRef.current?.();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+
+    window.addEventListener("beforeunload", flush);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("beforeunload", flush);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
   const handleNavigateHome = useCallback(() => {
+    flushRef.current?.();
     navigate("/admin/app");
   }, [navigate]);
 
@@ -146,6 +206,10 @@ export default function AdminPlayEditPage() {
       </div>
     );
   }
+
+  const effectivePlayId = persistedIdRef.current || "new";
+  const initialPlayData = recoveredData?.playData ?? existingPlay?.playData ?? null;
+  const initialPlayName = recoveredData?.playName ?? existingPlay?.title;
 
   return (
     <div
@@ -173,11 +237,12 @@ export default function AdminPlayEditPage() {
       />
 
       <Slate
-        playId={persistedIdRef.current || "new"}
+        playId={effectivePlayId}
         onShowMessage={showMessage}
-        initialPlayName={existingPlay?.title}
-        initialPlayData={existingPlay?.playData || null}
+        initialPlayName={initialPlayName}
+        initialPlayData={initialPlayData}
         onPlayDataChange={handlePlayDataChange}
+        flushRef={flushRef}
         onThumbnailSave={handleThumbnailSave}
         onNavigateHome={handleNavigateHome}
         onReady={() => setReady(true)}

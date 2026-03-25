@@ -1,6 +1,5 @@
 import React from "react";
 import { BsBookmarkPlus } from "react-icons/bs";
-import { FiSave } from "react-icons/fi";
 import { MdCameraAlt, MdVideocam } from "react-icons/md";
 
 const actionButtonClass = `
@@ -30,24 +29,12 @@ const iconWrapClass = `
 const iconClass = "text-sm sm:text-base";
 
 export default function ExportActions({
-  onSaveNow,
   onSaveToPlaybook,
   onScreenshot,
   onVideoExport,
 }) {
   return (
     <div className="w-full flex flex-col gap-2">
-      <button
-        type="button"
-        onClick={() => onSaveNow?.()}
-        className={fullWidthActionButtonClass}
-      >
-        <span className={iconWrapClass}>
-          <FiSave className={iconClass} aria-hidden />
-        </span>
-        <span className="min-w-0 flex-1 truncate">Save</span>
-      </button>
-
       <button
         type="button"
         onClick={() => onSaveToPlaybook?.()}

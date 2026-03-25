@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useMessagePopup } from "../components/messaging/useMessagePopup";
 import MessagePopup from "../components/MessagePopup/MessagePopup";
@@ -8,6 +8,46 @@ import { useAuth } from "../context/AuthContext";
 import { fetchPlay, updatePlay } from "../utils/apiPlays";
 import useThemeColor from "../utils/useThemeColor";
 
+const LS_PREFIX = "coachable_play_";
+
+/**
+ * Reads cached play data from localStorage for crash recovery.
+ * Returns the cached payload if it's newer than the server version, otherwise null.
+ * @param {string} playId - The play ID
+ * @param {Object|null} serverPlay - The play fetched from the server
+ * @returns {{ playData: Object, playName: string } | null}
+ */
+function recoverFromLocalStorage(playId, serverPlay) {
+  try {
+    const raw = localStorage.getItem(`${LS_PREFIX}${playId}`);
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    if (!cached?.playData || !cached?.savedAt) return null;
+    // If no server play exists, use local cache
+    if (!serverPlay) return cached;
+    // Compare timestamps — prefer local if newer than server updated_at
+    const serverUpdated = serverPlay.updated_at ? new Date(serverPlay.updated_at).getTime() : 0;
+    if (cached.savedAt > serverUpdated) return cached;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Clears the localStorage cache for a given play ID.
+ * @param {string} playId
+ */
+function clearLocalStorageCache(playId) {
+  try {
+    localStorage.removeItem(`${LS_PREFIX}${playId}`);
+  } catch { /* ignore */ }
+}
+
+/**
+ * Play editor page — loads play from server, passes localStorage-first autosave
+ * to Slate, and flushes to DB on page unload / visibility change.
+ */
 export default function PlayEditPage() {
   const { playId } = useParams();
   const navigate = useNavigate();
@@ -17,29 +57,64 @@ export default function PlayEditPage() {
   const [ready, setReady] = useState(false);
   const [existingPlay, setExistingPlay] = useState(null);
   const [loadingPlay, setLoadingPlay] = useState(true);
+  const [recoveredData, setRecoveredData] = useState(undefined); // undefined = not checked yet
+  const flushRef = useRef(null);
   useThemeColor("#121212");
 
+  // Load play from server, then check localStorage for recovery
   useEffect(() => {
     if (!teamId || !playId) { setLoadingPlay(false); return; }
     setLoadingPlay(true);
     fetchPlay(teamId, playId)
-      .then((p) => setExistingPlay(p))
-      .catch(() => setExistingPlay(null))
+      .then((p) => {
+        setExistingPlay(p);
+        const recovered = recoverFromLocalStorage(playId, p);
+        setRecoveredData(recovered);
+      })
+      .catch(() => {
+        setExistingPlay(null);
+        const recovered = recoverFromLocalStorage(playId, null);
+        setRecoveredData(recovered);
+      })
       .finally(() => setLoadingPlay(false));
   }, [teamId, playId]);
 
+  /**
+   * Called by Slate's flushToDatabase to persist play data to the server.
+   * Only invoked on page unload / visibility change — not on every keystroke.
+   */
   const handlePlayDataChange = useCallback(
     (playData, playName) => {
       if (!teamId || !playId) return;
       updatePlay(teamId, playId, {
         playData,
         title: playName || "Untitled",
-      }).catch(() => {});
+      })
+        .then(() => clearLocalStorageCache(playId))
+        .catch(() => {});
     },
     [teamId, playId]
   );
 
+  // Flush to DB on page unload and visibility change
+  useEffect(() => {
+    const flush = () => flushRef.current?.();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+
+    window.addEventListener("beforeunload", flush);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("beforeunload", flush);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
   const handleNavigateHome = useCallback(() => {
+    // Flush to DB before navigating away
+    flushRef.current?.();
     navigate("/app/plays");
   }, [navigate]);
 
@@ -53,6 +128,10 @@ export default function PlayEditPage() {
       </div>
     );
   }
+
+  // Determine initial data — prefer recovered localStorage data over server
+  const initialPlayData = recoveredData?.playData ?? existingPlay?.playData ?? null;
+  const initialPlayName = recoveredData?.playName ?? existingPlay?.title;
 
   return (
     <div className="w-full bg-[#121212] flex flex-row justify-between relative overflow-hidden" style={{ height: "100dvh" }}>
@@ -80,9 +159,10 @@ export default function PlayEditPage() {
         <Slate
           playId={playId}
           onShowMessage={showMessage}
-          initialPlayName={existingPlay?.title}
-          initialPlayData={existingPlay?.playData || null}
+          initialPlayName={initialPlayName}
+          initialPlayData={initialPlayData}
           onPlayDataChange={handlePlayDataChange}
+          flushRef={flushRef}
           onNavigateHome={handleNavigateHome}
           onReady={() => setReady(true)}
         />

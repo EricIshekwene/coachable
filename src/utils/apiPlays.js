@@ -93,6 +93,12 @@ export async function copySharedPlay(token) {
   return data.play;
 }
 
+/** Copy a platform play to the current user's team playbook. */
+export async function copyPlatformPlay(playId) {
+  const data = await apiFetch(`/platform-plays/${playId}/copy`, { method: "POST" });
+  return data.play;
+}
+
 /** Fetch trashed plays for a team. */
 export async function fetchTrashedPlays(teamId) {
   const data = await apiFetch(`/teams/${teamId}/plays-trash`);

@@ -55,6 +55,26 @@ async function fetchFeaturedPlays() {
   return data.plays || [];
 }
 
+/**
+ * Copy a platform play to the authenticated user's team playbook.
+ * Mirrors the copySharedPlay pattern but uses the platform play ID directly.
+ */
+async function copyPlatformPlay(authToken, playId) {
+  const res = await fetch(`${API_URL}/platform-plays/${playId}/copy`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${authToken}`,
+    },
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || "Failed to copy play");
+  }
+  const data = await res.json();
+  return data.play;
+}
+
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe("adminFetchPlay", () => {
@@ -147,5 +167,38 @@ describe("fetchFeaturedPlays (public)", () => {
     fetchSpy = mockFetch({});
     const result = await fetchFeaturedPlays();
     expect(result).toEqual([]);
+  });
+});
+
+describe("copyPlatformPlay", () => {
+  let fetchSpy;
+  afterEach(() => fetchSpy.mockRestore());
+
+  it("sends POST with Authorization header and returns the new play", async () => {
+    const newPlay = { id: "new-1", teamId: "team-1", title: "Copied Play" };
+    fetchSpy = mockFetch({ play: newPlay });
+
+    const result = await copyPlatformPlay("user-token-123", "platform-play-1");
+
+    expect(fetchSpy).toHaveBeenCalledOnce();
+    const [url, opts] = fetchSpy.mock.calls[0];
+    expect(url).toBe(`${API_URL}/platform-plays/platform-play-1/copy`);
+    expect(opts.method).toBe("POST");
+    expect(opts.headers.Authorization).toBe("Bearer user-token-123");
+    expect(result).toEqual(newPlay);
+  });
+
+  it("throws when the user is not a coach", async () => {
+    fetchSpy = mockFetch({ error: "Only coaches can add plays to the playbook" }, false);
+    await expect(copyPlatformPlay("player-token", "play-1")).rejects.toThrow(
+      "Only coaches can add plays to the playbook"
+    );
+  });
+
+  it("throws when the platform play is not found", async () => {
+    fetchSpy = mockFetch({ error: "Platform play not found" }, false);
+    await expect(copyPlatformPlay("token", "missing-id")).rejects.toThrow(
+      "Platform play not found"
+    );
   });
 });
