@@ -42,7 +42,7 @@ export default function AuthPromptModal({ open, onClose, onLogin, onSignup }) {
           <button type="button" onClick={onSignup} className={POPUP_PRIMARY_BUTTON_CLASS}>
             Sign Up
           </button>
-          <button type="button" onClick={onLogin} className={POPUP_SECONDARY_BUTTON_CLASS}>
+          <button type="button" onClick={onLogin} className={`${POPUP_SECONDARY_BUTTON_CLASS} border-none`}>
             Log In
           </button>
         </div>

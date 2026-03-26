@@ -19,6 +19,7 @@ const SPORTS = [
 export default function Onboarding() {
   const [searchParams] = useSearchParams();
   const inviteFromUrl = searchParams.get("invite") || "";
+  const returnTo = searchParams.get("returnTo") || "";
   const hasInvite = inviteFromUrl.length > 0;
 
   const [teamAction, setTeamAction] = useState(hasInvite ? "join" : "create");
@@ -75,7 +76,7 @@ export default function Onboarding() {
         inviteCode: inviteCode.trim(),
         sport,
       });
-      navigate("/app/plays");
+      navigate(returnTo || "/app/plays");
     } catch (err) {
       showMessage("Setup failed", err.message || "Could not complete setup.", "error");
     } finally {

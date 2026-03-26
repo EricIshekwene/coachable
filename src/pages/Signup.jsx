@@ -11,6 +11,7 @@ export default function Signup() {
   const [name, setName] = useState("");
   const [searchParams] = useSearchParams();
   const inviteCode = searchParams.get("invite") || "";
+  const returnTo = searchParams.get("returnTo") || "";
   const [email, setEmail] = useState(searchParams.get("email") || "");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -54,13 +55,14 @@ export default function Signup() {
     setSubmitting(true);
     try {
       const result = await signup(trimmedName, trimmedEmail, trimmedPassword);
-      const onboardingPath = inviteCode
-        ? `/onboarding?invite=${encodeURIComponent(inviteCode)}`
-        : "/onboarding";
+      const params = new URLSearchParams();
+      if (inviteCode) params.set("invite", inviteCode);
+      if (returnTo) params.set("returnTo", returnTo);
+      const qs = params.toString() ? `?${params.toString()}` : "";
       if (result.requiresVerification) {
-        navigate(inviteCode ? `/verify-email?invite=${encodeURIComponent(inviteCode)}` : "/verify-email");
+        navigate(`/verify-email${qs}`);
       } else {
-        navigate(onboardingPath);
+        navigate(`/onboarding${qs}`);
       }
     } catch (err) {
       showMessage("Signup failed", err.message || "Could not create account.", "error");
@@ -142,7 +144,7 @@ export default function Signup() {
 
           <p className="mt-6 text-center text-sm text-BrandGray2">
             Already have an account?{" "}
-            <Link to={inviteCode ? `/login?invite=${encodeURIComponent(inviteCode)}` : "/login"} className="font-semibold text-BrandOrange transition hover:opacity-80">
+            <Link to={(() => { const p = new URLSearchParams(); if (inviteCode) p.set("invite", inviteCode); if (returnTo) p.set("returnTo", returnTo); const q = p.toString(); return `/login${q ? `?${q}` : ""}`; })()} className="font-semibold text-BrandOrange transition hover:opacity-80">
               Sign in
             </Link>
           </p>

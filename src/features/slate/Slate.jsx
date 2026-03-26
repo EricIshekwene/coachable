@@ -51,6 +51,7 @@ import { useRecordingMode } from "./hooks/useRecordingMode";
 import RecordingControlBar from "../../components/RecordingControlBar";
 import RecordingCountdown from "../../components/RecordingCountdown";
 import SaveToPlaybookModal from "../../components/SaveToPlaybookModal";
+import AuthPromptModal from "../../components/AuthPromptModal";
 import ViewOnlyControls from "../../components/ViewOnlyControls";
 import { useAuth } from "../../context/AuthContext";
 
@@ -267,6 +268,7 @@ function Slate({
   const [customPrefabs, setCustomPrefabs] = useState(() => loadCustomPrefabs());
   const [savePrefabModalOpen, setSavePrefabModalOpen] = useState(false);
   const [saveToPlaybookOpen, setSaveToPlaybookOpen] = useState(false);
+  const [authPromptOpen, setAuthPromptOpen] = useState(false);
   const [playbookThumbnail, setPlaybookThumbnail] = useState(null);
   const pendingPrefabRef = useRef(null);
   const [slateLoadPhase, setSlateLoadPhase] = useState("loading"); // "loading" | "fading" | "done"
@@ -949,6 +951,10 @@ function Slate({
   }, [flushToDatabase, externalFlushRef]);
 
   const onSaveToPlaybook = useCallback(() => {
+    if (!user) {
+      setAuthPromptOpen(true);
+      return;
+    }
     // Always open the SaveToPlaybookModal (autosave handles persistence separately).
     const bounds = screenshotApiRef.current?.getFieldWorldBounds?.();
     if (bounds) {
@@ -966,7 +972,7 @@ function Slate({
       summary: summarizePersistedPlayData(playbookPlayData),
     });
     setSaveToPlaybookOpen(true);
-  }, [playName, playbookPlayData]);
+  }, [user, playName, playbookPlayData]);
 
   const handlePlaybookSaved = useCallback((entry) => {
     const savedTitle = entry?.title || entry?.playName || playName;
@@ -2935,6 +2941,12 @@ function Slate({
             sourcePlayId={playId}
             onClose={() => setSaveToPlaybookOpen(false)}
             onSaved={handlePlaybookSaved}
+          />
+          <AuthPromptModal
+            open={authPromptOpen}
+            onClose={() => setAuthPromptOpen(false)}
+            onLogin={() => { window.location.href = `/login?returnTo=${encodeURIComponent(window.location.pathname)}`; }}
+            onSignup={() => { window.location.href = `/signup?returnTo=${encodeURIComponent(window.location.pathname)}`; }}
           />
           <ExportOverlay
             visible={isExporting || !!exportError}
