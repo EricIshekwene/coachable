@@ -150,6 +150,7 @@ function mapApiPlayToLocal(p) {
     notesAuthorName: p.notesAuthorName || "",
     notesUpdatedAt: p.notesUpdatedAt || null,
     favorited: Boolean(p.favorited),
+    hiddenFromPlayers: Boolean(p.hiddenFromPlayers),
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
     // Legacy aliases

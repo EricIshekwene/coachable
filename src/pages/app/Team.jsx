@@ -96,7 +96,7 @@ function InviteCodeSection({ role, code, copiedRole, onCopy, onRotate, onSendInv
 }
 
 export default function Team() {
-  const { user, teamMembers, removeMember } = useAuth();
+  const { user, teamMembers, removeMember, playerViewMode } = useAuth();
   const { showMessage } = useAppMessage();
 
   // Solo users don't have a real team — show a CTA instead
@@ -116,8 +116,8 @@ export default function Team() {
       </div>
     );
   }
-  const isOwner = user?.role === "owner" || user?.id === user?.ownerId;
-  const isCoach = user?.role === "coach" || isOwner;
+  const isOwner = (user?.role === "owner" || user?.id === user?.ownerId) && !playerViewMode;
+  const isCoach = (user?.role === "coach" || isOwner) && !playerViewMode;
   const [copiedRole, setCopiedRole] = useState(null);
   const [inviteCodes, setInviteCodes] = useState({ player: "", coach: "" });
   const [sending, setSending] = useState(false);

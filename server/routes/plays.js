@@ -19,6 +19,7 @@ function toPlayResponse(row, { tags = [], favorited = false } = {}) {
     notesAuthorName: row.notes_author_name || "",
     notesUpdatedAt: row.notes_updated_at || null,
     favorited,
+    hiddenFromPlayers: Boolean(row.hidden_from_players),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -31,9 +32,11 @@ router.get(
   requireTeamRole(),
   async (req, res, next) => {
     try {
+      const isPlayer = req.teamRole === "player";
       const { rows } = await pool.query(
         `SELECT * FROM plays
          WHERE team_id = $1 AND archived_at IS NULL
+         ${isPlayer ? "AND hidden_from_players = false" : ""}
          ORDER BY updated_at DESC`,
         [req.params.teamId]
       );
@@ -149,6 +152,10 @@ router.get(
       );
       if (!rows.length) return res.status(404).json({ error: "Play not found" });
 
+      if (req.teamRole === "player" && rows[0].hidden_from_players) {
+        return res.status(404).json({ error: "Play not found" });
+      }
+
       const tagRes = await pool.query(
         `SELECT pt.label FROM play_tag_links ptl
          JOIN play_tags pt ON pt.id = ptl.tag_id
@@ -179,7 +186,7 @@ router.patch(
   requireTeamRole("owner", "coach", "assistant_coach"),
   async (req, res, next) => {
     try {
-      const { title, folderId, playData, thumbnail, notes, notesAuthorName } = req.body;
+      const { title, folderId, playData, thumbnail, notes, notesAuthorName, hiddenFromPlayers } = req.body;
 
       const setClauses = ["updated_at = now()", "updated_by_user_id = $1"];
       const values = [req.userId];
@@ -209,6 +216,10 @@ router.patch(
       if (notesAuthorName !== undefined) {
         setClauses.push(`notes_author_name = $${idx++}`);
         values.push(notesAuthorName.trim());
+      }
+      if (hiddenFromPlayers !== undefined) {
+        setClauses.push(`hidden_from_players = $${idx++}`);
+        values.push(Boolean(hiddenFromPlayers));
       }
 
       values.push(req.params.playId);

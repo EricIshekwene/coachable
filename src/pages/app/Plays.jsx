@@ -5,6 +5,7 @@ import {
   FiPlus, FiPlay, FiEdit2, FiClock, FiTag, FiFolder, FiMoreHorizontal,
   FiStar, FiCopy, FiExternalLink, FiTrash2, FiEdit3, FiChevronRight,
   FiLoader, FiSearch, FiRotateCcw, FiX, FiCheckSquare, FiSquare,
+  FiEyeOff, FiEye,
 } from "react-icons/fi";
 import { fetchPlays, deletePlay as apiDeletePlay, updatePlay, toggleFavorite as apiToggleFavorite, movePlayToFolder as apiMovePlayToFolder, sharePlay, fetchTrashedPlays, restorePlay as apiRestorePlay, permanentDeletePlay as apiPermanentDelete, duplicatePlay as apiDuplicatePlay, bulkDeletePlays, bulkMovePlays, bulkTagPlays } from "../../utils/apiPlays";
 import { fetchFolders, createFolder as apiCreateFolder, updateFolder, deleteFolder as apiFolderDelete, shareFolder } from "../../utils/apiFolders";
@@ -121,6 +122,16 @@ export default function Plays() {
     const next = !play.favorited;
     setPlays((prev) => prev.map((p) => (p.id === playId ? { ...p, favorited: next } : p)));
     if (teamId) apiToggleFavorite(teamId, playId, next).catch(() => {});
+  };
+
+  const handleToggleHidden = (playId) => {
+    const play = plays.find((p) => p.id === playId);
+    if (!play) return;
+    const next = !play.hiddenFromPlayers;
+    setPlays((prev) => prev.map((p) => (p.id === playId ? { ...p, hiddenFromPlayers: next } : p)));
+    setMenuOpen(null);
+    showToast(next ? "Hidden from players" : "Visible to players");
+    if (teamId) updatePlay(teamId, playId, { hiddenFromPlayers: next }).catch(() => {});
   };
 
   const handleDeletePlay = (playId) => {
@@ -337,15 +348,18 @@ export default function Plays() {
   // Collect all unique tags for the filter bar
   const allTags = [...new Set(plays.flatMap((p) => p.tags || []))].sort();
 
+  const playerVisible = (p) => !playerViewMode || !p.hiddenFromPlayers;
+
   const baseVisiblePlays = isSearching
     ? plays.filter((p) =>
+        playerVisible(p) && (
         p.title.toLowerCase().includes(searchLower) ||
         (p.tags || []).some((t) => t.toLowerCase().includes(searchLower)) ||
-        (p.notes || "").toLowerCase().includes(searchLower)
+        (p.notes || "").toLowerCase().includes(searchLower))
       )
     : currentFolderId
-      ? plays.filter((p) => p.folderId === currentFolderId)
-      : plays;
+      ? plays.filter((p) => playerVisible(p) && p.folderId === currentFolderId)
+      : plays.filter(playerVisible);
 
   const visiblePlays = activeTag
     ? baseVisiblePlays.filter((p) => (p.tags || []).includes(activeTag))
@@ -353,7 +367,7 @@ export default function Plays() {
 
   // Recently edited: top 5, only shown at root when not searching
   const recentlyEdited = (!currentFolderId && !isSearching)
-    ? [...plays].sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)).slice(0, 5)
+    ? [...plays].filter(playerVisible).sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)).slice(0, 5)
     : [];
 
   const ContextMenu = ({ id, type }) => {
@@ -367,6 +381,7 @@ export default function Plays() {
           <button onClick={() => { handleToggleFavorite(id); setMenuOpen(null); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiStar className={`text-sm ${play?.favorited ? "fill-BrandOrange text-BrandOrange" : ""}`} />{play?.favorited ? "Unfavorite" : "Favorite"}</button>
           <button onClick={() => copyLink(id)} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiCopy className="text-sm" /> Share</button>
           <button onClick={() => handleDuplicatePlay(id)} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiCopy className="text-sm" /> Duplicate</button>
+          <button onClick={() => handleToggleHidden(id)} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText">{play?.hiddenFromPlayers ? <><FiEye className="text-sm" /> Show to Players</> : <><FiEyeOff className="text-sm" /> Hide from Players</>}</button>
         </>)}
         {isFolder && (
           <button onClick={() => copyFolderLink(id)} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiCopy className="text-sm" /> Share Folder</button>
@@ -564,6 +579,7 @@ export default function Plays() {
               <div className="flex flex-1 cursor-pointer flex-col" onClick={bulkMode ? undefined : () => navigate(playerViewMode ? `/app/plays/${play.id}/view` : `/app/plays/${play.id}`)}>
                 <PlayPreviewCard playData={play.playData} autoplay="hover" shape="landscape" cameraMode="fit-distribution" background="field" paddingPx={20} minSpanPx={100} showHoverHint={false} className="mb-4" />
                 <div className="flex items-center gap-1.5">
+                  {play.hiddenFromPlayers && isCoach && <FiEyeOff className="shrink-0 text-sm text-BrandGray2" title="Hidden from players" />}
                   {play.favorited && <FiStar className="shrink-0 fill-BrandOrange text-sm text-BrandOrange" />}
                   {renameTarget === play.id ? (<input ref={renameRef} value={renameValue} onChange={(e) => setRenameValue(e.target.value)} onBlur={confirmRename} onKeyDown={(e) => { if (e.key === "Enter") confirmRename(); if (e.key === "Escape") setRenameTarget(null); }} onClick={(e) => e.stopPropagation()} className="min-w-0 flex-1 rounded bg-transparent font-Manrope text-sm font-semibold outline-none ring-1 ring-BrandOrange px-1" />) : (<h3 className="min-w-0 flex-1 font-Manrope text-sm font-semibold truncate">{play.title}</h3>)}
                   {isCoach && (<div className="relative shrink-0"><button onClick={(e) => { e.stopPropagation(); setMenuOpen(menuOpen === play.id ? null : play.id); }} className="rounded-md p-1 text-BrandGray2 opacity-100 md:opacity-0 transition hover:bg-BrandBlack2 hover:text-BrandText group-hover:opacity-100"><FiMoreHorizontal className="text-sm" /></button><ContextMenu id={play.id} type="play" /></div>)}

@@ -227,7 +227,8 @@ CREATE TABLE IF NOT EXISTS plays (
   updated_by_user_id UUID NOT NULL REFERENCES users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  archived_at TIMESTAMPTZ
+  archived_at TIMESTAMPTZ,
+  hidden_from_players BOOLEAN NOT NULL DEFAULT false
 );
 
 CREATE INDEX IF NOT EXISTS plays_team_idx ON plays(team_id);
