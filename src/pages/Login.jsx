@@ -81,9 +81,9 @@ export default function Login() {
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold text-BrandBlack">Password</label>
-                <button type="button" className="text-xs text-BrandOrange transition hover:opacity-80">
+                <Link to="/forgot-password" className="text-xs text-BrandOrange transition hover:opacity-80">
                   Forgot password?
-                </button>
+                </Link>
               </div>
               <input
                 type="password"

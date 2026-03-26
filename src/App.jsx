@@ -13,6 +13,8 @@ import Signup from "./pages/Signup";
 import Login from "./pages/Login";
 import Onboarding from "./pages/Onboarding";
 import VerifyEmail from "./pages/VerifyEmail";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Admin from "./pages/Admin";
 import AdminTests from "./pages/AdminTests";
 import AdminErrors from "./pages/AdminErrors";
@@ -110,6 +112,8 @@ function AppRoutes() {
       <Route path="/home" element={<Landing />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/admin" element={<Admin />} />
       <Route path="/admin/tests" element={<AdminTests />} />
       <Route path="/admin/errors" element={<AdminErrors />} />

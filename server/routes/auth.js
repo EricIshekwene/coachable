@@ -2,7 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcrypt";
 import pool from "../db/pool.js";
 import { signToken, setSessionCookie, clearSessionCookie, requireAuth } from "../middleware/auth.js";
-import { generateCode, sendVerificationEmail } from "../lib/email.js";
+import { generateCode, sendVerificationEmail, sendPasswordResetEmail } from "../lib/email.js";
 
 const router = Router();
 const SALT_ROUNDS = 10;
@@ -217,6 +217,120 @@ router.get("/me", requireAuth, async (req, res, next) => {
         },
       },
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /auth/forgot-password — send a 6-digit reset code to the user's email
+router.post("/forgot-password", async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email?.trim()) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Always return success to avoid leaking whether the email exists
+    const { rows } = await pool.query(
+      "SELECT id, name, email FROM users WHERE email = $1",
+      [normalizedEmail]
+    );
+
+    if (!rows.length) {
+      // Don't reveal that the email doesn't exist
+      return res.json({ ok: true });
+    }
+
+    const user = rows[0];
+
+    // Rate limit: check if a code was sent in the last 60 seconds
+    const recentCheck = await pool.query(
+      `SELECT created_at FROM password_reset_codes
+       WHERE user_id = $1 AND created_at > now() - interval '60 seconds'
+       ORDER BY created_at DESC LIMIT 1`,
+      [user.id]
+    );
+    if (recentCheck.rows.length) {
+      return res.status(429).json({ error: "Please wait 60 seconds before requesting another code" });
+    }
+
+    // Invalidate all previous unused codes for this user
+    await pool.query(
+      `UPDATE password_reset_codes SET used_at = now()
+       WHERE user_id = $1 AND used_at IS NULL`,
+      [user.id]
+    );
+
+    // Generate and store new code
+    const code = generateCode();
+    await pool.query(
+      `INSERT INTO password_reset_codes (user_id, email, code, expires_at)
+       VALUES ($1, $2, $3, now() + interval '10 minutes')`,
+      [user.id, user.email, code]
+    );
+
+    // Send email
+    try {
+      await sendPasswordResetEmail(user.email, code, user.name);
+    } catch (emailErr) {
+      console.error("Failed to send password reset email:", emailErr.message);
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /auth/reset-password — verify code and set new password
+router.post("/reset-password", async (req, res, next) => {
+  try {
+    const { email, code, password } = req.body;
+    if (!email?.trim() || !code?.trim() || !password) {
+      return res.status(400).json({ error: "Email, code, and new password are required" });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Find valid, unused code for this email
+    const { rows } = await pool.query(
+      `SELECT prc.id, prc.user_id FROM password_reset_codes prc
+       JOIN users u ON u.id = prc.user_id
+       WHERE prc.email = $1
+         AND prc.code = $2
+         AND prc.used_at IS NULL
+         AND prc.expires_at > now()
+       ORDER BY prc.created_at DESC
+       LIMIT 1`,
+      [normalizedEmail, code.trim()]
+    );
+
+    if (!rows.length) {
+      return res.status(400).json({ error: "Invalid or expired code" });
+    }
+
+    const { id: codeId, user_id: userId } = rows[0];
+
+    // Hash new password and update
+    const hash = await bcrypt.hash(password, SALT_ROUNDS);
+    await pool.query("UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2", [hash, userId]);
+
+    // Mark code as used
+    await pool.query("UPDATE password_reset_codes SET used_at = now() WHERE id = $1", [codeId]);
+
+    // Invalidate all other unused codes for this user
+    await pool.query(
+      `UPDATE password_reset_codes SET used_at = now()
+       WHERE user_id = $1 AND used_at IS NULL`,
+      [userId]
+    );
+
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }

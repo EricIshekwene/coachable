@@ -303,7 +303,24 @@ CREATE INDEX IF NOT EXISTS error_reports_created_at_idx ON error_reports(created
 CREATE INDEX IF NOT EXISTS error_reports_component_idx ON error_reports(component);
 
 -- ============================================================
--- 6. Platform plays (admin-curated, not team-scoped)
+-- 6. Password reset codes
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS password_reset_codes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  code TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS password_reset_codes_user_idx ON password_reset_codes(user_id);
+CREATE INDEX IF NOT EXISTS password_reset_codes_email_idx ON password_reset_codes(email);
+
+-- ============================================================
+-- 7. Platform plays (admin-curated, not team-scoped)
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS platform_play_folders (
