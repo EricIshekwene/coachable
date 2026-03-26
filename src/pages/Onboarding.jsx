@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useAppMessage } from "../context/AppMessageContext";
 import logo from "../assets/logos/full_Coachable_logo.png";
+import whiteLogo from "../assets/logos/White_Full_Coachable.png";
+import brandImage from "../assets/pictures/female_football_coach_short.png";
 import { MdOutlineCreateNewFolder } from "react-icons/md";
 import { FaRegHandshake } from "react-icons/fa6";
 import { FiArrowRight, FiChevronDown, FiEdit } from "react-icons/fi";
@@ -135,12 +137,20 @@ export default function Onboarding() {
         </div>
 
         {/* Right panel */}
-        <div className="hidden flex-col items-center justify-center bg-BrandBlack md:flex md:w-2/5">
-          <div className="flex flex-col items-center gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-BrandOrange/10">
-              <FaRegHandshake className="text-3xl text-BrandOrange" />
-            </div>
-            <p className="max-w-xs text-center text-sm leading-relaxed text-BrandGray2">
+        <div className="relative hidden overflow-hidden md:flex md:w-2/5">
+          <img src={brandImage} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/80" />
+          <div className="relative z-10 flex h-full w-full flex-col items-start justify-end px-10 pb-16 lg:px-14 lg:pb-20">
+            <img src={whiteLogo} alt="Coachable" className="absolute left-10 top-10 h-7 opacity-70 lg:left-14 lg:top-14" />
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-BrandOrange">
+              Welcome to the team
+            </p>
+            <h2 className="font-Manrope text-4xl font-extrabold leading-[1.1] tracking-tight text-white lg:text-5xl xl:text-6xl">
+              Step on<br />
+              <span className="text-white/40">the field,</span><br />
+              <span className="text-BrandOrange">together.</span>
+            </h2>
+            <p className="mt-6 max-w-sm text-base leading-relaxed text-white/50 lg:text-lg">
               Your invite code determines your role. You'll be added to the team automatically.
             </p>
           </div>
@@ -283,16 +293,24 @@ export default function Onboarding() {
       </div>
 
       {/* Right panel */}
-      <div className="hidden flex-col items-center justify-center bg-BrandBlack md:flex md:w-2/5">
-        <div className="flex flex-col items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-BrandOrange/10">
-            <MdOutlineCreateNewFolder className="text-3xl text-BrandOrange" />
-          </div>
-          <p className="max-w-xs text-center text-sm leading-relaxed text-BrandGray2">
+      <div className="relative hidden overflow-hidden md:flex md:w-2/5">
+        <img src={brandImage} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/80" />
+        <div className="relative z-10 flex h-full w-full flex-col items-start justify-end px-10 pb-16 lg:px-14 lg:pb-20">
+          <img src={whiteLogo} alt="Coachable" className="absolute left-10 top-10 h-7 opacity-70 lg:left-14 lg:top-14" />
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-BrandOrange">
+            Set up your space
+          </p>
+          <h2 className="font-Manrope text-4xl font-extrabold leading-[1.1] tracking-tight text-white lg:text-5xl xl:text-6xl">
+            Build.<br />
+            <span className="text-white/40">Strategize.</span><br />
+            <span className="text-BrandOrange">Win.</span>
+          </h2>
+          <p className="mt-6 max-w-sm text-base leading-relaxed text-white/50 lg:text-lg">
             {teamAction === "solo"
               ? "Start designing plays instantly. You can create or join a team anytime."
               : teamAction === "create"
-                ? "As the team creator, you'll be the coach. You can invite players after setup."
+                ? "As the team creator, you'll be the coach. Invite players after setup."
                 : "Your invite code determines your role. Ask your coach for the right code."}
           </p>
         </div>

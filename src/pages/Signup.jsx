@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useAppMessage } from "../context/AppMessageContext";
 import logo from "../assets/logos/full_Coachable_logo.png";
 import whiteLogo from "../assets/logos/White_Full_Coachable.png";
+import brandImage from "../assets/pictures/female_football_coach_short.png";
 import { isValidEmail } from "../utils/inputValidation";
 
 export default function Signup() {
@@ -149,11 +150,33 @@ export default function Signup() {
       </div>
 
       {/* Right - Brand panel */}
-      <div className="hidden flex-col items-center justify-center bg-BrandBlack md:flex md:w-1/2">
-        <img src={whiteLogo} alt="Coachable" className="mb-6 h-10 opacity-60" />
-        <p className="max-w-xs text-center text-sm leading-relaxed text-BrandGray2">
-          The modern playbook platform for coaches and teams.
-        </p>
+      <div className="relative hidden overflow-hidden md:flex md:w-1/2">
+        <img
+          src={brandImage}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/80" />
+        <div className="relative z-10 flex h-full w-full flex-col items-start justify-end px-10 pb-16 lg:px-16 lg:pb-20">
+          <img src={whiteLogo} alt="Coachable" className="absolute left-10 top-10 h-7 opacity-70 lg:left-16 lg:top-14" />
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-BrandOrange">
+            Get started for free
+          </p>
+          <h2 className="font-Manrope text-5xl font-extrabold leading-[1.1] tracking-tight text-white lg:text-6xl xl:text-7xl">
+            Your<br />
+            <span className="text-white/40">playbook,</span><br />
+            <span className="text-BrandOrange">reimagined.</span>
+          </h2>
+          <p className="mt-6 max-w-sm text-base leading-relaxed text-white/50 lg:text-lg">
+            Collaborate with your coaching staff, animate game plans, and bring your strategy to life.
+          </p>
+          <div className="mt-8 flex items-center gap-2">
+            <div className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            <span className="text-xs font-medium tracking-wide text-white/40">
+              No credit card required
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );

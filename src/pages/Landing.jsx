@@ -22,7 +22,7 @@ const RESOURCES_ITEMS = [
 const STATS = [
   { value: "98%", label: "Team Retention" },
   { value: "12+", label: "Team Sports Supported" },
-  { value: "3+", label: "Hours of Practice Saved a Week" },
+  { value: "30%", label: "Of Practice Time Saved" },
 ];
 
 /**
