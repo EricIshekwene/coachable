@@ -73,7 +73,7 @@ export default function PitchSettingsSection({ value = {}, onChange, adminMode =
             </div>
 
             {/* Field Type (admin only) */}
-            {adminMode && (
+            {(
             <div className="flex flex-col w-full items-start justify-start gap-1 sm:gap-1.5 relative">
                 <p className="text-BrandWhite text-xs sm:text-sm font-DmSans">Field Type</p>
                 <div ref={fieldTypeRef} className="relative w-full">

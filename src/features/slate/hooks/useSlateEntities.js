@@ -191,19 +191,33 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
     isRestoringRef.current = false;
   };
 
-  const resolveNextNumber = (providedNumber) => {
+  /**
+   * Resolves the next player number. When a color is provided, counts only
+   * players of that same color so numbering restarts per-color group.
+   * @param {string|number|undefined} providedNumber - Explicit number override.
+   * @param {string|undefined} forColor - The color of the player being added.
+   * @returns {number|string} The resolved player number.
+   */
+  const resolveNextNumber = (providedNumber, forColor) => {
     const trimmed = String(providedNumber ?? "").trim();
     if (trimmed !== "") {
       return normalizeNumber(trimmed);
     }
     if (!representedPlayerIds?.length) return 1;
-    for (let i = representedPlayerIds.length - 1; i >= 0; i -= 1) {
-      const player = playersById?.[representedPlayerIds[i]];
+    const normalizedColor = (forColor || "").toLowerCase();
+    let maxNumber = 0;
+    let found = false;
+    for (const pid of representedPlayerIds) {
+      const player = playersById?.[pid];
       if (!player) continue;
+      if (normalizedColor && (player.color || "").toLowerCase() !== normalizedColor) continue;
       const numeric = Number(player.number);
-      if (!Number.isNaN(numeric)) return numeric + 1;
+      if (!Number.isNaN(numeric)) {
+        maxNumber = Math.max(maxNumber, numeric);
+        found = true;
+      }
     }
-    return 1;
+    return found ? maxNumber + 1 : 1;
   };
 
   const handlePlayerColorChange = (hex) => {
@@ -229,7 +243,7 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
     const nextName = String(name ?? "").trim();
     const colorKey = color || currentPlayerColor || allPlayersDisplay.color || DEFAULT_PLAYER_COLOR;
     const hasInput = String(number ?? "").trim() !== "" || nextName !== "";
-    const nextNumber = resolveNextNumber(number);
+    const nextNumber = resolveNextNumber(number, colorKey);
     if (!hasInput && String(nextNumber ?? "").trim() === "") {
       return;
     }
