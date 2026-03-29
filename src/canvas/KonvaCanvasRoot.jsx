@@ -1732,7 +1732,8 @@ function KonvaCanvasRoot({
           onTouchEnd={handleStagePointerUp}
           onWheel={handleStageWheel}
         >
-          <Layer ref={itemsLayerRef}>
+          {/* Base layer: background fill + field image */}
+          <Layer listening={false}>
             <Group x={worldOrigin.x} y={worldOrigin.y} scaleX={worldOrigin.scale} scaleY={worldOrigin.scale}>
               {/* Background fill in world coordinates so exports always capture the pitch color */}
               <Rect
@@ -1757,6 +1758,146 @@ function KonvaCanvasRoot({
                   listening={false}
                 />
               )}
+            </Group>
+          </Layer>
+          {/* Drawings layer: renders below players/ball */}
+          <Layer listening={false} name="drawingsLayer">
+            <Group x={worldOrigin.x} y={worldOrigin.y} scaleX={worldOrigin.scale} scaleY={worldOrigin.scale}>
+              {drawings.map((d) => renderDrawingNode(d, d.id))}
+              {canvasDrawing.activeDrawing && renderDrawingNode(canvasDrawing.activeDrawing, "active-preview")}
+              {/* Custom shape preview line (from last point to cursor) */}
+              {canvasDrawing.customPreviewLine && (() => {
+                const pl = canvasDrawing.customPreviewLine;
+                return (
+                  <Line
+                    points={[pl.x1, pl.y1, pl.x2, pl.y2]}
+                    stroke="#FF7A18"
+                    strokeWidth={1 / (camera?.zoom || 1)}
+                    dash={[4, 3]}
+                    listening={false}
+                  />
+                );
+              })()}
+              {/* Multi-selection bounds box */}
+              {drawingSelection.selectionBounds && selectedDrawingIds.length > 0 && (() => {
+                const sb = drawingSelection.selectionBounds;
+                const pad = 4 / (camera?.zoom || 1);
+                const sw = 1.5 / (camera?.zoom || 1);
+                return (
+                  <React.Fragment>
+                    <Rect
+                      x={sb.x - pad}
+                      y={sb.y - pad}
+                      width={sb.width + pad * 2}
+                      height={sb.height + pad * 2}
+                      stroke="#FF7A18"
+                      strokeWidth={sw}
+                      dash={[4, 3]}
+                      listening={false}
+                    />
+                    {/* Resize handles */}
+                    {drawingSelection.handles.map((h) => (
+                      <Rect
+                        key={h.position}
+                        x={h.x}
+                        y={h.y}
+                        width={h.width}
+                        height={h.height}
+                        fill="#FFFFFF"
+                        stroke="#FF7A18"
+                        strokeWidth={1 / (camera?.zoom || 1)}
+                        listening={false}
+                      />
+                    ))}
+                    {/* Rotate handle */}
+                    {drawingSelection.rotateHandlePos && (() => {
+                      const rh = drawingSelection.rotateHandlePos;
+                      const r = 5 / (camera?.zoom || 1);
+                      const lineTop = sb.y - pad;
+                      return (
+                        <React.Fragment>
+                          <Line
+                            points={[rh.x, lineTop, rh.x, rh.y + r]}
+                            stroke="#FF7A18"
+                            strokeWidth={1 / (camera?.zoom || 1)}
+                            listening={false}
+                          />
+                          <Circle
+                            x={rh.x}
+                            y={rh.y}
+                            radius={r}
+                            fill="#FFFFFF"
+                            stroke="#FF7A18"
+                            strokeWidth={1 / (camera?.zoom || 1)}
+                            listening={false}
+                          />
+                        </React.Fragment>
+                      );
+                    })()}
+                  </React.Fragment>
+                );
+              })()}
+              {/* Arrow endpoint handles (single arrow selected) */}
+              {selectedDrawingIds.length === 1 && (() => {
+                const selD = drawings.find((d) => d.id === selectedDrawingIds[0]);
+                if (!selD || selD.type !== "arrow" || !selD.points || selD.points.length < 4) return null;
+                const r = 5 / (camera?.zoom || 1);
+                const sw = 1.5 / (camera?.zoom || 1);
+                return (
+                  <React.Fragment>
+                    <Circle
+                      x={selD.points[0]}
+                      y={selD.points[1]}
+                      radius={r}
+                      fill="#FF7A18"
+                      stroke="#FFFFFF"
+                      strokeWidth={sw}
+                      listening={false}
+                    />
+                    <Circle
+                      x={selD.points[2]}
+                      y={selD.points[3]}
+                      radius={r}
+                      fill="#FF7A18"
+                      stroke="#FFFFFF"
+                      strokeWidth={sw}
+                      listening={false}
+                    />
+                  </React.Fragment>
+                );
+              })()}
+              {/* Drawing marquee (pen+select mode) */}
+              {drawingSelection.drawingMarquee && (
+                <Rect
+                  x={drawingSelection.drawingMarquee.x}
+                  y={drawingSelection.drawingMarquee.y}
+                  width={drawingSelection.drawingMarquee.width}
+                  height={drawingSelection.drawingMarquee.height}
+                  fill="rgba(255, 122, 24, 0.15)"
+                  stroke="#FF7A18"
+                  strokeWidth={1.5 / (camera?.zoom || 1)}
+                  dash={[6, 3]}
+                  listening={false}
+                />
+              )}
+              {/* Eraser cursor circle */}
+              {eraserCursorWorld && drawSubTool === "erase" && tool === "pen" && (
+                <Circle
+                  x={eraserCursorWorld.x}
+                  y={eraserCursorWorld.y}
+                  radius={eraserSize / 2}
+                  fill="transparent"
+                  stroke="#FFFFFF"
+                  strokeWidth={1 / (camera?.zoom || 1)}
+                  dash={[3, 2]}
+                  listening={false}
+                />
+              )}
+            </Group>
+          </Layer>
+          {/* Items layer: players and ball render above drawings */}
+          <Layer ref={itemsLayerRef}>
+            <Group x={worldOrigin.x} y={worldOrigin.y} scaleX={worldOrigin.scale} scaleY={worldOrigin.scale}>
               {items.map((item) => {
                 const renderedItem = getRenderedPose(item);
                 const isSelected =
@@ -1903,140 +2044,6 @@ function KonvaCanvasRoot({
                   </Group>
                 );
               })}
-            </Group>
-          </Layer>
-          <Layer listening={false} name="drawingsLayer">
-            <Group x={worldOrigin.x} y={worldOrigin.y} scaleX={worldOrigin.scale} scaleY={worldOrigin.scale}>
-              {drawings.map((d) => renderDrawingNode(d, d.id))}
-              {canvasDrawing.activeDrawing && renderDrawingNode(canvasDrawing.activeDrawing, "active-preview")}
-              {/* Custom shape preview line (from last point to cursor) */}
-              {canvasDrawing.customPreviewLine && (() => {
-                const pl = canvasDrawing.customPreviewLine;
-                return (
-                  <Line
-                    points={[pl.x1, pl.y1, pl.x2, pl.y2]}
-                    stroke="#FF7A18"
-                    strokeWidth={1 / (camera?.zoom || 1)}
-                    dash={[4, 3]}
-                    listening={false}
-                  />
-                );
-              })()}
-              {/* Multi-selection bounds box */}
-              {drawingSelection.selectionBounds && selectedDrawingIds.length > 0 && (() => {
-                const sb = drawingSelection.selectionBounds;
-                const pad = 4 / (camera?.zoom || 1);
-                const sw = 1.5 / (camera?.zoom || 1);
-                return (
-                  <React.Fragment>
-                    <Rect
-                      x={sb.x - pad}
-                      y={sb.y - pad}
-                      width={sb.width + pad * 2}
-                      height={sb.height + pad * 2}
-                      stroke="#FF7A18"
-                      strokeWidth={sw}
-                      dash={[4, 3]}
-                      listening={false}
-                    />
-                    {/* Resize handles */}
-                    {drawingSelection.handles.map((h) => (
-                      <Rect
-                        key={h.position}
-                        x={h.x}
-                        y={h.y}
-                        width={h.width}
-                        height={h.height}
-                        fill="#FFFFFF"
-                        stroke="#FF7A18"
-                        strokeWidth={1 / (camera?.zoom || 1)}
-                        listening={false}
-                      />
-                    ))}
-                    {/* Rotate handle */}
-                    {drawingSelection.rotateHandlePos && (() => {
-                      const rh = drawingSelection.rotateHandlePos;
-                      const r = 5 / (camera?.zoom || 1);
-                      const lineTop = sb.y - pad;
-                      return (
-                        <React.Fragment>
-                          <Line
-                            points={[rh.x, lineTop, rh.x, rh.y + r]}
-                            stroke="#FF7A18"
-                            strokeWidth={1 / (camera?.zoom || 1)}
-                            listening={false}
-                          />
-                          <Circle
-                            x={rh.x}
-                            y={rh.y}
-                            radius={r}
-                            fill="#FFFFFF"
-                            stroke="#FF7A18"
-                            strokeWidth={1 / (camera?.zoom || 1)}
-                            listening={false}
-                          />
-                        </React.Fragment>
-                      );
-                    })()}
-                  </React.Fragment>
-                );
-              })()}
-              {/* Arrow endpoint handles (single arrow selected) */}
-              {selectedDrawingIds.length === 1 && (() => {
-                const selD = drawings.find((d) => d.id === selectedDrawingIds[0]);
-                if (!selD || selD.type !== "arrow" || !selD.points || selD.points.length < 4) return null;
-                const r = 5 / (camera?.zoom || 1);
-                const sw = 1.5 / (camera?.zoom || 1);
-                return (
-                  <React.Fragment>
-                    <Circle
-                      x={selD.points[0]}
-                      y={selD.points[1]}
-                      radius={r}
-                      fill="#FF7A18"
-                      stroke="#FFFFFF"
-                      strokeWidth={sw}
-                      listening={false}
-                    />
-                    <Circle
-                      x={selD.points[2]}
-                      y={selD.points[3]}
-                      radius={r}
-                      fill="#FF7A18"
-                      stroke="#FFFFFF"
-                      strokeWidth={sw}
-                      listening={false}
-                    />
-                  </React.Fragment>
-                );
-              })()}
-              {/* Drawing marquee (pen+select mode) */}
-              {drawingSelection.drawingMarquee && (
-                <Rect
-                  x={drawingSelection.drawingMarquee.x}
-                  y={drawingSelection.drawingMarquee.y}
-                  width={drawingSelection.drawingMarquee.width}
-                  height={drawingSelection.drawingMarquee.height}
-                  fill="rgba(255, 122, 24, 0.15)"
-                  stroke="#FF7A18"
-                  strokeWidth={1.5 / (camera?.zoom || 1)}
-                  dash={[6, 3]}
-                  listening={false}
-                />
-              )}
-              {/* Eraser cursor circle */}
-              {eraserCursorWorld && drawSubTool === "erase" && tool === "pen" && (
-                <Circle
-                  x={eraserCursorWorld.x}
-                  y={eraserCursorWorld.y}
-                  radius={eraserSize / 2}
-                  fill="transparent"
-                  stroke="#FFFFFF"
-                  strokeWidth={1 / (camera?.zoom || 1)}
-                  dash={[3, 2]}
-                  listening={false}
-                />
-              )}
             </Group>
           </Layer>
           <Layer listening={false} name="guidesLayer" ref={guidesLayerRef} />
