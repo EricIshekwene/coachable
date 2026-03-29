@@ -183,6 +183,7 @@ function Slate({
   onReady,
   viewOnly: viewOnlyProp = false,
   adminMode = false,
+  sport: sportProp = null,
 }) {
   const [viewOnlyLocal, setViewOnlyLocal] = useState(viewOnlyProp);
   const viewOnly = viewOnlyProp || viewOnlyLocal;
@@ -323,7 +324,10 @@ function Slate({
   }
 
   const { user } = useAuth();
-  const defaultFieldType = useMemo(() => resolveFieldTypeFromSport(user?.sport), [user?.sport]);
+  const defaultFieldType = useMemo(
+    () => resolveFieldTypeFromSport(sportProp ?? user?.sport),
+    [sportProp, user?.sport]
+  );
 
   const {
     advancedSettings,
@@ -335,6 +339,15 @@ function Slate({
 
   const fieldViewport = useFieldViewport();
   const preViewOnlyCameraRef = useRef(null);
+
+  // Apply sport-specific default rotation on mount
+  useEffect(() => {
+    const sd = SPORT_DEFAULTS[defaultFieldType] || {};
+    if (sd.defaultFieldRotation) {
+      fieldViewport.setFieldRotation(sd.defaultFieldRotation);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Center field when entering/exiting view-only mode
   useEffect(() => {

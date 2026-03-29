@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { installGlobalErrorHandlers } from "./utils/errorReporter";
 import "./index.css";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Slate from "./features/slate/Slate";
 import MessagePopup from "./components/MessagePopup/MessagePopup";
@@ -35,8 +35,9 @@ import SharedPlay from "./pages/SharedPlay";
 import SharedPlayView from "./pages/SharedPlayView";
 import SharedFolder from "./pages/SharedFolder";
 import PlatformPlayView from "./pages/PlatformPlayView";
+import SportPickerPage from "./pages/SportPickerPage";
 
-function SlateRoot({ adminMode = false }) {
+function SlateRoot({ adminMode = false, sport = null }) {
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
   useThemeColor("#121212");
   return (
@@ -56,10 +57,17 @@ function SlateRoot({ adminMode = false }) {
         <Slate
           onShowMessage={showMessage}
           adminMode={adminMode}
+          sport={sport}
         />
       </MobileViewOnlyGate>
     </div>
   );
+}
+
+/** Reads the :sport param from the URL and passes it to SlateRoot. */
+function SlateWithSportParam({ adminMode = false }) {
+  const { sport } = useParams();
+  return <SlateRoot adminMode={adminMode} sport={sport} />;
 }
 
 function RequireAuth({ children }) {
@@ -126,7 +134,8 @@ function AppRoutes() {
       <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
 
       {/* Standalone slate editor (no auth required) */}
-      <Route path="/slate" element={<SlateRoot />} />
+      <Route path="/slate" element={<SportPickerPage />} />
+      <Route path="/slate/:sport" element={<SlateWithSportParam />} />
       <Route path="/admin/slate" element={<SlateRoot adminMode />} />
       <Route path="/admin/app" element={<AdminPlaysPage />} />
       <Route path="/admin/plays/:playId/edit" element={<AdminPlayEditPage />} />
