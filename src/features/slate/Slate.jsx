@@ -15,6 +15,7 @@ import { rotatePoint } from "../../utils/rotatePoint";
 import {
   createDefaultAdvancedSettings,
   resolveFieldTypeFromSport,
+  SPORT_DEFAULTS,
   useAdvancedSettings,
 } from "./hooks/useAdvancedSettings";
 import { useFieldViewport } from "./hooks/useFieldViewport";
@@ -3061,7 +3062,15 @@ function Slate({
         <AdvancedSettings
           value={advancedSettings}
           onChange={setAdvancedSettings}
-          onReset={() => setAdvancedSettings(createDefaultAdvancedSettings(defaultFieldType))}
+          onReset={() => {
+            setAdvancedSettings(createDefaultAdvancedSettings(defaultFieldType));
+            const sd = SPORT_DEFAULTS[defaultFieldType] || {};
+            fieldViewport.setFieldRotation(sd.defaultFieldRotation ?? 0);
+          }}
+          onFieldTypeChange={(newFieldType) => {
+            const sd = SPORT_DEFAULTS[newFieldType] || {};
+            fieldViewport.setFieldRotation(sd.defaultFieldRotation ?? 0);
+          }}
           onCopyDebug={handleCopyDebug}
           onCopyDrawDebug={handleCopyDrawDebug}
           onCopyKeyToolDebug={handleCopyKeyToolDebug}

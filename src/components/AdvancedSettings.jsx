@@ -26,6 +26,7 @@ export default function AdvancedSettings({
     onCopyRecordingDebug,
     onCopyKfMoveDebug,
     onCopyFixAllDebug,
+    onFieldTypeChange,
     onDebugRotate,
     onDownload,
     onImport,
@@ -54,11 +55,13 @@ export default function AdvancedSettings({
         const newPitch = { ...pitch, ...patch };
         if (patch.fieldType && patch.fieldType !== pitch.fieldType) {
             const sd = SPORT_DEFAULTS[patch.fieldType] || {};
+            newPitch.pitchColor = sd.pitchColor ?? "#4FA85D";
             update({
                 pitch: newPitch,
                 players: { ...players, baseSizePx: sd.baseSizePx ?? 30 },
                 ball: { ...ball, sizePercent: sd.sizePercent ?? 100, coneSizePercent: sd.coneSizePercent ?? 70 },
             });
+            onFieldTypeChange?.(patch.fieldType);
         } else {
             update({ pitch: newPitch });
         }
