@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { SPORT_DEFAULTS } from "./useAdvancedSettings";
 
 /** Default red color used for new players. */
 export const DEFAULT_PLAYER_COLOR = "#ef4444";
@@ -13,6 +14,25 @@ export const INITIAL_PLAYERS_BY_ID = {
     name: "",
     color: DEFAULT_PLAYER_COLOR,
   },
+};
+
+/**
+ * Builds the initial players map, using a blank label for position-label sports.
+ * @param {string} fieldType - The current sport/field type.
+ * @returns {Object} Initial playersById map.
+ */
+export const buildInitialPlayers = (fieldType) => {
+  const sportCfg = SPORT_DEFAULTS[fieldType] || {};
+  return {
+    "player-1": {
+      id: "player-1",
+      x: 0,
+      y: 0,
+      number: sportCfg.usePositionLabels ? "" : 1,
+      name: "",
+      color: DEFAULT_PLAYER_COLOR,
+    },
+  };
 };
 
 /** Initial ball object with default position. */
@@ -122,8 +142,8 @@ const getRandomNearbyPosition = (base) => {
  * @param {Function} params.logEvent - Scoped logging callback.
  * @returns {Object} Entity state, setters, snapshot/restore helpers, and event handlers.
  */
-export function useSlateEntities({ historyApiRef, logEvent }) {
-  const [playersById, setPlayersById] = useState(() => INITIAL_PLAYERS_BY_ID);
+export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" }) {
+  const [playersById, setPlayersById] = useState(() => buildInitialPlayers(fieldType));
   const [representedPlayerIds, setRepresentedPlayerIds] = useState(() => ["player-1"]);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState([]);
   const [selectedItemIds, setSelectedItemIds] = useState([]);
@@ -134,6 +154,42 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
 
   const isRestoringRef = useRef(false);
   const isItemDraggingRef = useRef(false);
+  const prevFieldTypeRef = useRef(fieldType);
+
+  // When the field type changes, reset the initial player's label to match
+  // the new sport (blank for position-label sports, "1" for number sports).
+  useEffect(() => {
+    if (prevFieldTypeRef.current === fieldType) return;
+    prevFieldTypeRef.current = fieldType;
+    setPlayersById(buildInitialPlayers(fieldType));
+    setRepresentedPlayerIds(["player-1"]);
+    setSelectedPlayerIds([]);
+    setSelectedItemIds([]);
+    setPlayerEditor(EMPTY_EDITOR);
+  }, [fieldType]);
+
+  // When the edit panel is open: switch to the newly selected player,
+  // or close the panel if selection is cleared (clicked empty field).
+  useEffect(() => {
+    if (!playerEditor.open) return;
+    if (selectedPlayerIds.length === 0) {
+      setPlayerEditor(EMPTY_EDITOR);
+      return;
+    }
+    if (selectedPlayerIds.length !== 1) return;
+    const newId = selectedPlayerIds[0];
+    if (newId === playerEditor.id) return;
+    const player = playersById?.[newId];
+    if (!player) return;
+    setPlayerEditor({
+      open: true,
+      id: newId,
+      draft: {
+        number: player.number ?? "",
+        name: player.name ?? "",
+      },
+    });
+  }, [selectedPlayerIds, playerEditor.open, playerEditor.id, playersById]);
 
   const ballIds = useMemo(() => Object.keys(ballsById || {}), [ballsById]);
   const primaryBallId = useMemo(() => getPrimaryBallId(ballsById), [ballsById]);
@@ -192,16 +248,22 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
   };
 
   /**
-   * Resolves the next player number. When a color is provided, counts only
-   * players of that same color so numbering restarts per-color group.
+   * Resolves the next player label/number. For sports that use position labels
+   * (Football, Soccer, Lacrosse), returns blank so players are added unlabeled.
+   * For number-based sports, counts only players of the same color so numbering
+   * restarts per-color group.
    * @param {string|number|undefined} providedNumber - Explicit number override.
    * @param {string|undefined} forColor - The color of the player being added.
-   * @returns {number|string} The resolved player number.
+   * @returns {number|string} The resolved player number/label.
    */
   const resolveNextNumber = (providedNumber, forColor) => {
     const trimmed = String(providedNumber ?? "").trim();
     if (trimmed !== "") {
       return normalizeNumber(trimmed);
+    }
+    const sportCfg = SPORT_DEFAULTS[fieldType] || {};
+    if (sportCfg.usePositionLabels) {
+      return "";
     }
     if (!representedPlayerIds?.length) return 1;
     const normalizedColor = (forColor || "").toLowerCase();
@@ -244,7 +306,8 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
     const colorKey = color || currentPlayerColor || allPlayersDisplay.color || DEFAULT_PLAYER_COLOR;
     const hasInput = String(number ?? "").trim() !== "" || nextName !== "";
     const nextNumber = resolveNextNumber(number, colorKey);
-    if (!hasInput && String(nextNumber ?? "").trim() === "") {
+    const sportCfg = SPORT_DEFAULTS[fieldType] || {};
+    if (!hasInput && String(nextNumber ?? "").trim() === "" && !sportCfg.usePositionLabels) {
       return;
     }
 
@@ -286,6 +349,8 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
     const player = playersById?.[id];
     if (!player) return;
     logEvent?.("slate", "editPlayerOpen", { id });
+    setSelectedPlayerIds([id]);
+    setSelectedItemIds([id]);
     setPlayerEditor({
       open: true,
       id,
@@ -296,37 +361,38 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
     });
   };
 
+  /**
+   * Updates the edit draft and immediately persists the change to the player.
+   * @param {Object} patch - Fields to update (number, name).
+   */
   const handleEditDraftChange = (patch) => {
-    setPlayerEditor((prev) => ({
-      ...prev,
-      draft: { ...prev.draft, ...patch },
-    }));
+    setPlayerEditor((prev) => {
+      const nextDraft = { ...prev.draft, ...patch };
+      const editId = prev.id;
+      if (editId) {
+        setPlayersById((prevPlayers) => {
+          const existing = prevPlayers?.[editId];
+          if (!existing) return prevPlayers;
+          return {
+            ...prevPlayers,
+            [editId]: {
+              ...existing,
+              number: normalizeNumber(nextDraft.number),
+              name: String(nextDraft.name ?? "").trim(),
+            },
+          };
+        });
+      }
+      return { ...prev, draft: nextDraft };
+    });
   };
 
   const handleCloseEditPlayer = () => {
     setPlayerEditor(EMPTY_EDITOR);
   };
 
+  /** @deprecated Use handleCloseEditPlayer — changes are now auto-saved on each keystroke. */
   const handleSaveEditPlayer = () => {
-    const editId = playerEditor.id;
-    if (!editId) {
-      handleCloseEditPlayer();
-      return;
-    }
-    historyApiRef.current?.pushHistory?.();
-    logEvent?.("slate", "editPlayerSave", { id: editId, draft: playerEditor.draft });
-    setPlayersById((prev) => {
-      const existing = prev?.[editId];
-      if (!existing) return prev;
-      return {
-        ...prev,
-        [editId]: {
-          ...existing,
-          number: normalizeNumber(playerEditor.draft.number),
-          name: String(playerEditor.draft.name ?? "").trim(),
-        },
-      };
-    });
     handleCloseEditPlayer();
   };
 
@@ -615,7 +681,7 @@ export function useSlateEntities({ historyApiRef, logEvent }) {
 
   const resetSlateEntities = () => {
     isRestoringRef.current = true;
-    setPlayersById(INITIAL_PLAYERS_BY_ID);
+    setPlayersById(buildInitialPlayers(fieldType));
     setRepresentedPlayerIds(["player-1"]);
     setBallsById(cloneBallsById(INITIAL_BALLS_BY_ID));
     setSelectedPlayerIds([]);

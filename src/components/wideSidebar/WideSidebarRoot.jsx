@@ -279,7 +279,7 @@ export default function WideSidebarRoot({
                         <img src={coachableLogo} alt="Coachable" className="h-5 sm:h-6 w-auto " />
                     </button>
                 ) : (
-                    <Link to="/app" className="inline-flex">
+                    <Link to={adminMode ? "/admin/app" : "/app"} className="inline-flex">
                         <img src={coachableLogo} alt="Coachable" className="h-5 sm:h-6 w-auto " />
                     </Link>
                 )}

@@ -348,10 +348,20 @@ function Slate({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewOnly]);
 
+  const currentFieldType = advancedSettings?.pitch?.fieldType ?? "Rugby";
   const entities = useSlateEntities({
     historyApiRef,
     logEvent,
+    fieldType: currentFieldType,
   });
+
+  // Switch to select tool when the player edit panel opens so the coach
+  // can click another player or click the field to deselect.
+  useEffect(() => {
+    if (entities.playerEditor.open) {
+      setCanvasTool("select");
+    }
+  }, [entities.playerEditor.open]);
 
   const drawingsState = useDrawings({ historyApiRef });
 
@@ -3054,7 +3064,7 @@ function Slate({
             draft={entities.playerEditor.draft}
             onChange={entities.handleEditDraftChange}
             onClose={entities.handleCloseEditPlayer}
-            onSave={entities.handleSaveEditPlayer}
+            fieldType={currentFieldType}
           />
         </>
       )}

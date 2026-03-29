@@ -13,9 +13,36 @@ export function resolveFieldTypeFromSport(sport) {
 
 /** Per-sport default overrides for player/ball/cone sizes, pitch color, and field rotation. */
 export const SPORT_DEFAULTS = {
-  Football: { baseSizePx: 25, sizePercent: 70, coneSizePercent: 65 },
-  Lacrosse: { sizePercent: 65, defaultFieldRotation: 90 },
+  Football: { baseSizePx: 25, sizePercent: 70, coneSizePercent: 65, usePositionLabels: true },
+  Lacrosse: { sizePercent: 65, defaultFieldRotation: 90, usePositionLabels: true },
+  Soccer: { usePositionLabels: true },
   Basketball: { sizePercent: 80, pitchColor: "#D8C3A5", defaultFieldRotation: 90 },
+};
+
+/**
+ * Common position abbreviations per sport, organized by category
+ * for quick-select in the player edit panel.
+ */
+export const SPORT_POSITION_PRESETS = {
+  Football: [
+    { category: "Offense", positions: ["QB", "RB", "FB", "WR", "TE"] },
+    { category: "O-Line", positions: ["LT", "LG", "C", "RG", "RT"] },
+    { category: "Defense", positions: ["DE", "DT", "NT"] },
+    { category: "Linebackers", positions: ["OLB", "MLB", "ILB"] },
+    { category: "Secondary", positions: ["CB", "SS", "FS"] },
+    { category: "Special Teams", positions: ["K", "P", "KR", "PR"] },
+  ],
+  Soccer: [
+    { category: "Goalkeeper", positions: ["GK"] },
+    { category: "Defenders", positions: ["CB", "LB", "RB", "LWB", "RWB"] },
+    { category: "Midfield", positions: ["CDM", "CM", "CAM", "LM", "RM"] },
+    { category: "Forwards", positions: ["LW", "RW", "CF", "ST"] },
+  ],
+  Lacrosse: [
+    { category: "Attack", positions: ["A", "X", "C", "W"] },
+    { category: "Midfield", positions: ["M", "LSM", "FOGO"] },
+    { category: "Defense", positions: ["D", "G"] },
+  ],
 };
 
 /** Default values for all advanced settings (pitch, players, ball, export, animation, logging). */
