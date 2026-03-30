@@ -29,6 +29,215 @@ const SHAPE_CLASS_BY_VARIANT = {
   fill: "",
 };
 
+/** Converts flat [x1,y1,x2,y2,...] array to SVG points string. */
+const flatPointsToSVGString = (pts) => {
+  if (!pts?.length) return "";
+  const pairs = [];
+  for (let i = 0; i + 1 < pts.length; i += 2) {
+    pairs.push(`${pts[i]},${pts[i + 1]}`);
+  }
+  return pairs.join(" ");
+};
+
+/**
+ * Computes a filled triangle arrowhead polygon for SVG.
+ * @param {number[]} pts - Flat [x1,y1, x2,y2] endpoint array.
+ * @param {number} pLen - Pointer length.
+ * @param {number} pWidth - Pointer width.
+ * @returns {string|null} SVG polygon points string, or null.
+ */
+const svgArrowHeadPoints = (pts, pLen, pWidth) => {
+  if (!pts || pts.length < 4) return null;
+  const [x1, y1, x2, y2] = pts;
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const halfW = pWidth / 2;
+  const bx = x2 - Math.cos(angle) * pLen;
+  const by = y2 - Math.sin(angle) * pLen;
+  const lx = bx + Math.sin(angle) * halfW;
+  const ly = by - Math.cos(angle) * halfW;
+  const rx = bx - Math.sin(angle) * halfW;
+  const ry = by + Math.cos(angle) * halfW;
+  return `${x2},${y2} ${lx},${ly} ${rx},${ry}`;
+};
+
+/**
+ * Renders a single drawing object as an SVG element.
+ * Supports stroke, arrow, text, and shape (rect/ellipse/triangle/custom) types.
+ * @param {Object} d - Drawing data object.
+ * @param {string|number} key - React key.
+ * @returns {React.ReactNode|null}
+ */
+const renderSVGDrawing = (d, key) => {
+  const opacity = d.opacity ?? 1;
+
+  if (d.type === "stroke") {
+    const color = d.color || "#FFFFFF";
+    const sw = d.strokeWidth || 3;
+    const svgPts = flatPointsToSVGString(d.points);
+    if (!svgPts) return null;
+
+    const line = (
+      <polyline
+        key={key}
+        points={svgPts}
+        stroke={color}
+        strokeWidth={sw}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity={opacity}
+      />
+    );
+
+    const headType = d.arrowTip ? (d.arrowHeadType || "standard") : "none";
+    if (headType === "none" || !d.arrowTip || !d.points || d.points.length < 4) return line;
+
+    // Compute arrowhead from last two points of the stroke
+    const n = d.points.length;
+    const tipPts = [d.points[n - 4], d.points[n - 3], d.points[n - 2], d.points[n - 1]];
+    const pLen = 18, pW = 14;
+
+    if (headType === "chevron") {
+      const chevPts = svgArrowHeadPoints(tipPts, pLen, pW);
+      if (!chevPts) return line;
+      return (
+        <g key={key}>
+          {line}
+          <polyline
+            points={`${d.points[n - 4 + 0]},${d.points[n - 4 + 1]} ${d.points[n - 2]},${d.points[n - 1]}`}
+            stroke={color}
+            strokeWidth={Math.max(sw, 2.5)}
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity={opacity}
+          />
+        </g>
+      );
+    }
+
+    const headPts = svgArrowHeadPoints(tipPts, pLen, pW);
+    if (!headPts) return line;
+    return (
+      <g key={key}>
+        {line}
+        <polygon points={headPts} fill={color} stroke={color} strokeWidth={1} opacity={opacity} />
+      </g>
+    );
+  }
+
+  if (d.type === "arrow") {
+    const color = d.color || "#FFFFFF";
+    const sw = d.strokeWidth || 3;
+    const pts = d.points || [0, 0, 0, 0];
+    const [x1, y1, x2, y2] = pts;
+    const headType = d.arrowHeadType || "standard";
+    const STYLES = { standard: [10, 8], thin: [12, 4], wide: [8, 14], chevron: [14, 18], none: [0, 0] };
+    const [pLen, pW] = STYLES[headType] || STYLES.standard;
+
+    if (headType === "none") {
+      return (
+        <line key={key} x1={x1} y1={y1} x2={x2} y2={y2}
+          stroke={color} strokeWidth={sw} strokeLinecap="round" opacity={opacity} />
+      );
+    }
+
+    if (headType === "chevron") {
+      const chevPts = svgArrowHeadPoints(pts, pLen, pW);
+      return (
+        <g key={key} opacity={opacity}>
+          <line x1={x1} y1={y1} x2={x2} y2={y2}
+            stroke={color} strokeWidth={sw} strokeLinecap="round" />
+          {chevPts && (
+            <polyline
+              points={chevPts.split(" ").slice(1).join(" ") + ` ${x2},${y2}`}
+              stroke={color} strokeWidth={sw} fill="none" strokeLinecap="round" strokeLinejoin="round"
+            />
+          )}
+        </g>
+      );
+    }
+
+    // Standard / thin / wide: filled triangle head
+    // Shorten line slightly to avoid overlap with arrowhead
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    const x2s = x2 - Math.cos(angle) * pLen;
+    const y2s = y2 - Math.sin(angle) * pLen;
+    const headPts = svgArrowHeadPoints(pts, pLen, pW);
+    return (
+      <g key={key} opacity={opacity}>
+        <line x1={x1} y1={y1} x2={x2s} y2={y2s}
+          stroke={color} strokeWidth={sw} strokeLinecap="round" />
+        {headPts && <polygon points={headPts} fill={color} />}
+      </g>
+    );
+  }
+
+  if (d.type === "text") {
+    const color = d.color || "#FFFFFF";
+    const fontSize = d.fontSize || 18;
+    const x = d.x || 0;
+    const y = d.y || 0;
+    return (
+      <text
+        key={key}
+        x={x}
+        y={y + fontSize}
+        fill={color}
+        fontSize={fontSize}
+        fontFamily="DmSans, sans-serif"
+        textAnchor={d.align === "center" ? "middle" : d.align === "right" ? "end" : "start"}
+        transform={d.rotation ? `rotate(${d.rotation} ${x} ${y})` : undefined}
+        opacity={opacity}
+      >
+        {d.text || ""}
+      </text>
+    );
+  }
+
+  if (d.type === "shape") {
+    const fillColor = !d.fill || d.fill === "transparent" ? "none" : d.fill;
+    const strokeColor = !d.color || d.color === "transparent" ? "none" : d.color;
+    const sw = strokeColor !== "none" ? (d.strokeWidth || 2) : 0;
+    const x = d.x || 0, y = d.y || 0, w = d.width || 0, h = d.height || 0;
+    const rot = d.rotation || 0;
+    const cx = x + w / 2, cy = y + h / 2;
+    const transformAttr = rot ? `rotate(${rot} ${cx} ${cy})` : undefined;
+
+    if (d.shapeType === "rect") {
+      return (
+        <rect key={key} x={x} y={y} width={w} height={h}
+          fill={fillColor} stroke={strokeColor} strokeWidth={sw}
+          transform={transformAttr} opacity={opacity} />
+      );
+    }
+    if (d.shapeType === "ellipse") {
+      return (
+        <ellipse key={key} cx={cx} cy={cy} rx={w / 2} ry={h / 2}
+          fill={fillColor} stroke={strokeColor} strokeWidth={sw}
+          transform={transformAttr} opacity={opacity} />
+      );
+    }
+    if (d.shapeType === "triangle") {
+      const triPts = `${cx},${y} ${x},${y + h} ${x + w},${y + h}`;
+      return (
+        <polygon key={key} points={triPts}
+          fill={fillColor} stroke={strokeColor} strokeWidth={sw} strokeLinejoin="round"
+          transform={transformAttr} opacity={opacity} />
+      );
+    }
+    if (d.shapeType === "custom" && d.points?.length >= 4) {
+      return (
+        <polygon key={key} points={flatPointsToSVGString(d.points)}
+          fill={fillColor} stroke={strokeColor} strokeWidth={sw} strokeLinejoin="round"
+          opacity={opacity} />
+      );
+    }
+  }
+
+  return null;
+};
+
 const toFiniteNumber = (value, fallback = 0) => {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : fallback;
@@ -197,6 +406,7 @@ export default function PlayPreviewCard({
   );
 
   const entities = play?.entities || {};
+  const drawings = Array.isArray(play?.drawings) ? play.drawings : [];
   const settings = play?.settings || {};
   const pitchSettings = settings?.advancedSettings?.pitch || {};
   const playersSettings = settings?.advancedSettings?.players || {};
@@ -339,13 +549,23 @@ export default function PlayPreviewCard({
         points.push({ x: toFiniteNumber(keyframe?.x, 0), y: toFiniteNumber(keyframe?.y, 0) });
       });
     });
+    drawings.forEach((d) => {
+      if (d.points?.length >= 2) {
+        for (let i = 0; i + 1 < d.points.length; i += 2) {
+          points.push({ x: toFiniteNumber(d.points[i], 0), y: toFiniteNumber(d.points[i + 1], 0) });
+        }
+      } else if (d.x != null && d.y != null) {
+        points.push({ x: toFiniteNumber(d.x, 0), y: toFiniteNumber(d.y, 0) });
+        if (d.width != null) points.push({ x: toFiniteNumber(d.x + d.width, 0), y: toFiniteNumber(d.y + (d.height || 0), 0) });
+      }
+    });
 
     const base = boundsFromPoints(points, fieldBounds);
     const padded = padBounds(base, paddingPx);
     const withMin = ensureMinimumSpan(padded, minSpanPx);
     const withAspect = isFill ? withMin : fitBoundsToAspect(withMin, targetAspect);
     return withAspect;
-  }, [animation?.tracks, background, cameraMode, fallbackPoses, fieldBounds, isFill, minSpanPx, paddingPx, targetAspect]);
+  }, [animation?.tracks, background, cameraMode, drawings, fallbackPoses, fieldBounds, isFill, minSpanPx, paddingPx, targetAspect]);
 
   const playerSizePercent = clamp(toFiniteNumber(allPlayersDisplay?.sizePercent, 100), 10, 400);
   const playerBasePx = Math.max(6, toFiniteNumber(playersSettings?.baseSizePx, 30));
@@ -357,7 +577,7 @@ export default function PlayPreviewCard({
   const ballSizePx = Math.max(6, Math.round((22 * ballSizePercent) / 100));
   const ballRadius = ballSizePx / 2;
 
-  const hasRenderableContent = play && entityIds.length > 0;
+  const hasRenderableContent = play && (entityIds.length > 0 || drawings.length > 0);
 
   const containerStyle = background === "field" ? { backgroundColor: pitchColor } : {};
 
@@ -403,6 +623,8 @@ export default function PlayPreviewCard({
               preserveAspectRatio="none"
             />
           ) : null}
+
+          {drawings.map((d, idx) => renderSVGDrawing(d, d.id || idx))}
 
           {Object.entries(playersById).map(([id, player]) => {
             const pose = poses?.[id] || fallbackPoses?.[id] || { x: 0, y: 0 };

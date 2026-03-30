@@ -379,5 +379,10 @@ CREATE TABLE IF NOT EXISTS page_sections (
 
 -- Seed default sections (idempotent)
 INSERT INTO page_sections (section_key, label, page) VALUES
-  ('landing.visualize', 'Landing — Visualize', 'landing')
+  ('landing.visualize',            'Landing — Visualize',            'landing'),
+  ('landing.visualize.rugby',      'Rugby — Visualize',              'rugby'),
+  ('landing.visualize.football',   'Football — Visualize',           'football'),
+  ('landing.visualize.lacrosse',   'Lacrosse — Visualize',           'lacrosse'),
+  ('landing.visualize.basketball', 'Basketball — Visualize',         'basketball'),
+  ('landing.visualize.soccer',     'Soccer — Visualize',             'soccer')
 ON CONFLICT DO NOTHING;

@@ -26,11 +26,21 @@ const STATS = [
   { value: "30%", label: "Of Practice Time Saved" },
 ];
 
+const SPORT_LABELS = {
+  rugby: "Rugby",
+  football: "Football",
+  lacrosse: "Lacrosse",
+  basketball: "Basketball",
+  soccer: "Soccer",
+};
+
 /**
  * Landing page for unauthenticated users.
  * Displays the hero, bento feature grid, stats, featured plays, and footer.
+ * @param {string|null} [sport] - Optional sport slug (e.g. "rugby"). When provided,
+ *   fetches a sport-specific visualize section and may tailor hero copy.
  */
-export default function Landing() {
+export default function Landing({ sport = null }) {
   const { user } = useAuth();
   const [resourcesOpen, setResourcesOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -40,17 +50,20 @@ export default function Landing() {
   const [addedPlay, setAddedPlay] = useState(null);
   const [visualizePlay, setVisualizePlay] = useState(null);
 
+  const sectionKey = sport ? `landing.visualize.${sport}` : "landing.visualize";
+
   useEffect(() => {
     fetch(`${API_URL}/platform-plays`)
       .then((r) => r.json())
       .then((data) => setFeaturedPlays(data.plays || []))
       .catch(() => {});
 
-    fetch(`${API_URL}/page-sections/landing.visualize`)
+    setVisualizePlay(null);
+    fetch(`${API_URL}/page-sections/${sectionKey}`)
       .then((r) => r.json())
       .then((data) => setVisualizePlay(data.section?.play || null))
       .catch(() => {});
-  }, []);
+  }, [sectionKey]);
 
   /**
    * Copies a platform play into the current user's team playbook.
@@ -179,7 +192,9 @@ export default function Landing() {
             <h1 className="font-Manrope text-5xl md:text-7xl font-bold leading-tight tracking-tight mb-6 drop-shadow-2xl">
               Design plays.
               <br />
-              <span className="text-BrandOrange">Win games.</span>
+              <span className="text-BrandOrange">
+                {sport ? `Win at ${SPORT_LABELS[sport] ?? sport}.` : "Win games."}
+              </span>
             </h1>
 
             <p className="font-Manrope text-xl md:text-2xl text-white/90 font-medium leading-relaxed mb-4 drop-shadow-lg">
@@ -245,57 +260,63 @@ export default function Landing() {
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
 
-            {/* Visualize — large landscape card, dark styled */}
+            {/* Visualize — large landscape card */}
             <div className="md:col-span-8 group relative overflow-hidden rounded-2xl min-h-95 flex flex-col justify-between bg-BrandBlack border border-BrandGray2/10">
-              {/* Shine sweep */}
-              <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-white/3 blur-2xl pointer-events-none" />
-              {/* Orange glow */}
-              <div className="absolute -bottom-24 -left-16 w-72 h-72 rounded-full bg-BrandOrange/8 blur-3xl pointer-events-none" />
-
-              {/* Canvas preview — live play if assigned, static mock as fallback */}
-              <div className="relative z-10 flex-1 p-8 flex items-center justify-center">
-                {visualizePlay ? (
-                  <div className="w-full max-w-xs shadow-2xl">
-                    <PlayPreviewCard
-                      playData={visualizePlay.playData}
-                      autoplay="always"
-                      shape="landscape"
-                      cameraMode="fit-distribution"
-                      background="field"
-                      paddingPx={40}
-                      minSpanPx={150}
-                    />
-                  </div>
-                ) : (
-                  <div className="w-full max-w-xs aspect-video rounded-xl border border-BrandGray2/30 bg-BrandBlack/60 flex items-center justify-center relative overflow-hidden shadow-2xl">
-                    {/* Field lines suggestion */}
-                    <div className="absolute inset-0 opacity-20">
-                      <div className="absolute top-1/2 left-0 right-0 h-px bg-BrandGray2" />
-                      <div className="absolute top-0 bottom-0 left-1/2 w-px bg-BrandGray2" />
-                      <div className="absolute top-1/2 left-1/2 w-16 h-16 rounded-full border border-BrandGray2 -translate-x-1/2 -translate-y-1/2" />
+              {/* Full-card background: live play or static mock */}
+              {visualizePlay ? (
+                <div className="absolute inset-0">
+                  <PlayPreviewCard
+                    playData={visualizePlay.playData}
+                    autoplay="always"
+                    shape="fill"
+                    cameraMode="fit-distribution"
+                    background="field"
+                    paddingPx={40}
+                    minSpanPx={150}
+                    className="h-full border-0 rounded-none"
+                  />
+                </div>
+              ) : (
+                <>
+                  {/* Shine sweep */}
+                  <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-white/3 blur-2xl pointer-events-none" />
+                  {/* Orange glow */}
+                  <div className="absolute -bottom-24 -left-16 w-72 h-72 rounded-full bg-BrandOrange/8 blur-3xl pointer-events-none" />
+                  {/* Static mock field */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-full h-full relative">
+                      <div className="absolute inset-0 opacity-10">
+                        <div className="absolute top-1/2 left-0 right-0 h-px bg-BrandGray2" />
+                        <div className="absolute top-0 bottom-0 left-1/2 w-px bg-BrandGray2" />
+                        <div className="absolute top-1/2 left-1/2 w-24 h-24 rounded-full border border-BrandGray2 -translate-x-1/2 -translate-y-1/2" />
+                      </div>
+                      <div className="absolute top-1/3 left-1/4 w-3 h-3 rounded-full bg-BrandOrange shadow-lg shadow-BrandOrange/40" />
+                      <div className="absolute top-1/2 left-1/3 w-3 h-3 rounded-full bg-BrandOrange shadow-lg shadow-BrandOrange/40" />
+                      <div className="absolute top-2/3 left-1/4 w-3 h-3 rounded-full bg-BrandOrange shadow-lg shadow-BrandOrange/40" />
+                      <div className="absolute top-1/3 left-2/3 w-3 h-3 rounded-full bg-white/60" />
+                      <div className="absolute top-1/2 left-3/4 w-3 h-3 rounded-full bg-white/60" />
+                      <div className="absolute top-2/3 left-2/3 w-3 h-3 rounded-full bg-white/60" />
+                      <svg className="absolute inset-0 w-full h-full opacity-30" viewBox="0 0 400 240">
+                        <path d="M 100 80 Q 200 120 280 80" stroke="#FF7A18" strokeWidth="1.5" fill="none" strokeDasharray="4 2" markerEnd="url(#arrowhead2)" />
+                        <defs>
+                          <marker id="arrowhead2" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+                            <path d="M 0 0 L 6 3 L 0 6 z" fill="#FF7A18" />
+                          </marker>
+                        </defs>
+                      </svg>
                     </div>
-                    {/* Player dots */}
-                    <div className="absolute top-1/3 left-1/4 w-3 h-3 rounded-full bg-BrandOrange shadow-lg shadow-BrandOrange/40" />
-                    <div className="absolute top-1/2 left-1/3 w-3 h-3 rounded-full bg-BrandOrange shadow-lg shadow-BrandOrange/40" />
-                    <div className="absolute top-2/3 left-1/4 w-3 h-3 rounded-full bg-BrandOrange shadow-lg shadow-BrandOrange/40" />
-                    <div className="absolute top-1/3 left-2/3 w-3 h-3 rounded-full bg-white/60" />
-                    <div className="absolute top-1/2 left-3/4 w-3 h-3 rounded-full bg-white/60" />
-                    <div className="absolute top-2/3 left-2/3 w-3 h-3 rounded-full bg-white/60" />
-                    {/* Arrow suggestion */}
-                    <svg className="absolute inset-0 w-full h-full opacity-40" viewBox="0 0 200 120">
-                      <path d="M 50 40 Q 100 60 140 40" stroke="#FF7A18" strokeWidth="1.5" fill="none" strokeDasharray="4 2" markerEnd="url(#arrowhead)" />
-                      <defs>
-                        <marker id="arrowhead" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-                          <path d="M 0 0 L 6 3 L 0 6 z" fill="#FF7A18" />
-                        </marker>
-                      </defs>
-                    </svg>
                   </div>
-                )}
-              </div>
+                </>
+              )}
 
-              <div className="relative z-10 p-8 pt-0">
-                <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-lg bg-BrandOrange/20">
+              {/* Gradient overlay so text is legible */}
+              <div className="absolute inset-0 bg-linear-to-t from-BrandBlack via-BrandBlack/40 to-transparent pointer-events-none" />
+
+              {/* Spacer */}
+              <div className="relative z-10 flex-1" />
+
+              <div className="relative z-10 p-8">
+                <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-lg bg-BrandOrange/20 backdrop-blur-sm">
                   <FiLayers className="text-BrandOrange text-lg" />
                 </div>
                 <h3 className="font-Manrope text-2xl font-bold mb-2 text-white">Visualize</h3>

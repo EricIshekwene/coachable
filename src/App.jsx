@@ -36,6 +36,7 @@ import SharedPlayView from "./pages/SharedPlayView";
 import SharedFolder from "./pages/SharedFolder";
 import PlatformPlayView from "./pages/PlatformPlayView";
 import SportPickerPage from "./pages/SportPickerPage";
+import NotFound from "./pages/NotFound";
 
 function SlateRoot({ adminMode = false, sport = null }) {
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
@@ -118,6 +119,11 @@ function AppRoutes() {
       {/* Public */}
       <Route path="/" element={<LandingGate />} />
       <Route path="/home" element={<Landing />} />
+      <Route path="/rugby" element={<Landing sport="rugby" />} />
+      <Route path="/football" element={<Landing sport="football" />} />
+      <Route path="/lacrosse" element={<Landing sport="lacrosse" />} />
+      <Route path="/basketball" element={<Landing sport="basketball" />} />
+      <Route path="/soccer" element={<Landing sport="soccer" />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -157,7 +163,7 @@ function AppRoutes() {
       </Route>
 
       {/* Fallback */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
