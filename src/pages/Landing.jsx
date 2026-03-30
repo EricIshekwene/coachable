@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import logo from "../assets/logos/White_Full_Coachable.png";
+import productVideo from "../assets/videos/Coachable Sports Play Design in Action (1).mp4";
 import { FiArrowRight, FiPlay, FiUsers, FiLayers, FiChevronDown, FiPlus, FiCheck } from "react-icons/fi";
 import { createPlay } from "../utils/apiPlays";
 import PlayPreviewCard from "../components/PlayPreviewCard";
@@ -223,6 +224,30 @@ export default function Landing({ sport = null }) {
               </Link>
             </div>
 
+          </div>
+        </div>
+      </section>
+
+      {/* ── Product Video ── */}
+      <section className="py-16 bg-BrandBlack">
+        <div className="max-w-5xl mx-auto px-6 md:px-12 lg:px-20">
+          <div className="relative rounded-2xl overflow-hidden border border-BrandGray2/20 shadow-2xl shadow-black/60">
+            {/* Top bar chrome */}
+            <div className="flex items-center gap-1.5 px-4 py-3 bg-BrandBlack2/80 border-b border-BrandGray2/20">
+              <div className="w-3 h-3 rounded-full bg-red-500/70" />
+              <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
+              <div className="w-3 h-3 rounded-full bg-green-500/70" />
+              <span className="ml-3 text-xs text-BrandGray2 font-mono">Coachable — Play Designer</span>
+            </div>
+            <video
+              src={productVideo}
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="w-full block"
+              ref={(el) => { if (el) el.playbackRate = 1.25; }}
+            />
           </div>
         </div>
       </section>
