@@ -363,3 +363,21 @@ CREATE INDEX IF NOT EXISTS platform_plays_featured_idx
 
 CREATE INDEX IF NOT EXISTS platform_plays_folder_idx
   ON platform_plays(folder_id);
+
+-- ============================================================
+-- 8. Page sections (admin-assigned play previews for site pages)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS page_sections (
+  section_key VARCHAR(100) PRIMARY KEY,
+  label       TEXT NOT NULL,
+  page        TEXT NOT NULL,
+  play_id     UUID REFERENCES platform_plays(id) ON DELETE SET NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Seed default sections (idempotent)
+INSERT INTO page_sections (section_key, label, page) VALUES
+  ('landing.visualize', 'Landing — Visualize', 'landing')
+ON CONFLICT DO NOTHING;

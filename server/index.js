@@ -16,6 +16,7 @@ import adminRoutes, { cleanupStaleAccounts } from "./routes/admin.js";
 import sharedRoutes from "./routes/shared.js";
 import errorReportRoutes from "./routes/errorReports.js";
 import platformPlaysRoutes from "./routes/platformPlays.js";
+import pageSectionsRoutes from "./routes/pageSections.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -64,6 +65,7 @@ app.use("/admin", adminRoutes);
 app.use("/shared", sharedRoutes);
 app.use("/error-reports", errorReportRoutes);
 app.use("/platform-plays", platformPlaysRoutes);
+app.use("/page-sections", pageSectionsRoutes);
 
 // --------------- Error handler ---------------
 

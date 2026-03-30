@@ -401,6 +401,60 @@ router.delete("/platform-folders/:id", requireAdmin, async (req, res, next) => {
   }
 });
 
+// ── Page sections ────────────────────────────────────────────────────────────
+
+/**
+ * GET /admin/page-sections
+ * Returns all page sections with their assigned play (if any).
+ */
+router.get("/page-sections", requireAdmin, async (_req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT ps.section_key, ps.label, ps.page, ps.play_id, ps.updated_at,
+              pp.title AS play_title, pp.thumbnail_url AS play_thumbnail, pp.sport AS play_sport
+       FROM page_sections ps
+       LEFT JOIN platform_plays pp ON pp.id = ps.play_id
+       ORDER BY ps.page ASC, ps.section_key ASC`
+    );
+    res.json({
+      sections: rows.map((r) => ({
+        sectionKey: r.section_key,
+        label: r.label,
+        page: r.page,
+        playId: r.play_id || null,
+        playTitle: r.play_title || null,
+        playThumbnail: r.play_thumbnail || null,
+        playSport: r.play_sport || null,
+        updatedAt: r.updated_at,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PATCH /admin/page-sections/:key
+ * Assigns or unassigns a play to a page section.
+ * Body: { playId: string | null }
+ */
+router.patch("/page-sections/:key", requireAdmin, async (req, res, next) => {
+  try {
+    const { playId } = req.body;
+    const { rows } = await pool.query(
+      `UPDATE page_sections
+       SET play_id = $1, updated_at = now()
+       WHERE section_key = $2
+       RETURNING *`,
+      [playId || null, req.params.key]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Section not found" });
+    res.json({ section: { sectionKey: rows[0].section_key, playId: rows[0].play_id || null } });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── Cleanup ─────────────────────────────────────────────────────────────────
 
 // Cleanup helper — exported for use by the auto-cleanup scheduler

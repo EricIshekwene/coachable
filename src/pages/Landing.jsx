@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import logo from "../assets/logos/White_Full_Coachable.png";
 import { FiArrowRight, FiPlay, FiUsers, FiLayers, FiChevronDown, FiPlus, FiCheck } from "react-icons/fi";
 import { createPlay } from "../utils/apiPlays";
+import PlayPreviewCard from "../components/PlayPreviewCard";
 
 // Local photography assets
 import filmSessionLong from "../assets/pictures/film_session_long.png";
@@ -37,11 +38,17 @@ export default function Landing() {
   const [featuredPlays, setFeaturedPlays] = useState([]);
   const [addingPlay, setAddingPlay] = useState(null);
   const [addedPlay, setAddedPlay] = useState(null);
+  const [visualizePlay, setVisualizePlay] = useState(null);
 
   useEffect(() => {
     fetch(`${API_URL}/platform-plays`)
       .then((r) => r.json())
       .then((data) => setFeaturedPlays(data.plays || []))
+      .catch(() => {});
+
+    fetch(`${API_URL}/page-sections/landing.visualize`)
+      .then((r) => r.json())
+      .then((data) => setVisualizePlay(data.section?.play || null))
       .catch(() => {});
   }, []);
 
@@ -245,32 +252,46 @@ export default function Landing() {
               {/* Orange glow */}
               <div className="absolute -bottom-24 -left-16 w-72 h-72 rounded-full bg-BrandOrange/8 blur-3xl pointer-events-none" />
 
-              {/* Mock canvas preview */}
+              {/* Canvas preview — live play if assigned, static mock as fallback */}
               <div className="relative z-10 flex-1 p-8 flex items-center justify-center">
-                <div className="w-full max-w-xs aspect-video rounded-xl border border-BrandGray2/30 bg-BrandBlack/60 flex items-center justify-center relative overflow-hidden shadow-2xl">
-                  {/* Field lines suggestion */}
-                  <div className="absolute inset-0 opacity-20">
-                    <div className="absolute top-1/2 left-0 right-0 h-px bg-BrandGray2" />
-                    <div className="absolute top-0 bottom-0 left-1/2 w-px bg-BrandGray2" />
-                    <div className="absolute top-1/2 left-1/2 w-16 h-16 rounded-full border border-BrandGray2 -translate-x-1/2 -translate-y-1/2" />
+                {visualizePlay ? (
+                  <div className="w-full max-w-xs shadow-2xl">
+                    <PlayPreviewCard
+                      playData={visualizePlay.playData}
+                      autoplay="always"
+                      shape="landscape"
+                      cameraMode="fit-distribution"
+                      background="field"
+                      paddingPx={40}
+                      minSpanPx={150}
+                    />
                   </div>
-                  {/* Player dots */}
-                  <div className="absolute top-1/3 left-1/4 w-3 h-3 rounded-full bg-BrandOrange shadow-lg shadow-BrandOrange/40" />
-                  <div className="absolute top-1/2 left-1/3 w-3 h-3 rounded-full bg-BrandOrange shadow-lg shadow-BrandOrange/40" />
-                  <div className="absolute top-2/3 left-1/4 w-3 h-3 rounded-full bg-BrandOrange shadow-lg shadow-BrandOrange/40" />
-                  <div className="absolute top-1/3 left-2/3 w-3 h-3 rounded-full bg-white/60" />
-                  <div className="absolute top-1/2 left-3/4 w-3 h-3 rounded-full bg-white/60" />
-                  <div className="absolute top-2/3 left-2/3 w-3 h-3 rounded-full bg-white/60" />
-                  {/* Arrow suggestion */}
-                  <svg className="absolute inset-0 w-full h-full opacity-40" viewBox="0 0 200 120">
-                    <path d="M 50 40 Q 100 60 140 40" stroke="#FF7A18" strokeWidth="1.5" fill="none" strokeDasharray="4 2" markerEnd="url(#arrowhead)" />
-                    <defs>
-                      <marker id="arrowhead" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-                        <path d="M 0 0 L 6 3 L 0 6 z" fill="#FF7A18" />
-                      </marker>
-                    </defs>
-                  </svg>
-                </div>
+                ) : (
+                  <div className="w-full max-w-xs aspect-video rounded-xl border border-BrandGray2/30 bg-BrandBlack/60 flex items-center justify-center relative overflow-hidden shadow-2xl">
+                    {/* Field lines suggestion */}
+                    <div className="absolute inset-0 opacity-20">
+                      <div className="absolute top-1/2 left-0 right-0 h-px bg-BrandGray2" />
+                      <div className="absolute top-0 bottom-0 left-1/2 w-px bg-BrandGray2" />
+                      <div className="absolute top-1/2 left-1/2 w-16 h-16 rounded-full border border-BrandGray2 -translate-x-1/2 -translate-y-1/2" />
+                    </div>
+                    {/* Player dots */}
+                    <div className="absolute top-1/3 left-1/4 w-3 h-3 rounded-full bg-BrandOrange shadow-lg shadow-BrandOrange/40" />
+                    <div className="absolute top-1/2 left-1/3 w-3 h-3 rounded-full bg-BrandOrange shadow-lg shadow-BrandOrange/40" />
+                    <div className="absolute top-2/3 left-1/4 w-3 h-3 rounded-full bg-BrandOrange shadow-lg shadow-BrandOrange/40" />
+                    <div className="absolute top-1/3 left-2/3 w-3 h-3 rounded-full bg-white/60" />
+                    <div className="absolute top-1/2 left-3/4 w-3 h-3 rounded-full bg-white/60" />
+                    <div className="absolute top-2/3 left-2/3 w-3 h-3 rounded-full bg-white/60" />
+                    {/* Arrow suggestion */}
+                    <svg className="absolute inset-0 w-full h-full opacity-40" viewBox="0 0 200 120">
+                      <path d="M 50 40 Q 100 60 140 40" stroke="#FF7A18" strokeWidth="1.5" fill="none" strokeDasharray="4 2" markerEnd="url(#arrowhead)" />
+                      <defs>
+                        <marker id="arrowhead" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+                          <path d="M 0 0 L 6 3 L 0 6 z" fill="#FF7A18" />
+                        </marker>
+                      </defs>
+                    </svg>
+                  </div>
+                )}
               </div>
 
               <div className="relative z-10 p-8 pt-0">
