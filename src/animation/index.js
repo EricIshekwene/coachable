@@ -10,7 +10,7 @@ export {
   getTrackKeyframeTimes,
   cloneAnimation,
 } from "./schema";
-export { getPoseAtTime, samplePosesAtTime } from "./interpolate";
+export { getPoseAtTime, samplePosesAtTime, getDirectionAtTime } from "./interpolate";
 export { AnimationEngine } from "./engine";
 export { serializeAnimation, deserializeAnimation } from "./serialize";
 export { log as logAnimDebug, getLogs as getAnimDebugLogs, clearLogs as clearAnimDebugLogs } from "./debugLogger";

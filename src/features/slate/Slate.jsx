@@ -31,6 +31,7 @@ import {
   getTrackKeyframeTimes,
   normalizeAnimation,
   samplePosesAtTime,
+  getDirectionAtTime,
   upsertKeyframe,
 } from "../../animation";
 import { getLogs as getAnimDebugLogs, log as logAnimDebug } from "../../animation/debugLogger";
@@ -363,6 +364,13 @@ function Slate({
   }, [viewOnly]);
 
   const currentFieldType = advancedSettings?.pitch?.fieldType ?? "Rugby";
+  const currentFieldTypeRef = useRef(currentFieldType);
+  useEffect(() => { currentFieldTypeRef.current = currentFieldType; }, [currentFieldType]);
+
+  // Field types whose balls are oblong (football/rugby) and should rotate toward movement direction.
+  // Round-ball sports (soccer, basketball, lacrosse) are excluded.
+  const ROUND_BALL_FIELD_TYPES_LOWER = new Set(["soccer", "lacrosse", "basketball"]);
+
   const entities = useSlateEntities({
     historyApiRef,
     logEvent,
@@ -661,6 +669,22 @@ function Slate({
       fallbackPoses,
       trackIds
     );
+
+    // For oblong-ball field types (Football, Rugby), compute directional rotation so the
+    // tip of the ball points toward the direction of travel.
+    const fieldType = currentFieldTypeRef.current ?? "Rugby";
+    if (!ROUND_BALL_FIELD_TYPES_LOWER.has(fieldType.toLowerCase())) {
+      const ballIds = Object.keys(ballsById);
+      ballIds.forEach((ballId) => {
+        const track = animationDataRef.current?.tracks?.[ballId];
+        if (!track) return;
+        const angle = getDirectionAtTime(track, timeMs);
+        if (angle !== null && sampledPoses[ballId]) {
+          sampledPoses[ballId] = { ...sampledPoses[ballId], r: angle };
+        }
+      });
+    }
+
     const previousPoses = latestPosesRef.current || {};
     const patch = {};
     Object.entries(sampledPoses).forEach(([itemId, pose]) => {

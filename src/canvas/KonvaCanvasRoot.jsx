@@ -165,6 +165,8 @@ function KonvaCanvasRoot({
   const itemsLayerRef = useRef(null);
   const itemNodeMapRef = useRef(new Map());
   const poseOverridesRef = useRef({});
+  /** Map<itemId, { target: number, tween: Konva.Tween }> — tracks active rotation tweens */
+  const rotationTweensRef = useRef(new Map());
   const dragStateRef = useRef(new Map());
   const draggingIdsRef = useRef(new Set());
   const panRef = useRef({
@@ -442,7 +444,32 @@ function KonvaCanvasRoot({
         node.position({ x: pose.x, y: pose.y });
       }
       if (Number.isFinite(pose.r)) {
-        node.rotation(pose.r);
+        if (flush) {
+          // Immediate seek/pause — cancel any running tween and snap to target.
+          const existing = rotationTweensRef.current.get(itemId);
+          if (existing) { existing.tween.destroy(); rotationTweensRef.current.delete(itemId); }
+          node.rotation(pose.r);
+        } else {
+          const currentR = node.rotation();
+          const targetR = pose.r;
+          // Normalize to shortest rotation path (e.g. 350°→10° becomes +20°, not −340°).
+          let delta = ((targetR - currentR) % 360 + 540) % 360 - 180;
+          const normalizedTarget = currentR + delta;
+          const existingState = rotationTweensRef.current.get(itemId);
+          // Only start a new tween when the target changes meaningfully (> 1°).
+          if (!existingState || Math.abs(existingState.target - normalizedTarget) > 1) {
+            if (existingState) existingState.tween.destroy();
+            const tween = new Konva.Tween({
+              node,
+              rotation: normalizedTarget,
+              duration: 0.22,
+              easing: Konva.Easings.EaseInOut,
+              onFinish: () => { rotationTweensRef.current.delete(itemId); },
+            });
+            rotationTweensRef.current.set(itemId, { target: normalizedTarget, tween });
+            tween.play();
+          }
+        }
       }
     });
     const itemsLayer = itemsLayerRef.current;
@@ -461,6 +488,8 @@ function KonvaCanvasRoot({
       clearPoses: (options = {}) => {
         const flush = Boolean(options?.flush);
         poseOverridesRef.current = {};
+        rotationTweensRef.current.forEach(({ tween }) => tween.destroy());
+        rotationTweensRef.current.clear();
         if (flush) {
           itemsLayerRef.current?.draw?.();
           stageRef.current?.draw?.();
