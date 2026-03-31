@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import logo from "../assets/logos/White_Full_Coachable.png";
-import productVideo from "../assets/videos/Coachable Sports Play Design in Action (1).mp4";
+const productVideo = "/product-demo.mp4";
 import videoSectionBg from "../assets/backgrounds/Gemini_Generated_Image_fet7z5fet7z5fet7.png";
 import { FiArrowRight, FiPlay, FiUsers, FiLayers, FiChevronDown, FiPlus, FiCheck } from "react-icons/fi";
 import { createPlay } from "../utils/apiPlays";
