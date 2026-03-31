@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://coachable.app/sitemap.xml
+Sitemap: https://coachableplays.com/sitemap.xml

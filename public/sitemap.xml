@@ -1,32 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://coachable.app/</loc>
+    <loc>https://coachableplays.com/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://coachable.app/rugby</loc>
+    <loc>https://coachableplays.com/rugby</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://coachable.app/football</loc>
+    <loc>https://coachableplays.com/football</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://coachable.app/soccer</loc>
+    <loc>https://coachableplays.com/soccer</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://coachable.app/lacrosse</loc>
+    <loc>https://coachableplays.com/lacrosse</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://coachable.app/basketball</loc>
+    <loc>https://coachableplays.com/basketball</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
