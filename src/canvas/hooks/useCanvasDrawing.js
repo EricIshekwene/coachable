@@ -49,6 +49,7 @@ export function useCanvasDrawing({
   textEditing,
   onTextEditingChange,
   onSelectedDrawingIdsChange,
+  onSubToolChange,
   // Snap support
   fieldBounds,
   drawGuides,
@@ -604,7 +605,9 @@ export function useCanvasDrawing({
       // Remove internal start coordinates before saving
       const { _startX, _startY, ...cleanDrawing } = drawing;
       logDrawDebug(`shape commit type=${cleanDrawing.shapeType} w=${round2(cleanDrawing.width)} h=${round2(cleanDrawing.height)}`);
-      onAddDrawing?.(cleanDrawing);
+      const newId = onAddDrawing?.(cleanDrawing);
+      onSubToolChange?.("select");
+      if (newId) onSelectedDrawingIdsChange?.([newId]);
       return true;
     } else {
       logDrawDebug(`draw commit points=${drawing.points.length / 2} tension=${drawing.tension ?? 0.3}`);

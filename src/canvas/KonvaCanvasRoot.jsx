@@ -136,6 +136,7 @@ function KonvaCanvasRoot({
   textEditing,
   onTextEditingChange,
   drawingHookRef,
+  onDrawSubToolChange,
   screenshotMode = false,
   screenshotRegion,
   onScreenshotRegionChange,
@@ -344,6 +345,7 @@ function KonvaCanvasRoot({
     textEditing,
     onTextEditingChange,
     onSelectedDrawingIdsChange,
+    onSubToolChange: onDrawSubToolChange,
     fieldBounds,
     drawGuides,
     clearGuides,
@@ -1469,6 +1471,7 @@ function KonvaCanvasRoot({
 
   /**
    * Builds a filled triangle arrowhead as a flat points array (for polygon rendering).
+   * The base sits at the last stroke point; the tip extends forward beyond it.
    */
   const getFilledHeadPoints = (points, pointerLength, pointerWidth) => {
     const dir = getStrokeTipDirection(points, pointerLength);
@@ -1477,12 +1480,12 @@ function KonvaCanvasRoot({
     const normalX = -uy;
     const normalY = ux;
     const halfW = pointerWidth / 2;
-    const baseX = tipX - ux * pointerLength;
-    const baseY = tipY - uy * pointerLength;
+    const fwdTipX = tipX + ux * pointerLength;
+    const fwdTipY = tipY + uy * pointerLength;
     return [
-      baseX + normalX * halfW, baseY + normalY * halfW,
-      tipX, tipY,
-      baseX - normalX * halfW, baseY - normalY * halfW,
+      tipX + normalX * halfW, tipY + normalY * halfW,
+      fwdTipX, fwdTipY,
+      tipX - normalX * halfW, tipY - normalY * halfW,
     ];
   };
 
@@ -1496,9 +1499,17 @@ function KonvaCanvasRoot({
     if (d.type === "stroke") {
       const strokeColor = d.color || "#FFFFFF";
       const sw = d.strokeWidth || 3;
+      const hasArrowTip = d.arrowTip && d.points && d.points.length >= 4;
+      const headType = hasArrowTip ? (d.arrowHeadType || "standard") : null;
+      const tipStyle = (hasArrowTip && headType !== "none")
+        ? (STROKE_TIP_STYLES[headType] || STROKE_TIP_STYLES.standard)
+        : null;
+
+      const isChevron = hasArrowTip ? headType === "chevron" : false;
+
       const strokeLine = (
         <Line
-          key={d.arrowTip ? undefined : key}
+          key={hasArrowTip ? undefined : key}
           points={d.points}
           stroke={strokeColor}
           strokeWidth={sw}
@@ -1509,15 +1520,9 @@ function KonvaCanvasRoot({
           listening={false}
         />
       );
-      if (!d.arrowTip || !d.points || d.points.length < 4) {
+      if (!hasArrowTip || headType === "none") {
         return strokeLine;
       }
-      const headType = d.arrowHeadType || "standard";
-      if (headType === "none") {
-        return strokeLine;
-      }
-      const tipStyle = STROKE_TIP_STYLES[headType] || STROKE_TIP_STYLES.standard;
-      const isChevron = headType === "chevron";
       const headPts = isChevron
         ? getChevronHeadPoints(d.points, tipStyle.pointerLength, tipStyle.pointerWidth)
         : getFilledHeadPoints(d.points, tipStyle.pointerLength, tipStyle.pointerWidth);

@@ -2838,6 +2838,7 @@ function Slate({
           textEditing={textEditing}
           onTextEditingChange={setTextEditing}
           drawingHookRef={drawingHookRef}
+          onDrawSubToolChange={handleDrawSubToolChange}
           screenshotMode={screenshotMode}
           screenshotRegion={screenshotRegion}
           onScreenshotRegionChange={handleScreenshotRegionChange}

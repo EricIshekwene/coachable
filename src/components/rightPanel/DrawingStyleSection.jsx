@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import { FiAlignLeft, FiAlignCenter, FiAlignRight } from "react-icons/fi";
+import { useEffect, useRef, useState } from "react";
+import { FiAlignLeft, FiAlignCenter, FiAlignRight, FiCheck } from "react-icons/fi";
 import { PiPenNib } from "react-icons/pi";
 import { HiPlus } from "react-icons/hi";
 import { SketchPicker } from "react-color";
@@ -40,32 +40,19 @@ const SHAPE_COLORS = [
 ];
 
 /**
- * Figma-style color picker with preset swatches, active preview, and custom color popover.
+ * Figma-style color picker with preset swatches, active preview, and inline custom color picker.
  */
 function ColorSwatches({ value, onChange }) {
   const [pickerOpen, setPickerOpen] = useState(false);
-  const popoverRef = useRef(null);
-
-  // Close popover on outside click
-  useEffect(() => {
-    if (!pickerOpen) return;
-    const handleClick = (e) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target)) {
-        setPickerOpen(false);
-      }
-    };
-    document.addEventListener("pointerdown", handleClick);
-    return () => document.removeEventListener("pointerdown", handleClick);
-  }, [pickerOpen]);
 
   const isCustom = value && !PRESET_COLORS.includes(value);
 
   return (
-    <div className="w-full flex flex-col gap-1.5">
+    <div className="w-full flex flex-col gap-1">
       {/* Active color row: preview + hex input */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <div
-          className="w-7 h-7 rounded-md shrink-0"
+          className="w-5 h-5 rounded shrink-0"
           style={{
             backgroundColor: value || "#FFFFFF",
             boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.1)",
@@ -80,11 +67,11 @@ function ColorSwatches({ value, onChange }) {
           }}
           onKeyDown={(e) => e.stopPropagation()}
           spellCheck={false}
-          className="flex-1 min-w-0 bg-BrandBlack2 text-BrandWhite text-[10px] sm:text-xs font-mono rounded-md px-2 py-1 outline-none border border-BrandGray2/40 focus:border-BrandOrange/60 transition-colors"
+          className="flex-1 min-w-0 bg-BrandBlack2 text-BrandWhite text-[9px] font-mono rounded px-1.5 py-0.5 outline-none border border-BrandGray2/40 focus:border-BrandOrange/60 transition-colors"
         />
       </div>
       {/* Swatch grid */}
-      <div className="w-full flex gap-1 flex-wrap">
+      <div className="w-full flex gap-0.5 flex-wrap">
         {PRESET_COLORS.map((c) => {
           const selected = value === c;
           const isDark = c === "#000000";
@@ -92,7 +79,7 @@ function ColorSwatches({ value, onChange }) {
             <button
               key={c}
               onClick={() => onChange?.(c)}
-              className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-[5px] shrink-0 transition-transform duration-75 hover:scale-110 active:scale-95"
+              className="w-4.5 h-4.5 rounded shrink-0 transition-transform duration-75 hover:scale-110 active:scale-95"
               style={{
                 backgroundColor: c,
                 boxShadow: selected
@@ -102,48 +89,57 @@ function ColorSwatches({ value, onChange }) {
             />
           );
         })}
-        {/* Custom color button */}
-        <div className="relative" ref={popoverRef}>
-          <button
-            onClick={() => setPickerOpen((p) => !p)}
-            className={`
-              w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-[5px] shrink-0 flex items-center justify-center
-              transition-transform duration-75 hover:scale-110 active:scale-95
-              ${isCustom ? "" : "border border-dashed border-BrandGray2/60"}
-            `}
-            style={isCustom ? {
-              backgroundColor: value,
-              boxShadow: `inset 0 0 0 2px rgba(0,0,0,0.35), 0 0 0 1.5px #FF7A18`,
-            } : undefined}
-            title="Custom color"
-          >
-            {!isCustom && <HiPlus className="text-BrandGray text-[10px]" />}
-          </button>
-          {pickerOpen && (
-            <div className="absolute bottom-full right-0 mb-2 z-100 bg-BrandBlack border border-BrandGray2/40 rounded-lg shadow-xl p-3">
-              <style>{`
-                .drawing-picker .sketch-picker { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; }
-                .drawing-picker .sketch-picker > div { background: transparent !important; }
-                .drawing-picker .sketch-picker .hue-horizontal { border-radius: 9999px !important; height: 10px !important; }
-                .drawing-picker .sketch-picker label { color: #9AA0A6 !important; font-size: 0.65rem !important; }
-                .drawing-picker .sketch-picker .flexbox-fix { border-top: 1px solid rgba(75,81,87,0.5) !important; margin-top: 8px !important; padding-top: 8px !important; }
-                .drawing-picker .sketch-picker input { background: #2a2e34 !important; border: none !important; outline: none !important; box-shadow: none !important; color: #F5F7FA !important; border-radius: 4px !important; font-size: 0.7rem !important; padding: 3px 6px !important; width: 100% !important; }
-                .drawing-picker .sketch-picker input:focus { box-shadow: 0 0 0 1px rgba(255,122,24,0.55) !important; }
-              `}</style>
-              <div className="drawing-picker">
-                <SketchPicker
-                  color={value || "#FFFFFF"}
-                  onChange={(c) => onChange?.(c.hex)}
-                  onChangeComplete={(c) => onChange?.(c.hex)}
-                  disableAlpha
-                  presetColors={[]}
-                  width={230}
-                />
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Custom color toggle */}
+        <button
+          onClick={() => setPickerOpen((p) => !p)}
+          className={`
+            w-4.5 h-4.5 rounded shrink-0 flex items-center justify-center
+            transition-transform duration-75 hover:scale-110 active:scale-95
+            ${isCustom ? "" : "border border-dashed border-BrandGray2/60"}
+            ${pickerOpen ? "ring-1 ring-BrandOrange" : ""}
+          `}
+          style={isCustom ? {
+            backgroundColor: value,
+            boxShadow: `inset 0 0 0 2px rgba(0,0,0,0.35), 0 0 0 1.5px #FF7A18`,
+          } : undefined}
+          title="Custom color"
+        >
+          {!isCustom && <HiPlus className="text-BrandGray text-[9px]" />}
+        </button>
       </div>
+      {/* Inline custom color picker */}
+      {pickerOpen && (
+        <div
+          className="w-full mt-0.5"
+          onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); setPickerOpen(false); } }}
+        >
+          <style>{`
+            .drawing-picker .sketch-picker { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; }
+            .drawing-picker .sketch-picker > div { background: transparent !important; }
+            .drawing-picker .sketch-picker .hue-horizontal { border-radius: 9999px !important; height: 8px !important; }
+            .drawing-picker .sketch-picker label { color: #9AA0A6 !important; font-size: 0.6rem !important; }
+            .drawing-picker .sketch-picker .flexbox-fix { border-top: 1px solid rgba(75,81,87,0.5) !important; margin-top: 6px !important; padding-top: 6px !important; }
+            .drawing-picker .sketch-picker input { background: #2a2e34 !important; border: none !important; outline: none !important; box-shadow: none !important; color: #F5F7FA !important; border-radius: 4px !important; font-size: 0.6rem !important; padding: 2px 4px !important; width: 100% !important; }
+            .drawing-picker .sketch-picker input:focus { box-shadow: 0 0 0 1px rgba(255,122,24,0.55) !important; }
+          `}</style>
+          <div className="drawing-picker">
+            <SketchPicker
+              color={value || "#FFFFFF"}
+              onChange={(c) => onChange?.(c.hex)}
+              onChangeComplete={(c) => onChange?.(c.hex)}
+              disableAlpha
+              presetColors={[]}
+              width="100%"
+            />
+          </div>
+          <button
+            onClick={() => setPickerOpen(false)}
+            className="mt-1 w-full flex items-center justify-center gap-1 py-1 rounded bg-BrandOrange text-BrandBlack text-[10px] font-DmSans font-semibold hover:opacity-90 active:opacity-75 transition-opacity"
+          >
+            <FiCheck className="text-xs" /> Done
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -481,69 +477,58 @@ function ShapeTypePreview({ type, isActive }) {
 }
 
 /**
- * Figma-style color picker for shapes, includes a "none" (transparent) swatch and custom color.
+ * Figma-style color picker for shapes, includes a "none" (transparent) swatch and inline custom color picker.
  */
 function ShapeColorPicker({ value, onChange, noneTitle = "No color" }) {
   const [pickerOpen, setPickerOpen] = useState(false);
-  const popoverRef = useRef(null);
-
-  useEffect(() => {
-    if (!pickerOpen) return;
-    const handleClick = (e) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target)) {
-        setPickerOpen(false);
-      }
-    };
-    document.addEventListener("pointerdown", handleClick);
-    return () => document.removeEventListener("pointerdown", handleClick);
-  }, [pickerOpen]);
 
   const isCustom = value && value !== "transparent" && !PRESET_COLORS.includes(value);
 
   return (
-    <div className="w-full flex gap-1 flex-wrap">
-      {/* Transparent / none swatch */}
-      <button
-        onClick={() => onChange?.("transparent")}
-        className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-[5px] shrink-0 relative overflow-hidden transition-transform duration-75 hover:scale-110 active:scale-95"
-        style={{
-          boxShadow: value === "transparent"
-            ? "inset 0 0 0 2px #555, 0 0 0 1.5px #FF7A18"
-            : "inset 0 0 0 1px rgba(255,255,255,0.08)",
-        }}
-        title={noneTitle}
-      >
-        <svg viewBox="0 0 24 24" className="w-full h-full">
-          <rect width="24" height="24" fill="#2a2e34" rx="2" />
-          <line x1="0" y1="24" x2="24" y2="0" stroke="#ef4444" strokeWidth="2" />
-        </svg>
-      </button>
-      {/* Preset swatches */}
-      {PRESET_COLORS.map((c) => {
-        const selected = value === c;
-        const isDark = c === "#000000";
-        return (
-          <button
-            key={c}
-            onClick={() => onChange?.(c)}
-            className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-[5px] shrink-0 transition-transform duration-75 hover:scale-110 active:scale-95"
-            style={{
-              backgroundColor: c,
-              boxShadow: selected
-                ? `inset 0 0 0 2px ${isDark ? "#555" : "rgba(0,0,0,0.35)"}, 0 0 0 1.5px #FF7A18`
-                : "inset 0 0 0 1px rgba(255,255,255,0.08)",
-            }}
-          />
-        );
-      })}
-      {/* Custom color button */}
-      <div className="relative" ref={popoverRef}>
+    <div className="w-full flex flex-col gap-0.5">
+      <div className="w-full flex gap-0.5 flex-wrap">
+        {/* Transparent / none swatch */}
+        <button
+          onClick={() => onChange?.("transparent")}
+          className="w-4.5 h-4.5 rounded shrink-0 relative overflow-hidden transition-transform duration-75 hover:scale-110 active:scale-95"
+          style={{
+            boxShadow: value === "transparent"
+              ? "inset 0 0 0 2px #555, 0 0 0 1.5px #FF7A18"
+              : "inset 0 0 0 1px rgba(255,255,255,0.08)",
+          }}
+          title={noneTitle}
+        >
+          <svg viewBox="0 0 24 24" className="w-full h-full">
+            <rect width="24" height="24" fill="#2a2e34" rx="2" />
+            <line x1="0" y1="24" x2="24" y2="0" stroke="#ef4444" strokeWidth="2" />
+          </svg>
+        </button>
+        {/* Preset swatches */}
+        {PRESET_COLORS.map((c) => {
+          const selected = value === c;
+          const isDark = c === "#000000";
+          return (
+            <button
+              key={c}
+              onClick={() => onChange?.(c)}
+              className="w-4.5 h-4.5 rounded shrink-0 transition-transform duration-75 hover:scale-110 active:scale-95"
+              style={{
+                backgroundColor: c,
+                boxShadow: selected
+                  ? `inset 0 0 0 2px ${isDark ? "#555" : "rgba(0,0,0,0.35)"}, 0 0 0 1.5px #FF7A18`
+                  : "inset 0 0 0 1px rgba(255,255,255,0.08)",
+              }}
+            />
+          );
+        })}
+        {/* Custom color toggle */}
         <button
           onClick={() => setPickerOpen((p) => !p)}
           className={`
-            w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-[5px] shrink-0 flex items-center justify-center
+            w-4.5 h-4.5 rounded shrink-0 flex items-center justify-center
             transition-transform duration-75 hover:scale-110 active:scale-95
             ${isCustom ? "" : "border border-dashed border-BrandGray2/60"}
+            ${pickerOpen ? "ring-1 ring-BrandOrange" : ""}
           `}
           style={isCustom ? {
             backgroundColor: value,
@@ -551,32 +536,42 @@ function ShapeColorPicker({ value, onChange, noneTitle = "No color" }) {
           } : undefined}
           title="Custom color"
         >
-          {!isCustom && <HiPlus className="text-BrandGray text-[10px]" />}
+          {!isCustom && <HiPlus className="text-BrandGray text-[9px]" />}
         </button>
-        {pickerOpen && (
-          <div className="absolute bottom-full right-0 mb-2 z-100 bg-BrandBlack border border-BrandGray2/40 rounded-lg shadow-xl p-3">
-            <style>{`
-              .shape-picker .sketch-picker { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; }
-              .shape-picker .sketch-picker > div { background: transparent !important; }
-              .shape-picker .sketch-picker .hue-horizontal { border-radius: 9999px !important; height: 10px !important; }
-              .shape-picker .sketch-picker label { color: #9AA0A6 !important; font-size: 0.65rem !important; }
-              .shape-picker .sketch-picker .flexbox-fix { border-top: 1px solid rgba(75,81,87,0.5) !important; margin-top: 8px !important; padding-top: 8px !important; }
-              .shape-picker .sketch-picker input { background: #2a2e34 !important; border: none !important; outline: none !important; box-shadow: none !important; color: #F5F7FA !important; border-radius: 4px !important; font-size: 0.7rem !important; padding: 3px 6px !important; width: 100% !important; }
-              .shape-picker .sketch-picker input:focus { box-shadow: 0 0 0 1px rgba(255,122,24,0.55) !important; }
-            `}</style>
-            <div className="shape-picker">
-              <SketchPicker
-                color={value === "transparent" ? "#000000" : (value || "#FFFFFF")}
-                onChange={(c) => onChange?.(c.hex)}
-                onChangeComplete={(c) => onChange?.(c.hex)}
-                disableAlpha
-                presetColors={[]}
-                width={230}
-              />
-            </div>
-          </div>
-        )}
       </div>
+      {/* Inline custom color picker */}
+      {pickerOpen && (
+        <div
+          className="w-full mt-0.5"
+          onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); setPickerOpen(false); } }}
+        >
+          <style>{`
+            .shape-picker .sketch-picker { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; }
+            .shape-picker .sketch-picker > div { background: transparent !important; }
+            .shape-picker .sketch-picker .hue-horizontal { border-radius: 9999px !important; height: 8px !important; }
+            .shape-picker .sketch-picker label { color: #9AA0A6 !important; font-size: 0.6rem !important; }
+            .shape-picker .sketch-picker .flexbox-fix { border-top: 1px solid rgba(75,81,87,0.5) !important; margin-top: 6px !important; padding-top: 6px !important; }
+            .shape-picker .sketch-picker input { background: #2a2e34 !important; border: none !important; outline: none !important; box-shadow: none !important; color: #F5F7FA !important; border-radius: 4px !important; font-size: 0.6rem !important; padding: 2px 4px !important; width: 100% !important; }
+            .shape-picker .sketch-picker input:focus { box-shadow: 0 0 0 1px rgba(255,122,24,0.55) !important; }
+          `}</style>
+          <div className="shape-picker">
+            <SketchPicker
+              color={value === "transparent" ? "#000000" : (value || "#FFFFFF")}
+              onChange={(c) => onChange?.(c.hex)}
+              onChangeComplete={(c) => onChange?.(c.hex)}
+              disableAlpha
+              presetColors={[]}
+              width="100%"
+            />
+          </div>
+          <button
+            onClick={() => setPickerOpen(false)}
+            className="mt-1 w-full flex items-center justify-center gap-1 py-1 rounded bg-BrandOrange text-BrandBlack text-[10px] font-DmSans font-semibold hover:opacity-90 active:opacity-75 transition-opacity"
+          >
+            <FiCheck className="text-xs" /> Done
+          </button>
+        </div>
+      )}
     </div>
   );
 }
