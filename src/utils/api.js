@@ -1,28 +1,12 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
-const TOKEN_KEY = "coachable_token";
-
-export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-export function setToken(token) {
-  localStorage.setItem(TOKEN_KEY, token);
-}
-
-export function clearToken() {
-  localStorage.removeItem(TOKEN_KEY);
-}
-
 /**
- * Wrapper around fetch that adds auth headers and handles JSON.
+ * Wrapper around fetch that authenticates via HttpOnly session cookie.
  * Throws on non-2xx responses with { status, error } shape.
  */
 export async function apiFetch(path, options = {}) {
-  const token = getToken();
   const headers = {
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers,
   };
 

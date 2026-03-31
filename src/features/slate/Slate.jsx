@@ -41,6 +41,7 @@ import { supportsWebCodecsMP4, createMP4Encoder, isIOSDevice, convertWebMToMP4 }
 import { reportError } from "../../utils/errorReporter";
 import { getLogs as getPlaceBallDebugLogs, log as logPlaceBallDebug } from "./placeBallDebugLogger";
 import { getLogs as getRecordingDebugLogs, log as logRecordingDebug } from "./recordingDebugLogger";
+import { getLogs as getPrefabDebugLogs, log as logPrefabDebug } from "./prefabDebugLogger";
 import { getLogs as getKfMoveDebugLogs, log as logKfMoveDebug } from "../../animation/keyframeMoveDebugLogger";
 import {
   getLogs as getPersistenceDebugLogs,
@@ -1754,6 +1755,19 @@ function Slate({
     }
   }, [canvasTool, entities.ballsById, entities.playersById, entities.selectedItemIds, onShowMessage]);
 
+  const handleCopyPrefabDebug = useCallback(async () => {
+    const lines = getPrefabDebugLogs(400);
+    const payload = lines.length ? lines.join("\n") : "[PREFAB] no logs captured yet";
+    try {
+      await navigator.clipboard.writeText(payload);
+      return true;
+    } catch (error) {
+      logPrefabDebug(`copyPrefabDebug failed err=${error?.message || "clipboard unavailable"}`);
+      onShowMessage("Copy prefab debug failed", "Clipboard access was denied.", "error");
+      return false;
+    }
+  }, [onShowMessage]);
+
   const handleCopyKfMoveDebug = useCallback(async () => {
     const lines = getKfMoveDebugLogs(300);
     const payload = lines.length ? lines.join("\n") : "[KFMOVE] no logs captured yet";
@@ -1887,6 +1901,13 @@ function Slate({
     const prefab = pendingPrefabRef.current;
     if (!prefab?.players?.length && !prefab?.ball) return;
 
+    const sportCfg = SPORT_DEFAULTS[currentFieldType] || {};
+    const usePositionLabels = Boolean(sportCfg.usePositionLabels);
+
+    logPrefabDebug(
+      `place fieldType=${currentFieldType} usePositionLabels=${usePositionLabels} playerCount=${prefab.players?.length ?? 0} prefabPlayers=${JSON.stringify((prefab.players || []).map((p) => ({ number: p.number, name: p.name ?? "" })))}`
+    );
+
     historyApiRef.current?.pushHistory?.();
 
     let currentById = { ...entities.playersById };
@@ -1919,10 +1940,13 @@ function Slate({
         id: newId,
         x: x + (p.dx ?? 0),
         y: y + (p.dy ?? 0),
-        number: getNextAvailableNumber(color, p.number),
-        name: p.name ?? "",
+        number: usePositionLabels ? (p.number ?? "") : getNextAvailableNumber(color, p.number),
+        name: usePositionLabels ? "" : (p.name ?? ""),
         color,
       };
+      logPrefabDebug(
+        `placed id=${newId} number="${currentById[newId].number}" name="${currentById[newId].name}" color=${color}`
+      );
       currentRepresented.push(newId);
       newIds.push(newId);
     });
@@ -1954,7 +1978,7 @@ function Slate({
     // One-shot: return to select tool after placing
     pendingPrefabRef.current = null;
     setCanvasTool("select");
-  }, [entities]);
+  }, [entities, currentFieldType]);
 
   const handleSavePrefab = useCallback((name) => {
     const selectedPlayers = (entities.selectedPlayerIds || [])
@@ -3098,6 +3122,7 @@ function Slate({
           onCopyDebug={handleCopyDebug}
           onCopyDrawDebug={handleCopyDrawDebug}
           onCopyKeyToolDebug={handleCopyKeyToolDebug}
+          onCopyPrefabDebug={handleCopyPrefabDebug}
           onCopyPlaceBallDebug={handleCopyPlaceBallDebug}
           onCopyVideoExportDebug={handleCopyVideoExportDebug}
           onCopyRecordingDebug={handleCopyRecordingDebug}

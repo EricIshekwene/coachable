@@ -71,6 +71,13 @@ function SlateWithSportParam({ adminMode = false }) {
   return <SlateRoot adminMode={adminMode} sport={sport} />;
 }
 
+/** Guards admin sub-routes that lack their own session check (e.g. /admin/slate). */
+function RequireAdminSession({ children }) {
+  const session = localStorage.getItem("coachable_admin_session");
+  if (!session) return <Navigate to="/admin" replace />;
+  return children;
+}
+
 function RequireAuth({ children }) {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -129,8 +136,8 @@ function AppRoutes() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/admin" element={<Admin />} />
-      <Route path="/admin/tests" element={<AdminTests />} />
-      <Route path="/admin/errors" element={<AdminErrors />} />
+      <Route path="/admin/tests" element={<RequireAdminSession><AdminTests /></RequireAdminSession>} />
+      <Route path="/admin/errors" element={<RequireAdminSession><AdminErrors /></RequireAdminSession>} />
       <Route path="/platform-play/:playId" element={<PlatformPlayView />} />
       <Route path="/shared/:token" element={<SharedPlay />} />
       <Route path="/shared/:token/view" element={<SharedPlayView />} />
@@ -142,9 +149,9 @@ function AppRoutes() {
       {/* Standalone slate editor (no auth required) */}
       <Route path="/slate" element={<SportPickerPage />} />
       <Route path="/slate/:sport" element={<SlateWithSportParam />} />
-      <Route path="/admin/slate" element={<SlateRoot adminMode />} />
-      <Route path="/admin/app" element={<AdminPlaysPage />} />
-      <Route path="/admin/plays/:playId/edit" element={<AdminPlayEditPage />} />
+      <Route path="/admin/slate" element={<RequireAdminSession><SlateRoot adminMode /></RequireAdminSession>} />
+      <Route path="/admin/app" element={<RequireAdminSession><AdminPlaysPage /></RequireAdminSession>} />
+      <Route path="/admin/plays/:playId/edit" element={<RequireAdminSession><AdminPlayEditPage /></RequireAdminSession>} />
 
       {/* Full-screen play editor (outside AppLayout — no nav chrome) */}
       <Route path="/app/plays/:playId/edit" element={<RequireAuth><RequireOnboarded><PlayEditPage /></RequireOnboarded></RequireAuth>} />

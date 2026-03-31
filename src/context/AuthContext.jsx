@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { apiFetch, setToken, clearToken, getToken } from "../utils/api";
+import { apiFetch } from "../utils/api";
 import { setErrorReporterUserId } from "../utils/errorReporter";
 
 const AuthContext = createContext(null);
@@ -60,15 +60,13 @@ export function AuthProvider({ children }) {
   const [playerViewMode, setPlayerViewMode] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // On mount, try to restore session from stored JWT or session cookie
+  // On mount, restore session from cookie
   useEffect(() => {
     apiFetch("/auth/me")
       .then((data) => {
         setUser(mapApiUserToLocal(data.user));
       })
-      .catch(() => {
-        clearToken();
-      })
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
@@ -111,7 +109,6 @@ export function AuthProvider({ children }) {
       method: "POST",
       body: { email, password },
     });
-    setToken(data.token);
     const localUser = mapApiUserToLocal(data.user);
     setUser(localUser);
     return localUser;
@@ -122,7 +119,6 @@ export function AuthProvider({ children }) {
       method: "POST",
       body: { name, email, password },
     });
-    setToken(data.token);
     const localUser = mapApiUserToLocal(data.user);
     setUser(localUser);
     return { user: localUser, requiresVerification: data.requiresVerification || false };
@@ -318,7 +314,6 @@ export function AuthProvider({ children }) {
   const logout = useCallback(() => {
     // Tell server to clear the session cookie
     apiFetch("/auth/logout", { method: "POST" }).catch(() => {});
-    clearToken();
     setUser(null);
     setTeamMembers([]);
     setPendingEmailChange(null);

@@ -15,7 +15,7 @@ const toErrorString = (value) => {
 
 const formatLine = (message) => {
   const timestamp = new Date().toISOString();
-  return `[KEYDBG] ${timestamp} ${message}`;
+  return `[PREFAB] ${timestamp} ${message}`;
 };
 
 export const log = (message, meta) => {
@@ -25,11 +25,11 @@ export const log = (message, meta) => {
   if (ringBuffer.length > MAX_LOG_LINES) {
     ringBuffer.splice(0, ringBuffer.length - MAX_LOG_LINES);
   }
-  if (import.meta.env.DEV) console.log(line);
+  console.log(line);
   return line;
 };
 
-export const getLogs = (limit = 300) => {
+export const getLogs = (limit = 400) => {
   const numericLimit = Number(limit);
   if (!Number.isFinite(numericLimit) || numericLimit <= 0) return [];
   return ringBuffer.slice(-Math.floor(numericLimit));
@@ -39,8 +39,4 @@ export const clearLogs = () => {
   ringBuffer.length = 0;
 };
 
-export default {
-  log,
-  getLogs,
-  clearLogs,
-};
+export default { log, getLogs, clearLogs };

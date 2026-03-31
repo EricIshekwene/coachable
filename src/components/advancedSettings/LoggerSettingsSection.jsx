@@ -5,6 +5,7 @@ export default function LoggerSettingsSection({
   onCopyDrawDebug,
   onCopyKeyToolDebug,
   onCopyPlaceBallDebug,
+  onCopyPrefabDebug,
   onCopyVideoExportDebug,
   onCopyRecordingDebug,
   onCopyKfMoveDebug,
@@ -15,6 +16,7 @@ export default function LoggerSettingsSection({
   const [copyDrawState, setCopyDrawState] = useState("idle");
   const [copyKeyToolState, setCopyKeyToolState] = useState("idle");
   const [copyPlaceBallState, setCopyPlaceBallState] = useState("idle");
+  const [copyPrefabState, setCopyPrefabState] = useState("idle");
   const [copyVideoExportState, setCopyVideoExportState] = useState("idle");
   const [copyRecordingState, setCopyRecordingState] = useState("idle");
   const [copyKfMoveState, setCopyKfMoveState] = useState("idle");
@@ -23,6 +25,7 @@ export default function LoggerSettingsSection({
   const copyDrawResetRef = useRef(null);
   const copyKeyToolResetRef = useRef(null);
   const copyPlaceBallResetRef = useRef(null);
+  const copyPrefabResetRef = useRef(null);
   const copyVideoExportResetRef = useRef(null);
   const copyRecordingResetRef = useRef(null);
   const copyKfMoveResetRef = useRef(null);
@@ -61,6 +64,10 @@ export default function LoggerSettingsSection({
       if (copyFixAllResetRef.current) {
         clearTimeout(copyFixAllResetRef.current);
         copyFixAllResetRef.current = null;
+      }
+      if (copyPrefabResetRef.current) {
+        clearTimeout(copyPrefabResetRef.current);
+        copyPrefabResetRef.current = null;
       }
     },
     []
@@ -153,6 +160,24 @@ export default function LoggerSettingsSection({
     copyPlaceBallResetRef.current = setTimeout(() => {
       setCopyPlaceBallState("idle");
       copyPlaceBallResetRef.current = null;
+    }, 1500);
+  };
+
+  const handleCopyPrefabDebug = async (event) => {
+    event.stopPropagation();
+    if (!onCopyPrefabDebug) return;
+    try {
+      const ok = await onCopyPrefabDebug();
+      setCopyPrefabState(ok ? "copied" : "error");
+    } catch {
+      setCopyPrefabState("error");
+    }
+    if (copyPrefabResetRef.current) {
+      clearTimeout(copyPrefabResetRef.current);
+    }
+    copyPrefabResetRef.current = setTimeout(() => {
+      setCopyPrefabState("idle");
+      copyPrefabResetRef.current = null;
     }, 1500);
   };
 
@@ -300,6 +325,17 @@ export default function LoggerSettingsSection({
           : copyPlaceBallState === "error"
             ? "Copy Failed"
             : "Copy Place Ball Debug"}
+      </button>
+      <button
+        type="button"
+        onClick={handleCopyPrefabDebug}
+        className="h-6 sm:h-7 w-full bg-BrandBlack2 border border-BrandGray text-BrandOrange rounded-md px-2 text-[10px] sm:text-[11px] md:text-[12px] font-DmSans cursor-pointer"
+      >
+        {copyPrefabState === "copied"
+          ? "Copied"
+          : copyPrefabState === "error"
+            ? "Copy Failed"
+            : "Copy Prefab Debug"}
       </button>
       <button
         type="button"

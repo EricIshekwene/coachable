@@ -136,7 +136,9 @@ export function reportError({ errorMessage, errorStack, component, action, extra
       errorStack: errorStack || null,
       component: component || null,
       action: action || null,
-      pageUrl: typeof window !== "undefined" ? window.location?.href : "",
+      pageUrl: typeof window !== "undefined"
+        ? window.location?.pathname?.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, ":id").replace(/\/\d+/g, "/:id")
+        : "",
       userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
       deviceInfo: getDeviceInfo(),
       extra: {

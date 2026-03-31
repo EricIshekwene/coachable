@@ -25,7 +25,7 @@ export const log = (message, meta) => {
   if (ringBuffer.length > MAX_LOG_LINES) {
     ringBuffer.splice(0, ringBuffer.length - MAX_LOG_LINES);
   }
-  console.log(line);
+  if (import.meta.env.DEV) console.log(line);
   return line;
 };
 

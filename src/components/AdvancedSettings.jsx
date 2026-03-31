@@ -22,6 +22,7 @@ export default function AdvancedSettings({
     onCopyDrawDebug,
     onCopyKeyToolDebug,
     onCopyPlaceBallDebug,
+    onCopyPrefabDebug,
     onCopyVideoExportDebug,
     onCopyRecordingDebug,
     onCopyKfMoveDebug,
@@ -177,6 +178,7 @@ export default function AdvancedSettings({
                     onCopyDrawDebug={onCopyDrawDebug}
                     onCopyKeyToolDebug={onCopyKeyToolDebug}
                     onCopyPlaceBallDebug={onCopyPlaceBallDebug}
+                    onCopyPrefabDebug={onCopyPrefabDebug}
                     onCopyVideoExportDebug={onCopyVideoExportDebug}
                     onCopyRecordingDebug={onCopyRecordingDebug}
                     onCopyKfMoveDebug={onCopyKfMoveDebug}
