@@ -19,6 +19,18 @@ import SoccerField from "../assets/objects/Field Vectors/Soccer_Field.png";
 import FootballField from "../assets/objects/Field Vectors/Football_Field.png";
 import LacrosseField from "../assets/objects/Field Vectors/Lacrosse_Field.png";
 import BasketballField from "../assets/objects/Field Vectors/Basketball_Field.png";
+import WhiteBall from "../assets/objects/balls/white_ball.png";
+import SoccerBall from "../assets/objects/balls/Soccer_ball.png";
+import FootballBall from "../assets/objects/balls/Football.png";
+import BasketballBall from "../assets/objects/balls/Basketball (4).png";
+import RugbyBall from "../assets/objects/balls/Rugby_ball.png";
+
+const FIELD_TYPE_TO_BALL_IMAGE_SRC = {
+  Rugby: RugbyBall,
+  Soccer: SoccerBall,
+  Football: FootballBall,
+  Basketball: BasketballBall,
+};
 
 const FIELD_TYPE_TO_IMAGE_SRC = {
   Rugby: RugbyField,
@@ -203,7 +215,7 @@ function KonvaCanvasRoot({
   const ballRadius = ballSizePx / 2;
   const coneRadius = coneSizePx / 2;
 
-  const ballImageSrc = new URL("../assets/objects/balls/white_ball.png", import.meta.url).href;
+  const ballImageSrc = FIELD_TYPE_TO_BALL_IMAGE_SRC[resolvedFieldType] ?? WhiteBall;
   const coneImageSrc = new URL("../assets/objects/cone.png", import.meta.url).href;
   const fieldImage = useImage(showMarkings ? FIELD_TYPE_TO_IMAGE_SRC[resolvedFieldType] : null);
   const ballImage = useImage(ballImageSrc);

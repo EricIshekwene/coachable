@@ -6,6 +6,17 @@ import FootballField from "../assets/objects/Field Vectors/Football_Field.png";
 import LacrosseField from "../assets/objects/Field Vectors/Lacrosse_Field.png";
 import BasketballField from "../assets/objects/Field Vectors/Basketball_Field.png";
 import WhiteBall from "../assets/objects/balls/white_ball.png";
+import SoccerBall from "../assets/objects/balls/Soccer_ball.png";
+import FootballBall from "../assets/objects/balls/Football.png";
+import BasketballBall from "../assets/objects/balls/Basketball (4).png";
+import RugbyBall from "../assets/objects/balls/Rugby_ball.png";
+
+const FIELD_TYPE_TO_BALL_IMAGE_SRC = {
+  Rugby: RugbyBall,
+  Soccer: SoccerBall,
+  Football: FootballBall,
+  Basketball: BasketballBall,
+};
 
 const DEFAULT_FIELD_SIZE = { width: 1000, height: 600 };
 const DEFAULT_PLAYER_COLOR = "#ef4444";
@@ -655,7 +666,7 @@ export default function PlayPreviewCard({
             return (
               <image
                 key={id}
-                href={WhiteBall}
+                href={FIELD_TYPE_TO_BALL_IMAGE_SRC[fieldType] ?? WhiteBall}
                 x={pose.x - ballRadius}
                 y={pose.y - ballRadius}
                 width={ballSizePx}
