@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import logo from "../assets/logos/White_Full_Coachable.png";
 import productVideo from "../assets/videos/Coachable Sports Play Design in Action (1).mp4";
+import videoSectionBg from "../assets/backgrounds/Gemini_Generated_Image_fet7z5fet7z5fet7.png";
 import { FiArrowRight, FiPlay, FiUsers, FiLayers, FiChevronDown, FiPlus, FiCheck } from "react-icons/fi";
 import { createPlay } from "../utils/apiPlays";
 import PlayPreviewCard from "../components/PlayPreviewCard";
@@ -229,15 +230,25 @@ export default function Landing({ sport = null }) {
       </section>
 
       {/* ── Product Video ── */}
-      <section className="py-16 bg-BrandBlack">
-        <div className="max-w-5xl mx-auto px-6 md:px-12 lg:px-20">
-          <div className="relative rounded-2xl overflow-hidden border border-BrandGray2/20 shadow-2xl shadow-black/60">
+      <section className="relative py-16 bg-BrandBlack overflow-hidden">
+        {/* Background image */}
+        <img
+          src={videoSectionBg}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-4 w-[calc(100%-2rem)] h-[calc(100%-2rem)] object-cover opacity-90 rounded-xl"
+        />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, #0a0a0a 0%, transparent 25%, transparent 75%, #0a0a0a 100%)" }} />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(to right, #0a0a0a 0%, transparent 20%, transparent 80%, #0a0a0a 100%)" }} />
+
+        <div className="relative z-10 max-w-6xl mx-auto px-6 md:px-12 lg:px-20">
+          <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-black/60 ring-1 ring-inset ring-white/5" style={{ boxShadow: "0 0 0 1px rgba(255,255,255,0.08), 0 25px 60px rgba(0,0,0,0.7)" }}>
             {/* Top bar chrome */}
-            <div className="flex items-center gap-1.5 px-4 py-3 bg-BrandBlack2/80 border-b border-BrandGray2/20">
-              <div className="w-3 h-3 rounded-full bg-red-500/70" />
-              <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
-              <div className="w-3 h-3 rounded-full bg-green-500/70" />
-              <span className="ml-3 text-xs text-BrandGray2 font-mono">Coachable — Play Designer</span>
+            <div className="flex items-center gap-1 px-3 py-1.5 bg-BrandBlack2/80 border-b border-BrandGray2/20">
+              <div className="w-2 h-2 rounded-full bg-white/10" />
+              <div className="w-2 h-2 rounded-full bg-white/10" />
+              <div className="w-2 h-2 rounded-full bg-white/10" />
+              <span className="ml-2 text-[10px] text-BrandGray2/50 font-mono">Coachable — Play Designer</span>
             </div>
             <video
               src={productVideo}
