@@ -23,6 +23,7 @@ import { INITIAL_BALL, useSlateEntities, getNextPlayerId } from "./hooks/useSlat
 import SavePrefabModal from "../../components/SavePrefabModal";
 import { loadCustomPrefabs, saveCustomPrefabs, buildCustomPrefab, deleteCustomPrefab } from "../../utils/customPrefabs";
 import { useSlateHistory } from "./hooks/useSlateHistory";
+import { useSlateActionLog } from "./hooks/useSlateActionLog";
 import {
   AnimationEngine,
   createEmptyAnimation,
@@ -415,6 +416,8 @@ function Slate({
     logEvent,
   });
 
+  const { logAction, actionLog } = useSlateActionLog();
+
   useEffect(() => {
     historyApiRef.current = { pushHistory: slateHistory.pushHistory };
   }, [slateHistory.pushHistory]);
@@ -602,6 +605,9 @@ function Slate({
   );
 
   // Ensure all player/ball tracks have a keyframe at t=0 (starting position).
+  // For brand-new tracks (zero existing keyframes), also stamps at every other keyframe
+  // time already present in the animation so the item stays stationary until the user
+  // explicitly moves it at a specific time.
   // Skip during recording mode — recording manages its own tracks.
   // NOTE: reads from refs inside the functional updater to avoid stale-closure bugs
   // when React Strict Mode double-fires effects.
@@ -615,17 +621,38 @@ function Slate({
         : representedTrackIds;
       const nextTracks = { ...prev.tracks };
       let changed = false;
+
+      // Collect all keyframe times that already exist across all tracks.
+      const allExistingTimes = new Set();
+      Object.values(prev.tracks).forEach((track) => {
+        track?.keyframes?.forEach((kf) => allExistingTimes.add(kf.t));
+      });
+
       currentTrackIds.forEach((itemId) => {
         const track = nextTracks[itemId];
-        const hasZero = track?.keyframes?.some((kf) => kf.t === 0);
-        if (hasZero) return;
         const player = playersByIdRef.current?.[itemId];
         const ball = ballsByIdRef.current?.[itemId];
         const source = player || ball;
         if (!source) return;
-        const existing = track?.keyframes || [];
+
+        // Brand-new track: stamp initial position at every existing keyframe time so
+        // the item stays stationary until the user moves it at a specific time.
+        if (!track?.keyframes?.length) {
+          const stampTimes = new Set(allExistingTimes);
+          stampTimes.add(0); // always include t=0
+          const keyframes = Array.from(stampTimes)
+            .sort((a, b) => a - b)
+            .map((t) => ({ t, x: source.x ?? 0, y: source.y ?? 0 }));
+          nextTracks[itemId] = { keyframes };
+          changed = true;
+          return;
+        }
+
+        // Existing track missing t=0: legacy/import compatibility — just prepend t=0.
+        const hasZero = track.keyframes.some((kf) => kf.t === 0);
+        if (hasZero) return;
         nextTracks[itemId] = {
-          keyframes: [{ t: 0, x: source.x ?? 0, y: source.y ?? 0 }, ...existing],
+          keyframes: [{ t: 0, x: source.x ?? 0, y: source.y ?? 0 }, ...track.keyframes],
         };
         changed = true;
       });
@@ -2082,6 +2109,7 @@ function Slate({
         logAnimDebug(
           `addKeyframe item=${itemId} t=${timeMs} x=${Math.round(pose.x ?? 0)} y=${Math.round(pose.y ?? 0)}`
         );
+        logAction("keyframe_added", { itemId, t: timeMs });
       });
       const covered = ensureKeyframeCoverageAtTime(base, nextTracks, timeMs);
       if (!changed && !covered.changed) return null;
@@ -2089,7 +2117,7 @@ function Slate({
     });
 
     setSelectedKeyframeMs(timeMs);
-  }, [ensureKeyframeCoverageAtTime, getKeyframeActionTrackIds, resolveTrackPose, setAnimationDataWithMeta]);
+  }, [ensureKeyframeCoverageAtTime, getKeyframeActionTrackIds, resolveTrackPose, setAnimationDataWithMeta, logAction]);
 
   const handleDeleteKeyframe = useCallback(
     (timeMs) => {
@@ -2102,11 +2130,12 @@ function Slate({
         targetTrackIds.forEach((itemId) => {
           nextTracks[itemId] = deleteKeyframeAtTime(nextTracks[itemId], roundedTime, 0.5);
           logAnimDebug(`deleteKeyframe item=${itemId} t=${roundedTime}`);
+          logAction("keyframe_deleted", { itemId, t: roundedTime });
         });
         return { ...base, tracks: nextTracks };
       });
     },
-    [getKeyframeActionTrackIds, setAnimationDataWithMeta]
+    [getKeyframeActionTrackIds, setAnimationDataWithMeta, logAction]
   );
 
   const handleDeleteAllKeyframes = useCallback(() => {
@@ -2264,6 +2293,13 @@ function Slate({
       const isPlayingNow = engineRef.current.isPlaying();
 
       const ballsById = ballsByIdRef.current || {};
+      const movedPlayer = playersByIdRef.current?.[id];
+      const movedBall = ballsById[id];
+      if (movedPlayer || movedBall) {
+        const pose = resolveTrackPose(id);
+        const label = movedPlayer ? `P${movedPlayer.number || "?"}` : "ball";
+        logAction("item_moved", { id, label, x: Math.round(pose?.x ?? 0), y: Math.round(pose?.y ?? 0) });
+      }
       const selectedIds = entities.selectedItemIds || [];
       const selectedTrackIds = selectedIds.filter(
         (itemId) => Boolean(playersByIdRef.current?.[itemId]) || Boolean(ballsById[itemId])
@@ -2296,6 +2332,8 @@ function Slate({
       recording.recordingPlayerId,
       recording.pauseRecording,
       upsertKeyframesAtCurrentTime,
+      logAction,
+      resolveTrackPose,
     ]
   );
 
@@ -2461,11 +2499,19 @@ function Slate({
 
   /**
    * Handles a direct position edit from the right panel (X/Y inputs or alignment buttons).
-   * Behaves like a drag-end: updates entity state, syncs the animation renderer,
-   * and upserts a keyframe at the current time so animation data stays consistent.
+   * Behaves like a drag-end: upserts a keyframe at the current time so animation data stays
+   * consistent. Returns false if the edit is blocked (too close to an existing keyframe).
+   * @param {string} id - Item id (player or ball).
+   * @param {{ x: number, y: number }} pos - New world-space position.
+   * @returns {boolean} True if applied, false if blocked.
    */
   const handlePositionEdit = useCallback(
     (id, pos) => {
+      const timeMs = Math.round(currentTimeRef.current);
+      const track = animationDataRef.current?.tracks?.[id];
+      if (isTooCloseToExistingKeyframe(track, timeMs)) {
+        return false;
+      }
       entities.handleItemChange(id, pos);
       const r = resolveTrackPose(id)?.r ?? 0;
       const pose = { x: pos.x, y: pos.y, r };
@@ -2473,6 +2519,7 @@ function Slate({
       animationRendererRef.current?.setPoses?.({ [id]: pose });
       skipNextRenderPoseRef.current = true;
       upsertKeyframesAtCurrentTime([id], { source: "positionEdit" });
+      return true;
     },
     [entities, resolveTrackPose, upsertKeyframesAtCurrentTime]
   );
@@ -2558,6 +2605,7 @@ function Slate({
       drawingsState.applyDrawings(play.drawings || []);
       setSelectedDrawingIds([]);
       logAnimDebug(`import ok duration=${importedAnimation.durationMs} tracks=${trackCount}`);
+      logAction("play_imported", { playerCount: Object.keys(nextPlayers).length, trackCount });
       logPersistence("loadPlayFromImport complete", {
         playerCount: Object.keys(nextPlayers).length,
         representedPlayerCount: Array.isArray(nextRepresented) ? nextRepresented.length : 0,
@@ -2573,6 +2621,7 @@ function Slate({
       onShowMessage,
       setAdvancedSettings,
       slateHistory,
+      logAction,
     ]
   );
 
@@ -2633,6 +2682,23 @@ function Slate({
       onShowMessage("Import failed", "Could not read or parse JSON.", "error");
     }
   };
+
+  const handleAddPlayerLogged = useCallback(
+    (params) => {
+      entities.handleAddPlayer(params);
+      logAction("player_added", { number: params?.number, name: params?.name });
+    },
+    [entities.handleAddPlayer, logAction]
+  );
+
+  const handleDeleteSelectedLogged = useCallback(
+    () => {
+      const count = (entities.selectedItemIds || []).length;
+      entities.handleDeleteSelected();
+      logAction("items_deleted", { count });
+    },
+    [entities.handleDeleteSelected, entities.selectedItemIds, logAction]
+  );
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -2767,7 +2833,7 @@ function Slate({
 
       if (!entities.selectedItemIds?.length) return;
       e.preventDefault();
-      entities.handleDeleteSelected();
+      handleDeleteSelectedLogged();
       setSelectedKeyframeMs(null);
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -2782,6 +2848,7 @@ function Slate({
     isExporting,
     screenshotMode,
     handleNudgeSelectedItems,
+    handleDeleteSelectedLogged,
     recording.recordingModeEnabled,
     recording.globalState,
     recording.stopRecording,
@@ -2842,9 +2909,9 @@ function Slate({
             onUndo={slateHistory.onUndo}
             onRedo={slateHistory.onRedo}
             onReset={onReset}
-            onAddPlayer={entities.handleAddPlayer}
+            onAddPlayer={handleAddPlayerLogged}
             onPlayerColorChange={entities.handlePlayerColorChange}
-            onDeleteSelected={entities.handleDeleteSelected}
+            onDeleteSelected={handleDeleteSelectedLogged}
             onPrefabSelect={handlePrefabSelect}
             onDeleteCustomPrefab={handleDeleteCustomPrefab}
             customPrefabs={customPrefabs}
@@ -3004,7 +3071,7 @@ function Slate({
             onAddKeyframe={handleAddKeyframe}
             onDeleteKeyframe={handleDeleteKeyframe}
             onDeleteAllKeyframes={handleDeleteAllKeyframes}
-            onDeleteSelectedObjects={entities.handleDeleteSelected}
+            onDeleteSelectedObjects={handleDeleteSelectedLogged}
             onSelectKeyframe={setSelectedKeyframeMs}
             onAutoplayChange={setAutoplayEnabled}
             onMoveKeyframe={handleMoveKeyframe}
@@ -3124,6 +3191,8 @@ function Slate({
         onSavePrefab={() => setSavePrefabModalOpen(true)}
         fieldBounds={fieldBounds}
         onPlayerPositionChange={handlePositionEdit}
+        timelineDisplayTimeMs={timelineDisplayTimeMs}
+        resolveItemPose={resolveTrackPose}
         recordingModeEnabled={recording.recordingModeEnabled}
         recordingGlobalState={recording.globalState}
         recordingPlayerId={recording.recordingPlayerId}
@@ -3190,6 +3259,7 @@ function Slate({
           ballsById={entities.ballsById}
           animationData={animationData}
           currentTimeMs={Math.round(currentTimeRef.current)}
+          actionLog={actionLog}
           adminMode={adminMode}
         />
       )}

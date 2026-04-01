@@ -41,6 +41,7 @@ export default function AdvancedSettings({
     ballsById = {},
     animationData = {},
     currentTimeMs = 0,
+    actionLog = [],
     adminMode = false,
 }) {
     const [showPreviewDebug, setShowPreviewDebug] = React.useState(false);
@@ -197,6 +198,7 @@ export default function AdvancedSettings({
                         ballsById={ballsById}
                         animationData={animationData}
                         currentTimeMs={currentTimeMs}
+                        actionLog={actionLog}
                     />
                 </div>
                 )}

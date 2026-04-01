@@ -1,39 +1,88 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { MdAlignHorizontalLeft, MdAlignHorizontalCenter, MdAlignHorizontalRight } from "react-icons/md";
 
 /**
  * Shows X/Y coordinate inputs and horizontal alignment buttons for a single selected item
- * (player, ball, or cone). Coordinates are in world-space units.
+ * (player, ball, or cone). Coordinates are in world-space units and update live during scrub.
  *
  * @param {Object} props
  * @param {Object} props.item - The selected item with { id, x, y }.
  * @param {Object|null} props.fieldBounds - Field world bounds: { left, right, top, bottom }.
- * @param {Function} props.onPositionChange - Called with (id, { x, y }) when position is committed.
+ * @param {Function} props.onPositionChange - Called with (id, { x, y }). Returns true if applied, false if blocked.
+ * @param {number} props.timelineDisplayTimeMs - Current timeline time; triggers input sync during scrub.
+ * @param {Function} props.resolveItemPose - Returns current rendered pose { x, y } for a given item id.
  */
-export default function PlayerTransformSection({ item, fieldBounds, onPositionChange }) {
+export default function PlayerTransformSection({
+  item,
+  fieldBounds,
+  onPositionChange,
+  timelineDisplayTimeMs,
+  resolveItemPose,
+}) {
   const [draftX, setDraftX] = useState("");
   const [draftY, setDraftY] = useState("");
+  const isFocusedRef = useRef(false);
 
-  // Sync draft whenever the item changes externally (drag, undo, etc.)
+  /** Returns the best current position for this item: live renderer pose, then React state. */
+  const getCurrentPose = () => {
+    if (!item) return null;
+    if (resolveItemPose) {
+      const pose = resolveItemPose(item.id);
+      if (pose && Number.isFinite(pose.x) && Number.isFinite(pose.y)) return pose;
+    }
+    return { x: item.x ?? 0, y: item.y ?? 0 };
+  };
+
+  // Sync when selected item changes (different player/ball selected).
   useEffect(() => {
     if (!item) return;
+    const pose = getCurrentPose();
+    if (!pose) return;
+    setDraftX(String(Math.round(pose.x)));
+    setDraftY(String(Math.round(pose.y)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item?.id]);
+
+  // Sync live during timeline scrub — skip if the user is typing in an input.
+  useEffect(() => {
+    if (!item || isFocusedRef.current) return;
+    const pose = getCurrentPose();
+    if (!pose) return;
+    setDraftX(String(Math.round(pose.x)));
+    setDraftY(String(Math.round(pose.y)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timelineDisplayTimeMs]);
+
+  // Sync when item position changes externally (drag, undo, alignment buttons applied).
+  useEffect(() => {
+    if (!item || isFocusedRef.current) return;
     setDraftX(String(Math.round(item.x ?? 0)));
     setDraftY(String(Math.round(item.y ?? 0)));
-  }, [item?.id, item?.x, item?.y]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item?.x, item?.y]);
 
   if (!item) return null;
 
-  /** Commit the current draft values if they are valid numbers. */
+  /** Revert inputs to the current rendered/scrubbed position. */
+  const revertToCurrentPose = () => {
+    const pose = getCurrentPose();
+    if (!pose) return;
+    setDraftX(String(Math.round(pose.x)));
+    setDraftY(String(Math.round(pose.y)));
+  };
+
+  /** Commit the current draft values; revert if the change is blocked. */
   const commitPosition = () => {
     const x = parseFloat(draftX);
     const y = parseFloat(draftY);
     if (!Number.isFinite(x) || !Number.isFinite(y)) {
-      // Revert to current item position if invalid
-      setDraftX(String(Math.round(item.x ?? 0)));
-      setDraftY(String(Math.round(item.y ?? 0)));
+      revertToCurrentPose();
       return;
     }
-    onPositionChange?.(item.id, { x, y });
+    const success = onPositionChange?.(item.id, { x, y });
+    if (success === false) {
+      revertToCurrentPose();
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -41,18 +90,22 @@ export default function PlayerTransformSection({ item, fieldBounds, onPositionCh
       e.target.blur();
       commitPosition();
     } else if (e.key === "Escape") {
-      setDraftX(String(Math.round(item.x ?? 0)));
-      setDraftY(String(Math.round(item.y ?? 0)));
+      revertToCurrentPose();
       e.target.blur();
     }
   };
 
-  /** Align item horizontally; keep current y. */
+  /** Align item horizontally to targetX; keep current y. Reverts if blocked. */
   const alignX = (targetX) => {
-    const y = item.y ?? 0;
-    setDraftX(String(Math.round(targetX)));
-    setDraftY(String(Math.round(y)));
-    onPositionChange?.(item.id, { x: targetX, y });
+    const currentPose = getCurrentPose();
+    const y = currentPose?.y ?? item.y ?? 0;
+    const success = onPositionChange?.(item.id, { x: targetX, y });
+    if (success === false) {
+      revertToCurrentPose();
+    } else {
+      setDraftX(String(Math.round(targetX)));
+      setDraftY(String(Math.round(y)));
+    }
   };
 
   const leftX = fieldBounds?.left ?? 0;
@@ -75,7 +128,8 @@ export default function PlayerTransformSection({ item, fieldBounds, onPositionCh
             className={inputClass}
             value={draftX}
             onChange={(e) => setDraftX(e.target.value)}
-            onBlur={commitPosition}
+            onFocus={() => { isFocusedRef.current = true; }}
+            onBlur={() => { isFocusedRef.current = false; commitPosition(); }}
             onKeyDown={handleKeyDown}
           />
         </div>
@@ -86,7 +140,8 @@ export default function PlayerTransformSection({ item, fieldBounds, onPositionCh
             className={inputClass}
             value={draftY}
             onChange={(e) => setDraftY(e.target.value)}
-            onBlur={commitPosition}
+            onFocus={() => { isFocusedRef.current = true; }}
+            onBlur={() => { isFocusedRef.current = false; commitPosition(); }}
             onKeyDown={handleKeyDown}
           />
         </div>

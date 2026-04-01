@@ -90,6 +90,8 @@ export default function RightPanel({
   onSavePrefab,
   fieldBounds,
   onPlayerPositionChange,
+  timelineDisplayTimeMs,
+  resolveItemPose,
   // Recording mode props
   recordingModeEnabled,
   recordingGlobalState,
@@ -225,6 +227,8 @@ export default function RightPanel({
                 item={singleItem}
                 fieldBounds={fieldBounds}
                 onPositionChange={onPlayerPositionChange}
+                timelineDisplayTimeMs={timelineDisplayTimeMs}
+                resolveItemPose={resolveItemPose}
               />
             );
           })()}

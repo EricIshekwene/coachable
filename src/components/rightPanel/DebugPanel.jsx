@@ -1,21 +1,34 @@
 import React, { useState } from 'react';
 
 /**
- * DebugPanel - Comprehensive debugging tool showing animation state, keyframes, selections, and positions.
+ * DebugPanel - Comprehensive debugging tool showing animation state, keyframes, selections, positions, and action history.
  * Helps diagnose issues with multi-select drag, keyframe management, and play data.
  */
+
+/** Maps raw action type keys to human-readable labels. */
+const ACTION_LABELS = {
+  player_added: "Player added",
+  items_deleted: "Deleted",
+  item_moved: "Moved",
+  keyframe_added: "KF added",
+  keyframe_deleted: "KF deleted",
+  play_imported: "Play imported",
+};
+
 export default function DebugPanel({
   selectedItemIds = [],
   playersById = {},
   ballsById = {},
   animationData = {},
   currentTimeMs = 0,
+  actionLog = [],
 }) {
   const [expandedSections, setExpandedSections] = useState({
     selection: true,
     keyframes: true,
     positions: true,
     animation: false,
+    actions: true,
   });
   const [copyFeedback, setCopyFeedback] = useState(false);
 
@@ -95,6 +108,18 @@ export default function DebugPanel({
     lines.push(`Tracks: ${Object.keys(animationData.tracks || {}).length}`);
     Object.entries(animationData.tracks || {}).forEach(([id, track]) => {
       lines.push(`  ${id}: ${track?.keyframes?.length || 0} keyframes`);
+    });
+    // Actions
+    lines.push('--- ACTIONS ---');
+    lines.push(`Total Logged: ${actionLog.length}`);
+    actionLog.slice(0, 30).forEach((entry) => {
+      const label = ACTION_LABELS[entry.type] || entry.type;
+      const detail = Object.entries(entry)
+        .filter(([k]) => !['id', 'type', 'ts'].includes(k))
+        .map(([k, v]) => `${k}=${v}`)
+        .join(' ');
+      const time = new Date(entry.ts).toISOString().slice(11, 23);
+      lines.push(`  [${time}] ${label}${detail ? ' — ' + detail : ''}`);
     });
     lines.push('');
     lines.push('=== END LOG ===');
@@ -255,6 +280,36 @@ export default function DebugPanel({
                 </div>
               ))}
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* Actions Log */}
+      <div className={sectionClass}>
+        <div className={titleClass} onClick={() => toggleSection('actions')}>
+          ▶ ACTIONS ({actionLog.length})
+        </div>
+        {expandedSections.actions && (
+          <div className="pl-2 mt-1 space-y-1 max-h-40 overflow-y-auto">
+            {actionLog.length > 0 ? (
+              actionLog.map((entry) => {
+                const label = ACTION_LABELS[entry.type] || entry.type;
+                const detail = Object.entries(entry)
+                  .filter(([k]) => !['id', 'type', 'ts'].includes(k))
+                  .map(([k, v]) => `${k}=${v}`)
+                  .join(' ');
+                const time = new Date(entry.ts).toISOString().slice(11, 19);
+                return (
+                  <div key={entry.id} className="flex gap-1 text-BrandGray/70">
+                    <span className="text-BrandOrange/50 shrink-0">{time}</span>
+                    <span className="text-BrandOrange/90 shrink-0">{label}</span>
+                    {detail && <span className="text-BrandGray/50 truncate">{detail}</span>}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-BrandGray">no actions yet</div>
+            )}
           </div>
         )}
       </div>

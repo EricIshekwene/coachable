@@ -105,8 +105,9 @@ export default function AdminPlayEditPage() {
   const [loadingPlay, setLoadingPlay] = useState(true);
   const [existingPlay, setExistingPlay] = useState(null);
   const [recoveredData, setRecoveredData] = useState(undefined);
-  // Track the persisted play ID (may differ from URL param when "new" → created)
-  const persistedIdRef = useRef(playId === "new" ? null : playId);
+  // Reactive persisted ID — starts as null for "new" plays, updates to UUID after first DB save.
+  // Using useState (not useRef) so effectivePlayId re-computes and Slate switches autosave key.
+  const [persistedId, setPersistedId] = useState(playId === "new" ? null : playId);
   const flushRef = useRef(null);
   const isNew = playId === "new";
 
@@ -126,7 +127,8 @@ export default function AdminPlayEditPage() {
       .then((p) => {
         setExistingPlay(p);
         const recovered = recoverFromLocalStorage(playId);
-        if (recovered && recovered.savedAt > new Date(p.updated_at || 0).getTime()) {
+        // Use updatedAt (camelCase from toPlatformPlayResponse) for comparison
+        if (recovered && recovered.savedAt > new Date(p.updatedAt || 0).getTime()) {
           setRecoveredData(recovered);
         }
       })
@@ -140,39 +142,54 @@ export default function AdminPlayEditPage() {
   /**
    * Called by Slate's flushToDatabase to persist play data to the server.
    * Creates the play on first flush, then patches on subsequent flushes.
+   * When a new play is first created, migrates the localStorage autosave key
+   * from "new" to the real UUID so future autosaves and crash recovery work correctly.
    */
   const handlePlayDataChange = useCallback(
     async (playData, playName) => {
       if (!session) return;
       try {
         const title = playName?.trim() || "Untitled";
-        if (!persistedIdRef.current) {
+        if (!persistedId) {
           // First save — create the play
           const created = await adminCreatePlay(session, { title, playData });
-          persistedIdRef.current = created.id;
+          const newId = created.id;
+          // Move any autosaved data from the "new" key to the real UUID key so
+          // crash recovery finds it on the next open.
+          try {
+            const draft = localStorage.getItem(`${LS_PREFIX}new`);
+            if (draft) {
+              localStorage.setItem(`${LS_PREFIX}${newId}`, draft);
+              localStorage.removeItem(`${LS_PREFIX}new`);
+            }
+          } catch { /* ignore storage errors */ }
+          // Update reactive state so Slate re-renders with playId = UUID and
+          // future autosaves write to the correct localStorage key.
+          setPersistedId(newId);
+          clearLocalStorageCache(newId);
         } else {
           // Subsequent saves — update
-          await adminUpdatePlay(session, persistedIdRef.current, { title, playData });
+          await adminUpdatePlay(session, persistedId, { title, playData });
+          clearLocalStorageCache(persistedId);
         }
-        if (persistedIdRef.current) clearLocalStorageCache(persistedIdRef.current);
       } catch {
         showMessage("Failed to save play", "", "error");
       }
     },
-    [session, showMessage]
+    [session, persistedId, showMessage]
   );
 
   /** Handle thumbnail saves separately (called by Slate export/screenshot). */
   const handleThumbnailSave = useCallback(
     async (thumbnail) => {
-      if (!session || !persistedIdRef.current) return;
+      if (!session || !persistedId) return;
       try {
-        await adminUpdatePlay(session, persistedIdRef.current, { thumbnail });
+        await adminUpdatePlay(session, persistedId, { thumbnail });
       } catch {
         // Non-critical — silently ignore thumbnail save failures
       }
     },
-    [session]
+    [session, persistedId]
   );
 
   // Flush to DB on page unload and visibility change
@@ -207,7 +224,7 @@ export default function AdminPlayEditPage() {
     );
   }
 
-  const effectivePlayId = persistedIdRef.current || "new";
+  const effectivePlayId = persistedId || "new";
   const initialPlayData = recoveredData?.playData ?? existingPlay?.playData ?? null;
   const initialPlayName = recoveredData?.playName ?? existingPlay?.title;
 
