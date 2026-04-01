@@ -257,6 +257,7 @@ function Slate({
   const [selectedDrawingIds, setSelectedDrawingIds] = useState([]);
   const drawingSelectionRef = useRef(null);
   const [textEditing, setTextEditing] = useState(null);
+  const [fieldBounds, setFieldBounds] = useState(null);
   const [screenshotMode, setScreenshotMode] = useState(false);
   const [screenshotRegion, setScreenshotRegion] = useState(null);
   const screenshotApiRef = useRef(null);
@@ -2458,6 +2459,24 @@ function Slate({
     [entities, fieldViewport.camera?.zoom, resolveTrackPose, upsertKeyframesAtCurrentTime]
   );
 
+  /**
+   * Handles a direct position edit from the right panel (X/Y inputs or alignment buttons).
+   * Behaves like a drag-end: updates entity state, syncs the animation renderer,
+   * and upserts a keyframe at the current time so animation data stays consistent.
+   */
+  const handlePositionEdit = useCallback(
+    (id, pos) => {
+      entities.handleItemChange(id, pos);
+      const r = resolveTrackPose(id)?.r ?? 0;
+      const pose = { x: pos.x, y: pos.y, r };
+      latestPosesRef.current[id] = pose;
+      animationRendererRef.current?.setPoses?.({ [id]: pose });
+      skipNextRenderPoseRef.current = true;
+      upsertKeyframesAtCurrentTime([id], { source: "positionEdit" });
+    },
+    [entities, resolveTrackPose, upsertKeyframesAtCurrentTime]
+  );
+
   const loadPlayFromImport = useCallback(
     (importObj, options = {}) => {
       const { ok, error, play } = validatePlayImport(importObj);
@@ -2894,6 +2913,7 @@ function Slate({
           lockDrag={recording.globalState === "countdown"}
           disableSnapping={recording.recordingModeEnabled}
           onAssetsLoaded={handleAssetsLoaded}
+          onFieldBoundsChange={setFieldBounds}
         />
         {/* Text editing is now handled via right panel textarea */}
         {!viewOnly && recording.countdownValue != null && (
@@ -3102,6 +3122,8 @@ function Slate({
         onScreenshot={handleScreenshotExportClick}
         onVideoExport={handleVideoExportClick}
         onSavePrefab={() => setSavePrefabModalOpen(true)}
+        fieldBounds={fieldBounds}
+        onPlayerPositionChange={handlePositionEdit}
         recordingModeEnabled={recording.recordingModeEnabled}
         recordingGlobalState={recording.globalState}
         recordingPlayerId={recording.recordingPlayerId}

@@ -156,6 +156,7 @@ function KonvaCanvasRoot({
   lockDrag = false,
   disableSnapping = false,
   onAssetsLoaded,
+  onFieldBoundsChange,
   viewOnly = false,
 }) {
   const viewportRef = useRef(null);
@@ -282,6 +283,10 @@ function KonvaCanvasRoot({
       centerY: 0,
     };
   }, [fieldImage.image]);
+
+  useEffect(() => {
+    onFieldBoundsChange?.(fieldBounds);
+  }, [fieldBounds, onFieldBoundsChange]);
 
   const screenshotHandles = useMemo(() => {
     if (!screenshotRegion || screenshotRegion.width <= 0 || screenshotRegion.height <= 0) return [];

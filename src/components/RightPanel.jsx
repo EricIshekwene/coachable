@@ -10,6 +10,7 @@ import SelectedPlayersSection from "./rightPanel/SelectedPlayersSection";
 import ExportActions from "./rightPanel/ExportActions";
 import RecordingPlayerList from "./rightPanel/RecordingPlayerList";
 import ObjectsSection from "./rightPanel/ObjectsSection";
+import PlayerTransformSection from "./rightPanel/PlayerTransformSection";
 
 export default function RightPanel({
   playName,
@@ -87,6 +88,8 @@ export default function RightPanel({
   onSelectItem,
   onDeleteBall,
   onSavePrefab,
+  fieldBounds,
+  onPlayerPositionChange,
   // Recording mode props
   recordingModeEnabled,
   recordingGlobalState,
@@ -195,12 +198,14 @@ export default function RightPanel({
             onDeletePlayer={onDeletePlayer}
           />
 
-          <ObjectsSection
-            ballsById={ballsById}
-            selectedItemIds={selectedItemIds}
-            onSelectItem={onSelectItem}
-            onDeleteBall={onDeleteBall}
-          />
+          {!(selectedPlayerIds?.length > 0) && (
+            <ObjectsSection
+              ballsById={ballsById}
+              selectedItemIds={selectedItemIds}
+              onSelectItem={onSelectItem}
+              onDeleteBall={onDeleteBall}
+            />
+          )}
 
           {canvasTool !== "pen" && (
             <DrawingObjectsList
@@ -211,16 +216,37 @@ export default function RightPanel({
             />
           )}
 
+          {selectedItemIds?.length === 1 && (() => {
+            const itemId = selectedItemIds[0];
+            const singleItem =
+              selectedPlayers?.find((p) => p.id === itemId) ?? ballsById?.[itemId] ?? null;
+            return (
+              <PlayerTransformSection
+                item={singleItem}
+                fieldBounds={fieldBounds}
+                onPositionChange={onPlayerPositionChange}
+              />
+            );
+          })()}
+
           {selectedPlayerIds?.length > 0 ? (
-            <SelectedPlayersSection
-              selectedPlayerIds={selectedPlayerIds}
-              selectedItemIds={selectedItemIds}
-              selectedPlayers={selectedPlayers}
-              allPlayersDisplay={allPlayersDisplay}
-              onAllPlayersDisplayChange={onAllPlayersDisplayChange}
-              onSelectedPlayersColorChange={onSelectedPlayersColorChange}
-              onSavePrefab={onSavePrefab}
-            />
+            <>
+              <SelectedPlayersSection
+                selectedPlayerIds={selectedPlayerIds}
+                selectedItemIds={selectedItemIds}
+                selectedPlayers={selectedPlayers}
+                allPlayersDisplay={allPlayersDisplay}
+                onAllPlayersDisplayChange={onAllPlayersDisplayChange}
+                onSelectedPlayersColorChange={onSelectedPlayersColorChange}
+                onSavePrefab={onSavePrefab}
+              />
+              <ObjectsSection
+                ballsById={ballsById}
+                selectedItemIds={selectedItemIds}
+                onSelectItem={onSelectItem}
+                onDeleteBall={onDeleteBall}
+              />
+            </>
           ) : (
             <AllPlayersSection value={allPlayersDisplay} onChange={onAllPlayersDisplayChange} />
           )}
