@@ -358,6 +358,12 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_column THEN NULL;
 END $$;
 
+-- Safe migration: add previous_play_data for one-step rollback
+DO $$ BEGIN
+  ALTER TABLE platform_plays ADD COLUMN previous_play_data JSONB;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
 CREATE INDEX IF NOT EXISTS platform_plays_featured_idx
   ON platform_plays(is_featured, sort_order);
 
@@ -373,9 +379,16 @@ CREATE TABLE IF NOT EXISTS page_sections (
   label       TEXT NOT NULL,
   page        TEXT NOT NULL,
   play_id     UUID REFERENCES platform_plays(id) ON DELETE SET NULL,
+  is_priority BOOLEAN NOT NULL DEFAULT false,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Safe migration: add is_priority to existing page_sections table
+DO $$ BEGIN
+  ALTER TABLE page_sections ADD COLUMN is_priority BOOLEAN NOT NULL DEFAULT false;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
 
 -- Seed default sections (idempotent)
 INSERT INTO page_sections (section_key, label, page) VALUES

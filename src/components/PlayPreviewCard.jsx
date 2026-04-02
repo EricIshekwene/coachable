@@ -51,7 +51,8 @@ const flatPointsToSVGString = (pts) => {
 };
 
 /**
- * Computes a filled triangle arrowhead polygon for SVG.
+ * Computes a filled triangle arrowhead polygon for SVG (straight arrows).
+ * Tip is at the arrow endpoint (x2,y2); base is pLen behind it.
  * @param {number[]} pts - Flat [x1,y1, x2,y2] endpoint array.
  * @param {number} pLen - Pointer length.
  * @param {number} pWidth - Pointer width.
@@ -69,6 +70,64 @@ const svgArrowHeadPoints = (pts, pLen, pWidth) => {
   const rx = bx - Math.sin(angle) * halfW;
   const ry = by + Math.cos(angle) * halfW;
   return `${x2},${y2} ${lx},${ly} ${rx},${ry}`;
+};
+
+/**
+ * Walks back from the last stroke point to find a stable direction vector.
+ * Mirrors Konva's getStrokeTipDirection used in KonvaCanvasRoot.
+ * @param {number[]} pts - Flat points array [x1,y1,x2,y2,...].
+ * @param {number} minDist - Minimum distance threshold.
+ * @returns {{tipX,tipY,ux,uy}|null}
+ */
+const getStrokeTipDir = (pts, minDist) => {
+  if (!pts || pts.length < 4) return null;
+  const tipX = pts[pts.length - 2];
+  const tipY = pts[pts.length - 1];
+  for (let i = pts.length - 4; i >= 0; i -= 2) {
+    const dx = tipX - pts[i], dy = tipY - pts[i + 1];
+    const dist = Math.hypot(dx, dy);
+    if (dist >= minDist) return { tipX, tipY, ux: dx / dist, uy: dy / dist };
+  }
+  const dx = tipX - pts[0], dy = tipY - pts[1];
+  const dist = Math.hypot(dx, dy);
+  if (dist < 0.001) return null;
+  return { tipX, tipY, ux: dx / dist, uy: dy / dist };
+};
+
+/**
+ * Filled arrowhead for freehand strokes: base wings at last point, tip extends forward.
+ * Mirrors Konva's getFilledHeadPoints so the tip protrudes past the stroke end.
+ * @param {number[]} pts - Full flat points array of the stroke.
+ * @param {number} pLen - Pointer length.
+ * @param {number} pWidth - Pointer width.
+ * @returns {string|null} SVG polygon points string, or null.
+ */
+const svgStrokeFilledHead = (pts, pLen, pWidth) => {
+  const dir = getStrokeTipDir(pts, pLen);
+  if (!dir) return null;
+  const { tipX, tipY, ux, uy } = dir;
+  const nx = -uy, ny = ux;
+  const halfW = pWidth / 2;
+  const fwdX = tipX + ux * pLen, fwdY = tipY + uy * pLen;
+  return `${tipX + nx * halfW},${tipY + ny * halfW} ${fwdX},${fwdY} ${tipX - nx * halfW},${tipY - ny * halfW}`;
+};
+
+/**
+ * Chevron (open V) arrowhead for freehand strokes: base behind last point, tip at last point.
+ * Mirrors Konva's getChevronHeadPoints.
+ * @param {number[]} pts - Full flat points array of the stroke.
+ * @param {number} pLen - Pointer length.
+ * @param {number} pWidth - Pointer width.
+ * @returns {string|null} SVG polyline points string (left → tip → right), or null.
+ */
+const svgStrokeChevronHead = (pts, pLen, pWidth) => {
+  const dir = getStrokeTipDir(pts, pLen);
+  if (!dir) return null;
+  const { tipX, tipY, ux, uy } = dir;
+  const nx = -uy, ny = ux;
+  const halfW = pWidth / 2;
+  const baseX = tipX - ux * pLen, baseY = tipY - uy * pLen;
+  return `${baseX + nx * halfW},${baseY + ny * halfW} ${tipX},${tipY} ${baseX - nx * halfW},${baseY - ny * halfW}`;
 };
 
 /**
@@ -103,19 +162,16 @@ const renderSVGDrawing = (d, key) => {
     const headType = d.arrowTip ? (d.arrowHeadType || "standard") : "none";
     if (headType === "none" || !d.arrowTip || !d.points || d.points.length < 4) return line;
 
-    // Compute arrowhead from last two points of the stroke
-    const n = d.points.length;
-    const tipPts = [d.points[n - 4], d.points[n - 3], d.points[n - 2], d.points[n - 1]];
     const pLen = 18, pW = 14;
 
     if (headType === "chevron") {
-      const chevPts = svgArrowHeadPoints(tipPts, pLen, pW);
+      const chevPts = svgStrokeChevronHead(d.points, pLen, pW);
       if (!chevPts) return line;
       return (
         <g key={key}>
           {line}
           <polyline
-            points={`${d.points[n - 4 + 0]},${d.points[n - 4 + 1]} ${d.points[n - 2]},${d.points[n - 1]}`}
+            points={chevPts}
             stroke={color}
             strokeWidth={Math.max(sw, 2.5)}
             fill="none"
@@ -127,7 +183,7 @@ const renderSVGDrawing = (d, key) => {
       );
     }
 
-    const headPts = svgArrowHeadPoints(tipPts, pLen, pW);
+    const headPts = svgStrokeFilledHead(d.points, pLen, pW);
     if (!headPts) return line;
     return (
       <g key={key}>
@@ -154,17 +210,19 @@ const renderSVGDrawing = (d, key) => {
     }
 
     if (headType === "chevron") {
-      const chevPts = svgArrowHeadPoints(pts, pLen, pW);
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+      const halfW = pW / 2;
+      const bx = x2 - Math.cos(angle) * pLen, by = y2 - Math.sin(angle) * pLen;
+      const lx = bx + Math.sin(angle) * halfW, ly = by - Math.cos(angle) * halfW;
+      const rx = bx - Math.sin(angle) * halfW, ry = by + Math.cos(angle) * halfW;
       return (
         <g key={key} opacity={opacity}>
           <line x1={x1} y1={y1} x2={x2} y2={y2}
             stroke={color} strokeWidth={sw} strokeLinecap="round" />
-          {chevPts && (
-            <polyline
-              points={chevPts.split(" ").slice(1).join(" ") + ` ${x2},${y2}`}
-              stroke={color} strokeWidth={sw} fill="none" strokeLinecap="round" strokeLinejoin="round"
-            />
-          )}
+          <polyline
+            points={`${lx},${ly} ${x2},${y2} ${rx},${ry}`}
+            stroke={color} strokeWidth={sw} fill="none" strokeLinecap="round" strokeLinejoin="round"
+          />
         </g>
       );
     }

@@ -304,7 +304,13 @@ router.patch("/plays/:id", requireAdmin, async (req, res, next) => {
     if (title !== undefined) { setClauses.push(`title = $${idx++}`); values.push(title.trim()); }
     if (description !== undefined) { setClauses.push(`description = $${idx++}`); values.push(description.trim()); }
     if (sport !== undefined) { setClauses.push(`sport = $${idx++}`); values.push(sport?.trim() || null); }
-    if (playData !== undefined) { setClauses.push(`play_data = $${idx++}`); values.push(playData); }
+    if (playData !== undefined) {
+      // Shift current play_data into previous_play_data before overwriting —
+      // gives a one-step rollback in case of client-side corruption bugs.
+      setClauses.push(`previous_play_data = play_data`);
+      setClauses.push(`play_data = $${idx++}`);
+      values.push(playData);
+    }
     if (thumbnail !== undefined) { setClauses.push(`thumbnail_url = $${idx++}`); values.push(thumbnail || null); }
     if (tags !== undefined) { setClauses.push(`tags = $${idx++}`); values.push(tags); }
     if (isFeatured !== undefined) { setClauses.push(`is_featured = $${idx++}`); values.push(Boolean(isFeatured)); }
@@ -323,6 +329,28 @@ router.patch("/plays/:id", requireAdmin, async (req, res, next) => {
   }
 });
 
+// POST /admin/plays/:id/restore — restore play_data from previous_play_data (one-step rollback)
+router.post("/plays/:id/restore", requireAdmin, async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `UPDATE platform_plays
+         SET play_data = previous_play_data,
+             previous_play_data = play_data,
+             updated_at = now()
+       WHERE id = $1
+         AND previous_play_data IS NOT NULL
+       RETURNING *`,
+      [req.params.id]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ error: "Play not found or no previous version available" });
+    }
+    res.json({ play: toPlatformPlayResponse(rows[0]) });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // DELETE /admin/plays/:id — delete a platform play
 router.delete("/plays/:id", requireAdmin, async (req, res, next) => {
   try {
@@ -334,6 +362,38 @@ router.delete("/plays/:id", requireAdmin, async (req, res, next) => {
     );
     await pool.query("DELETE FROM platform_plays WHERE id = $1", [req.params.id]);
     res.json({ ok: true, clearedSections });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /admin/plays/:id/duplicate — clone a platform play
+router.post("/plays/:id/duplicate", requireAdmin, async (req, res, next) => {
+  try {
+    const { rows: src } = await pool.query(
+      "SELECT * FROM platform_plays WHERE id = $1",
+      [req.params.id]
+    );
+    if (!src.length) return res.status(404).json({ error: "Play not found" });
+    const s = src[0];
+    const { rows } = await pool.query(
+      `INSERT INTO platform_plays
+         (title, description, sport, play_data, thumbnail_url, tags, is_featured, sort_order, folder_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING *`,
+      [
+        `${s.title} (Copy)`,
+        s.description || "",
+        s.sport || null,
+        s.play_data || null,
+        s.thumbnail_url || null,
+        s.tags || [],
+        false,
+        s.sort_order ?? 0,
+        s.folder_id || null,
+      ]
+    );
+    res.status(201).json({ play: toPlatformPlayResponse(rows[0]) });
   } catch (err) {
     next(err);
   }
@@ -416,7 +476,7 @@ router.delete("/platform-folders/:id", requireAdmin, async (req, res, next) => {
 router.get("/page-sections", requireAdmin, async (_req, res, next) => {
   try {
     const { rows } = await pool.query(
-      `SELECT ps.section_key, ps.label, ps.page, ps.play_id, ps.updated_at,
+      `SELECT ps.section_key, ps.label, ps.page, ps.play_id, ps.is_priority, ps.updated_at,
               pp.title AS play_title, pp.thumbnail_url AS play_thumbnail, pp.sport AS play_sport
        FROM page_sections ps
        LEFT JOIN platform_plays pp ON pp.id = ps.play_id
@@ -431,6 +491,7 @@ router.get("/page-sections", requireAdmin, async (_req, res, next) => {
         playTitle: r.play_title || null,
         playThumbnail: r.play_thumbnail || null,
         playSport: r.play_sport || null,
+        isPriority: r.is_priority ?? false,
         updatedAt: r.updated_at,
       })),
     });
@@ -441,21 +502,40 @@ router.get("/page-sections", requireAdmin, async (_req, res, next) => {
 
 /**
  * PATCH /admin/page-sections/:key
- * Assigns or unassigns a play to a page section.
- * Body: { playId: string | null }
+ * Assigns or unassigns a play to a page section, and/or toggles priority flag.
+ * Body: { playId?: string | null, isPriority?: boolean }
  */
 router.patch("/page-sections/:key", requireAdmin, async (req, res, next) => {
   try {
-    const { playId } = req.body;
+    const { playId, isPriority } = req.body;
+    const setClauses = [];
+    const params = [];
+    let idx = 1;
+
+    if ("playId" in req.body) {
+      setClauses.push(`play_id = $${idx++}`);
+      params.push(playId || null);
+    }
+    if ("isPriority" in req.body) {
+      setClauses.push(`is_priority = $${idx++}`);
+      params.push(!!isPriority);
+    }
+    if (setClauses.length === 0) return res.status(400).json({ error: "Nothing to update" });
+    setClauses.push(`updated_at = now()`);
+    params.push(req.params.key);
+
     const { rows } = await pool.query(
-      `UPDATE page_sections
-       SET play_id = $1, updated_at = now()
-       WHERE section_key = $2
-       RETURNING *`,
-      [playId || null, req.params.key]
+      `UPDATE page_sections SET ${setClauses.join(", ")} WHERE section_key = $${idx} RETURNING *`,
+      params
     );
     if (!rows.length) return res.status(404).json({ error: "Section not found" });
-    res.json({ section: { sectionKey: rows[0].section_key, playId: rows[0].play_id || null } });
+    res.json({
+      section: {
+        sectionKey: rows[0].section_key,
+        playId: rows[0].play_id || null,
+        isPriority: rows[0].is_priority ?? false,
+      },
+    });
   } catch (err) {
     next(err);
   }

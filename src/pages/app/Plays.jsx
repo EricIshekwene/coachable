@@ -70,6 +70,7 @@ export default function Plays() {
   const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
   const [bulkTagOpen, setBulkTagOpen] = useState(false);
   const [bulkTagInput, setBulkTagInput] = useState("");
+  const [copyFallbackUrl, setCopyFallbackUrl] = useState(null);
 
   const menuRef = useRef(null);
   const renameRef = useRef(null);
@@ -228,7 +229,7 @@ export default function Plays() {
       await navigator.clipboard.writeText(url);
       showToast("Share link copied");
     } catch {
-      window.prompt("Copy this link:", url);
+      setCopyFallbackUrl(url);
     }
   };
 
@@ -657,6 +658,26 @@ export default function Plays() {
             <div className="mt-4 flex justify-end gap-2">
               <button onClick={() => { setBulkTagOpen(false); setBulkTagInput(""); }} className="rounded-lg border border-BrandGray2/30 px-3.5 py-2 text-sm text-BrandGray transition hover:text-BrandText">Cancel</button>
               <button onClick={handleBulkTag} disabled={!bulkTagInput.trim()} className="rounded-lg bg-BrandOrange px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50">Add Tag</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {copyFallbackUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 font-DmSans" onClick={() => setCopyFallbackUrl(null)}>
+          <div className="w-full max-w-sm rounded-xl border border-BrandGray2/20 bg-BrandBlack p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="font-Manrope text-base font-bold">Copy this link</h2>
+            <p className="mt-1 text-sm text-BrandGray2">Your browser blocked clipboard access. Copy manually:</p>
+            <input
+              autoFocus
+              readOnly
+              value={copyFallbackUrl}
+              onFocus={(e) => e.target.select()}
+              onClick={(e) => e.target.select()}
+              className="mt-4 w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none focus:border-BrandOrange"
+            />
+            <div className="mt-4 flex justify-end">
+              <button onClick={() => setCopyFallbackUrl(null)} className="rounded-lg bg-BrandOrange px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110">Done</button>
             </div>
           </div>
         </div>

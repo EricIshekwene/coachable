@@ -295,6 +295,10 @@ function Slate({
   );
 
   const importInputRef = useRef(null);
+  // Minimum represented player count recorded at load time. Flush is blocked if the
+  // current count drops below this, which indicates a corruption bug rather than a
+  // deliberate deletion (users can only delete players one at a time via UI).
+  const minSafePlayerCountRef = useRef(0);
   const historyApiRef = useRef({ pushHistory: () => {} });
   const animationRendererRef = useRef(null);
   const drawingHookRef = useRef(null);
@@ -994,6 +998,17 @@ function Slate({
    */
   const persistToLocalStorage = useCallback(() => {
     if (!playId) return;
+    // Safety guard: never overwrite with a state that has fewer players than what
+    // was originally loaded. This catches corruption bugs before they reach storage.
+    const currentPlayerCount = Object.keys(entities.playersById || {}).length;
+    const minSafe = minSafePlayerCountRef.current;
+    if (minSafe > 1 && currentPlayerCount < minSafe) {
+      logPersistence("localStorage persist BLOCKED (player count dropped)", {
+        current: currentPlayerCount,
+        minSafe,
+      });
+      return;
+    }
     try {
       const payload = { playData: playbookPlayData, playName, savedAt: Date.now() };
       localStorage.setItem(`coachable_play_${playId}`, JSON.stringify(payload));
@@ -1005,7 +1020,7 @@ function Slate({
     } catch (err) {
       logPersistence("localStorage persist failed", { error: err?.message });
     }
-  }, [playId, playbookPlayData, playName]);
+  }, [playId, playbookPlayData, playName, entities.playersById]);
 
   /**
    * Flushes play data to the database via the parent-provided callback.
@@ -1013,13 +1028,23 @@ function Slate({
    */
   const flushToDatabase = useCallback(() => {
     if (!onPlayDataChange) return false;
+    // Safety guard: never flush to DB if player count dropped below what was loaded.
+    const currentPlayerCount = Object.keys(entities.playersById || {}).length;
+    const minSafe = minSafePlayerCountRef.current;
+    if (minSafe > 1 && currentPlayerCount < minSafe) {
+      logPersistence("flushToDatabase BLOCKED (player count dropped)", {
+        current: currentPlayerCount,
+        minSafe,
+      });
+      return false;
+    }
     onPlayDataChange(playbookPlayData, playName, { source: "flush" });
     logPersistence("flushToDatabase", {
       playName,
       summary: summarizePersistedPlayData(playbookPlayData),
     });
     return true;
-  }, [onPlayDataChange, playbookPlayData, playName]);
+  }, [onPlayDataChange, playbookPlayData, playName, entities.playersById]);
 
   // Expose flushToDatabase to parent via ref
   const flushRef = useRef(flushToDatabase);
@@ -2632,6 +2657,12 @@ function Slate({
   useEffect(() => {
     if (!initialPlayData || initialPlayDataLoadedRef.current) return;
     initialPlayDataLoadedRef.current = true;
+    // Capture the player count from the raw import payload so we can detect
+    // corruption before flushing (e.g. a bug that resets representedPlayerIds).
+    const loadedPlayerCount = Object.keys(initialPlayData?.playersById || {}).length;
+    if (loadedPlayerCount > 0) {
+      minSafePlayerCountRef.current = loadedPlayerCount;
+    }
     logPersistence("initialPlayData load requested", {
       summary: summarizePersistedPlayData(initialPlayData),
     });

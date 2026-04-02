@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import logo from "../assets/logos/full_Coachable_logo.png";
 import {
   FiPlus, FiEdit2, FiTrash2, FiLogOut, FiFolder, FiFolderPlus,
-  FiChevronRight, FiLink, FiCheck, FiX, FiEdit3, FiLayout, FiSearch,
+  FiChevronRight, FiLink, FiCheck, FiX, FiEdit3, FiLayout, FiSearch, FiCopy,
 } from "react-icons/fi";
 import PlayPreviewCard from "../components/PlayPreviewCard";
+import ConfirmModal from "../components/subcomponents/ConfirmModal";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -38,6 +39,22 @@ async function fetchAllFolders(session) {
   if (res.status === 401) throw new Error("UNAUTHORIZED");
   const data = await res.json();
   return data.folders || [];
+}
+
+/**
+ * Duplicate a platform play via the admin API (creates a new play with the same data).
+ * @param {string} session - Admin session token
+ * @param {string} id - Source platform play ID
+ * @returns {Promise<Object>} Newly created play object
+ */
+async function duplicatePlay(session, id) {
+  const res = await fetch(`${API_URL}/admin/plays/${id}/duplicate`, {
+    method: "POST",
+    headers: { "x-admin-session": session },
+  });
+  if (!res.ok) throw new Error("Failed to duplicate play");
+  const data = await res.json();
+  return data.play;
 }
 
 /**
@@ -153,6 +170,22 @@ async function assignSectionPlay(session, key, playId) {
   return (await res.json()).section;
 }
 
+/**
+ * Toggle the priority flag for a page section.
+ * @param {string} session - Admin session token
+ * @param {string} key - Section key
+ * @param {boolean} isPriority - New priority value
+ */
+async function setSectionPriority(session, key, isPriority) {
+  const res = await fetch(`${API_URL}/admin/page-sections/${encodeURIComponent(key)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-admin-session": session },
+    body: JSON.stringify({ isPriority }),
+  });
+  if (!res.ok) throw new Error("Failed to update section priority");
+  return (await res.json()).section;
+}
+
 // ── Subcomponents ─────────────────────────────────────────────────────────────
 
 /**
@@ -239,9 +272,11 @@ function FolderItem({ folder, isActive, onClick, onRename, onDelete }) {
  * @param {Function} props.onEdit - Called with play to navigate to editor
  * @param {Function} props.onDelete - Called with play to delete
  * @param {Function} props.onMove - Called with (play, folderId) to move to folder
+ * @param {Function} props.onDuplicate - Called with play to duplicate it
  */
-function PlayCard({ play, folders, onEdit, onDelete, onMove }) {
+function PlayCard({ play, folders, onEdit, onDelete, onMove, onDuplicate }) {
   const [copied, setCopied] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const moveRef = useRef(null);
 
@@ -328,6 +363,22 @@ function PlayCard({ play, folders, onEdit, onDelete, onMove }) {
             {copied ? <FiCheck className="text-sm" /> : <FiLink className="text-sm" />}
           </button>
 
+          {/* Duplicate */}
+          <button
+            onClick={async () => {
+              setDuplicating(true);
+              await onDuplicate(play);
+              setDuplicating(false);
+            }}
+            disabled={duplicating}
+            title="Duplicate play"
+            className="flex items-center justify-center rounded-lg border border-white/10 bg-white/4 px-2.5 py-2 text-xs text-BrandGray2 transition hover:text-white disabled:opacity-50"
+          >
+            {duplicating
+              ? <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-BrandGray2/30 border-t-BrandGray2 animate-spin" />
+              : <FiCopy className="text-sm" />}
+          </button>
+
           {/* Move to folder */}
           <div className="relative" ref={moveRef}>
             <button
@@ -386,14 +437,16 @@ function PlayCard({ play, folders, onEdit, onDelete, onMove }) {
 /**
  * A single page section row showing the assigned play and a picker to change it.
  * @param {Object} props
- * @param {Object} props.section - Section data (sectionKey, label, page, playId, playTitle, playThumbnail)
+ * @param {Object} props.section - Section data (sectionKey, label, page, playId, playTitle, playThumbnail, isPriority)
  * @param {Object[]} props.plays - All platform plays for the picker
  * @param {Function} props.onAssign - Called with (sectionKey, playId | null)
+ * @param {Function} props.onTogglePriority - Called with (sectionKey, isPriority)
  */
-function SectionRow({ section, plays, onAssign }) {
+function SectionRow({ section, plays, onAssign, onTogglePriority }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
+  const [prioritySaving, setPrioritySaving] = useState(false);
   const pickerRef = useRef(null);
 
   useEffect(() => {
@@ -422,11 +475,45 @@ function SectionRow({ section, plays, onAssign }) {
     setSaving(false);
   };
 
+  const handleTogglePriority = async () => {
+    setPrioritySaving(true);
+    await onTogglePriority(section.sectionKey, !section.isPriority);
+    setPrioritySaving(false);
+  };
+
+  const showPriorityWarning = section.isPriority && !section.playId;
+
   return (
-    <div className="flex items-center gap-5 rounded-xl border border-white/8 bg-[#1e2228] p-4">
+    <div className={`rounded-xl border bg-[#1e2228] ${showPriorityWarning ? "border-amber-500/40" : "border-white/8"}`}>
+      {/* Priority warning banner */}
+      {showPriorityWarning && (
+        <div className="flex items-center gap-2 rounded-t-xl border-b border-amber-500/30 bg-amber-500/10 px-4 py-2">
+          <span className="text-xs font-bold text-amber-400">!</span>
+          <p className="text-xs font-medium text-amber-300">
+            This section is marked as priority but has no play assigned.
+          </p>
+        </div>
+      )}
+      <div className="flex items-center gap-5 p-4">
       {/* Section info */}
       <div className="w-52 shrink-0">
-        <p className="text-sm font-semibold text-white">{section.label}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold text-white">{section.label}</p>
+          <button
+            onClick={handleTogglePriority}
+            disabled={prioritySaving}
+            title={section.isPriority ? "Remove priority" : "Mark as priority (warning persists until a play is assigned)"}
+            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded text-[11px] font-bold transition disabled:opacity-50 ${
+              section.isPriority
+                ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
+                : "bg-white/6 text-BrandGray2 hover:bg-white/12 hover:text-white"
+            }`}
+          >
+            {prioritySaving ? (
+              <span className="inline-block h-2.5 w-2.5 rounded-full border border-BrandOrange/30 border-t-BrandOrange animate-spin" />
+            ) : "!"}
+          </button>
+        </div>
         <p className="mt-0.5 font-mono text-[10px] text-BrandGray2">{section.sectionKey}</p>
         <span className="mt-1.5 inline-block rounded bg-BrandOrange/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-BrandOrange">
           {section.page}
@@ -542,6 +629,7 @@ function SectionRow({ section, plays, onAssign }) {
           </div>
         )}
       </div>
+      </div>
     </div>
   );
 }
@@ -569,6 +657,7 @@ export default function AdminPlaysPage() {
   const [newFolderMode, setNewFolderMode] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const newFolderRef = useRef(null);
+  const [confirmModal, setConfirmModal] = useState(null);
 
   useEffect(() => {
     if (!session) navigate("/admin", { replace: true });
@@ -617,27 +706,50 @@ export default function AdminPlaysPage() {
   const handleEdit = (play) => navigate(`/admin/plays/${play.id}/edit`);
   const handleNew = () => navigate("/admin/plays/new/edit");
 
-  const handleDelete = async (play) => {
-    if (!window.confirm(`Delete "${play.title}"? This cannot be undone.`)) return;
-    try {
-      const result = await deletePlay(session, play.id);
-      setPlays((prev) => prev.filter((p) => p.id !== play.id));
-      // Remove play reference from any page sections in local state
-      setSections((prev) =>
-        prev.map((s) =>
-          s.playId === play.id
-            ? { ...s, playId: null, playTitle: null, playThumbnail: null, playSport: null }
-            : s
-        )
-      );
-      // Show warning banner if play was attached to any page sections
-      if (result.clearedSections?.length > 0) {
-        const sectionNames = result.clearedSections.map((s) => s.label).join(", ");
-        const count = result.clearedSections.length;
-        setDeletionWarning(
-          `"${play.title}" was removed from ${count} page section${count > 1 ? "s" : ""}: ${sectionNames}`
+  const handleDelete = (play) => {
+    setConfirmModal({ type: "play", item: play });
+  };
+
+  /**
+   * Execute the confirmed deletion (play or folder) from the confirm modal.
+   */
+  const handleDeleteConfirmed = async () => {
+    const { type, item } = confirmModal;
+    setConfirmModal(null);
+    if (type === "play") {
+      try {
+        const result = await deletePlay(session, item.id);
+        setPlays((prev) => prev.filter((p) => p.id !== item.id));
+        setSections((prev) =>
+          prev.map((s) =>
+            s.playId === item.id
+              ? { ...s, playId: null, playTitle: null, playThumbnail: null, playSport: null }
+              : s
+          )
         );
-      }
+        if (result.clearedSections?.length > 0) {
+          const sectionNames = result.clearedSections.map((s) => s.label).join(", ");
+          const count = result.clearedSections.length;
+          setDeletionWarning(
+            `"${item.title}" was removed from ${count} page section${count > 1 ? "s" : ""}: ${sectionNames}`
+          );
+        }
+      } catch (err) { setError(err.message); }
+    } else if (type === "folder") {
+      try {
+        await deleteFolderApi(session, item.id);
+        setFolders((prev) => prev.filter((f) => f.id !== item.id));
+        setPlays((prev) => prev.map((p) => (p.folderId === item.id ? { ...p, folderId: null } : p)));
+        if (currentFolderId === item.id) setCurrentFolderId(null);
+      } catch (err) { setError(err.message); }
+    }
+  };
+
+  /** Duplicate a play; appends the copy to the local plays list. */
+  const handleDuplicate = async (play) => {
+    try {
+      const copy = await duplicatePlay(session, play.id);
+      setPlays((prev) => [...prev, copy]);
     } catch (err) { setError(err.message); }
   };
 
@@ -670,14 +782,8 @@ export default function AdminPlaysPage() {
   };
 
   /** Delete a folder; plays inside become un-foldered. */
-  const handleDeleteFolder = async (folder) => {
-    if (!window.confirm(`Delete folder "${folder.name}"? Plays inside will become un-foldered.`)) return;
-    try {
-      await deleteFolderApi(session, folder.id);
-      setFolders((prev) => prev.filter((f) => f.id !== folder.id));
-      setPlays((prev) => prev.map((p) => (p.folderId === folder.id ? { ...p, folderId: null } : p)));
-      if (currentFolderId === folder.id) setCurrentFolderId(null);
-    } catch (err) { setError(err.message); }
+  const handleDeleteFolder = (folder) => {
+    setConfirmModal({ type: "folder", item: folder });
   };
 
   /** Assign or unassign a play from a page section. */
@@ -697,6 +803,18 @@ export default function AdminPlaysPage() {
               }
             : s
         )
+      );
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  /** Toggle the priority flag for a page section. */
+  const handleTogglePriority = async (key, isPriority) => {
+    try {
+      await setSectionPriority(session, key, isPriority);
+      setSections((prev) =>
+        prev.map((s) => (s.sectionKey === key ? { ...s, isPriority } : s))
       );
     } catch (err) {
       setError(err.message);
@@ -776,6 +894,25 @@ export default function AdminPlaysPage() {
         </div>
       </div>
 
+      {/* Priority sections missing play — persistent, data-driven */}
+      {sections.filter((s) => s.isPriority && !s.playId).length > 0 && (
+        <div className="sticky top-13.25 z-10 flex items-center gap-3 border-b border-amber-500/30 bg-amber-500/10 px-6 py-3 backdrop-blur-sm">
+          <svg className="h-4 w-4 shrink-0 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          </svg>
+          <p className="flex-1 text-xs font-medium text-amber-300">
+            <span className="font-semibold text-amber-200">Priority sections need a play — </span>
+            {sections.filter((s) => s.isPriority && !s.playId).map((s) => s.label).join(", ")}
+          </p>
+          <button
+            onClick={() => setActiveTab("sections")}
+            className="rounded px-2 py-1 text-xs font-semibold text-amber-400 transition hover:bg-amber-500/20 hover:text-amber-200"
+          >
+            Go to Sections
+          </button>
+        </div>
+      )}
+
       {/* Deletion warning banner */}
       {deletionWarning && (
         <div className="sticky top-13.25 z-10 flex items-center gap-3 border-b border-red-500/30 bg-red-600/15 px-6 py-3 backdrop-blur-sm">
@@ -819,6 +956,7 @@ export default function AdminPlaysPage() {
                   section={section}
                   plays={plays}
                   onAssign={handleAssignSection}
+                  onTogglePriority={handleTogglePriority}
                 />
               ))}
               {sections.length === 0 && (
@@ -982,12 +1120,31 @@ export default function AdminPlaysPage() {
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   onMove={handleMove}
+                  onDuplicate={handleDuplicate}
                 />
               ))}
             </div>
           )}
         </div>
       </div>}
+
+      <ConfirmModal
+        open={!!confirmModal}
+        message={
+          confirmModal?.type === "play"
+            ? `Delete "${confirmModal.item.title}"?`
+            : `Delete folder "${confirmModal?.item.name}"?`
+        }
+        subtitle={
+          confirmModal?.type === "play"
+            ? "This cannot be undone."
+            : "Plays inside will become un-foldered."
+        }
+        confirmLabel="Delete"
+        danger
+        onConfirm={handleDeleteConfirmed}
+        onCancel={() => setConfirmModal(null)}
+      />
     </div>
   );
 }
