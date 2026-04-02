@@ -48,7 +48,7 @@ router.get("/users", requireAdmin, async (_req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT u.id, u.name, u.email, u.email_verified_at, u.onboarded_at, u.created_at,
-              tm.role, t.name AS team_name
+              u.is_beta_tester, tm.role, t.name AS team_name
        FROM users u
        LEFT JOIN team_memberships tm ON tm.user_id = u.id
        LEFT JOIN teams t ON t.id = tm.team_id
@@ -557,5 +557,71 @@ export async function cleanupStaleAccounts() {
   }
   return { ok: true, cleaned: rows.length };
 }
+
+// PATCH /admin/users/:id/beta-tester — toggle beta tester status for a user
+router.patch("/users/:id/beta-tester", requireAdmin, async (req, res, next) => {
+  try {
+    const { isBetaTester } = req.body;
+    if (typeof isBetaTester !== "boolean") {
+      return res.status(400).json({ error: "isBetaTester must be a boolean" });
+    }
+    const { rows } = await pool.query(
+      `UPDATE users SET is_beta_tester = $1, updated_at = now() WHERE id = $2
+       RETURNING id, is_beta_tester`,
+      [isBetaTester, req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "User not found" });
+    res.json({ user: rows[0] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /admin/user-issues — list all user-reported issues
+router.get("/user-issues", requireAdmin, async (req, res, next) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+    const offset = parseInt(req.query.offset) || 0;
+    const { rows } = await pool.query(
+      `SELECT id, user_id, user_name, user_email, title, description, status, created_at
+       FROM user_issues
+       ORDER BY created_at DESC
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
+    const { rows: countRows } = await pool.query("SELECT COUNT(*) FROM user_issues");
+    res.json({ issues: rows, total: parseInt(countRows[0].count) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /admin/user-issues/:id — update status of a reported issue
+router.patch("/user-issues/:id", requireAdmin, async (req, res, next) => {
+  try {
+    const { status } = req.body;
+    if (!["open", "in_progress", "resolved"].includes(status)) {
+      return res.status(400).json({ error: "status must be open, in_progress, or resolved" });
+    }
+    const { rows } = await pool.query(
+      `UPDATE user_issues SET status = $1 WHERE id = $2 RETURNING id, status`,
+      [status, req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Issue not found" });
+    res.json({ issue: rows[0] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /admin/user-issues/:id — delete a single reported issue
+router.delete("/user-issues/:id", requireAdmin, async (req, res, next) => {
+  try {
+    await pool.query("DELETE FROM user_issues WHERE id = $1", [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
 
 export default router;

@@ -41,6 +41,7 @@ function mapApiUserToLocal(u) {
     seasonYear: u.seasonYear || String(new Date().getFullYear()),
     ownerId: u.ownerId || null,
     isPersonalTeam: u.isPersonalTeam || false,
+    isBetaTester: u.isBetaTester || false,
     onboarded: u.onboarded || false,
     notifications: {
       ...DEFAULT_NOTIFICATION_PREFERENCES,

@@ -76,7 +76,7 @@ router.post("/login", async (req, res, next) => {
     }
 
     const { rows } = await pool.query(
-      "SELECT id, name, email, password_hash, onboarded_at FROM users WHERE email = $1",
+      "SELECT id, name, email, password_hash, onboarded_at, is_beta_tester FROM users WHERE email = $1",
       [email.trim().toLowerCase()]
     );
     if (!rows.length) {
@@ -131,6 +131,7 @@ router.post("/login", async (req, res, next) => {
         seasonYear: team?.seasonYear || String(new Date().getFullYear()),
         ownerId: team?.ownerId || null,
         isPersonalTeam: team?.isPersonal || false,
+        isBetaTester: user.is_beta_tester || false,
       },
     });
   } catch (err) {
@@ -148,7 +149,7 @@ router.post("/logout", (_req, res) => {
 router.get("/me", requireAuth, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      "SELECT id, name, email, email_verified_at, onboarded_at FROM users WHERE id = $1",
+      "SELECT id, name, email, email_verified_at, onboarded_at, is_beta_tester FROM users WHERE id = $1",
       [req.userId]
     );
     if (!rows.length) return res.status(404).json({ error: "User not found" });
@@ -202,6 +203,7 @@ router.get("/me", requireAuth, async (req, res, next) => {
         seasonYear: team?.seasonYear || String(new Date().getFullYear()),
         ownerId: team?.ownerId || null,
         isPersonalTeam: team?.isPersonal || false,
+        isBetaTester: user.is_beta_tester || false,
         notifications: {
           playersJoinTeam: prefs.notify_players_join_team ?? true,
           coachesMakeChanges: prefs.notify_coaches_make_changes ?? true,

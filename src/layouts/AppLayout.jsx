@@ -3,17 +3,17 @@ import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import darkLogo from "../assets/logos/White_Coachable_Logo.png";
 import lightLogo from "../assets/logos/coachable_Logo.png";
-import { FiBookOpen, FiUsers, FiUser, FiLogOut, FiSettings, FiEye, FiX } from "react-icons/fi";
+import { FiBookOpen, FiUsers, FiUser, FiLogOut, FiSettings, FiEye, FiX, FiFlag } from "react-icons/fi";
 import useThemeColor from "../utils/useThemeColor";
 
-const teamNavItems = [
+const BASE_TEAM_NAV = [
   { to: "/app/plays", icon: FiBookOpen, label: "Plays" },
   { to: "/app/team", icon: FiUsers, label: "Team" },
   { to: "/app/profile", icon: FiUser, label: "Profile" },
   { to: "/app/settings", icon: FiSettings, label: "Settings" },
 ];
 
-const soloNavItems = [
+const BASE_SOLO_NAV = [
   { to: "/app/plays", icon: FiBookOpen, label: "Plays" },
   { to: "/app/profile", icon: FiUser, label: "Profile" },
   { to: "/app/settings", icon: FiSettings, label: "Settings" },
@@ -24,7 +24,10 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const isCoachRole = user?.role === "coach" || user?.role === "owner";
   const isPersonal = user?.isPersonalTeam;
-  const navItems = isPersonal ? soloNavItems : teamNavItems;
+  const baseNav = isPersonal ? BASE_SOLO_NAV : BASE_TEAM_NAV;
+  const navItems = user?.isBetaTester
+    ? [...baseNav, { to: "/app/report-issue", icon: FiFlag, label: "Report Issue" }]
+    : baseNav;
   const [isLight, setIsLight] = useState(document.documentElement.getAttribute("data-theme") === "light");
 
   useEffect(() => {

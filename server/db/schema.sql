@@ -399,3 +399,30 @@ INSERT INTO page_sections (section_key, label, page) VALUES
   ('landing.visualize.basketball', 'Basketball — Visualize',         'basketball'),
   ('landing.visualize.soccer',     'Soccer — Visualize',             'soccer')
 ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- 9. Beta tester flag on users
+-- ============================================================
+
+DO $$ BEGIN
+  ALTER TABLE users ADD COLUMN is_beta_tester BOOLEAN NOT NULL DEFAULT false;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- ============================================================
+-- 10. User-reported issues (beta tester feedback)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS user_issues (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  user_name TEXT,
+  user_email TEXT,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS user_issues_created_at_idx ON user_issues(created_at DESC);
+CREATE INDEX IF NOT EXISTS user_issues_user_id_idx ON user_issues(user_id);

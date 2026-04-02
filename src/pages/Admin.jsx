@@ -276,6 +276,22 @@ export default function Admin() {
     }
   };
 
+  const handleToggleBetaTester = async (u) => {
+    try {
+      const data = await adminFetch(`/admin/users/${u.id}/beta-tester`, {
+        method: "PATCH",
+        body: { isBetaTester: !u.is_beta_tester },
+      });
+      setUsers((prev) =>
+        prev.map((user) =>
+          user.id === u.id ? { ...user, is_beta_tester: data.user.is_beta_tester } : user
+        )
+      );
+    } catch (err) {
+      setUsersError(err.message);
+    }
+  };
+
   // ── Platform Plays ──
   const fetchPlatformPlays = useCallback(async () => {
     setPlaysLoading(true);
@@ -465,6 +481,7 @@ export default function Admin() {
   // ── Derived stats ──
   const verifiedCount = users.filter((u) => u.email_verified_at).length;
   const notOnboardedCount = users.filter((u) => !u.onboarded_at).length;
+  const betaTesterCount = users.filter((u) => u.is_beta_tester).length;
 
   // ──────────────────────────────────────────────────────────────────────────
   // LOGIN SCREEN
@@ -547,10 +564,11 @@ export default function Admin() {
 
       <div className="mx-auto max-w-6xl px-6 py-8 space-y-10">
         {/* ── Stat row ── */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
           <StatCard label="Total Users" value={users.length} />
           <StatCard label="Verified" value={verifiedCount} color="text-green-400" />
           <StatCard label="Not Onboarded" value={notOnboardedCount} color={notOnboardedCount > 0 ? "text-yellow-400" : "text-BrandGray2"} />
+          <StatCard label="Beta Testers" value={betaTesterCount} color="text-purple-400" />
           <StatCard label="Error Reports" value={errorTotal} color={errorTotal > 0 ? "text-red-400" : "text-BrandGray2"} />
           <StatCard label="Featured Plays" value={platformPlays.filter((p) => p.isFeatured).length} color="text-BrandOrange" />
         </div>
@@ -571,6 +589,12 @@ export default function Admin() {
               {nav.label}
             </a>
           ))}
+          <a
+            href="/admin/user-issues"
+            className="rounded-lg border border-purple-500/30 bg-purple-500/10 px-4 py-2 text-xs font-semibold text-purple-400 transition hover:bg-purple-500/20"
+          >
+            Reported Issues
+          </a>
         </div>
 
         {/* ══════════════════════════════════════════════════════════════════
@@ -618,6 +642,7 @@ export default function Admin() {
                   <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Email</th>
                   <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Team</th>
                   <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Verified</th>
+                  <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Beta</th>
                   <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Joined</th>
                   <th className="px-4 py-3"></th>
                 </tr>
@@ -625,12 +650,12 @@ export default function Admin() {
               <tbody>
                 {usersLoading && users.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-xs text-BrandGray2">Loading...</td>
+                    <td colSpan={7} className="px-4 py-8 text-center text-xs text-BrandGray2">Loading...</td>
                   </tr>
                 )}
                 {!usersLoading && users.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-xs text-BrandGray2">No users found</td>
+                    <td colSpan={7} className="px-4 py-8 text-center text-xs text-BrandGray2">No users found</td>
                   </tr>
                 )}
                 {users.map((u) => (
@@ -665,6 +690,19 @@ export default function Admin() {
                       ) : (
                         <span className="text-BrandGray2">No</span>
                       )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => handleToggleBetaTester(u)}
+                        title={u.is_beta_tester ? "Remove beta tester" : "Make beta tester"}
+                        className={`rounded px-2 py-1 text-xs font-semibold transition ${
+                          u.is_beta_tester
+                            ? "bg-purple-500/20 text-purple-400 hover:bg-purple-500/30"
+                            : "text-BrandGray2 hover:bg-white/6 hover:text-white"
+                        }`}
+                      >
+                        {u.is_beta_tester ? "Beta" : "—"}
+                      </button>
                     </td>
                     <td className="px-4 py-3 text-xs text-BrandGray2">
                       {new Date(u.created_at).toLocaleDateString()}

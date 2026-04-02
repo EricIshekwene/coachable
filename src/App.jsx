@@ -20,6 +20,7 @@ import AdminTests from "./pages/AdminTests";
 import AdminErrors from "./pages/AdminErrors";
 import AdminPlayEditPage from "./pages/AdminPlayEditPage";
 import AdminPlaysPage from "./pages/AdminPlaysPage";
+import AdminUserIssues from "./pages/AdminUserIssues";
 import AppLayout from "./layouts/AppLayout";
 import Plays from "./pages/app/Plays";
 import PlayNew from "./pages/app/PlayNew";
@@ -30,6 +31,7 @@ import Team from "./pages/app/Team";
 import Profile from "./pages/app/Profile";
 import ProfileEmailVerification from "./pages/app/ProfileEmailVerification";
 import Settings from "./pages/app/Settings";
+import ReportIssue from "./pages/app/ReportIssue";
 import MobileViewOnlyGate from "./components/MobileViewOnlyGate";
 import SharedPlay from "./pages/SharedPlay";
 import SharedPlayView from "./pages/SharedPlayView";
@@ -152,6 +154,7 @@ function AppRoutes() {
       <Route path="/admin/slate" element={<RequireAdminSession><SlateRoot adminMode /></RequireAdminSession>} />
       <Route path="/admin/app" element={<RequireAdminSession><AdminPlaysPage /></RequireAdminSession>} />
       <Route path="/admin/plays/:playId/edit" element={<RequireAdminSession><AdminPlayEditPage /></RequireAdminSession>} />
+      <Route path="/admin/user-issues" element={<RequireAdminSession><AdminUserIssues /></RequireAdminSession>} />
 
       {/* Full-screen play editor (outside AppLayout — no nav chrome) */}
       <Route path="/app/plays/:playId/edit" element={<RequireAuth><RequireOnboarded><PlayEditPage /></RequireOnboarded></RequireAuth>} />
@@ -167,6 +170,7 @@ function AppRoutes() {
         <Route path="profile" element={<Profile />} />
         <Route path="profile/verify-email" element={<ProfileEmailVerification />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="report-issue" element={<ReportIssue />} />
       </Route>
 
       {/* Fallback */}
