@@ -1,4 +1,4 @@
-import { FiTrash2 } from "react-icons/fi";
+import { FiTrash2, FiEye, FiEyeOff } from "react-icons/fi";
 import { PiPenNib } from "react-icons/pi";
 
 function getDrawingLabel(drawing, index, drawings) {
@@ -36,6 +36,7 @@ export default function DrawingObjectsList({
   selectedDrawingIds = [],
   onSelectedDrawingIdsChange,
   onRemoveDrawing,
+  onToggleDrawingHidden,
 }) {
   if (drawings.length === 0) return null;
 
@@ -56,6 +57,7 @@ export default function DrawingObjectsList({
               className={`
                 flex items-center gap-1.5 px-1.5 py-1 rounded cursor-pointer
                 transition-all duration-100 group
+                ${d.hidden ? "opacity-40" : ""}
                 ${isSelected
                   ? "bg-BrandOrange/20 border border-BrandOrange"
                   : "hover:bg-BrandBlack2 border border-transparent"
@@ -72,6 +74,16 @@ export default function DrawingObjectsList({
               >
                 {getDrawingLabel(d, i, drawings)}
               </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleDrawingHidden?.(d.id);
+                }}
+                className="text-BrandGray hover:text-BrandOrange opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
+                title={d.hidden ? "Show" : "Hide"}
+              >
+                {d.hidden ? <FiEyeOff className="text-xs" /> : <FiEye className="text-xs" />}
+              </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation();

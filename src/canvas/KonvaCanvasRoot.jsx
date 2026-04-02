@@ -1814,7 +1814,7 @@ function KonvaCanvasRoot({
           {/* Drawings layer: renders below players/ball */}
           <Layer listening={false} name="drawingsLayer">
             <Group x={worldOrigin.x} y={worldOrigin.y} scaleX={worldOrigin.scale} scaleY={worldOrigin.scale}>
-              {drawings.map((d) => renderDrawingNode(d, d.id))}
+              {drawings.map((d) => d.hidden ? null : renderDrawingNode(d, d.id))}
               {canvasDrawing.activeDrawing && renderDrawingNode(canvasDrawing.activeDrawing, "active-preview")}
               {/* Custom shape preview line (from last point to cursor) */}
               {canvasDrawing.customPreviewLine && (() => {
@@ -1950,6 +1950,7 @@ function KonvaCanvasRoot({
           <Layer ref={itemsLayerRef}>
             <Group x={worldOrigin.x} y={worldOrigin.y} scaleX={worldOrigin.scale} scaleY={worldOrigin.scale}>
               {items.map((item) => {
+                if (item.hidden) return null;
                 const renderedItem = getRenderedPose(item);
                 const isSelected =
                   item.type === "player"

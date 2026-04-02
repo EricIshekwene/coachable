@@ -1,8 +1,8 @@
 import React from "react";
-import { FiEdit } from "react-icons/fi";
+import { FiEdit, FiEye, FiEyeOff } from "react-icons/fi";
 import { MdDeleteOutline } from "react-icons/md";
 
-export default function PlayerRow({ player, isSelected = false, onClick, onEdit, onDelete }) {
+export default function PlayerRow({ player, isSelected = false, onClick, onEdit, onDelete, onToggleHidden }) {
   if (!player) return null;
   const nameText = player.name ?? "";
   return (
@@ -14,6 +14,7 @@ export default function PlayerRow({ player, isSelected = false, onClick, onEdit,
         if (e.key === "Enter" || e.key === " ") onClick?.(player.id);
       }}
       className={`w-full flex flex-row rounded-sm items-center justify-between px-1 py-0.5 sm:py-1 transition-colors cursor-pointer
+        ${player.hidden ? "opacity-40" : ""}
         ${isSelected ? "bg-BrandBlack border border-BrandOrange" : "bg-BrandBlack2 border border-transparent"}
         hover:bg-BrandBlack`}
     >
@@ -44,6 +45,17 @@ export default function PlayerRow({ player, isSelected = false, onClick, onEdit,
 
       {/* Actions */}
       <div className="flex flex-row justify-center items-center gap-0.5 sm:gap-1 shrink-0">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleHidden?.(player.id);
+          }}
+          className="text-BrandOrange text-xs sm:text-sm md:text-base"
+          aria-label={player.hidden ? "Show player" : "Hide player"}
+        >
+          {player.hidden ? <FiEyeOff /> : <FiEye />}
+        </button>
         <button
           type="button"
           onClick={(e) => {

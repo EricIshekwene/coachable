@@ -963,7 +963,7 @@ function Slate({
 
   const playbookPlayData = useMemo(() => {
     const appVersion = import.meta?.env?.VITE_APP_VERSION ?? null;
-    return buildPlayExport({
+    const result = buildPlayExport({
       playName,
       appVersion,
       advancedSettings,
@@ -984,6 +984,7 @@ function Slate({
       },
       drawings: drawingsState.drawings,
     });
+    return result;
   }, [playName, advancedSettings, entities, fieldViewport, animationData, speedMultiplier, autoplayEnabled, drawingsState.drawings]);
 
   /**
@@ -3179,6 +3180,9 @@ function Slate({
         onEditPlayer={entities.handleEditPlayer}
         onDeletePlayer={entities.handleDeletePlayer}
         onDeleteBall={entities.handleDeleteBall}
+        onTogglePlayerHidden={entities.handleTogglePlayerHidden}
+        onToggleBallHidden={entities.handleToggleBallHidden}
+        onToggleDrawingHidden={drawingsState.toggleDrawingHidden}
         allPlayersDisplay={entities.allPlayersDisplay}
         onAllPlayersDisplayChange={entities.setAllPlayersDisplay}
         onSelectedPlayersColorChange={entities.handleSelectedPlayersColorChange}
@@ -3231,6 +3235,7 @@ function Slate({
             fieldViewport.setFieldRotation(sd.defaultFieldRotation ?? 0);
           }}
           onFieldTypeChange={(newFieldType) => {
+            entities.handleFieldTypeChange(newFieldType);
             const sd = SPORT_DEFAULTS[newFieldType] || {};
             fieldViewport.setFieldRotation(sd.defaultFieldRotation ?? 0);
           }}

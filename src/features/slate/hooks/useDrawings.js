@@ -120,6 +120,20 @@ export function useDrawings({ historyApiRef }) {
     logDrawDebug(`updateMultipleDrawings count=${entries.length}`);
   }, [historyApiRef]);
 
+  /**
+   * Toggles the `hidden` flag on a drawing, hiding or showing it on the canvas.
+   * @param {string} id - Drawing ID
+   */
+  const toggleDrawingHidden = useCallback((id) => {
+    setDrawings((prev) => {
+      const index = prev.findIndex((d) => d.id === id);
+      if (index === -1) return prev;
+      const next = [...prev];
+      next[index] = { ...next[index], hidden: !next[index].hidden };
+      return next;
+    });
+  }, []);
+
   const clearDrawings = useCallback(() => {
     setDrawings([]);
     logDrawDebug("clearDrawings");
@@ -153,6 +167,7 @@ export function useDrawings({ historyApiRef }) {
     updateDrawing,
     updateMultipleDrawings,
     updateMultipleDrawingsNoHistory,
+    toggleDrawingHidden,
     clearDrawings,
     resetDrawings,
     snapshotDrawings,

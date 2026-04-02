@@ -95,6 +95,7 @@ const normalizeBall = (id, value) => ({
   x: toFiniteNumber(value?.x, 0),
   y: toFiniteNumber(value?.y, 0),
   objectType: normalizeObjectType(value?.objectType),
+  ...(value?.hidden ? { hidden: true } : {}),
 });
 
 const cloneBallsById = (byId) =>
@@ -154,19 +155,19 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
 
   const isRestoringRef = useRef(false);
   const isItemDraggingRef = useRef(false);
-  const prevFieldTypeRef = useRef(fieldType);
 
-  // When the field type changes, reset the initial player's label to match
-  // the new sport (blank for position-label sports, "1" for number sports).
-  useEffect(() => {
-    if (prevFieldTypeRef.current === fieldType) return;
-    prevFieldTypeRef.current = fieldType;
-    setPlayersById(buildInitialPlayers(fieldType));
+  /**
+   * Resets players to match a newly selected sport/field type.
+   * Must only be called on explicit user-initiated sport changes — never during import.
+   * @param {string} newFieldType
+   */
+  const handleFieldTypeChange = (newFieldType) => {
+    setPlayersById(buildInitialPlayers(newFieldType));
     setRepresentedPlayerIds(["player-1"]);
     setSelectedPlayerIds([]);
     setSelectedItemIds([]);
     setPlayerEditor(EMPTY_EDITOR);
-  }, [fieldType]);
+  };
 
   // When the edit panel is open: switch to the newly selected player,
   // or close the panel if selection is cleared (clicked empty field).
@@ -427,6 +428,30 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
     setSelectedItemIds((prev) => (prev || []).filter((itemId) => itemId !== id));
   };
 
+  /**
+   * Toggles the `hidden` flag on a player, hiding or showing them on the canvas.
+   * @param {string} id - Player ID
+   */
+  const handleTogglePlayerHidden = (id) => {
+    setPlayersById((prev) => {
+      if (!prev?.[id]) return prev;
+      return { ...prev, [id]: { ...prev[id], hidden: !prev[id].hidden } };
+    });
+  };
+
+  /**
+   * Toggles the `hidden` flag on a ball/cone, hiding or showing it on the canvas.
+   * @param {string} id - Ball ID
+   */
+  const handleToggleBallHidden = (id) => {
+    setBallsById((prev) => {
+      if (!prev?.[id]) return prev;
+      const next = { ...prev };
+      next[id] = { ...next[id], hidden: !next[id].hidden };
+      return next;
+    });
+  };
+
   const handleDeleteSelected = () => {
     const selectedBallIds = (selectedItemIds || []).filter((itemId) => ballsById?.[itemId]);
     const allBallIds = Object.keys(ballsById || {});
@@ -659,6 +684,9 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
     return created;
   };
 
+  /**
+   * Loads a full entities snapshot (e.g. on play import or initial load).
+   */
   const loadEntitiesState = ({ nextPlayers, nextRepresented, nextBall, nextBallsById }) => {
     const normalizedBallsById = normalizeBallsSnapshot({
       ballsById: nextBallsById,
@@ -700,6 +728,7 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
         number: p.number,
         name: p.name,
         color: p.color || allPlayersDisplay.color,
+        hidden: p.hidden || false,
       })),
       ...Object.values(ballsById || {}).map((ball) => ({
         id: ball.id,
@@ -707,6 +736,7 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
         x: ball.x,
         y: ball.y,
         objectType: normalizeObjectType(ball.objectType),
+        hidden: ball.hidden || false,
       })),
     ],
     [playersById, allPlayersDisplay.color, ballsById]
@@ -754,8 +784,11 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
     handleSaveEditPlayer,
     handleDeletePlayer,
     handleDeleteSelected,
+    handleFieldTypeChange,
     handleAddBall,
     handleDeleteBall,
+    handleTogglePlayerHidden,
+    handleToggleBallHidden,
     handleSelectPlayer,
     handleSelectItem,
     handleItemDragStart,

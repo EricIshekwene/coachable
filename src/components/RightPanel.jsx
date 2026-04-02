@@ -87,6 +87,9 @@ export default function RightPanel({
   selectedItemIds,
   onSelectItem,
   onDeleteBall,
+  onTogglePlayerHidden,
+  onToggleBallHidden,
+  onToggleDrawingHidden,
   onSavePrefab,
   fieldBounds,
   onPlayerPositionChange,
@@ -188,6 +191,7 @@ export default function RightPanel({
               selectedDrawingIds={selectedDrawingIds}
               onSelectedDrawingIdsChange={onSelectedDrawingIdsChange}
               onRemoveDrawing={onRemoveDrawing}
+              onToggleDrawingHidden={onToggleDrawingHidden}
             />
           )}
 
@@ -198,6 +202,7 @@ export default function RightPanel({
             onSelectPlayer={onSelectPlayer}
             onEditPlayer={onEditPlayer}
             onDeletePlayer={onDeletePlayer}
+            onTogglePlayerHidden={onTogglePlayerHidden}
           />
 
           {!(selectedPlayerIds?.length > 0) && (
@@ -206,6 +211,7 @@ export default function RightPanel({
               selectedItemIds={selectedItemIds}
               onSelectItem={onSelectItem}
               onDeleteBall={onDeleteBall}
+              onToggleBallHidden={onToggleBallHidden}
             />
           )}
 
@@ -215,6 +221,7 @@ export default function RightPanel({
               selectedDrawingIds={selectedDrawingIds}
               onSelectedDrawingIdsChange={onSelectedDrawingIdsChange}
               onRemoveDrawing={onRemoveDrawing}
+              onToggleDrawingHidden={onToggleDrawingHidden}
             />
           )}
 
@@ -249,6 +256,7 @@ export default function RightPanel({
                 selectedItemIds={selectedItemIds}
                 onSelectItem={onSelectItem}
                 onDeleteBall={onDeleteBall}
+                onToggleBallHidden={onToggleBallHidden}
               />
             </>
           ) : (

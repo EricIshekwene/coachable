@@ -1,6 +1,7 @@
 import React from "react";
 import { FaFootballBall } from "react-icons/fa";
 import { MdDeleteOutline } from "react-icons/md";
+import { FiEye, FiEyeOff } from "react-icons/fi";
 import coneIcon from "../../assets/objects/cone.png";
 
 export default function ObjectsSection({
@@ -8,6 +9,7 @@ export default function ObjectsSection({
   selectedItemIds,
   onSelectItem,
   onDeleteBall,
+  onToggleBallHidden,
 }) {
   const ballIds = Object.keys(ballsById || {});
   const count = ballIds.length;
@@ -36,6 +38,7 @@ export default function ObjectsSection({
                 if (e.key === "Enter" || e.key === " ") onSelectItem?.(id, "ball", { mode: "toggle" });
               }}
               className={`w-full flex flex-row rounded-sm items-center justify-between px-1 py-0.5 sm:py-1 transition-colors cursor-pointer
+                ${ball.hidden ? "opacity-40" : ""}
                 ${isSelected ? "bg-BrandBlack border border-BrandOrange" : "bg-BrandBlack2 border border-transparent"}
                 hover:bg-BrandBlack`}
             >
@@ -51,7 +54,18 @@ export default function ObjectsSection({
                 </span>
               </div>
 
-              <div className="flex flex-row justify-center items-center shrink-0">
+              <div className="flex flex-row justify-center items-center gap-0.5 sm:gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleBallHidden?.(id);
+                  }}
+                  className="text-BrandOrange text-xs sm:text-sm md:text-base"
+                  aria-label={ball.hidden ? `Show ${objectType}` : `Hide ${objectType}`}
+                >
+                  {ball.hidden ? <FiEyeOff /> : <FiEye />}
+                </button>
                 {canDelete && (
                   <button
                     type="button"
