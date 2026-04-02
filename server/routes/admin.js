@@ -326,8 +326,14 @@ router.patch("/plays/:id", requireAdmin, async (req, res, next) => {
 // DELETE /admin/plays/:id — delete a platform play
 router.delete("/plays/:id", requireAdmin, async (req, res, next) => {
   try {
+    // Clear any page sections referencing this play before deleting
+    const { rows: clearedSections } = await pool.query(
+      `UPDATE page_sections SET play_id = NULL, updated_at = now()
+       WHERE play_id = $1 RETURNING section_key, label`,
+      [req.params.id]
+    );
     await pool.query("DELETE FROM platform_plays WHERE id = $1", [req.params.id]);
-    res.json({ ok: true });
+    res.json({ ok: true, clearedSections });
   } catch (err) {
     next(err);
   }

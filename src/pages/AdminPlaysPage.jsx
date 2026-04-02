@@ -51,6 +51,7 @@ async function deletePlay(session, id) {
     headers: { "x-admin-session": session },
   });
   if (!res.ok) throw new Error("Failed to delete play");
+  return await res.json();
 }
 
 /**
@@ -562,6 +563,7 @@ export default function AdminPlaysPage() {
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [deletionWarning, setDeletionWarning] = useState(null);
   const [search, setSearch] = useState("");
   const [currentFolderId, setCurrentFolderId] = useState(null);
   const [newFolderMode, setNewFolderMode] = useState(false);
@@ -618,8 +620,24 @@ export default function AdminPlaysPage() {
   const handleDelete = async (play) => {
     if (!window.confirm(`Delete "${play.title}"? This cannot be undone.`)) return;
     try {
-      await deletePlay(session, play.id);
+      const result = await deletePlay(session, play.id);
       setPlays((prev) => prev.filter((p) => p.id !== play.id));
+      // Remove play reference from any page sections in local state
+      setSections((prev) =>
+        prev.map((s) =>
+          s.playId === play.id
+            ? { ...s, playId: null, playTitle: null, playThumbnail: null, playSport: null }
+            : s
+        )
+      );
+      // Show warning banner if play was attached to any page sections
+      if (result.clearedSections?.length > 0) {
+        const sectionNames = result.clearedSections.map((s) => s.label).join(", ");
+        const count = result.clearedSections.length;
+        setDeletionWarning(
+          `"${play.title}" was removed from ${count} page section${count > 1 ? "s" : ""}: ${sectionNames}`
+        );
+      }
     } catch (err) { setError(err.message); }
   };
 
@@ -757,6 +775,25 @@ export default function AdminPlaysPage() {
           </div>
         </div>
       </div>
+
+      {/* Deletion warning banner */}
+      {deletionWarning && (
+        <div className="sticky top-13.25 z-10 flex items-center gap-3 border-b border-red-500/30 bg-red-600/15 px-6 py-3 backdrop-blur-sm">
+          <svg className="h-4 w-4 shrink-0 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          </svg>
+          <p className="flex-1 text-xs font-medium text-red-300">
+            <span className="font-semibold text-red-200">Page section unlinked — </span>
+            {deletionWarning}
+          </p>
+          <button
+            onClick={() => setDeletionWarning(null)}
+            className="rounded p-1 text-red-400 transition hover:bg-red-500/20 hover:text-red-200"
+          >
+            <FiX className="text-sm" />
+          </button>
+        </div>
+      )}
 
       {/* Page Sections tab */}
       {activeTab === "sections" && (
