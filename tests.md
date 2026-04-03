@@ -14,6 +14,8 @@
 - [ ] Sport picker page redirects to `/slate/:sport`
 - [ ] Session persists after page refresh
 - [ ] Logout clears session and redirects to landing
+- [ ] Visiting `/onboarding` while already onboarded redirects to `/app/plays`
+- [ ] Incomplete onboarding (left page) — returning user is sent back to `/onboarding` on login
 
 ---
 
@@ -302,6 +304,97 @@
 - [ ] Player view mode: toggle on → coach UI hides
 - [ ] Exit player view banner appears and exits correctly
 - [ ] Invite code sections: copy, generate new
+
+---
+
+## XXI. Multi-Team & Team Switching
+
+### Team Switcher (Sidebar)
+- [ ] Team name badge is clickable and opens dropdown
+- [ ] Dropdown lists all teams the user belongs to
+- [ ] Active team has checkmark
+- [ ] Each team shows the user's role on that team
+- [ ] Personal workspace shows "solo" role label
+- [ ] Clicking a different team switches context and navigates to `/app/plays`
+- [ ] After switch: sidebar role label updates to role on new team
+- [ ] After switch: player view mode is reset to off
+- [ ] "Join a Team" option opens join form in dropdown
+- [ ] "Create a Team" option opens create form in dropdown
+- [ ] "Create Personal Workspace" only shows if user has no personal workspace
+- [ ] Clicking outside dropdown closes it
+
+### Join Team (Post-Onboarding)
+- [ ] Enter valid player invite code → joins as player, switches to that team
+- [ ] Enter valid coach invite code → joins as coach, switches to that team
+- [ ] Enter invalid code → shows error message
+- [ ] Enter code for a team already a member of → shows "already a member" error
+- [ ] After joining: new team appears in switcher list
+
+### Create Team (Post-Onboarding)
+- [ ] Any role (including player) can create a new team
+- [ ] Creates team, user becomes owner of new team, switches to it
+- [ ] New team appears in switcher list with "Owner" label
+- [ ] Team name under 2 characters shows validation error
+- [ ] Sport field is optional
+
+### Create Personal Workspace (Post-Onboarding)
+- [ ] Creates personal workspace, switches to it
+- [ ] Calling again (already has personal workspace) returns existing one, switches to it
+- [ ] Personal workspace shows "Solo Mode" label in sidebar
+
+### Leave Team — Player
+- [ ] Leave button appears in Settings → Danger Zone for players
+- [ ] Confirmation dialog appears before leaving
+- [ ] After leaving: player is removed from team, switches to next available team
+- [ ] If last team: personal workspace auto-created and switched to
+- [ ] Plays remain with the team after player leaves
+
+### Leave Team — Assistant Coach
+- [ ] Same leave flow as player (free to leave, no blockers)
+- [ ] Plays created by assistant coach remain with the team
+- [ ] After leaving: auto-switches to next team or creates personal workspace
+
+### Leave Team — Coach (non-owner)
+- [ ] Same leave flow as player (free to leave, no blockers)
+- [ ] After leaving: auto-switches or creates personal workspace
+
+### Leave Team — Owner with Other Members
+- [ ] "Leave" button is disabled / shows informational message
+- [ ] Message says: "Transfer ownership before leaving"
+- [ ] Link takes user to Profile page where transfer happens
+- [ ] After transferring ownership, role becomes Coach → can now leave normally
+
+### Leave Team — Owner as Sole Member (Delete Team)
+- [ ] Danger Zone shows "Delete [Team Name]" instead of "Leave"
+- [ ] Warning text says all plays will be permanently deleted
+- [ ] Confirmation dialog shows before delete
+- [ ] After confirming: team deleted (all plays cascade deleted)
+- [ ] Auto-creates personal workspace if no other teams
+- [ ] Navigates to /app/plays after deletion
+
+### Delete Personal Workspace
+- [ ] "Delete Personal Workspace" button shown in Settings when on personal workspace
+- [ ] Warning text mentions play deletion
+- [ ] After confirming: workspace and plays deleted
+- [ ] Switches to another real team if user has one, otherwise shows NoTeam page
+
+### No Team Safety Net
+- [ ] `/no-team` page renders for onboarded users with no teams
+- [ ] Three options: Join a Team, Create a Team, Just Make Plays
+- [ ] Each option works and redirects to `/app/plays` after success
+- [ ] Visiting `/no-team` while having teams redirects to `/app/plays`
+
+### Role-Specific UI After Team Switch
+- [ ] Switching to a team where user is "player" → hides coach UI (create plays, invite codes)
+- [ ] Switching to a team where user is "owner" → shows full coach + owner UI
+- [ ] Switching to a team where user is "coach" → shows coach UI, hides owner-only controls
+- [ ] Switching to personal workspace → hides team management UI entirely
+- [ ] Notifications section in Settings adapts to role on newly switched team
+
+### Session Persistence
+- [ ] Active team persists across page refresh (stored server-side via active_team_id)
+- [ ] Active team persists across logout/login
+- [ ] User who joined multiple teams sees all of them after re-login
 
 ---
 

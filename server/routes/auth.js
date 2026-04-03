@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import pool from "../db/pool.js";
 import { signToken, setSessionCookie, clearSessionCookie, requireAuth } from "../middleware/auth.js";
 import { generateCode, sendVerificationEmail, sendPasswordResetEmail } from "../lib/email.js";
+import { resolveActiveTeam } from "../lib/userTeams.js";
 
 const router = Router();
 const SALT_ROUNDS = 10;
@@ -76,7 +77,7 @@ router.post("/login", async (req, res, next) => {
     }
 
     const { rows } = await pool.query(
-      "SELECT id, name, email, password_hash, onboarded_at, is_beta_tester FROM users WHERE email = $1",
+      "SELECT id, name, email, password_hash, onboarded_at, is_beta_tester, active_team_id FROM users WHERE email = $1",
       [email.trim().toLowerCase()]
     );
     if (!rows.length) {
@@ -89,30 +90,13 @@ router.post("/login", async (req, res, next) => {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    // Fetch team context if onboarded
-    let team = null;
-    let membership = null;
+    // Fetch all team memberships and resolve active team
+    let activeTeam = null;
+    let allTeams = [];
     if (user.onboarded_at) {
-      const memberRes = await pool.query(
-        `SELECT tm.role, tm.team_id, t.name AS team_name, t.sport, t.season_year, t.owner_user_id, t.is_personal
-         FROM team_memberships tm
-         JOIN teams t ON t.id = tm.team_id
-         WHERE tm.user_id = $1
-         LIMIT 1`,
-        [user.id]
-      );
-      if (memberRes.rows.length) {
-        const m = memberRes.rows[0];
-        team = {
-          id: m.team_id,
-          name: m.team_name,
-          sport: m.sport,
-          seasonYear: m.season_year,
-          ownerId: m.owner_user_id,
-          isPersonal: m.is_personal || false,
-        };
-        membership = { role: m.role };
-      }
+      const resolved = await resolveActiveTeam(user.id, user.active_team_id);
+      activeTeam = resolved.activeTeam;
+      allTeams = resolved.allTeams;
     }
 
     const token = signToken(user.id);
@@ -124,15 +108,16 @@ router.post("/login", async (req, res, next) => {
         name: user.name,
         email: user.email,
         onboarded: Boolean(user.onboarded_at),
-        role: membership?.role || null,
-        teamId: team?.id || null,
-        teamName: team?.name || null,
-        sport: team?.sport || "",
-        seasonYear: team?.seasonYear || String(new Date().getFullYear()),
-        ownerId: team?.ownerId || null,
-        isPersonalTeam: team?.isPersonal || false,
+        role: activeTeam?.role || null,
+        teamId: activeTeam?.teamId || null,
+        teamName: activeTeam?.teamName || null,
+        sport: activeTeam?.sport || "",
+        seasonYear: activeTeam?.seasonYear || String(new Date().getFullYear()),
+        ownerId: activeTeam?.ownerId || null,
+        isPersonalTeam: activeTeam?.isPersonal || false,
         isBetaTester: user.is_beta_tester || false,
       },
+      allTeams,
     });
   } catch (err) {
     next(err);
@@ -149,37 +134,20 @@ router.post("/logout", (_req, res) => {
 router.get("/me", requireAuth, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      "SELECT id, name, email, email_verified_at, onboarded_at, is_beta_tester FROM users WHERE id = $1",
+      "SELECT id, name, email, email_verified_at, onboarded_at, is_beta_tester, active_team_id FROM users WHERE id = $1",
       [req.userId]
     );
     if (!rows.length) return res.status(404).json({ error: "User not found" });
 
     const user = rows[0];
 
-    // Fetch team context
-    let team = null;
-    let membership = null;
+    // Fetch all team memberships and resolve active team
+    let activeTeam = null;
+    let allTeams = [];
     if (user.onboarded_at) {
-      const memberRes = await pool.query(
-        `SELECT tm.role, tm.team_id, t.name AS team_name, t.sport, t.season_year, t.owner_user_id, t.is_personal
-         FROM team_memberships tm
-         JOIN teams t ON t.id = tm.team_id
-         WHERE tm.user_id = $1
-         LIMIT 1`,
-        [user.id]
-      );
-      if (memberRes.rows.length) {
-        const m = memberRes.rows[0];
-        team = {
-          id: m.team_id,
-          name: m.team_name,
-          sport: m.sport,
-          seasonYear: m.season_year,
-          ownerId: m.owner_user_id,
-          isPersonal: m.is_personal || false,
-        };
-        membership = { role: m.role };
-      }
+      const resolved = await resolveActiveTeam(user.id, user.active_team_id);
+      activeTeam = resolved.activeTeam;
+      allTeams = resolved.allTeams;
     }
 
     // Fetch preferences
@@ -196,13 +164,13 @@ router.get("/me", requireAuth, async (req, res, next) => {
         email: user.email,
         emailVerified: Boolean(user.email_verified_at),
         onboarded: Boolean(user.onboarded_at),
-        role: membership?.role || null,
-        teamId: team?.id || null,
-        teamName: team?.name || null,
-        sport: team?.sport || "",
-        seasonYear: team?.seasonYear || String(new Date().getFullYear()),
-        ownerId: team?.ownerId || null,
-        isPersonalTeam: team?.isPersonal || false,
+        role: activeTeam?.role || null,
+        teamId: activeTeam?.teamId || null,
+        teamName: activeTeam?.teamName || null,
+        sport: activeTeam?.sport || "",
+        seasonYear: activeTeam?.seasonYear || String(new Date().getFullYear()),
+        ownerId: activeTeam?.ownerId || null,
+        isPersonalTeam: activeTeam?.isPersonal || false,
         isBetaTester: user.is_beta_tester || false,
         notifications: {
           playersJoinTeam: prefs.notify_players_join_team ?? true,
@@ -218,6 +186,7 @@ router.get("/me", requireAuth, async (req, res, next) => {
           canSendInvites: false,
         },
       },
+      allTeams,
     });
   } catch (err) {
     next(err);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   FiBell,
   FiCheck,
@@ -9,6 +9,9 @@ import {
   FiShield,
   FiSun,
   FiUsers,
+  FiAlertTriangle,
+  FiLogOut,
+  FiTrash2,
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
 
@@ -79,13 +82,20 @@ function ToggleRow({ label, description, enabled, onToggle }) {
 export default function Settings() {
   const {
     user,
+    teamMembers,
     playerViewMode,
     setPlayerViewMode,
     updateAssistantPermissions,
     updateNotificationPreferences,
     updateTeamDefaults,
+    leaveTeam,
   } = useAuth();
   const navigate = useNavigate();
+
+  // Leave / delete team state
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [leaveLoading, setLeaveLoading] = useState(false);
+  const [leaveError, setLeaveError] = useState("");
 
   const isPlayer = user?.role === "player" || playerViewMode;
   const isPersonal = user?.isPersonalTeam;
@@ -385,6 +395,151 @@ export default function Settings() {
           </button>
         )}
       </div>
+
+      {/* Danger Zone */}
+      <DangerZone
+        user={user}
+        teamMembers={teamMembers}
+        playerViewMode={playerViewMode}
+        showLeaveConfirm={showLeaveConfirm}
+        setShowLeaveConfirm={setShowLeaveConfirm}
+        leaveLoading={leaveLoading}
+        setLeaveLoading={setLeaveLoading}
+        leaveError={leaveError}
+        setLeaveError={setLeaveError}
+        leaveTeam={leaveTeam}
+        navigate={navigate}
+      />
+    </div>
+  );
+}
+
+/**
+ * Danger Zone section — handles all leave/delete flows for every role type:
+ * - player / assistant_coach / coach: free to leave
+ * - owner with other members: must transfer ownership first
+ * - owner sole member: delete team (cascade deletes all plays)
+ * - personal workspace: delete workspace
+ */
+function DangerZone({
+  user,
+  teamMembers,
+  playerViewMode,
+  showLeaveConfirm,
+  setShowLeaveConfirm,
+  leaveLoading,
+  setLeaveLoading,
+  leaveError,
+  setLeaveError,
+  leaveTeam,
+  navigate,
+}) {
+  if (!user?.teamId) return null;
+
+  const isOwner = user?.role === "owner" && !playerViewMode;
+  const isPersonal = user?.isPersonalTeam;
+  const otherMembers = (teamMembers || []).filter((m) => m.id !== user?.id);
+  const ownerMustTransfer = isOwner && !isPersonal && otherMembers.length > 0;
+
+  const teamLabel = isPersonal ? "Personal Workspace" : (user?.teamName || "this team");
+  const buttonLabel = isPersonal
+    ? "Delete Personal Workspace"
+    : isOwner && otherMembers.length === 0
+      ? `Delete "${user?.teamName}"`
+      : `Leave "${user?.teamName}"`;
+
+  const handleLeave = async () => {
+    setLeaveLoading(true);
+    setLeaveError("");
+    try {
+      await leaveTeam(user.teamId);
+      navigate("/app/plays");
+    } catch (err) {
+      if (err?.needsOwnerTransfer) {
+        setLeaveError("You must transfer ownership before leaving.");
+      } else {
+        setLeaveError(err?.message || "Something went wrong.");
+      }
+      setShowLeaveConfirm(false);
+    } finally {
+      setLeaveLoading(false);
+    }
+  };
+
+  return (
+    <div className="mt-10 rounded-xl border border-red-500/20 bg-red-500/5 p-5">
+      <div className="mb-3 flex items-center gap-2">
+        <FiAlertTriangle className="text-sm text-red-400" />
+        <p className="text-xs font-semibold uppercase tracking-widest text-red-400">Danger Zone</p>
+      </div>
+
+      {ownerMustTransfer ? (
+        <div>
+          <p className="text-sm font-semibold text-BrandText">Leave {teamLabel}</p>
+          <p className="mt-1 text-xs text-BrandGray2">
+            You are the owner of this team. You must transfer ownership to another member before you can leave.
+          </p>
+          <Link
+            to="/app/profile"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-BrandGray2/30 px-4 py-2 text-xs font-semibold text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
+          >
+            Go to Profile to Transfer Ownership
+          </Link>
+        </div>
+      ) : (
+        <div>
+          <p className="text-sm font-semibold text-BrandText">
+            {isOwner && !isPersonal ? `Delete ${teamLabel}` : isPersonal ? "Delete Personal Workspace" : `Leave ${teamLabel}`}
+          </p>
+          <p className="mt-1 text-xs text-BrandGray2">
+            {isOwner && !isPersonal
+              ? `You are the sole member. Deleting will permanently remove this team and all its plays.`
+              : isPersonal
+                ? "Permanently delete your personal workspace and all plays in it."
+                : `You will lose access to all plays in ${teamLabel}. Your content will remain for the team.`}
+          </p>
+
+          {leaveError && (
+            <p className="mt-2 text-xs text-red-400">{leaveError}</p>
+          )}
+
+          {!showLeaveConfirm ? (
+            <button
+              type="button"
+              onClick={() => { setShowLeaveConfirm(true); setLeaveError(""); }}
+              className="mt-3 flex items-center gap-2 rounded-lg border border-red-500/40 px-4 py-2 text-xs font-semibold text-red-400 transition hover:border-red-500 hover:bg-red-500/10"
+            >
+              {isOwner ? <FiTrash2 className="text-sm" /> : <FiLogOut className="text-sm" />}
+              {buttonLabel}
+            </button>
+          ) : (
+            <div className="mt-3 rounded-lg border border-red-500/30 bg-BrandBlack2/30 p-3">
+              <p className="text-xs font-semibold text-red-300">
+                {isOwner
+                  ? "Are you sure? This cannot be undone."
+                  : `Are you sure you want to leave "${user?.teamName}"?`}
+              </p>
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowLeaveConfirm(false)}
+                  className="flex-1 rounded-lg border border-BrandGray2/30 py-2 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLeave}
+                  disabled={leaveLoading}
+                  className="flex-1 rounded-lg bg-red-600 py-2 text-xs font-semibold text-white transition hover:bg-red-500 disabled:opacity-50"
+                >
+                  {leaveLoading ? "Processing…" : isOwner ? "Yes, Delete" : "Yes, Leave"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

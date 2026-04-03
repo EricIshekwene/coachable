@@ -5,6 +5,7 @@ import darkLogo from "../assets/logos/White_Coachable_Logo.png";
 import lightLogo from "../assets/logos/coachable_Logo.png";
 import { FiBookOpen, FiUsers, FiUser, FiLogOut, FiSettings, FiEye, FiX, FiFlag } from "react-icons/fi";
 import useThemeColor from "../utils/useThemeColor";
+import TeamSwitcher from "../components/TeamSwitcher";
 
 const BASE_TEAM_NAV = [
   { to: "/app/plays", icon: FiBookOpen, label: "Plays" },
@@ -88,19 +89,8 @@ export default function AppLayout() {
           <span className="font-Manrope text-sm font-semibold tracking-tight">Coachable</span>
         </Link>
 
-        {/* Team badge */}
-        {user?.teamName && !isPersonal && (
-          <div className="mx-4 mb-4 rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3 py-2">
-            <p className="text-[10px] uppercase tracking-widest text-BrandGray2">Team</p>
-            <p className="text-xs font-semibold truncate">{user.teamName}</p>
-          </div>
-        )}
-        {isPersonal && (
-          <div className="mx-4 mb-4 rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3 py-2">
-            <p className="text-[10px] uppercase tracking-widest text-BrandGray2">Solo Mode</p>
-            <p className="text-xs text-BrandGray2">Personal workspace</p>
-          </div>
-        )}
+        {/* Team switcher */}
+        <TeamSwitcher />
 
         <nav className="flex flex-1 flex-col gap-1 px-3">
           {navItems.map((navItem) => {

@@ -39,6 +39,7 @@ import SharedFolder from "./pages/SharedFolder";
 import PlatformPlayView from "./pages/PlatformPlayView";
 import SportPickerPage from "./pages/SportPickerPage";
 import NotFound from "./pages/NotFound";
+import NoTeam from "./pages/NoTeam";
 
 function SlateRoot({ adminMode = false, sport = null }) {
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
@@ -100,8 +101,17 @@ function RequireAuth({ children }) {
 }
 
 function RequireOnboarded({ children }) {
-  const { user } = useAuth();
+  const { user, allTeams } = useAuth();
   if (user && !user.onboarded) return <Navigate to="/onboarding" replace />;
+  // Onboarded but somehow lost all memberships — safety net
+  if (user && user.onboarded && allTeams.length === 0) return <Navigate to="/no-team" replace />;
+  return children;
+}
+
+/** Prevent already-onboarded users from revisiting onboarding. */
+function RequireNotOnboarded({ children }) {
+  const { user } = useAuth();
+  if (user?.onboarded) return <Navigate to="/app/plays" replace />;
   return children;
 }
 
@@ -146,7 +156,8 @@ function AppRoutes() {
       <Route path="/shared/folder/:token" element={<SharedFolder />} />
       <Route path="/shared/folder/:token/play/:playId" element={<SharedPlayView />} />
       <Route path="/verify-email" element={<RequireAuth><VerifyEmail /></RequireAuth>} />
-      <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
+      <Route path="/onboarding" element={<RequireAuth><RequireNotOnboarded><Onboarding /></RequireNotOnboarded></RequireAuth>} />
+      <Route path="/no-team" element={<RequireAuth><NoTeam /></RequireAuth>} />
 
       {/* Standalone slate editor (no auth required) */}
       <Route path="/slate" element={<SportPickerPage />} />

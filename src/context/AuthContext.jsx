@@ -54,8 +54,27 @@ function mapApiUserToLocal(u) {
   };
 }
 
+/**
+ * Apply an active team object from the server onto existing user state.
+ * Used after switchTeam, joinTeam, createTeam, leaveTeam.
+ */
+function applyActiveTeam(prev, activeTeam) {
+  if (!activeTeam) return prev;
+  return {
+    ...prev,
+    teamId: activeTeam.teamId,
+    teamName: activeTeam.teamName,
+    role: activeTeam.role,
+    sport: activeTeam.sport || "",
+    seasonYear: activeTeam.seasonYear || String(new Date().getFullYear()),
+    ownerId: activeTeam.ownerId || null,
+    isPersonalTeam: activeTeam.isPersonal || false,
+  };
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [allTeams, setAllTeams] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
   const [pendingEmailChange, setPendingEmailChange] = useState(null);
   const [playerViewMode, setPlayerViewMode] = useState(false);
@@ -66,6 +85,7 @@ export function AuthProvider({ children }) {
     apiFetch("/auth/me")
       .then((data) => {
         setUser(mapApiUserToLocal(data.user));
+        setAllTeams(data.allTeams || []);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -100,6 +120,7 @@ export function AuthProvider({ children }) {
     try {
       const data = await apiFetch("/auth/me");
       setUser(mapApiUserToLocal(data.user));
+      setAllTeams(data.allTeams || []);
     } catch {
       // ignore
     }
@@ -112,6 +133,7 @@ export function AuthProvider({ children }) {
     });
     const localUser = mapApiUserToLocal(data.user);
     setUser(localUser);
+    setAllTeams(data.allTeams || []);
     return localUser;
   }, []);
 
@@ -142,6 +164,15 @@ export function AuthProvider({ children }) {
           isPersonalTeam: true,
           onboarded: true,
         }));
+        setAllTeams([{
+          teamId: team.id,
+          teamName: team.name,
+          sport: "",
+          seasonYear: String(new Date().getFullYear()),
+          ownerId: team.ownerId,
+          isPersonal: true,
+          role: "owner",
+        }]);
       } else if (teamAction === "create") {
         const data = await apiFetch("/onboarding/create-team", {
           method: "POST",
@@ -158,6 +189,15 @@ export function AuthProvider({ children }) {
           isPersonalTeam: false,
           onboarded: true,
         }));
+        setAllTeams([{
+          teamId: team.id,
+          teamName: team.name,
+          sport: team.sport || "",
+          seasonYear: String(new Date().getFullYear()),
+          ownerId: team.ownerId,
+          isPersonal: false,
+          role: "owner",
+        }]);
       } else {
         const data = await apiFetch("/onboarding/join-team", {
           method: "POST",
@@ -174,10 +214,87 @@ export function AuthProvider({ children }) {
           isPersonalTeam: false,
           onboarded: true,
         }));
+        setAllTeams([{
+          teamId: team.id,
+          teamName: team.name,
+          sport: team.sport || "",
+          seasonYear: String(new Date().getFullYear()),
+          ownerId: team.ownerId,
+          isPersonal: false,
+          role: data.role || "player",
+        }]);
       }
     },
     []
   );
+
+  /**
+   * Switch the user's active team. Resets player view mode.
+   * @param {string} teamId
+   */
+  const switchTeam = useCallback(async (teamId) => {
+    const data = await apiFetch(`/teams/${teamId}/switch`, { method: "POST" });
+    setUser((prev) => applyActiveTeam(prev, data.activeTeam));
+    setAllTeams(data.allTeams || []);
+    setPlayerViewMode(false);
+  }, []);
+
+  /**
+   * Join a team via invite code (post-onboarding). Switches to new team.
+   * @param {string} inviteCode
+   */
+  const joinTeam = useCallback(async (inviteCode) => {
+    const data = await apiFetch("/teams/join", {
+      method: "POST",
+      body: { inviteCode },
+    });
+    setUser((prev) => applyActiveTeam(prev, data.newActiveTeam));
+    setAllTeams(data.allTeams || []);
+    setPlayerViewMode(false);
+    return data;
+  }, []);
+
+  /**
+   * Create a new real team (post-onboarding). Switches to new team.
+   * @param {string} teamName
+   * @param {string} [sport]
+   */
+  const createTeam = useCallback(async (teamName, sport) => {
+    const data = await apiFetch("/teams/create", {
+      method: "POST",
+      body: { teamName, sport },
+    });
+    setUser((prev) => applyActiveTeam(prev, data.newActiveTeam));
+    setAllTeams(data.allTeams || []);
+    setPlayerViewMode(false);
+    return data;
+  }, []);
+
+  /**
+   * Create or switch to personal workspace (post-onboarding).
+   */
+  const createPersonalWorkspace = useCallback(async () => {
+    const data = await apiFetch("/teams/create-personal", { method: "POST" });
+    setUser((prev) => applyActiveTeam(prev, data.newActiveTeam));
+    setAllTeams(data.allTeams || []);
+    setPlayerViewMode(false);
+    return data;
+  }, []);
+
+  /**
+   * Leave (or as sole owner, delete) a team.
+   * Server auto-creates a personal workspace if no teams remain.
+   * Returns { wasTeamDeleted, newActiveTeam, allTeams }.
+   * Throws with { needsOwnerTransfer: true } if owner must transfer first.
+   * @param {string} teamId
+   */
+  const leaveTeam = useCallback(async (teamId) => {
+    const data = await apiFetch(`/teams/${teamId}/leave`, { method: "POST" });
+    setUser((prev) => applyActiveTeam(prev, data.newActiveTeam));
+    setAllTeams(data.allTeams || []);
+    setPlayerViewMode(false);
+    return data;
+  }, []);
 
   const updateProfile = useCallback(async ({ name }) => {
     if (!name?.trim()) return false;
@@ -283,6 +400,18 @@ export function AuthProvider({ children }) {
         sport: body.sport || prev.sport,
         seasonYear: body.seasonYear || prev.seasonYear,
       }));
+      setAllTeams((prev) =>
+        prev.map((t) =>
+          t.teamId === user.teamId
+            ? {
+                ...t,
+                teamName: body.teamName || t.teamName,
+                sport: body.sport || t.sport,
+                seasonYear: body.seasonYear || t.seasonYear,
+              }
+            : t
+        )
+      );
     },
     [user?.teamId]
   );
@@ -306,7 +435,7 @@ export function AuthProvider({ children }) {
         method: "POST",
         body: { newOwnerId },
       });
-      setUser((prev) => ({ ...prev, ownerId: newOwnerId }));
+      setUser((prev) => ({ ...prev, ownerId: newOwnerId, role: "coach" }));
       return true;
     },
     [user?.id, user?.teamId]
@@ -316,6 +445,7 @@ export function AuthProvider({ children }) {
     // Tell server to clear the session cookie
     apiFetch("/auth/logout", { method: "POST" }).catch(() => {});
     setUser(null);
+    setAllTeams([]);
     setTeamMembers([]);
     setPendingEmailChange(null);
     setPlayerViewMode(false);
@@ -325,6 +455,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider
       value={{
         user,
+        allTeams,
         loading,
         teamMembers,
         pendingEmailChange,
@@ -334,6 +465,11 @@ export function AuthProvider({ children }) {
         signup,
         refreshUser,
         completeOnboarding,
+        switchTeam,
+        joinTeam,
+        createTeam,
+        createPersonalWorkspace,
+        leaveTeam,
         updateProfile,
         requestEmailChange,
         confirmEmailChange,

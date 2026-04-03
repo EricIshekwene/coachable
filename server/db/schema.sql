@@ -410,6 +410,17 @@ EXCEPTION WHEN duplicate_column THEN NULL;
 END $$;
 
 -- ============================================================
+-- 11. Active team tracking (multi-team support)
+-- ============================================================
+
+-- Tracks which team the user currently has selected across sessions.
+-- NULL means "use first membership" (handles existing accounts safely).
+DO $$ BEGIN
+  ALTER TABLE users ADD COLUMN active_team_id UUID REFERENCES teams(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- ============================================================
 -- 10. User-reported issues (beta tester feedback)
 -- ============================================================
 

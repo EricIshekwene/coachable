@@ -3,8 +3,250 @@ import crypto from "crypto";
 import pool from "../db/pool.js";
 import { requireAuth, requireTeamRole } from "../middleware/auth.js";
 import { sendTeamInviteEmail, sendMemberRemovedEmail } from "../lib/email.js";
+import { resolveActiveTeam, ensurePersonalWorkspace, getUserTeams } from "../lib/userTeams.js";
 
 const router = Router();
+
+// ============================================================
+// Post-onboarding team management routes (no :teamId param)
+// ============================================================
+
+// POST /teams/join — join a team via invite code (works when already onboarded)
+router.post("/join", requireAuth, async (req, res, next) => {
+  try {
+    const { inviteCode } = req.body;
+    if (!inviteCode?.trim()) {
+      return res.status(400).json({ error: "inviteCode is required" });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      // Look up invite code
+      const codeRes = await client.query(
+        "SELECT team_id, role FROM team_invite_codes WHERE code = $1",
+        [inviteCode.trim().toUpperCase()]
+      );
+      if (!codeRes.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "Invalid invite code" });
+      }
+
+      const { team_id: teamId, role } = codeRes.rows[0];
+
+      // Prevent duplicate membership
+      const existing = await client.query(
+        "SELECT id FROM team_memberships WHERE team_id = $1 AND user_id = $2",
+        [teamId, req.userId]
+      );
+      if (existing.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({ error: "You are already a member of this team" });
+      }
+
+      await client.query(
+        "INSERT INTO team_memberships (team_id, user_id, role) VALUES ($1, $2, $3)",
+        [teamId, req.userId, role]
+      );
+
+      // Switch active team to the newly joined one
+      await client.query(
+        "UPDATE users SET active_team_id = $1, updated_at = now() WHERE id = $2",
+        [teamId, req.userId]
+      );
+
+      await client.query("COMMIT");
+
+      const { activeTeam, allTeams } = await resolveActiveTeam(req.userId, teamId);
+      res.json({ newActiveTeam: activeTeam, allTeams });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /teams/create — create a new real team (works when already onboarded)
+router.post("/create", requireAuth, async (req, res, next) => {
+  try {
+    const { teamName, sport } = req.body;
+    if (!teamName?.trim()) {
+      return res.status(400).json({ error: "teamName is required" });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const teamRes = await client.query(
+        `INSERT INTO teams (name, sport, owner_user_id)
+         VALUES ($1, $2, $3)
+         RETURNING id, name, sport, season_year, owner_user_id`,
+        [teamName.trim(), sport?.trim() || null, req.userId]
+      );
+      const team = teamRes.rows[0];
+
+      await client.query("INSERT INTO team_settings (team_id) VALUES ($1)", [team.id]);
+      await client.query(
+        "INSERT INTO team_memberships (team_id, user_id, role) VALUES ($1, $2, 'owner')",
+        [team.id, req.userId]
+      );
+
+      // Generate invite codes
+      const playerCode = crypto.randomBytes(4).toString("hex").toUpperCase();
+      const coachCode = crypto.randomBytes(4).toString("hex").toUpperCase();
+      await client.query(
+        `INSERT INTO team_invite_codes (team_id, role, code, created_by_user_id)
+         VALUES ($1, 'player', $2, $3), ($1, 'coach', $4, $3)`,
+        [team.id, playerCode, req.userId, coachCode]
+      );
+
+      // Switch active team
+      await client.query(
+        "UPDATE users SET active_team_id = $1, updated_at = now() WHERE id = $2",
+        [team.id, req.userId]
+      );
+
+      await client.query("COMMIT");
+
+      const { activeTeam, allTeams } = await resolveActiveTeam(req.userId, team.id);
+      res.status(201).json({ newActiveTeam: activeTeam, allTeams, inviteCodes: { player: playerCode, coach: coachCode } });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /teams/create-personal — create personal workspace (works when already onboarded)
+router.post("/create-personal", requireAuth, async (req, res, next) => {
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const personalTeam = await ensurePersonalWorkspace(req.userId, client);
+
+      // Switch active team to personal workspace
+      await client.query(
+        "UPDATE users SET active_team_id = $1, updated_at = now() WHERE id = $2",
+        [personalTeam.teamId, req.userId]
+      );
+
+      await client.query("COMMIT");
+
+      const { activeTeam, allTeams } = await resolveActiveTeam(req.userId, personalTeam.teamId);
+      res.json({ newActiveTeam: activeTeam, allTeams });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ============================================================
+// Per-team routes
+// ============================================================
+
+// POST /teams/:teamId/switch — switch the user's active team
+router.post("/:teamId/switch", requireAuth, requireTeamRole(), async (req, res, next) => {
+  try {
+    await pool.query(
+      "UPDATE users SET active_team_id = $1, updated_at = now() WHERE id = $2",
+      [req.params.teamId, req.userId]
+    );
+    const { activeTeam, allTeams } = await resolveActiveTeam(req.userId, req.params.teamId);
+    res.json({ activeTeam, allTeams });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /teams/:teamId/leave — leave or delete a team (all roles)
+router.post("/:teamId/leave", requireAuth, requireTeamRole(), async (req, res, next) => {
+  try {
+    const teamId = req.params.teamId;
+    const userId = req.userId;
+    const userRole = req.teamRole;
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      let wasTeamDeleted = false;
+
+      if (userRole === "owner") {
+        // Count members to decide if owner can leave
+        const memberCount = await client.query(
+          "SELECT COUNT(*) FROM team_memberships WHERE team_id = $1",
+          [teamId]
+        );
+        const count = parseInt(memberCount.rows[0].count, 10);
+
+        if (count > 1) {
+          await client.query("ROLLBACK");
+          return res.status(400).json({
+            error: "You must transfer ownership before leaving this team.",
+            needsOwnerTransfer: true,
+          });
+        }
+
+        // Sole owner — delete the entire team (CASCADE handles plays, settings, etc.)
+        await client.query("DELETE FROM teams WHERE id = $1", [teamId]);
+        wasTeamDeleted = true;
+      } else {
+        // player / assistant_coach / coach — free to leave
+        await client.query(
+          "DELETE FROM team_memberships WHERE team_id = $1 AND user_id = $2",
+          [teamId, userId]
+        );
+      }
+
+      // Determine new active team
+      const remainingTeams = await getUserTeams(userId);
+      let newActiveTeamId = null;
+
+      if (remainingTeams.length === 0) {
+        // No teams left — auto-create personal workspace
+        const personal = await ensurePersonalWorkspace(userId, client);
+        newActiveTeamId = personal.teamId;
+      } else {
+        // Use first remaining team that isn't the one just left
+        newActiveTeamId = remainingTeams[0].teamId;
+      }
+
+      await client.query(
+        "UPDATE users SET active_team_id = $1, updated_at = now() WHERE id = $2",
+        [newActiveTeamId, userId]
+      );
+
+      await client.query("COMMIT");
+
+      const { activeTeam, allTeams } = await resolveActiveTeam(userId, newActiveTeamId);
+      res.json({ ok: true, newActiveTeam: activeTeam, allTeams, wasTeamDeleted });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    next(err);
+  }
+});
 
 // GET /teams/:teamId/members
 router.get(
