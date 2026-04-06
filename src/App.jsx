@@ -40,6 +40,8 @@ import PlatformPlayView from "./pages/PlatformPlayView";
 import SportPickerPage from "./pages/SportPickerPage";
 import NotFound from "./pages/NotFound";
 import NoTeam from "./pages/NoTeam";
+import Resources from "./pages/Resources";
+import Enterprise from "./pages/Enterprise";
 
 function SlateRoot({ adminMode = false, sport = null }) {
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
@@ -143,6 +145,8 @@ function AppRoutes() {
       <Route path="/lacrosse" element={<Landing sport="lacrosse" />} />
       <Route path="/basketball" element={<Landing sport="basketball" />} />
       <Route path="/soccer" element={<Landing sport="soccer" />} />
+      <Route path="/resources" element={<Resources />} />
+      <Route path="/enterprise" element={<Enterprise />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />

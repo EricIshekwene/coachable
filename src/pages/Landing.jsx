@@ -1,10 +1,10 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import logo from "../assets/logos/White_Full_Coachable.png";
 const productVideo = "/product-demo.mp4";
 import videoSectionBg from "../assets/backgrounds/Gemini_Generated_Image_fet7z5fet7z5fet7.png";
-import { FiArrowRight, FiPlay, FiUsers, FiLayers, FiChevronDown, FiPlus, FiCheck } from "react-icons/fi";
+import { FiArrowRight, FiPlay, FiUsers, FiLayers, FiPlus, FiCheck } from "react-icons/fi";
 import { createPlay } from "../utils/apiPlays";
 import PlayPreviewCard from "../components/PlayPreviewCard";
 
@@ -15,12 +15,6 @@ import coachesTogetherLong from "../assets/pictures/coaches_together_long.png";
 import oldWhiteboardLong from "../assets/pictures/old_whiteboard_long.png";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
-
-const RESOURCES_ITEMS = [
-  { label: "FAQs", to: "/faqs" },
-  { label: "Contact Us", to: "/contact" },
-  { label: "About Us", to: "/about" },
-];
 
 const STATS = [
   { value: "98%", label: "Team Retention" },
@@ -44,8 +38,6 @@ const SPORT_LABELS = {
  */
 export default function Landing({ sport = null }) {
   const { user } = useAuth();
-  const [resourcesOpen, setResourcesOpen] = useState(false);
-  const dropdownRef = useRef(null);
 
   const [featuredPlays, setFeaturedPlays] = useState([]);
   const [addingPlay, setAddingPlay] = useState(null);
@@ -91,16 +83,6 @@ export default function Landing({ sport = null }) {
     }
   }, [user]);
 
-  useEffect(() => {
-    const handler = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setResourcesOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
   return (
     <div
       className="bg-BrandBlack text-white font-DmSans hide-scroll"
@@ -119,34 +101,12 @@ export default function Landing({ sport = null }) {
             <Link to="/enterprise" className="text-sm text-BrandGray transition hover:text-white">
               Enterprise
             </Link>
-            <Link to="/product" className="text-sm text-BrandGray transition hover:text-white">
+            <Link to="/slate" className="text-sm text-BrandGray transition hover:text-white">
               Product
             </Link>
-            <div className="relative" ref={dropdownRef}>
-              <button
-                onClick={() => setResourcesOpen(!resourcesOpen)}
-                className="flex items-center gap-1 text-sm text-BrandGray transition hover:text-white"
-              >
-                Resources
-                <FiChevronDown className={`text-xs transition ${resourcesOpen ? "rotate-180" : ""}`} />
-              </button>
-              {resourcesOpen && (
-                <div className="absolute left-1/2 top-full z-30 mt-3 w-44 -translate-x-1/2 rounded-lg border border-BrandGray2/30 bg-BrandBlack2 shadow-xl">
-                  <div className="py-1">
-                    {RESOURCES_ITEMS.map((item) => (
-                      <Link
-                        key={item.to}
-                        to={item.to}
-                        onClick={() => setResourcesOpen(false)}
-                        className="block px-4 py-2.5 text-sm text-BrandGray transition hover:bg-BrandOrange/10 hover:text-white"
-                      >
-                        {item.label}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            <Link to="/resources" className="text-sm text-BrandGray transition hover:text-white">
+              Resources
+            </Link>
           </div>
 
           {/* Auth buttons */}

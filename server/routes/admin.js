@@ -4,13 +4,16 @@ import crypto from "crypto";
 import pool from "../db/pool.js";
 
 const router = Router();
-const ADMIN_HASH = "$2b$10$VHa04rH/gcOa97BFMCM7WOvEVU5kU2KK4pfMa9A1fj.HuSO903Ri2";
+const ADMIN_HASH = process.env.ADMIN_HASH;
+if (!ADMIN_HASH) {
+  throw new Error("ADMIN_HASH environment variable must be set.");
+}
 
 // In-memory session store (resets on server restart — fine for admin)
 const sessions = new Map();
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
 
-function requireAdmin(req, res, next) {
+export function requireAdmin(req, res, next) {
   const sid = req.headers["x-admin-session"];
   if (!sid || !sessions.has(sid)) {
     return res.status(401).json({ error: "Unauthorized" });

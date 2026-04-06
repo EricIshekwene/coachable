@@ -4,9 +4,14 @@
  * Usage: node scripts/seed-account.mjs
  */
 
-const API = "https://resplendent-inspiration-production-2fa9.up.railway.app";
-const DEMO_EMAIL = "coach@coachableplays.com";
-const DEMO_PASSWORD = "Login791";
+const API = process.env.SEED_API_URL || "https://resplendent-inspiration-production-2fa9.up.railway.app";
+const DEMO_EMAIL = process.env.SEED_DEMO_EMAIL;
+const DEMO_PASSWORD = process.env.SEED_DEMO_PASSWORD;
+
+if (!DEMO_EMAIL || !DEMO_PASSWORD) {
+  console.error("Error: SEED_DEMO_EMAIL and SEED_DEMO_PASSWORD environment variables must be set.");
+  process.exit(1);
+}
 const DEMO_NAME = "Coach";
 
 const PLAYER_NAMES = [

@@ -110,7 +110,7 @@ function StatCard({ label, value, color = "text-white" }) {
 // ── Main component ─────────────────────────────────────────────────────────
 export default function Admin() {
   // ── Auth ──
-  const [session, setSession] = useState(() => localStorage.getItem(SESSION_KEY) || "");
+  const [session, setSession] = useState(() => sessionStorage.getItem(SESSION_KEY) || "");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [logging, setLogging] = useState(false);
@@ -187,7 +187,7 @@ export default function Admin() {
         body: options.body ? JSON.stringify(options.body) : undefined,
       });
       if (res.status === 401) {
-        localStorage.removeItem(SESSION_KEY);
+        sessionStorage.removeItem(SESSION_KEY);
         setSession("");
         throw new Error("Session expired");
       }
@@ -205,7 +205,7 @@ export default function Admin() {
     setLogging(true);
     try {
       const data = await apiFetch("/admin/login", { method: "POST", body: { password } });
-      localStorage.setItem(SESSION_KEY, data.session);
+      sessionStorage.setItem(SESSION_KEY, data.session);
       setSession(data.session);
       setPassword("");
     } catch (err) {
@@ -217,7 +217,7 @@ export default function Admin() {
 
   const handleLogout = () => {
     adminFetch("/admin/logout", { method: "POST" }).catch(() => {});
-    localStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
     setSession("");
     setUsers([]);
   };

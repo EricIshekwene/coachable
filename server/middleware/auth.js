@@ -1,5 +1,8 @@
 import jwt from "jsonwebtoken";
 
+if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET environment variable must be set in production.");
+}
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 const COOKIE_NAME = "coachable_session";
 const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days

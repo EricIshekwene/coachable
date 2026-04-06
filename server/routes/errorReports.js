@@ -1,5 +1,6 @@
 import { Router } from "express";
 import pool from "../db/pool.js";
+import { requireAdmin } from "./admin.js";
 
 const router = Router();
 
@@ -53,13 +54,7 @@ router.post("/", async (req, res, next) => {
  * GET /error-reports — list error reports (admin only).
  * Supports query params: ?limit=50&offset=0&component=videoExport
  */
-router.get("/", async (req, res, next) => {
-  // Reuse admin session check inline (same pattern as admin.js)
-  const sid = req.headers["x-admin-session"];
-  if (!sid) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
+router.get("/", requireAdmin, async (req, res, next) => {
   try {
     const limit = Math.min(Math.max(1, parseInt(req.query.limit) || 50), 200);
     const offset = Math.max(0, parseInt(req.query.offset) || 0);
@@ -100,12 +95,7 @@ router.get("/", async (req, res, next) => {
 /**
  * DELETE /error-reports/:id — delete a single error report (admin only).
  */
-router.delete("/:id", async (req, res, next) => {
-  const sid = req.headers["x-admin-session"];
-  if (!sid) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
+router.delete("/:id", requireAdmin, async (req, res, next) => {
   try {
     await pool.query("DELETE FROM error_reports WHERE id = $1", [req.params.id]);
     res.json({ ok: true });
@@ -117,12 +107,7 @@ router.delete("/:id", async (req, res, next) => {
 /**
  * DELETE /error-reports — clear all error reports (admin only).
  */
-router.delete("/", async (req, res, next) => {
-  const sid = req.headers["x-admin-session"];
-  if (!sid) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
+router.delete("/", requireAdmin, async (req, res, next) => {
   try {
     const result = await pool.query("DELETE FROM error_reports");
     res.json({ ok: true, deleted: result.rowCount });
