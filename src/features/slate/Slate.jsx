@@ -256,6 +256,7 @@ function Slate({
   const [drawShapeStrokeColor, setDrawShapeStrokeColor] = useState("#FFFFFF");
   const [drawShapeFill, setDrawShapeFill] = useState("transparent");
   const [selectedDrawingIds, setSelectedDrawingIds] = useState([]);
+  const [hideAllDrawings, setHideAllDrawings] = useState(false);
   const drawingSelectionRef = useRef(null);
   const [textEditing, setTextEditing] = useState(null);
   const [fieldBounds, setFieldBounds] = useState(null);
@@ -2978,6 +2979,7 @@ function Slate({
           animationRendererRef={animationRendererRef}
           onAnimationRendererReady={handleAnimationRendererReady}
           drawings={drawingsState.drawings}
+          hideAllDrawings={hideAllDrawings}
           drawSubTool={drawSubTool}
           drawColor={drawColor}
           drawOpacity={drawOpacity}
@@ -3214,6 +3216,8 @@ function Slate({
         onTogglePlayerHidden={entities.handleTogglePlayerHidden}
         onToggleBallHidden={entities.handleToggleBallHidden}
         onToggleDrawingHidden={drawingsState.toggleDrawingHidden}
+        hideAllDrawings={hideAllDrawings}
+        onHideAllDrawingsChange={setHideAllDrawings}
         allPlayersDisplay={entities.allPlayersDisplay}
         onAllPlayersDisplayChange={entities.setAllPlayersDisplay}
         onSelectedPlayersColorChange={entities.handleSelectedPlayersColorChange}

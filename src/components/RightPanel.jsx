@@ -76,6 +76,8 @@ export default function RightPanel({
   selectedDrawingIds,
   onSelectedDrawingIdsChange,
   onRemoveDrawing,
+  hideAllDrawings,
+  onHideAllDrawingsChange,
   eraserSize,
   onEraserSizeChange,
   drawShapeType,
@@ -192,6 +194,8 @@ export default function RightPanel({
               onSelectedDrawingIdsChange={onSelectedDrawingIdsChange}
               onRemoveDrawing={onRemoveDrawing}
               onToggleDrawingHidden={onToggleDrawingHidden}
+              hideAllDrawings={hideAllDrawings}
+              onHideAllDrawingsChange={onHideAllDrawingsChange}
             />
           )}
 
@@ -222,6 +226,8 @@ export default function RightPanel({
               onSelectedDrawingIdsChange={onSelectedDrawingIdsChange}
               onRemoveDrawing={onRemoveDrawing}
               onToggleDrawingHidden={onToggleDrawingHidden}
+              hideAllDrawings={hideAllDrawings}
+              onHideAllDrawingsChange={onHideAllDrawingsChange}
             />
           )}
 

@@ -37,6 +37,8 @@ export default function DrawingObjectsList({
   onSelectedDrawingIdsChange,
   onRemoveDrawing,
   onToggleDrawingHidden,
+  hideAllDrawings = false,
+  onHideAllDrawingsChange,
 }) {
   if (drawings.length === 0) return null;
 
@@ -44,10 +46,19 @@ export default function DrawingObjectsList({
 
   return (
     <div className="flex flex-col border-b border-BrandGray2 pb-1.5 sm:pb-2 items-start justify-center gap-0.5">
-      <div className="text-BrandOrange text-xs sm:text-sm md:text-base font-DmSans font-bold mb-0.5">
-        Drawings
+      <div className="flex items-center justify-between w-full mb-0.5">
+        <div className="text-BrandOrange text-xs sm:text-sm md:text-base font-DmSans font-bold">
+          Drawings
+        </div>
+        <button
+          onClick={() => onHideAllDrawingsChange?.(!hideAllDrawings)}
+          className="text-BrandGray hover:text-BrandOrange transition-colors p-0.5"
+          title={hideAllDrawings ? "Show all drawings" : "Hide all drawings"}
+        >
+          {hideAllDrawings ? <FiEyeOff className="text-xs" /> : <FiEye className="text-xs" />}
+        </button>
       </div>
-      <div className="flex flex-col w-full gap-0.5 max-h-32 overflow-y-auto hide-scroll">
+      <div className={`flex flex-col w-full gap-0.5 max-h-32 overflow-y-auto hide-scroll transition-opacity ${hideAllDrawings ? "opacity-40" : ""}`}>
         {drawings.map((d, i) => {
           const isSelected = selectedSet.has(d.id);
           return (

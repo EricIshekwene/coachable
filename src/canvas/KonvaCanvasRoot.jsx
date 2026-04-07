@@ -122,6 +122,7 @@ function KonvaCanvasRoot({
   animationRendererRef,
   onAnimationRendererReady,
   drawings = [],
+  hideAllDrawings = false,
   drawSubTool,
   drawColor,
   drawOpacity = 1,
@@ -1814,7 +1815,7 @@ function KonvaCanvasRoot({
           {/* Drawings layer: renders below players/ball */}
           <Layer listening={false} name="drawingsLayer">
             <Group x={worldOrigin.x} y={worldOrigin.y} scaleX={worldOrigin.scale} scaleY={worldOrigin.scale}>
-              {drawings.map((d) => d.hidden ? null : renderDrawingNode(d, d.id))}
+              {!hideAllDrawings && drawings.map((d) => d.hidden ? null : renderDrawingNode(d, d.id))}
               {canvasDrawing.activeDrawing && renderDrawingNode(canvasDrawing.activeDrawing, "active-preview")}
               {/* Custom shape preview line (from last point to cursor) */}
               {canvasDrawing.customPreviewLine && (() => {
