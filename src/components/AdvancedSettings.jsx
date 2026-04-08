@@ -26,6 +26,7 @@ export default function AdvancedSettings({
     onCopyVideoExportDebug,
     onCopyRecordingDebug,
     onCopyKfMoveDebug,
+    onCopyRotationDebug,
     onCopyFixAllDebug,
     onFieldTypeChange,
     onDebugRotate,
@@ -183,6 +184,7 @@ export default function AdvancedSettings({
                     onCopyVideoExportDebug={onCopyVideoExportDebug}
                     onCopyRecordingDebug={onCopyRecordingDebug}
                     onCopyKfMoveDebug={onCopyKfMoveDebug}
+                    onCopyRotationDebug={onCopyRotationDebug}
                     onCopyFixAllDebug={onCopyFixAllDebug}
                     onDebugRotate={onDebugRotate}
                 />

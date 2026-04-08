@@ -643,7 +643,7 @@ function SectionRow({ section, plays, onAssign, onTogglePriority }) {
  */
 export default function AdminPlaysPage() {
   const navigate = useNavigate();
-  const session = localStorage.getItem(SESSION_KEY) || "";
+  const session = sessionStorage.getItem(SESSION_KEY) || "";
 
   const [activeTab, setActiveTab] = useState("plays");
   const [plays, setPlays] = useState([]);
@@ -678,7 +678,7 @@ export default function AdminPlaysPage() {
       setSections(sectionsData);
     } catch (err) {
       if (err.message === "UNAUTHORIZED") {
-        localStorage.removeItem(SESSION_KEY);
+        sessionStorage.removeItem(SESSION_KEY);
         navigate("/admin", { replace: true });
       } else {
         setError(err.message);
@@ -699,7 +699,7 @@ export default function AdminPlaysPage() {
       method: "POST",
       headers: { "x-admin-session": session },
     }).catch(() => {});
-    localStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
     navigate("/admin", { replace: true });
   };
 

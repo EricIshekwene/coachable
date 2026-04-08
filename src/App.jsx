@@ -78,7 +78,7 @@ function SlateWithSportParam({ adminMode = false }) {
 
 /** Guards admin sub-routes that lack their own session check (e.g. /admin/slate). */
 function RequireAdminSession({ children }) {
-  const session = localStorage.getItem("coachable_admin_session");
+  const session = sessionStorage.getItem("coachable_admin_session");
   if (!session) return <Navigate to="/admin" replace />;
   return children;
 }

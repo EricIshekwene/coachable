@@ -85,7 +85,7 @@ export const getDirectionAtTime = (track, timeMs) => {
     let left = first;
     let right = last;
     for (let i = 0; i < keyframes.length - 1; i += 1) {
-      if (t >= keyframes[i].t && t <= keyframes[i + 1].t) {
+      if (t >= keyframes[i].t && t < keyframes[i + 1].t) {
         left = keyframes[i];
         right = keyframes[i + 1];
         break;
@@ -95,7 +95,10 @@ export const getDirectionAtTime = (track, timeMs) => {
     dy = right.y - left.y;
   }
 
-  if (dx === 0 && dy === 0) return null;
+  // Only rotate if the ball moves more than 10px between neighboring keyframes,
+  // to avoid jittery rotation from tiny positional noise.
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < 10) return null;
   // Ball images are drawn tip-up (0° = upright). atan2 gives 0° for rightward movement,
   // so add 90° so the tip aligns with the direction of travel.
   return Math.atan2(dy, dx) * (180 / Math.PI) + 90;

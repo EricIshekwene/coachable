@@ -48,7 +48,7 @@ function statusMeta(status) {
  * Admin dashboard for user-reported issues submitted by beta testers.
  */
 export default function AdminUserIssues() {
-  const [session] = useState(() => localStorage.getItem(SESSION_KEY) || "");
+  const [session] = useState(() => sessionStorage.getItem(SESSION_KEY) || "");
   const [issues, setIssues] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);

@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { apiFetch } from "../utils/api";
+import { apiFetch, setAuthToken } from "../utils/api";
 import { setErrorReporterUserId } from "../utils/errorReporter";
 
 const AuthContext = createContext(null);
@@ -131,6 +131,7 @@ export function AuthProvider({ children }) {
       method: "POST",
       body: { email, password },
     });
+    if (data.token) setAuthToken(data.token);
     const localUser = mapApiUserToLocal(data.user);
     setUser(localUser);
     setAllTeams(data.allTeams || []);
@@ -142,6 +143,7 @@ export function AuthProvider({ children }) {
       method: "POST",
       body: { name, email, password },
     });
+    if (data.token) setAuthToken(data.token);
     const localUser = mapApiUserToLocal(data.user);
     setUser(localUser);
     return { user: localUser, requiresVerification: data.requiresVerification || false };
@@ -442,8 +444,9 @@ export function AuthProvider({ children }) {
   );
 
   const logout = useCallback(() => {
-    // Tell server to clear the session cookie
+    // Tell server to clear the session cookie and remove local token
     apiFetch("/auth/logout", { method: "POST" }).catch(() => {});
+    setAuthToken(null);
     setUser(null);
     setAllTeams([]);
     setTeamMembers([]);

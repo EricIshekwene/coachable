@@ -113,7 +113,7 @@ export default function AdminPlayEditPage() {
 
   useThemeColor("#121212");
 
-  const session = localStorage.getItem(SESSION_KEY);
+  const session = sessionStorage.getItem(SESSION_KEY);
 
   // Load play data if editing an existing play
   useEffect(() => {

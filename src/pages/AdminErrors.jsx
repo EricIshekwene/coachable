@@ -101,7 +101,7 @@ function formatReportText(r) {
 }
 
 export default function AdminErrors() {
-  const [session] = useState(() => localStorage.getItem(SESSION_KEY) || "");
+  const [session] = useState(() => sessionStorage.getItem(SESSION_KEY) || "");
   const [reports, setReports] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);

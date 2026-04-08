@@ -43,6 +43,7 @@ import { supportsWebCodecsMP4, createMP4Encoder, isIOSDevice, convertWebMToMP4 }
 import { reportError } from "../../utils/errorReporter";
 import { getLogs as getPlaceBallDebugLogs, log as logPlaceBallDebug } from "./placeBallDebugLogger";
 import { getLogs as getRecordingDebugLogs, log as logRecordingDebug } from "./recordingDebugLogger";
+import { getLogs as getRotationDebugLogs, log as logRotationDebug } from "./rotationDebugLogger";
 import { getLogs as getPrefabDebugLogs, log as logPrefabDebug } from "./prefabDebugLogger";
 import { getLogs as getKfMoveDebugLogs, log as logKfMoveDebug } from "../../animation/keyframeMoveDebugLogger";
 import {
@@ -377,6 +378,8 @@ function Slate({
   // Field types whose balls are oblong (football/rugby) and should rotate toward movement direction.
   // Round-ball sports (soccer, basketball, lacrosse) are excluded.
   const ROUND_BALL_FIELD_TYPES_LOWER = new Set(["soccer", "lacrosse", "basketball"]);
+  /** Tracks last logged rotation angle per ball to avoid per-frame log spam. */
+  const lastLoggedRotationRef = useRef({});
 
   const entities = useSlateEntities({
     historyApiRef,
@@ -712,8 +715,20 @@ function Slate({
         const track = animationDataRef.current?.tracks?.[ballId];
         if (!track) return;
         const angle = getDirectionAtTime(track, timeMs);
+        const lastLogged = lastLoggedRotationRef.current[ballId];
         if (angle !== null && sampledPoses[ballId]) {
+          const prev = sampledPoses[ballId];
+          // Only log when angle changes (avoids per-frame spam).
+          if (lastLogged?.angle !== angle) {
+            logRotationDebug(
+              `ballId=${ballId} t=${Math.round(timeMs)}ms x=${Math.round(prev.x ?? 0)} y=${Math.round(prev.y ?? 0)} angle=${angle.toFixed(1)}deg`
+            );
+            lastLoggedRotationRef.current[ballId] = { angle };
+          }
           sampledPoses[ballId] = { ...sampledPoses[ballId], r: angle };
+        } else if (angle === null && lastLogged?.angle !== null) {
+          logRotationDebug(`ballId=${ballId} t=${Math.round(timeMs)}ms angle=null (dist<10 or no track)`);
+          lastLoggedRotationRef.current[ballId] = { angle: null };
         }
       });
     }
@@ -1856,6 +1871,19 @@ function Slate({
     } catch (error) {
       logKfMoveDebug(`copyKfMoveDebug failed err=${error?.message || "clipboard unavailable"}`);
       onShowMessage("Copy keyframe move debug failed", "Clipboard access was denied.", "error");
+      return false;
+    }
+  }, [onShowMessage]);
+
+  const handleCopyRotationDebug = useCallback(async () => {
+    const lines = getRotationDebugLogs(600);
+    const payload = lines.length ? lines.join("\n") : "[ROTATION] no logs captured yet — play the animation first";
+    try {
+      await navigator.clipboard.writeText(payload);
+      return true;
+    } catch (error) {
+      logRotationDebug(`copyRotationDebug failed err=${error?.message || "clipboard unavailable"}`);
+      onShowMessage("Copy rotation debug failed", "Clipboard access was denied.", "error");
       return false;
     }
   }, [onShowMessage]);
@@ -3282,6 +3310,7 @@ function Slate({
           onCopyVideoExportDebug={handleCopyVideoExportDebug}
           onCopyRecordingDebug={handleCopyRecordingDebug}
           onCopyKfMoveDebug={handleCopyKfMoveDebug}
+          onCopyRotationDebug={handleCopyRotationDebug}
           onCopyFixAllDebug={handleCopyFixAllDebug}
           onDebugRotate={handleDebugRotate}
           onDownload={onDownload}

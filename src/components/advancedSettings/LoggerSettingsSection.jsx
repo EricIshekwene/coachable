@@ -9,6 +9,7 @@ export default function LoggerSettingsSection({
   onCopyVideoExportDebug,
   onCopyRecordingDebug,
   onCopyKfMoveDebug,
+  onCopyRotationDebug,
   onCopyFixAllDebug,
   onDebugRotate,
 }) {
@@ -20,6 +21,7 @@ export default function LoggerSettingsSection({
   const [copyVideoExportState, setCopyVideoExportState] = useState("idle");
   const [copyRecordingState, setCopyRecordingState] = useState("idle");
   const [copyKfMoveState, setCopyKfMoveState] = useState("idle");
+  const [copyRotationState, setCopyRotationState] = useState("idle");
   const [copyFixAllState, setCopyFixAllState] = useState("idle");
   const copyAnimationResetRef = useRef(null);
   const copyDrawResetRef = useRef(null);
@@ -29,6 +31,7 @@ export default function LoggerSettingsSection({
   const copyVideoExportResetRef = useRef(null);
   const copyRecordingResetRef = useRef(null);
   const copyKfMoveResetRef = useRef(null);
+  const copyRotationResetRef = useRef(null);
   const copyFixAllResetRef = useRef(null);
 
   useEffect(
@@ -60,6 +63,10 @@ export default function LoggerSettingsSection({
       if (copyKfMoveResetRef.current) {
         clearTimeout(copyKfMoveResetRef.current);
         copyKfMoveResetRef.current = null;
+      }
+      if (copyRotationResetRef.current) {
+        clearTimeout(copyRotationResetRef.current);
+        copyRotationResetRef.current = null;
       }
       if (copyFixAllResetRef.current) {
         clearTimeout(copyFixAllResetRef.current);
@@ -217,6 +224,24 @@ export default function LoggerSettingsSection({
     }, 1500);
   };
 
+  const handleCopyRotationDebug = async (event) => {
+    event.stopPropagation();
+    if (!onCopyRotationDebug) return;
+    try {
+      const ok = await onCopyRotationDebug();
+      setCopyRotationState(ok ? "copied" : "error");
+    } catch {
+      setCopyRotationState("error");
+    }
+    if (copyRotationResetRef.current) {
+      clearTimeout(copyRotationResetRef.current);
+    }
+    copyRotationResetRef.current = setTimeout(() => {
+      setCopyRotationState("idle");
+      copyRotationResetRef.current = null;
+    }, 1500);
+  };
+
   const handleCopyFixAllDebug = async (event) => {
     event.stopPropagation();
     if (!onCopyFixAllDebug) return;
@@ -314,6 +339,17 @@ export default function LoggerSettingsSection({
           : copyKfMoveState === "error"
             ? "Copy Failed"
             : "Copy Keyframe Move Debug"}
+      </button>
+      <button
+        type="button"
+        onClick={handleCopyRotationDebug}
+        className="h-6 sm:h-7 w-full bg-BrandBlack2 border border-BrandGray text-BrandOrange rounded-md px-2 text-[10px] sm:text-[11px] md:text-[12px] font-DmSans cursor-pointer"
+      >
+        {copyRotationState === "copied"
+          ? "Copied"
+          : copyRotationState === "error"
+            ? "Copy Failed"
+            : "Copy Ball Rotation Debug"}
       </button>
       <button
         type="button"
