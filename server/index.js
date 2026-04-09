@@ -69,6 +69,27 @@ app.use("/platform-plays", platformPlaysRoutes);
 app.use("/page-sections", pageSectionsRoutes);
 app.use("/user-issues", userIssuesRoutes);
 
+// --------------- Static files ---------------
+
+const distPath = path.join(__dirname, "..", "dist");
+if (fs.existsSync(distPath)) {
+  // Hashed assets: cache forever (filename changes on new build)
+  app.use(
+    "/assets",
+    express.static(path.join(distPath, "assets"), {
+      maxAge: "1y",
+      immutable: true,
+    })
+  );
+  // All other static files (favicon, images, etc): short cache
+  app.use(express.static(distPath, { maxAge: "1h" }));
+  // SPA fallback: always serve index.html with no-cache so browsers get the latest
+  app.get("*", (_req, res) => {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.sendFile(path.join(distPath, "index.html"));
+  });
+}
+
 // --------------- Error handler ---------------
 
 app.use((err, _req, res, _next) => {
