@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { FiEdit } from "react-icons/fi";
 
-export default function PlayNameEditor({ value, onChange, maxLength = 10 }) {
+export default function PlayNameEditor({ value, onChange, maxLength = 50 }) {
   const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef(null);
 
@@ -38,11 +38,11 @@ export default function PlayNameEditor({ value, onChange, maxLength = 10 }) {
           onChange={handleNameChange}
           onBlur={handleSave}
           onKeyDown={handleKeyDown}
-          className="text-BrandWhite text-lg sm:text-xl md:text-2xl bg-transparent border-none outline-none focus:outline-none text-center font-DmSans font-bold w-full max-w-[100px] sm:max-w-[110px] md:max-w-[120px]"
+          className="text-BrandWhite text-sm sm:text-base bg-transparent border-none outline-none focus:outline-none text-center font-DmSans font-bold w-full"
           maxLength={maxLength}
         />
       ) : (
-        <div className="text-BrandWhite text-lg sm:text-xl md:text-2xl cursor-pointer" onClick={handleEnableEdit}>
+        <div className="text-BrandWhite text-sm sm:text-base cursor-pointer truncate max-w-full" onClick={handleEnableEdit}>
           {value}
         </div>
       )}

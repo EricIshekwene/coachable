@@ -123,7 +123,7 @@ export default function RightPanel({
       {/* Scrollable content area (everything except export actions) */}
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-0.5 hide-scroll" style={{ touchAction: "pan-y" }}>
         <div className="flex flex-col gap-0.5 sm:gap-0.5 md:gap-1 lg:gap-1.5">
-          <PlayNameEditor value={playName} onChange={onPlayNameChange} maxLength={10} />
+          <PlayNameEditor value={playName} onChange={onPlayNameChange} maxLength={50} />
 
           <FieldSettingsSection
             zoomPercent={zoomPercent}
