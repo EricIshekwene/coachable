@@ -19,6 +19,8 @@ import platformPlaysRoutes from "./routes/platformPlays.js";
 import pageSectionsRoutes from "./routes/pageSections.js";
 import userIssuesRoutes from "./routes/userIssues.js";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -101,8 +103,6 @@ app.use((err, _req, res, _next) => {
 // --------------- Start ---------------
 
 // --------------- Auto-migrate on startup ---------------
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 async function autoMigrate() {
   try {
