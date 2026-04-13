@@ -1054,12 +1054,12 @@ function Slate({
       });
       return false;
     }
-    onPlayDataChange(playbookPlayData, playName, { source: "flush" });
+    const promise = onPlayDataChange(playbookPlayData, playName, { source: "flush" });
     logPersistence("flushToDatabase", {
       playName,
       summary: summarizePersistedPlayData(playbookPlayData),
     });
-    return true;
+    return promise ?? true;
   }, [onPlayDataChange, playbookPlayData, playName, entities.playersById]);
 
   // Expose flushToDatabase to parent via ref

@@ -435,5 +435,33 @@ CREATE TABLE IF NOT EXISTS user_issues (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- ============================================================
+-- 12. Playbook sections (admin-curated, coach-facing play collections)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS playbook_sections (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  sport       TEXT,
+  sort_order  INT NOT NULL DEFAULT 0,
+  is_published BOOLEAN NOT NULL DEFAULT false,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS playbook_section_plays (
+  section_id UUID NOT NULL REFERENCES playbook_sections(id) ON DELETE CASCADE,
+  play_id    UUID NOT NULL REFERENCES platform_plays(id) ON DELETE CASCADE,
+  sort_order INT NOT NULL DEFAULT 0,
+  added_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (section_id, play_id)
+);
+
+CREATE INDEX IF NOT EXISTS playbook_section_plays_section_idx
+  ON playbook_section_plays(section_id);
+CREATE INDEX IF NOT EXISTS playbook_section_plays_play_idx
+  ON playbook_section_plays(play_id);
+
 CREATE INDEX IF NOT EXISTS user_issues_created_at_idx ON user_issues(created_at DESC);
 CREATE INDEX IF NOT EXISTS user_issues_user_id_idx ON user_issues(user_id);

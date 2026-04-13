@@ -208,8 +208,8 @@ export default function AdminPlayEditPage() {
     };
   }, []);
 
-  const handleNavigateHome = useCallback(() => {
-    flushRef.current?.();
+  const handleNavigateHome = useCallback(async () => {
+    await flushRef.current?.();
     navigate("/admin/app");
   }, [navigate]);
 

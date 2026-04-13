@@ -32,6 +32,7 @@ import Profile from "./pages/app/Profile";
 import ProfileEmailVerification from "./pages/app/ProfileEmailVerification";
 import Settings from "./pages/app/Settings";
 import ReportIssue from "./pages/app/ReportIssue";
+import Playbooks from "./pages/app/Playbooks";
 import MobileViewOnlyGate from "./components/MobileViewOnlyGate";
 import SharedPlay from "./pages/SharedPlay";
 import SharedPlayView from "./pages/SharedPlayView";
@@ -186,6 +187,7 @@ function AppRoutes() {
         <Route path="profile/verify-email" element={<ProfileEmailVerification />} />
         <Route path="settings" element={<Settings />} />
         <Route path="report-issue" element={<ReportIssue />} />
+        <Route path="playbooks" element={<Playbooks />} />
       </Route>
 
       {/* Fallback */}

@@ -544,6 +544,233 @@ router.patch("/page-sections/:key", requireAdmin, async (req, res, next) => {
   }
 });
 
+// ── Playbook sections ────────────────────────────────────────────────────────
+
+/**
+ * GET /admin/playbook-sections
+ * Returns all playbook sections with their play count.
+ */
+router.get("/playbook-sections", requireAdmin, async (_req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT ps.*, COUNT(psp.play_id)::int AS play_count
+       FROM playbook_sections ps
+       LEFT JOIN playbook_section_plays psp ON psp.section_id = ps.id
+       GROUP BY ps.id
+       ORDER BY ps.sort_order ASC, ps.name ASC`
+    );
+    res.json({
+      sections: rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        description: r.description,
+        sport: r.sport || null,
+        sortOrder: r.sort_order,
+        isPublished: r.is_published,
+        playCount: r.play_count,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /admin/playbook-sections
+ * Create a new playbook section.
+ * Body: { name, description?, sport?, sortOrder? }
+ */
+router.post("/playbook-sections", requireAdmin, async (req, res, next) => {
+  try {
+    const { name, description, sport, sortOrder } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: "name is required" });
+    const { rows } = await pool.query(
+      `INSERT INTO playbook_sections (name, description, sport, sort_order)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [name.trim(), description?.trim() || "", sport || null, sortOrder ?? 0]
+    );
+    const r = rows[0];
+    res.status(201).json({
+      section: {
+        id: r.id,
+        name: r.name,
+        description: r.description,
+        sport: r.sport || null,
+        sortOrder: r.sort_order,
+        isPublished: r.is_published,
+        playCount: 0,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PATCH /admin/playbook-sections/:id
+ * Update a playbook section's name, description, sport, sort_order, or is_published.
+ * Body: { name?, description?, sport?, sortOrder?, isPublished? }
+ */
+router.patch("/playbook-sections/:id", requireAdmin, async (req, res, next) => {
+  try {
+    const { name, description, sport, sortOrder, isPublished } = req.body;
+    const setClauses = ["updated_at = now()"];
+    const values = [];
+    let idx = 1;
+    if (name !== undefined) { setClauses.push(`name = $${idx++}`); values.push(name.trim()); }
+    if (description !== undefined) { setClauses.push(`description = $${idx++}`); values.push(description.trim()); }
+    if (sport !== undefined) { setClauses.push(`sport = $${idx++}`); values.push(sport || null); }
+    if (sortOrder !== undefined) { setClauses.push(`sort_order = $${idx++}`); values.push(sortOrder); }
+    if (isPublished !== undefined) { setClauses.push(`is_published = $${idx++}`); values.push(!!isPublished); }
+    if (setClauses.length === 1) return res.status(400).json({ error: "Nothing to update" });
+    values.push(req.params.id);
+    const { rows } = await pool.query(
+      `UPDATE playbook_sections SET ${setClauses.join(", ")} WHERE id = $${idx} RETURNING *`,
+      values
+    );
+    if (!rows.length) return res.status(404).json({ error: "Section not found" });
+    const r = rows[0];
+    const { rows: countRows } = await pool.query(
+      "SELECT COUNT(*)::int AS play_count FROM playbook_section_plays WHERE section_id = $1",
+      [r.id]
+    );
+    res.json({
+      section: {
+        id: r.id,
+        name: r.name,
+        description: r.description,
+        sport: r.sport || null,
+        sortOrder: r.sort_order,
+        isPublished: r.is_published,
+        playCount: countRows[0].play_count,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * DELETE /admin/playbook-sections/:id
+ * Delete a playbook section and all its play associations (cascade).
+ */
+router.delete("/playbook-sections/:id", requireAdmin, async (req, res, next) => {
+  try {
+    await pool.query("DELETE FROM playbook_sections WHERE id = $1", [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /admin/playbook-sections/:id/plays
+ * Returns all plays in a section, ordered by sort_order.
+ */
+router.get("/playbook-sections/:id/plays", requireAdmin, async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT pp.*, psp.sort_order AS section_sort_order, psp.added_at
+       FROM platform_plays pp
+       JOIN playbook_section_plays psp ON psp.play_id = pp.id
+       WHERE psp.section_id = $1
+       ORDER BY psp.sort_order ASC, psp.added_at ASC`,
+      [req.params.id]
+    );
+    res.json({
+      plays: rows.map((r) => ({
+        id: r.id,
+        title: r.title,
+        description: r.description || "",
+        sport: r.sport || null,
+        thumbnail: r.thumbnail_url || null,
+        tags: r.tags || [],
+        sortOrder: r.section_sort_order,
+        addedAt: r.added_at,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /admin/playbook-sections/:id/plays
+ * Add a platform play to a playbook section.
+ * Body: { playId, sortOrder? }
+ */
+router.post("/playbook-sections/:id/plays", requireAdmin, async (req, res, next) => {
+  try {
+    const { playId, sortOrder } = req.body;
+    if (!playId) return res.status(400).json({ error: "playId is required" });
+    // Verify play exists
+    const { rows: playRows } = await pool.query(
+      "SELECT id FROM platform_plays WHERE id = $1",
+      [playId]
+    );
+    if (!playRows.length) return res.status(404).json({ error: "Play not found" });
+    // Default sort_order to end of list
+    let order = sortOrder;
+    if (order === undefined) {
+      const { rows: maxRows } = await pool.query(
+        "SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM playbook_section_plays WHERE section_id = $1",
+        [req.params.id]
+      );
+      order = maxRows[0].next;
+    }
+    await pool.query(
+      `INSERT INTO playbook_section_plays (section_id, play_id, sort_order)
+       VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+      [req.params.id, playId, order]
+    );
+    res.status(201).json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * DELETE /admin/playbook-sections/:id/plays/:playId
+ * Remove a platform play from a playbook section.
+ */
+router.delete("/playbook-sections/:id/plays/:playId", requireAdmin, async (req, res, next) => {
+  try {
+    await pool.query(
+      "DELETE FROM playbook_section_plays WHERE section_id = $1 AND play_id = $2",
+      [req.params.id, req.params.playId]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PATCH /admin/playbook-sections/:id/plays/:playId
+ * Reorder a play within a playbook section.
+ * Body: { sortOrder }
+ */
+router.patch("/playbook-sections/:id/plays/:playId", requireAdmin, async (req, res, next) => {
+  try {
+    const { sortOrder } = req.body;
+    if (sortOrder === undefined) return res.status(400).json({ error: "sortOrder is required" });
+    const { rowCount } = await pool.query(
+      "UPDATE playbook_section_plays SET sort_order = $1 WHERE section_id = $2 AND play_id = $3",
+      [sortOrder, req.params.id, req.params.playId]
+    );
+    if (!rowCount) return res.status(404).json({ error: "Play not in section" });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── Cleanup ─────────────────────────────────────────────────────────────────
 
 // Cleanup helper — exported for use by the auto-cleanup scheduler

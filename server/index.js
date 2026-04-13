@@ -18,6 +18,7 @@ import errorReportRoutes from "./routes/errorReports.js";
 import platformPlaysRoutes from "./routes/platformPlays.js";
 import pageSectionsRoutes from "./routes/pageSections.js";
 import userIssuesRoutes from "./routes/userIssues.js";
+import playbookSectionsRoutes from "./routes/playbookSections.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -70,6 +71,7 @@ app.use("/error-reports", errorReportRoutes);
 app.use("/platform-plays", platformPlaysRoutes);
 app.use("/page-sections", pageSectionsRoutes);
 app.use("/user-issues", userIssuesRoutes);
+app.use("/playbook-sections", playbookSectionsRoutes);
 
 // --------------- Static files ---------------
 

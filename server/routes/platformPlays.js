@@ -23,14 +23,14 @@ function toPlatformPlayResponse(row, { includePlayData = false } = {}) {
 
 /**
  * GET /platform-plays
- * Returns all featured platform plays (is_featured = true), ordered by sort_order.
- * Public — no authentication required.
+ * Returns all featured platform plays (is_featured = true) that are not in a folder,
+ * ordered by sort_order. Public — no authentication required.
  */
 router.get("/", async (_req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT * FROM platform_plays
-       WHERE is_featured = true
+       WHERE is_featured = true AND folder_id IS NULL
        ORDER BY sort_order ASC, created_at DESC`
     );
     res.json({ plays: rows.map((r) => toPlatformPlayResponse(r)) });

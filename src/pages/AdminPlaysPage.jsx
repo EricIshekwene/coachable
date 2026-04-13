@@ -4,12 +4,32 @@ import logo from "../assets/logos/full_Coachable_logo.png";
 import {
   FiPlus, FiEdit2, FiTrash2, FiLogOut, FiFolder, FiFolderPlus,
   FiChevronRight, FiLink, FiCheck, FiX, FiEdit3, FiLayout, FiSearch, FiCopy,
+  FiBookOpen, FiEye, FiEyeOff, FiMoreHorizontal, FiMenu, FiClock,
 } from "react-icons/fi";
 import PlayPreviewCard from "../components/PlayPreviewCard";
 import ConfirmModal from "../components/subcomponents/ConfirmModal";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
+/**
+ * Format an ISO timestamp as a human-readable relative time string.
+ * @param {string} isoString - ISO 8601 date string
+ * @returns {string} Relative time string (e.g. "2w ago")
+ */
+function formatRelativeTime(isoString) {
+  if (!isoString) return "";
+  const diff = Date.now() - new Date(isoString).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  return `${weeks}w ago`;
+}
 
 // ── API helpers ──────────────────────────────────────────────────────────────
 
@@ -186,6 +206,147 @@ async function setSectionPriority(session, key, isPriority) {
   return (await res.json()).section;
 }
 
+// ── Playbook section API helpers ─────────────────────────────────────────────
+
+/**
+ * Fetch all admin playbook sections (includes drafts).
+ * @param {string} session - Admin session token
+ * @returns {Promise<Object[]>} Array of section objects
+ */
+async function fetchPlaybookSections(session) {
+  const res = await fetch(`${API_URL}/admin/playbook-sections`, {
+    headers: { "x-admin-session": session },
+  });
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  return (await res.json()).sections || [];
+}
+
+/**
+ * Create a new playbook section.
+ * @param {string} session - Admin session token
+ * @param {Object} data - { name, description?, sport? }
+ * @returns {Promise<Object>} Created section object
+ */
+async function createPlaybookSection(session, data) {
+  const res = await fetch(`${API_URL}/admin/playbook-sections`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-admin-session": session },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.error || "Failed to create section");
+  }
+  return (await res.json()).section;
+}
+
+/**
+ * Update a playbook section.
+ * @param {string} session - Admin session token
+ * @param {string} id - Section ID
+ * @param {Object} data - Partial section fields
+ * @returns {Promise<Object>} Updated section object
+ */
+async function updatePlaybookSection(session, id, data) {
+  const res = await fetch(`${API_URL}/admin/playbook-sections/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-admin-session": session },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to update section");
+  return (await res.json()).section;
+}
+
+/**
+ * Delete a playbook section.
+ * @param {string} session - Admin session token
+ * @param {string} id - Section ID
+ */
+async function deletePlaybookSection(session, id) {
+  const res = await fetch(`${API_URL}/admin/playbook-sections/${id}`, {
+    method: "DELETE",
+    headers: { "x-admin-session": session },
+  });
+  if (!res.ok) throw new Error("Failed to delete section");
+}
+
+/**
+ * Fetch plays belonging to a playbook section.
+ * @param {string} session - Admin session token
+ * @param {string} sectionId - Section ID
+ * @returns {Promise<Object[]>} Array of play objects
+ */
+async function fetchSectionPlays(session, sectionId) {
+  const res = await fetch(`${API_URL}/admin/playbook-sections/${sectionId}/plays`, {
+    headers: { "x-admin-session": session },
+  });
+  if (!res.ok) throw new Error("Failed to load section plays");
+  return (await res.json()).plays || [];
+}
+
+/**
+ * Add a platform play to a playbook section.
+ * @param {string} session - Admin session token
+ * @param {string} sectionId - Section ID
+ * @param {string} playId - Platform play ID
+ */
+async function addPlayToSection(session, sectionId, playId) {
+  const res = await fetch(`${API_URL}/admin/playbook-sections/${sectionId}/plays`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-admin-session": session },
+    body: JSON.stringify({ playId }),
+  });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.error || "Failed to add play");
+  }
+}
+
+/**
+ * Remove a platform play from a playbook section.
+ * @param {string} session - Admin session token
+ * @param {string} sectionId - Section ID
+ * @param {string} playId - Platform play ID
+ */
+async function removePlayFromSection(session, sectionId, playId) {
+  const res = await fetch(`${API_URL}/admin/playbook-sections/${sectionId}/plays/${playId}`, {
+    method: "DELETE",
+    headers: { "x-admin-session": session },
+  });
+  if (!res.ok) throw new Error("Failed to remove play");
+}
+
+/**
+ * Update the sort_order of a platform play (for drag-to-reorder in the plays grid).
+ * @param {string} session - Admin session token
+ * @param {string} playId - Platform play ID
+ * @param {number} sortOrder - New sort order value
+ */
+async function reorderPlayApi(session, playId, sortOrder) {
+  const res = await fetch(`${API_URL}/admin/plays/${playId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-admin-session": session },
+    body: JSON.stringify({ sortOrder }),
+  });
+  if (!res.ok) throw new Error("Failed to reorder play");
+}
+
+/**
+ * Update the sort_order of a play within a playbook section (for drag-to-reorder).
+ * @param {string} session - Admin session token
+ * @param {string} sectionId - Section ID
+ * @param {string} playId - Platform play ID
+ * @param {number} sortOrder - New sort order value
+ */
+async function reorderSectionPlayApi(session, sectionId, playId, sortOrder) {
+  const res = await fetch(`${API_URL}/admin/playbook-sections/${sectionId}/plays/${playId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-admin-session": session },
+    body: JSON.stringify({ sortOrder }),
+  });
+  if (!res.ok) throw new Error("Failed to reorder play in section");
+}
+
 // ── Subcomponents ─────────────────────────────────────────────────────────────
 
 /**
@@ -264,47 +425,83 @@ function FolderItem({ folder, isActive, onClick, onRename, onDelete }) {
   );
 }
 
+/** Copy-link menu item with its own copied-flash state. */
+function CopyLinkButton({ play, onClose }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      onClick={() => {
+        const url = `${window.location.origin}/platform-play/${play.id}`;
+        navigator.clipboard.writeText(url).then(() => {
+          setCopied(true);
+          setTimeout(() => { setCopied(false); onClose(); }, 1200);
+        });
+      }}
+      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs text-BrandGray transition hover:bg-white/6 hover:text-white"
+    >
+      {copied ? <FiCheck className="shrink-0 text-[10px] text-green-400" /> : <FiLink className="shrink-0 text-[10px]" />}
+      {copied ? "Copied!" : "Copy shareable link"}
+    </button>
+  );
+}
+
+/** Duplicate menu item with its own loading state. */
+function DuplicateButton({ play, onDuplicate, onClose }) {
+  const [duplicating, setDuplicating] = useState(false);
+  return (
+    <button
+      onClick={async () => {
+        setDuplicating(true);
+        await onDuplicate(play);
+        setDuplicating(false);
+        onClose();
+      }}
+      disabled={duplicating}
+      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs text-BrandGray transition hover:bg-white/6 hover:text-white disabled:opacity-50"
+    >
+      {duplicating
+        ? <span className="inline-block h-3 w-3 shrink-0 rounded-full border border-BrandGray2/30 border-t-BrandGray2 animate-spin" />
+        : <FiCopy className="shrink-0 text-[10px]" />}
+      Duplicate
+    </button>
+  );
+}
+
 /**
- * A single platform play card with edit, copy link, move, and delete actions.
+ * A single platform play card styled to match the regular app play card.
+ * Edit is always visible at the bottom; all secondary actions (copy link, duplicate,
+ * add to section, move to folder, delete) are accessed via the three-dots menu.
+ * The outer wrapper is draggable — the parent grid handles drag events.
  * @param {Object} props
  * @param {Object} props.play - Platform play object
  * @param {Object[]} props.folders - All folders for the move dropdown
+ * @param {Object[]} props.playbookSections - All playbook sections for the add-to-section dropdown
  * @param {Function} props.onEdit - Called with play to navigate to editor
  * @param {Function} props.onDelete - Called with play to delete
  * @param {Function} props.onMove - Called with (play, folderId) to move to folder
  * @param {Function} props.onDuplicate - Called with play to duplicate it
+ * @param {Function} props.onAddToSection - Called with (play, sectionId) to add play to a section
  */
-function PlayCard({ play, folders, onEdit, onDelete, onMove, onDuplicate }) {
-  const [copied, setCopied] = useState(false);
-  const [duplicating, setDuplicating] = useState(false);
-  const [moveOpen, setMoveOpen] = useState(false);
-  const moveRef = useRef(null);
+function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, onDuplicate, onAddToSection }) {
+  // null → closed  |  "main" → first popup  |  "sections" / "folders" → sub-pickers
+  const [menuStep, setMenuStep] = useState(null);
+  const menuRef = useRef(null);
 
   useEffect(() => {
-    if (!moveOpen) return;
+    if (!menuStep) return;
     const handler = (e) => {
-      if (moveRef.current && !moveRef.current.contains(e.target)) setMoveOpen(false);
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuStep(null);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [moveOpen]);
+  }, [menuStep]);
 
-  /**
-   * Copy the public shareable link for this platform play to clipboard.
-   * The link points to /platform-play/:id which is publicly accessible.
-   */
-  const handleCopyLink = () => {
-    const url = `${window.location.origin}/platform-play/${play.id}`;
-    navigator.clipboard.writeText(url).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
+  const close = () => setMenuStep(null);
 
   return (
-    <div className="group flex flex-col overflow-hidden rounded-xl border border-white/8 bg-[#1e2228] transition hover:border-white/16">
+    <div className="group relative flex cursor-grab flex-col rounded-xl border p-5 transition active:cursor-grabbing border-BrandGray2/20 bg-BrandBlack2/30 hover:border-BrandOrange/30 hover:bg-BrandBlack2/60">
       {/* Preview */}
-      <div className="relative">
+      <div className="relative w-full overflow-hidden rounded-xl border border-BrandGray2/60 aspect-[16/10] mb-4">
         <PlayPreviewCard
           playData={play.playData}
           autoplay="hover"
@@ -322,113 +519,150 @@ function PlayCard({ play, folders, onEdit, onDelete, onMove, onDuplicate }) {
         )}
       </div>
 
-      {/* Info */}
-      <div className="flex flex-1 flex-col p-4">
-        <h3 className="font-Manrope text-sm font-bold text-white">{play.title}</h3>
-        {play.description && (
-          <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-BrandGray">
-            {play.description}
-          </p>
-        )}
-        {play.tags?.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {play.tags.map((tag) => (
-              <span key={tag} className="rounded bg-white/6 px-1.5 py-0.5 text-[10px] text-BrandGray2">
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Actions */}
-        <div className="mt-4 flex items-center gap-2">
-          {/* Edit */}
+      {/* Title + three-dots menu */}
+      <div className="flex items-center gap-1.5">
+        <h3 className="min-w-0 flex-1 font-Manrope text-sm font-semibold truncate text-BrandText">{play.title}</h3>
+        <div className="relative shrink-0" ref={menuRef}>
           <button
-            onClick={() => onEdit(play)}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/4 py-2 text-xs font-semibold text-white transition hover:bg-white/8"
+            onClick={(e) => { e.stopPropagation(); setMenuStep((v) => (v ? null : "main")); }}
+            className="rounded-md p-1 text-BrandGray2 opacity-100 md:opacity-0 transition hover:bg-BrandBlack2 hover:text-BrandText group-hover:opacity-100"
           >
-            <FiEdit2 className="text-xs" /> Edit
+            <FiMoreHorizontal className="text-sm" />
           </button>
 
-          {/* Copy link */}
-          <button
-            onClick={handleCopyLink}
-            title={copied ? "Copied!" : "Copy shareable link"}
-            className={`flex items-center justify-center rounded-lg border px-2.5 py-2 text-xs transition ${
-              copied
-                ? "border-green-500/40 bg-green-500/15 text-green-400"
-                : "border-white/10 bg-white/4 text-BrandGray2 hover:text-white"
-            }`}
-          >
-            {copied ? <FiCheck className="text-sm" /> : <FiLink className="text-sm" />}
-          </button>
+          {/* ── Step 1: main popup ── */}
+          {menuStep === "main" && (
+            <div className="absolute right-0 top-full z-30 mt-1 w-52 overflow-hidden rounded-xl border border-white/10 bg-[#1a1d24] py-1 shadow-xl">
+              {/* Copy link */}
+              <CopyLinkButton play={play} onClose={close} />
 
-          {/* Duplicate */}
-          <button
-            onClick={async () => {
-              setDuplicating(true);
-              await onDuplicate(play);
-              setDuplicating(false);
-            }}
-            disabled={duplicating}
-            title="Duplicate play"
-            className="flex items-center justify-center rounded-lg border border-white/10 bg-white/4 px-2.5 py-2 text-xs text-BrandGray2 transition hover:text-white disabled:opacity-50"
-          >
-            {duplicating
-              ? <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-BrandGray2/30 border-t-BrandGray2 animate-spin" />
-              : <FiCopy className="text-sm" />}
-          </button>
+              {/* Duplicate */}
+              <DuplicateButton play={play} onDuplicate={onDuplicate} onClose={close} />
 
-          {/* Move to folder */}
-          <div className="relative" ref={moveRef}>
-            <button
-              onClick={() => setMoveOpen((v) => !v)}
-              title="Move to folder"
-              className={`flex items-center justify-center rounded-lg border px-2.5 py-2 text-xs transition ${
-                play.folderId
-                  ? "border-blue-500/30 bg-blue-500/10 text-blue-400"
-                  : "border-white/10 bg-white/4 text-BrandGray2 hover:text-white"
-              }`}
-            >
-              <FiFolder className="text-sm" />
-            </button>
-            {moveOpen && (
-              <div className="absolute bottom-full right-0 z-30 mb-1 w-48 overflow-hidden rounded-xl border border-white/10 bg-[#1a1d24] py-1 shadow-xl">
+              <div className="my-1 border-t border-white/6" />
+
+              {/* Add to section → sub-popup */}
+              <button
+                onClick={() => setMenuStep("sections")}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs text-BrandGray transition hover:bg-white/6 hover:text-white"
+              >
+                <FiBookOpen className="shrink-0 text-[10px]" />
+                Add to Section
+                <FiChevronRight className="ml-auto shrink-0 text-[10px] text-BrandGray2" />
+              </button>
+
+              {/* Move to folder → sub-popup */}
+              <button
+                onClick={() => setMenuStep("folders")}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs text-BrandGray transition hover:bg-white/6 hover:text-white"
+              >
+                <FiFolder className={`shrink-0 text-[10px] ${play.folderId ? "text-blue-400" : ""}`} />
+                Move to Folder
+                <FiChevronRight className="ml-auto shrink-0 text-[10px] text-BrandGray2" />
+              </button>
+
+              <div className="my-1 border-t border-white/6" />
+
+              {/* Delete */}
+              <button
+                onClick={() => { onDelete(play); close(); }}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs text-red-400 transition hover:bg-red-500/10 hover:text-red-300"
+              >
+                <FiTrash2 className="shrink-0 text-[10px]" /> Delete
+              </button>
+            </div>
+          )}
+
+          {/* ── Step 2a: section picker ── */}
+          {menuStep === "sections" && (
+            <div className="absolute right-0 top-full z-30 mt-1 w-56 overflow-hidden rounded-xl border border-white/10 bg-[#1a1d24] shadow-xl">
+              <div className="flex items-center gap-2 border-b border-white/6 px-3 py-2.5">
                 <button
-                  onClick={() => { onMove(play, null); setMoveOpen(false); }}
-                  className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition hover:bg-white/6 ${
-                    !play.folderId ? "text-BrandOrange" : "text-BrandGray"
+                  onClick={() => setMenuStep("main")}
+                  className="flex items-center gap-1 text-[11px] text-BrandGray2 transition hover:text-white"
+                >
+                  <FiChevronRight className="rotate-180 text-[10px]" /> Back
+                </button>
+                <span className="flex-1 text-center text-[11px] font-semibold text-white">Add to Section</span>
+              </div>
+              <div className="max-h-60 overflow-y-auto py-1">
+                {(playbookSections || []).length === 0 ? (
+                  <p className="px-3 py-2 text-xs text-BrandGray2">No sections yet</p>
+                ) : (
+                  (playbookSections || []).map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => { onAddToSection(play, s.id); close(); }}
+                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs text-BrandGray transition hover:bg-white/6 hover:text-white"
+                    >
+                      <FiBookOpen className="shrink-0 text-[10px]" />
+                      <span className="flex-1 truncate">{s.name}</span>
+                      {!s.isPublished && (
+                        <span className="shrink-0 text-[9px] text-BrandGray2">draft</span>
+                      )}
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Step 2b: folder picker ── */}
+          {menuStep === "folders" && (
+            <div className="absolute right-0 top-full z-30 mt-1 w-56 overflow-hidden rounded-xl border border-white/10 bg-[#1a1d24] shadow-xl">
+              <div className="flex items-center gap-2 border-b border-white/6 px-3 py-2.5">
+                <button
+                  onClick={() => setMenuStep("main")}
+                  className="flex items-center gap-1 text-[11px] text-BrandGray2 transition hover:text-white"
+                >
+                  <FiChevronRight className="rotate-180 text-[10px]" /> Back
+                </button>
+                <span className="flex-1 text-center text-[11px] font-semibold text-white">Move to Folder</span>
+              </div>
+              <div className="max-h-60 overflow-y-auto py-1">
+                <button
+                  onClick={() => { onMove(play, null); close(); }}
+                  className={`flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs transition hover:bg-white/6 ${
+                    !play.folderId ? "text-BrandOrange" : "text-BrandGray hover:text-white"
                   }`}
                 >
-                  <FiX className="text-[10px]" /> No folder
+                  <FiX className="shrink-0 text-[10px]" /> No folder
+                  {!play.folderId && <FiCheck className="ml-auto shrink-0 text-[10px]" />}
                 </button>
-                {folders.map((f) => (
-                  <button
-                    key={f.id}
-                    onClick={() => { onMove(play, f.id); setMoveOpen(false); }}
-                    className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition hover:bg-white/6 ${
-                      play.folderId === f.id ? "text-BrandOrange" : "text-BrandGray"
-                    }`}
-                  >
-                    <FiFolder className="text-[10px]" /> {f.name}
-                  </button>
-                ))}
                 {folders.length === 0 && (
                   <p className="px-3 py-2 text-xs text-BrandGray2">No folders yet</p>
                 )}
+                {folders.map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => { onMove(play, f.id); close(); }}
+                    className={`flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs transition hover:bg-white/6 ${
+                      play.folderId === f.id ? "text-BrandOrange" : "text-BrandGray hover:text-white"
+                    }`}
+                  >
+                    <FiFolder className="shrink-0 text-[10px]" />
+                    <span className="flex-1 truncate">{f.name}</span>
+                    {play.folderId === f.id && <FiCheck className="ml-auto shrink-0 text-[10px]" />}
+                  </button>
+                ))}
               </div>
-            )}
-          </div>
-
-          {/* Delete */}
-          <button
-            onClick={() => onDelete(play)}
-            title="Delete play"
-            className="flex items-center justify-center rounded-lg border border-white/10 bg-white/4 px-2.5 py-2 text-xs text-red-400 transition hover:border-red-500/30 hover:bg-red-500/10"
-          >
-            <FiTrash2 className="text-sm" />
-          </button>
+            </div>
+          )}
         </div>
+      </div>
+
+      {/* Footer: time + edit */}
+      <div className="mt-auto pt-3 flex items-center justify-between">
+        <span className="flex items-center gap-1.5 text-[11px] text-BrandGray2">
+          <FiClock className="text-[10px]" />
+          {formatRelativeTime(play.createdAt)}
+        </span>
+        <button
+          onClick={() => onEdit(play)}
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-BrandGray transition hover:bg-BrandGray2/20 hover:text-BrandOrange"
+        >
+          <FiEdit2 className="text-[10px]" /> Edit
+        </button>
       </div>
     </div>
   );
@@ -634,6 +868,549 @@ function SectionRow({ section, plays, onAssign, onTogglePriority }) {
   );
 }
 
+// ── Playbook Section Panel ────────────────────────────────────────────────────
+
+/**
+ * Full admin panel for managing playbook sections.
+ * Left side: list of sections. Right side: selected section detail with its plays.
+ * @param {Object} props
+ * @param {string} props.session - Admin session token
+ * @param {Object[]} props.allPlays - All platform plays (for the add-play picker)
+ * @param {string} props.error - Parent-level error string
+ * @param {Function} props.setError - Error setter from parent
+ */
+function PlaybookSectionPanel({ session, allPlays, error, setError }) {
+  const [sections, setSections] = useState([]);
+  const [loadingSections, setLoadingSections] = useState(true);
+  const [selectedId, setSelectedId] = useState(null);
+  const [sectionPlays, setSectionPlays] = useState([]);
+  const [loadingPlays, setLoadingPlays] = useState(false);
+
+  // New section form
+  const [creatingSection, setCreatingSection] = useState(false);
+  const [newSectionName, setNewSectionName] = useState("");
+  const [newSectionSport, setNewSectionSport] = useState("");
+  const newSectionRef = useRef(null);
+
+  // Add-play picker
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerSearch, setPickerSearch] = useState("");
+  const pickerRef = useRef(null);
+
+  // Inline rename of selected section
+  const [editingName, setEditingName] = useState(false);
+  const [editNameValue, setEditNameValue] = useState("");
+  const editNameRef = useRef(null);
+
+  // Confirm delete
+  const [deleteTarget, setDeleteTarget] = useState(null);
+
+  // Drag-to-reorder within section plays
+  const [sectionDragSrcId, setSectionDragSrcId] = useState(null);
+  const [sectionDragOverId, setSectionDragOverId] = useState(null);
+
+  const selectedSection = sections.find((s) => s.id === selectedId) || null;
+
+  // Load sections on mount
+  useEffect(() => {
+    setLoadingSections(true);
+    fetchPlaybookSections(session)
+      .then((data) => {
+        setSections(data);
+        if (data.length && !selectedId) setSelectedId(data[0].id);
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoadingSections(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
+
+  // Load plays when selected section changes
+  useEffect(() => {
+    if (!selectedId) { setSectionPlays([]); return; }
+    setLoadingPlays(true);
+    fetchSectionPlays(session, selectedId)
+      .then(setSectionPlays)
+      .catch((err) => setError(err.message))
+      .finally(() => setLoadingPlays(false));
+  }, [selectedId, session, setError]);
+
+  // Close picker on outside click
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const handler = (e) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target)) {
+        setPickerOpen(false);
+        setPickerSearch("");
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [pickerOpen]);
+
+  useEffect(() => {
+    if (creatingSection) setTimeout(() => newSectionRef.current?.focus(), 0);
+  }, [creatingSection]);
+
+  useEffect(() => {
+    if (editingName) setTimeout(() => editNameRef.current?.focus(), 0);
+  }, [editingName]);
+
+  /** Create a new section and auto-select it. */
+  const handleCreateSection = async () => {
+    const name = newSectionName.trim();
+    if (!name) { setCreatingSection(false); return; }
+    try {
+      const section = await createPlaybookSection(session, {
+        name,
+        sport: newSectionSport.trim() || undefined,
+      });
+      setSections((prev) => [...prev, section]);
+      setSelectedId(section.id);
+      setSectionPlays([]);
+    } catch (err) { setError(err.message); }
+    setNewSectionName("");
+    setNewSectionSport("");
+    setCreatingSection(false);
+  };
+
+  /** Rename selected section inline. */
+  const handleCommitRename = async () => {
+    setEditingName(false);
+    const name = editNameValue.trim();
+    if (!name || name === selectedSection?.name) return;
+    try {
+      const updated = await updatePlaybookSection(session, selectedId, { name });
+      setSections((prev) => prev.map((s) => (s.id === selectedId ? updated : s)));
+    } catch (err) { setError(err.message); }
+  };
+
+  /** Toggle publish/draft for selected section. */
+  const handleTogglePublish = async () => {
+    if (!selectedSection) return;
+    try {
+      const updated = await updatePlaybookSection(session, selectedId, {
+        isPublished: !selectedSection.isPublished,
+      });
+      setSections((prev) => prev.map((s) => (s.id === selectedId ? updated : s)));
+    } catch (err) { setError(err.message); }
+  };
+
+  /** Delete a section. */
+  const handleDeleteSection = async () => {
+    if (!deleteTarget) return;
+    const id = deleteTarget.id;
+    setDeleteTarget(null);
+    try {
+      await deletePlaybookSection(session, id);
+      setSections((prev) => prev.filter((s) => s.id !== id));
+      if (selectedId === id) {
+        const remaining = sections.filter((s) => s.id !== id);
+        setSelectedId(remaining[0]?.id || null);
+      }
+    } catch (err) { setError(err.message); }
+  };
+
+  /** Add a play to the currently selected section. */
+  const handleAddPlay = async (playId) => {
+    setPickerOpen(false);
+    setPickerSearch("");
+    try {
+      await addPlayToSection(session, selectedId, playId);
+      // Reload plays for this section
+      const plays = await fetchSectionPlays(session, selectedId);
+      setSectionPlays(plays);
+      // Update play count on the section card
+      setSections((prev) =>
+        prev.map((s) => (s.id === selectedId ? { ...s, playCount: plays.length } : s))
+      );
+    } catch (err) { setError(err.message); }
+  };
+
+  /** Remove a play from the currently selected section. */
+  const handleRemovePlay = async (playId) => {
+    try {
+      await removePlayFromSection(session, selectedId, playId);
+      setSectionPlays((prev) => prev.filter((p) => p.id !== playId));
+      setSections((prev) =>
+        prev.map((s) =>
+          s.id === selectedId ? { ...s, playCount: Math.max(0, s.playCount - 1) } : s
+        )
+      );
+    } catch (err) { setError(err.message); }
+  };
+
+  /**
+   * Reorder plays within the selected section by drag-and-drop.
+   * Optimistically updates local state then persists new sort_orders to the backend.
+   * @param {string} srcId - ID of the play being dragged
+   * @param {string} destId - ID of the play at the drop target position
+   */
+  const handleReorderSectionPlay = async (srcId, destId) => {
+    if (!srcId || srcId === destId) return;
+    setSectionDragSrcId(null);
+    setSectionDragOverId(null);
+    const srcIdx = sectionPlays.findIndex((p) => p.id === srcId);
+    const destIdx = sectionPlays.findIndex((p) => p.id === destId);
+    if (srcIdx < 0 || destIdx < 0) return;
+    const reordered = [...sectionPlays];
+    const [moved] = reordered.splice(srcIdx, 1);
+    reordered.splice(destIdx, 0, moved);
+    setSectionPlays(reordered);
+    try {
+      await Promise.all(reordered.map((p, i) => reorderSectionPlayApi(session, selectedId, p.id, i * 10)));
+    } catch (err) {
+      setError(err.message);
+      const plays = await fetchSectionPlays(session, selectedId);
+      setSectionPlays(plays);
+    }
+  };
+
+  // Plays already in section (for excluding from picker)
+  const sectionPlayIds = new Set(sectionPlays.map((p) => p.id));
+  const pickerPlays = allPlays.filter((p) => {
+    if (sectionPlayIds.has(p.id)) return false;
+    if (!pickerSearch.trim()) return true;
+    const q = pickerSearch.toLowerCase();
+    return p.title?.toLowerCase().includes(q) || p.sport?.toLowerCase().includes(q);
+  });
+
+  return (
+    <div className="mx-auto max-w-6xl px-6 py-8">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="font-Manrope text-base font-bold text-white">Playbook Sections</h2>
+          <p className="mt-1 text-xs text-BrandGray2">
+            Curate named collections of platform plays for coaches to reference in the app.
+          </p>
+        </div>
+      </div>
+
+      {error && (
+        <div className="mb-4 rounded-lg bg-red-600/10 px-4 py-2 text-sm text-red-400">{error}</div>
+      )}
+
+      <div className="flex min-h-[520px] gap-5">
+        {/* ── Left: Section list ── */}
+        <div className="w-64 shrink-0">
+          <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wider text-BrandGray2">
+            Sections
+          </p>
+
+          {loadingSections ? (
+            <div className="flex justify-center py-8">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-BrandOrange/30 border-t-BrandOrange" />
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {sections.map((section) => (
+                <button
+                  key={section.id}
+                  onClick={() => setSelectedId(section.id)}
+                  className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs transition ${
+                    selectedId === section.id
+                      ? "bg-BrandOrange/15 text-BrandOrange"
+                      : "text-BrandGray hover:bg-white/5 hover:text-white"
+                  }`}
+                >
+                  <FiBookOpen className="shrink-0 text-xs" />
+                  <span className="flex-1 truncate font-medium">{section.name}</span>
+                  <span className="shrink-0 text-[10px] opacity-60">{section.playCount}</span>
+                  {!section.isPublished && (
+                    <span className="shrink-0 rounded bg-BrandGray2/20 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-BrandGray2">
+                      draft
+                    </span>
+                  )}
+                </button>
+              ))}
+              {sections.length === 0 && !creatingSection && (
+                <p className="px-1 text-xs text-BrandGray2">No sections yet</p>
+              )}
+            </div>
+          )}
+
+          {/* New section input */}
+          {creatingSection ? (
+            <div className="mt-2 space-y-1.5">
+              <input
+                ref={newSectionRef}
+                value={newSectionName}
+                onChange={(e) => setNewSectionName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCreateSection();
+                  if (e.key === "Escape") { setCreatingSection(false); setNewSectionName(""); }
+                }}
+                placeholder="Section name"
+                className="w-full rounded-lg border border-white/10 bg-[#1e2228] px-2.5 py-1.5 text-xs text-white outline-none placeholder:text-BrandGray2 focus:border-BrandOrange/40"
+              />
+              <input
+                value={newSectionSport}
+                onChange={(e) => setNewSectionSport(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCreateSection();
+                  if (e.key === "Escape") { setCreatingSection(false); setNewSectionName(""); }
+                }}
+                placeholder="Sport (optional)"
+                className="w-full rounded-lg border border-white/10 bg-[#1e2228] px-2.5 py-1.5 text-xs text-white outline-none placeholder:text-BrandGray2 focus:border-BrandOrange/40"
+              />
+              <div className="flex gap-1">
+                <button
+                  onClick={handleCreateSection}
+                  className="flex-1 rounded-lg bg-BrandOrange py-1.5 text-[10px] font-semibold text-white transition hover:brightness-110"
+                >
+                  Create
+                </button>
+                <button
+                  onClick={() => { setCreatingSection(false); setNewSectionName(""); }}
+                  className="flex-1 rounded-lg border border-white/10 py-1.5 text-[10px] text-BrandGray2 transition hover:text-white"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setCreatingSection(true)}
+              className="mt-3 flex w-full items-center gap-1.5 rounded-lg border border-dashed border-white/10 px-2.5 py-2 text-xs text-BrandGray2 transition hover:border-white/20 hover:text-white"
+            >
+              <FiPlus className="text-xs" /> New Section
+            </button>
+          )}
+        </div>
+
+        {/* ── Right: Section detail ── */}
+        <div className="min-w-0 flex-1 rounded-xl border border-white/8 bg-[#1e2228] p-5">
+          {!selectedSection ? (
+            <div className="flex h-full items-center justify-center">
+              <p className="text-sm text-BrandGray2">Select a section to manage its plays</p>
+            </div>
+          ) : (
+            <>
+              {/* Section header */}
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  {editingName ? (
+                    <input
+                      ref={editNameRef}
+                      value={editNameValue}
+                      onChange={(e) => setEditNameValue(e.target.value)}
+                      onBlur={handleCommitRename}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleCommitRename();
+                        if (e.key === "Escape") setEditingName(false);
+                      }}
+                      className="w-full rounded-lg border border-BrandOrange/40 bg-[#13151a] px-2 py-1 text-sm font-bold text-white outline-none"
+                    />
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-Manrope text-sm font-bold text-white">
+                        {selectedSection.name}
+                      </h3>
+                      {selectedSection.sport && (
+                        <span className="rounded-full bg-white/8 px-2 py-0.5 text-[10px] text-BrandGray2">
+                          {selectedSection.sport}
+                        </span>
+                      )}
+                      <button
+                        onClick={() => {
+                          setEditNameValue(selectedSection.name);
+                          setEditingName(true);
+                        }}
+                        title="Rename section"
+                        className="rounded p-0.5 text-BrandGray2 hover:text-white"
+                      >
+                        <FiEdit3 className="text-[10px]" />
+                      </button>
+                    </div>
+                  )}
+                  <p className="mt-0.5 text-xs text-BrandGray2">
+                    {selectedSection.playCount} {selectedSection.playCount === 1 ? "play" : "plays"}
+                  </p>
+                </div>
+
+                {/* Actions */}
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    onClick={handleTogglePublish}
+                    title={selectedSection.isPublished ? "Unpublish (hide from coaches)" : "Publish (visible to coaches)"}
+                    className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                      selectedSection.isPublished
+                        ? "border-green-500/30 bg-green-500/10 text-green-400 hover:bg-green-500/20"
+                        : "border-white/10 bg-white/4 text-BrandGray2 hover:text-white"
+                    }`}
+                  >
+                    {selectedSection.isPublished
+                      ? <><FiEye className="text-xs" /> Published</>
+                      : <><FiEyeOff className="text-xs" /> Draft</>
+                    }
+                  </button>
+                  <button
+                    onClick={() => setDeleteTarget(selectedSection)}
+                    title="Delete section"
+                    className="flex items-center justify-center rounded-lg border border-white/10 bg-white/4 px-2.5 py-2 text-xs text-red-400 transition hover:border-red-500/30 hover:bg-red-500/10"
+                  >
+                    <FiTrash2 className="text-xs" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Add play button + picker */}
+              <div className="mb-4 flex items-center gap-3">
+                <div className="relative" ref={pickerRef}>
+                  <button
+                    onClick={() => setPickerOpen((v) => !v)}
+                    className="flex items-center gap-1.5 rounded-lg bg-BrandOrange px-3.5 py-2 text-xs font-semibold text-white transition hover:brightness-110"
+                  >
+                    <FiPlus /> Add Play
+                  </button>
+
+                  {pickerOpen && (
+                    <div className="absolute left-0 top-full z-30 mt-2 w-80 overflow-hidden rounded-xl border border-white/10 bg-[#1a1d24] shadow-2xl">
+                      {/* Search */}
+                      <div className="flex items-center gap-2 border-b border-white/8 px-3 py-2.5">
+                        <FiSearch className="shrink-0 text-xs text-BrandGray2" />
+                        <input
+                          autoFocus
+                          value={pickerSearch}
+                          onChange={(e) => setPickerSearch(e.target.value)}
+                          placeholder="Search plays..."
+                          className="flex-1 bg-transparent text-xs text-white outline-none placeholder:text-BrandGray2"
+                        />
+                      </div>
+                      <div className="max-h-72 overflow-y-auto">
+                        {pickerPlays.length === 0 && (
+                          <p className="px-4 py-3 text-xs text-BrandGray2">
+                            {sectionPlayIds.size === allPlays.length
+                              ? "All plays are already in this section"
+                              : "No plays found"}
+                          </p>
+                        )}
+                        {pickerPlays.map((p) => (
+                          <button
+                            key={p.id}
+                            onClick={() => handleAddPlay(p.id)}
+                            className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs transition hover:bg-white/6"
+                          >
+                            <div className="w-12 shrink-0">
+                              {p.playData ? (
+                                <PlayPreviewCard
+                                  playData={p.playData}
+                                  autoplay="always"
+                                  shape="landscape"
+                                  paddingPx={10}
+                                  minSpanPx={60}
+                                />
+                              ) : (
+                                <div className="flex aspect-video w-full items-center justify-center rounded-md border border-white/8 bg-[#13151a]">
+                                  <FiLayout className="text-[8px] text-BrandGray2" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate font-semibold text-white">{p.title}</p>
+                              {p.sport && <p className="text-BrandGray2">{p.sport}</p>}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-BrandGray2">
+                  {sectionPlays.length} {sectionPlays.length === 1 ? "play" : "plays"} in this section
+                </p>
+              </div>
+
+              {/* Plays list */}
+              {loadingPlays ? (
+                <div className="flex justify-center py-8">
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-BrandOrange/30 border-t-BrandOrange" />
+                </div>
+              ) : sectionPlays.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/10 py-12 text-center">
+                  <FiBookOpen className="mb-3 text-2xl text-BrandGray2" />
+                  <p className="text-sm font-semibold text-white">No plays yet</p>
+                  <p className="mt-1 text-xs text-BrandGray2">Add platform plays to build this collection</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {sectionPlays.map((play) => (
+                    <div
+                      key={play.id}
+                      draggable
+                      onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; setSectionDragSrcId(play.id); }}
+                      onDragOver={(e) => { e.preventDefault(); if (sectionDragSrcId !== play.id) setSectionDragOverId(play.id); }}
+                      onDrop={(e) => { e.preventDefault(); handleReorderSectionPlay(sectionDragSrcId, play.id); }}
+                      onDragEnd={() => { setSectionDragSrcId(null); setSectionDragOverId(null); }}
+                      className={`flex cursor-grab items-center gap-3 rounded-lg border bg-[#13151a] px-3 py-2.5 transition active:cursor-grabbing ${
+                        sectionDragOverId === play.id && sectionDragSrcId !== play.id
+                          ? "border-BrandOrange/50 opacity-60"
+                          : "border-white/6"
+                      }`}
+                    >
+                      {/* Drag handle */}
+                      <FiMenu className="shrink-0 text-BrandGray2/50 text-sm" />
+
+                      {/* Thumbnail */}
+                      <div className="w-16 shrink-0">
+                        {play.thumbnail ? (
+                          <img
+                            src={play.thumbnail}
+                            alt={play.title}
+                            className="aspect-video w-full rounded object-cover"
+                          />
+                        ) : (
+                          <div className="flex aspect-video w-full items-center justify-center rounded border border-white/8 bg-[#1e2228]">
+                            <FiLayout className="text-[10px] text-BrandGray2" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Info */}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-white">{play.title}</p>
+                        <div className="mt-0.5 flex items-center gap-2">
+                          {play.sport && (
+                            <span className="rounded bg-white/8 px-1.5 py-0.5 text-[10px] text-BrandGray2">
+                              {play.sport}
+                            </span>
+                          )}
+                          {play.tags?.slice(0, 3).map((tag) => (
+                            <span key={tag} className="text-[10px] text-BrandGray2">#{tag}</span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Remove */}
+                      <button
+                        onClick={() => handleRemovePlay(play.id)}
+                        title="Remove from section"
+                        className="flex shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/4 px-2 py-1.5 text-xs text-red-400 transition hover:border-red-500/30 hover:bg-red-500/10"
+                      >
+                        <FiX className="text-xs" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Confirm delete modal */}
+      <ConfirmModal
+        open={!!deleteTarget}
+        message={`Delete "${deleteTarget?.name}"?`}
+        subtitle="All play assignments in this section will be removed. This cannot be undone."
+        confirmLabel="Delete"
+        danger
+        onConfirm={handleDeleteSection}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 /**
@@ -649,6 +1426,7 @@ export default function AdminPlaysPage() {
   const [plays, setPlays] = useState([]);
   const [folders, setFolders] = useState([]);
   const [sections, setSections] = useState([]);
+  const [playbookSections, setPlaybookSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletionWarning, setDeletionWarning] = useState(null);
@@ -658,6 +1436,8 @@ export default function AdminPlaysPage() {
   const [newFolderName, setNewFolderName] = useState("");
   const newFolderRef = useRef(null);
   const [confirmModal, setConfirmModal] = useState(null);
+  const [dragSrcId, setDragSrcId] = useState(null);
+  const [dragOverId, setDragOverId] = useState(null);
 
   useEffect(() => {
     if (!session) navigate("/admin", { replace: true });
@@ -668,14 +1448,16 @@ export default function AdminPlaysPage() {
     setLoading(true);
     setError("");
     try {
-      const [playsData, foldersData, sectionsData] = await Promise.all([
+      const [playsData, foldersData, sectionsData, playbookSectionsData] = await Promise.all([
         fetchAllPlays(session),
         fetchAllFolders(session),
         fetchPageSections(session),
+        fetchPlaybookSections(session),
       ]);
       setPlays(playsData);
       setFolders(foldersData);
       setSections(sectionsData);
+      setPlaybookSections(playbookSectionsData);
     } catch (err) {
       if (err.message === "UNAUTHORIZED") {
         sessionStorage.removeItem(SESSION_KEY);
@@ -786,6 +1568,45 @@ export default function AdminPlaysPage() {
     setConfirmModal({ type: "folder", item: folder });
   };
 
+  /** Add a platform play to a playbook section from the plays tab card. */
+  const handleAddToSection = async (play, sectionId) => {
+    try {
+      await addPlayToSection(session, sectionId, play.id);
+      setPlaybookSections((prev) =>
+        prev.map((s) =>
+          s.id === sectionId ? { ...s, playCount: s.playCount + 1 } : s
+        )
+      );
+    } catch (err) { setError(err.message); }
+  };
+
+  /**
+   * Reorder plays in the currently visible grid by drag-and-drop.
+   * Optimistically updates local sort_order and persists all affected plays to the backend.
+   * @param {string} srcId - ID of the dragged play
+   * @param {string} destId - ID of the play at the drop target
+   */
+  const handleReorderPlay = async (srcId, destId) => {
+    if (!srcId || srcId === destId) return;
+    setDragSrcId(null);
+    setDragOverId(null);
+    const srcIdx = visiblePlays.findIndex((p) => p.id === srcId);
+    const destIdx = visiblePlays.findIndex((p) => p.id === destId);
+    if (srcIdx < 0 || destIdx < 0) return;
+    const reordered = [...visiblePlays];
+    const [moved] = reordered.splice(srcIdx, 1);
+    reordered.splice(destIdx, 0, moved);
+    const sortMap = {};
+    reordered.forEach((p, i) => { sortMap[p.id] = i * 10; });
+    setPlays((prev) => prev.map((p) => sortMap[p.id] !== undefined ? { ...p, sortOrder: sortMap[p.id] } : p));
+    try {
+      await Promise.all(reordered.map((p, i) => reorderPlayApi(session, p.id, i * 10)));
+    } catch (err) {
+      setError(err.message);
+      load();
+    }
+  };
+
   /** Assign or unassign a play from a page section. */
   const handleAssignSection = async (key, playId) => {
     try {
@@ -822,7 +1643,8 @@ export default function AdminPlaysPage() {
   };
 
   const visiblePlays = plays.filter((p) => {
-    const inFolder = currentFolderId === null || p.folderId === currentFolderId;
+    const inFolder =
+      currentFolderId === null ? !p.folderId : p.folderId === currentFolderId;
     if (!inFolder) return false;
     if (!search.trim()) return true;
     const q = search.toLowerCase();
@@ -865,6 +1687,14 @@ export default function AdminPlaysPage() {
               }`}
             >
               <FiLayout className="text-[10px]" /> Page Sections
+            </button>
+            <button
+              onClick={() => setActiveTab("playbooks")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                activeTab === "playbooks" ? "bg-BrandOrange text-white" : "text-BrandGray hover:text-white"
+              }`}
+            >
+              <FiBookOpen className="text-[10px]" /> Playbook Sections
             </button>
           </div>
           <div className="flex items-center gap-3 text-xs text-BrandGray2">
@@ -965,6 +1795,16 @@ export default function AdminPlaysPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Playbook Sections tab */}
+      {activeTab === "playbooks" && (
+        <PlaybookSectionPanel
+          session={session}
+          allPlays={plays}
+          error={error}
+          setError={setError}
+        />
       )}
 
       {/* Body: sidebar + content */}
@@ -1113,15 +1953,26 @@ export default function AdminPlaysPage() {
           {!loading && visiblePlays.length > 0 && (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {visiblePlays.map((play) => (
-                <PlayCard
+                <div
                   key={play.id}
-                  play={play}
-                  folders={folders}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  onMove={handleMove}
-                  onDuplicate={handleDuplicate}
-                />
+                  draggable
+                  onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; setDragSrcId(play.id); }}
+                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (dragSrcId !== play.id) setDragOverId(play.id); }}
+                  onDrop={(e) => { e.preventDefault(); handleReorderPlay(dragSrcId, play.id); }}
+                  onDragEnd={() => { setDragSrcId(null); setDragOverId(null); }}
+                  className={`rounded-xl transition ${dragOverId === play.id && dragSrcId !== play.id ? "ring-2 ring-BrandOrange/50 opacity-60" : ""}`}
+                >
+                  <PlayCard
+                    play={play}
+                    folders={folders}
+                    playbookSections={playbookSections}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onMove={handleMove}
+                    onDuplicate={handleDuplicate}
+                    onAddToSection={handleAddToSection}
+                  />
+                </div>
               ))}
             </div>
           )}

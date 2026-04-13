@@ -5,6 +5,7 @@ import ConfirmModal from "../components/subcomponents/ConfirmModal";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const USER_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 // ── Test suite registry (names/descriptions only — suites loaded lazily) ──
 const SUITE_NAMES = ["Drawing Geometry", "Interpolation", "Import / Export", "Animation Schema", "Routes"];
@@ -123,6 +124,8 @@ export default function Admin() {
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({ name: "", email: "", password: "", teamName: "", sport: "" });
   const [creating, setCreating] = useState(false);
+  const [usersSearch, setUsersSearch] = useState("");
+  const [usersPerPage, setUsersPerPage] = useState(10);
 
   // ── Tests ──
   const [testResults, setTestResults] = useState(null);
@@ -306,29 +309,6 @@ export default function Admin() {
     }
   }, [adminFetch]);
 
-  const handleDeletePlatformPlay = async (id, title) => {
-    const ok = await openConfirm({ message: `Delete play "${title}"?`, subtitle: "This cannot be undone.", confirmLabel: "Delete", danger: true });
-    if (!ok) return;
-    try {
-      await adminFetch(`/admin/plays/${id}`, { method: "DELETE" });
-      setPlatformPlays((prev) => prev.filter((p) => p.id !== id));
-    } catch (err) {
-      setPlaysError(err.message);
-    }
-  };
-
-  const handleToggleFeatured = async (play) => {
-    try {
-      const updated = await adminFetch(`/admin/plays/${play.id}`, {
-        method: "PATCH",
-        body: { isFeatured: !play.isFeatured },
-      });
-      setPlatformPlays((prev) => prev.map((p) => (p.id === play.id ? updated.play : p)));
-    } catch (err) {
-      setPlaysError(err.message);
-    }
-  };
-
   // ── Tests (lazy-loaded to avoid circular import with routes.suite) ──
   const selectedSuiteMap = useMemo(() => {
     if (!allSuites) return {};
@@ -482,6 +462,18 @@ export default function Admin() {
   const verifiedCount = users.filter((u) => u.email_verified_at).length;
   const notOnboardedCount = users.filter((u) => !u.onboarded_at).length;
   const betaTesterCount = users.filter((u) => u.is_beta_tester).length;
+  const normalizedUsersSearch = usersSearch.trim().toLowerCase();
+  const filteredUsers = useMemo(() => {
+    if (!normalizedUsersSearch) return users;
+    return users.filter((u) => {
+      const haystack = [u.name, u.email, u.team_name, u.role]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(normalizedUsersSearch);
+    });
+  }, [users, normalizedUsersSearch]);
+  const usersTableMaxHeight = usersPerPage * 56 + 56;
 
   // ──────────────────────────────────────────────────────────────────────────
   // LOGIN SCREEN
@@ -541,11 +533,11 @@ export default function Admin() {
           <div className="flex items-center gap-2">
             <button
               onClick={handleRefresh}
-              disabled={usersLoading || errorsLoading}
+              disabled={usersLoading || errorsLoading || playsLoading}
               className="flex items-center gap-1.5 rounded-lg border border-white/8 bg-white/4 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-white/8 disabled:opacity-40"
             >
               <svg
-                className={`h-3.5 w-3.5 ${usersLoading || errorsLoading ? "animate-spin" : ""}`}
+                className={`h-3.5 w-3.5 ${usersLoading || errorsLoading || playsLoading ? "animate-spin" : ""}`}
                 fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -570,79 +562,67 @@ export default function Admin() {
           <StatCard label="Not Onboarded" value={notOnboardedCount} color={notOnboardedCount > 0 ? "text-yellow-400" : "text-BrandGray2"} />
           <StatCard label="Beta Testers" value={betaTesterCount} color="text-purple-400" />
           <StatCard label="Error Reports" value={errorTotal} color={errorTotal > 0 ? "text-red-400" : "text-BrandGray2"} />
-          <StatCard label="Featured Plays" value={platformPlays.filter((p) => p.isFeatured).length} color="text-BrandOrange" />
+          <StatCard label="Platform Plays" value={playsLoading ? "..." : platformPlays.length} color="text-BrandOrange" />
         </div>
 
         {/* ── Quick Nav ── */}
-        <div className="flex flex-wrap gap-2">
-          {[
-            { label: "Users", href: "#users" },
-            { label: "Plays", href: "#plays" },
-            { label: "Tests", href: "#tests" },
-            { label: "Error Reports", href: "#errors" },
-          ].map((nav) => (
-            <a
-              key={nav.label}
-              href={nav.href}
-              className="rounded-lg border border-white/8 bg-white/4 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/8"
-            >
-              {nav.label}
-            </a>
-          ))}
-          <a
-            href="/admin/user-issues"
-            className="rounded-lg border border-purple-500/30 bg-purple-500/10 px-4 py-2 text-xs font-semibold text-purple-400 transition hover:bg-purple-500/20"
-          >
-            Reported Issues
-          </a>
-        </div>
-
         {/* ══════════════════════════════════════════════════════════════════
             USERS SECTION
         ══════════════════════════════════════════════════════════════════ */}
         <section id="users" style={{ scrollMarginTop: "4rem" }}>
           <SectionHeader title="Users" badge={`${users.length}`} badgeColor="bg-white/6 text-BrandGray">
-            <button
-              onClick={handleDeleteAll}
-              className="rounded-lg bg-red-600/10 px-3 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-600/20"
-            >
-              Delete All Users
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowCreate(true)}
+                className="rounded-lg bg-BrandOrange/15 px-3 py-1.5 text-xs font-semibold text-BrandOrange transition hover:bg-BrandOrange/25"
+              >
+                Create Account
+              </button>
+              <button
+                onClick={handleDeleteAll}
+                className="rounded-lg bg-red-600/10 px-3 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-600/20"
+              >
+                Delete All Users
+              </button>
+            </div>
           </SectionHeader>
-
-          {/* Big create account button */}
-          <button
-            onClick={() => setShowCreate(true)}
-            className="mb-4 flex w-full items-center gap-4 rounded-xl border border-dashed border-BrandOrange/30 bg-BrandOrange/5 px-5 py-4 text-left transition hover:border-BrandOrange/60 hover:bg-BrandOrange/10 active:scale-[0.99]"
-          >
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-BrandOrange/20">
-              <svg className="h-6 w-6 text-BrandOrange" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-            </div>
-            <div>
-              <p className="font-Manrope text-sm font-bold text-white">Create Account</p>
-              <p className="mt-0.5 text-xs text-BrandGray">Add a new user — no email verification required</p>
-            </div>
-            <svg className="ml-auto h-4 w-4 text-BrandGray2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-
           {usersError && (
             <div className="mb-3 rounded-lg bg-red-600/10 px-4 py-2 text-sm text-red-400">{usersError}</div>
           )}
 
           {/* Users table */}
           <div className="overflow-hidden rounded-xl border border-white/6">
-            <table className="w-full text-left text-sm">
+            <div className="border-b border-white/6 bg-[#1a1d23] px-4 py-3">
+              <div className="relative w-full max-w-xl">
+                <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-BrandGray2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35m1.85-5.15a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" />
+                </svg>
+                <input
+                  type="text"
+                  value={usersSearch}
+                  onChange={(e) => setUsersSearch(e.target.value)}
+                  placeholder="Search by name, email, or team"
+                  className="w-full rounded-lg border border-white/8 bg-BrandBlack px-10 py-2.5 text-sm text-white outline-none placeholder:text-BrandGray2 focus:border-BrandOrange"
+                />
+                {usersSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setUsersSearch("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-BrandGray2 transition hover:text-white"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="hide-scroll overflow-auto" style={{ maxHeight: `${usersTableMaxHeight}px` }}>
+              <table className="min-w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-white/6 bg-[#1e2228]">
                   <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Name</th>
                   <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Email</th>
                   <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Team</th>
-                  <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Verified</th>
-                  <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Beta</th>
+                  <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Status</th>
                   <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Joined</th>
                   <th className="px-4 py-3"></th>
                 </tr>
@@ -650,15 +630,20 @@ export default function Admin() {
               <tbody>
                 {usersLoading && users.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-xs text-BrandGray2">Loading...</td>
+                    <td colSpan={6} className="px-4 py-8 text-center text-xs text-BrandGray2">Loading...</td>
                   </tr>
                 )}
                 {!usersLoading && users.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-xs text-BrandGray2">No users found</td>
+                    <td colSpan={6} className="px-4 py-8 text-center text-xs text-BrandGray2">No users found</td>
                   </tr>
                 )}
-                {users.map((u) => (
+                {!usersLoading && users.length > 0 && filteredUsers.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-xs text-BrandGray2">No users match your search</td>
+                  </tr>
+                )}
+                {filteredUsers.map((u) => (
                   <tr
                     key={u.id}
                     className={`border-b border-white/4 transition hover:bg-white/2 ${!u.onboarded_at ? "opacity-60" : ""}`}
@@ -676,33 +661,30 @@ export default function Admin() {
                       {u.team_name ? (
                         <span>{u.team_name} <span className="text-xs text-BrandGray2">({u.role})</span></span>
                       ) : (
-                        <span className="text-BrandGray2">—</span>
+                        <span className="text-BrandGray2">-</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      {u.email_verified_at ? (
-                        <span className="flex items-center gap-1 text-green-400">
-                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                          Yes
+                      <div className="flex flex-wrap gap-1.5">
+                        <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${
+                          u.email_verified_at
+                            ? "bg-green-500/15 text-green-400"
+                            : "bg-white/6 text-BrandGray2"
+                        }`}>
+                          {u.email_verified_at ? "Verified" : "Unverified"}
                         </span>
-                      ) : (
-                        <span className="text-BrandGray2">No</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => handleToggleBetaTester(u)}
-                        title={u.is_beta_tester ? "Remove beta tester" : "Make beta tester"}
-                        className={`rounded px-2 py-1 text-xs font-semibold transition ${
-                          u.is_beta_tester
-                            ? "bg-purple-500/20 text-purple-400 hover:bg-purple-500/30"
-                            : "text-BrandGray2 hover:bg-white/6 hover:text-white"
-                        }`}
-                      >
-                        {u.is_beta_tester ? "Beta" : "—"}
-                      </button>
+                        <button
+                          onClick={() => handleToggleBetaTester(u)}
+                          title={u.is_beta_tester ? "Remove beta tester" : "Make beta tester"}
+                          className={`rounded-full px-2 py-1 text-[10px] font-semibold transition ${
+                            u.is_beta_tester
+                              ? "bg-purple-500/20 text-purple-400 hover:bg-purple-500/30"
+                              : "bg-white/6 text-BrandGray2 hover:bg-white/10 hover:text-white"
+                          }`}
+                        >
+                          {u.is_beta_tester ? "Beta Tester" : "Standard"}
+                        </button>
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-xs text-BrandGray2">
                       {new Date(u.created_at).toLocaleDateString()}
@@ -718,7 +700,29 @@ export default function Admin() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+              </table>
+            </div>
+            <div className="flex flex-col gap-3 border-t border-white/6 bg-[#161a1f] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-BrandGray2">
+                {filteredUsers.length === users.length
+                  ? `${users.length} users`
+                  : `${filteredUsers.length} matching users`}
+              </p>
+              <label className="flex items-center gap-2 text-xs text-BrandGray">
+                <span className="uppercase tracking-wider text-BrandGray2">Visible Rows</span>
+                <select
+                  value={usersPerPage}
+                  onChange={(e) => setUsersPerPage(Number(e.target.value))}
+                  className="rounded-lg border border-white/8 bg-BrandBlack px-3 py-2 text-sm text-white outline-none focus:border-BrandOrange"
+                >
+                  {USER_PAGE_SIZE_OPTIONS.map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
           </div>
         </section>
 
@@ -728,13 +732,13 @@ export default function Admin() {
         <section id="plays" style={{ scrollMarginTop: "4rem" }}>
           <SectionHeader title="Platform Plays" badge={`${platformPlays.length}`} badgeColor="bg-BrandOrange/15 text-BrandOrange">
             <button
-              onClick={() => window.open(`/admin/plays/new/edit`, "_self")}
+              onClick={() => window.open("/admin/app", "_self")}
               className="flex items-center gap-1.5 rounded-lg bg-BrandOrange/20 px-3 py-1.5 text-xs font-semibold text-BrandOrange transition hover:bg-BrandOrange/30"
             >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
-              New Play
+              Open Admin App
             </button>
           </SectionHeader>
 
@@ -742,118 +746,33 @@ export default function Admin() {
             <div className="mb-3 rounded-lg bg-red-600/10 px-4 py-2 text-sm text-red-400">{playsError}</div>
           )}
 
-          {playsLoading && platformPlays.length === 0 && (
-            <div className="rounded-xl border border-white/6 px-6 py-10 text-center text-xs text-BrandGray2">Loading...</div>
-          )}
-
-          {!playsLoading && platformPlays.length === 0 && (
-            <div className="rounded-xl border border-white/6 bg-[#1e2228] px-6 py-12 text-center">
-              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-BrandOrange/10">
-                <svg className="h-5 w-5 text-BrandOrange" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+          <div className="rounded-2xl border border-white/6 bg-[#1e2228] p-6">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-2xl">
+                <p className="font-Manrope text-lg font-bold text-white">Manage landing-page plays in Admin App</p>
+                <p className="mt-2 text-sm leading-relaxed text-BrandGray">
+                  Create platform plays and assign landing-page sections in Admin App.
+                  The main admin dashboard no longer mirrors every play here, so this page stays focused on accounts and support operations.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <span className="rounded-full bg-white/6 px-3 py-1 text-[11px] font-semibold text-BrandGray">
+                    {playsLoading ? "Loading plays..." : `${platformPlays.length} platform plays`}
+                  </span>
+                  <span className="rounded-full bg-BrandOrange/15 px-3 py-1 text-[11px] font-semibold text-BrandOrange">
+                    Section assignments live in /admin/app
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => window.open("/admin/app", "_self")}
+                className="flex items-center justify-center gap-2 rounded-xl bg-BrandOrange px-5 py-3 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.98]"
+              >
+                Open Admin App
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5H19.5M19.5 4.5V10.5M19.5 4.5L10.5 13.5M19.5 13.5V18.75C19.5 19.9926 18.4926 21 17.25 21H5.25C4.00736 21 3 19.9926 3 18.75V6.75C3 5.50736 4.00736 4.5 5.25 4.5H10.5" />
                 </svg>
-              </div>
-              <p className="text-sm font-semibold text-BrandGray">No platform plays yet</p>
-              <p className="mt-0.5 text-xs text-BrandGray2">Create plays to feature on the landing page for coaches</p>
+              </button>
             </div>
-          )}
-
-          {platformPlays.length > 0 && (
-            <div className="overflow-hidden rounded-xl border border-white/6">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-white/6 bg-[#1e2228]">
-                    <th className="px-4 py-2.5 text-xs font-semibold text-BrandGray2">Title</th>
-                    <th className="px-4 py-2.5 text-xs font-semibold text-BrandGray2">Sport</th>
-                    <th className="px-4 py-2.5 text-xs font-semibold text-BrandGray2">Tags</th>
-                    <th className="px-4 py-2.5 text-xs font-semibold text-BrandGray2">Featured</th>
-                    <th className="px-4 py-2.5 text-xs font-semibold text-BrandGray2">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {platformPlays.map((play) => (
-                    <tr key={play.id} className="border-b border-white/4 last:border-0 hover:bg-white/2">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          {play.thumbnail ? (
-                            <img src={play.thumbnail} alt="" className="h-8 w-12 rounded object-cover opacity-80" />
-                          ) : (
-                            <div className="flex h-8 w-12 shrink-0 items-center justify-center rounded bg-white/6">
-                              <svg className="h-4 w-4 text-BrandGray2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
-                              </svg>
-                            </div>
-                          )}
-                          <div>
-                            <p className="font-medium text-white">{play.title}</p>
-                            {play.description && (
-                              <p className="mt-0.5 max-w-xs truncate text-xs text-BrandGray2">{play.description}</p>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-BrandGray">{play.sport || "—"}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1">
-                          {(play.tags || []).map((tag) => (
-                            <span key={tag} className="rounded bg-white/6 px-1.5 py-0.5 text-[10px] text-BrandGray2">{tag}</span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => handleToggleFeatured(play)}
-                          className={`rounded-full px-3 py-1 text-[10px] font-semibold transition ${
-                            play.isFeatured
-                              ? "bg-BrandOrange/20 text-BrandOrange hover:bg-BrandOrange/30"
-                              : "bg-white/6 text-BrandGray2 hover:bg-white/10"
-                          }`}
-                        >
-                          {play.isFeatured ? "Featured" : "Hidden"}
-                        </button>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => window.open(`/admin/plays/${play.id}/edit`, "_self")}
-                            className="rounded px-2 py-1 text-xs text-BrandGray transition hover:bg-white/6 hover:text-white"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeletePlatformPlay(play.id, play.title)}
-                            className="rounded px-2 py-1 text-xs text-red-400 transition hover:bg-red-600/20"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Open Platform Plays app */}
-          <div className="mt-4">
-            <button
-              onClick={() => window.open("/admin/app", "_self")}
-              className="flex w-full items-center gap-4 rounded-xl border border-dashed border-BrandOrange/30 bg-BrandOrange/5 px-5 py-4 text-left transition hover:border-BrandOrange/60 hover:bg-BrandOrange/10 active:scale-[0.99]"
-            >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-BrandOrange/20">
-                <svg className="h-6 w-6 text-BrandOrange" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
-                </svg>
-              </div>
-              <div>
-                <p className="font-Manrope text-sm font-bold text-white">Open Platform Plays App</p>
-                <p className="mt-0.5 text-xs text-BrandGray">Manage plays with full card preview — create, edit, feature</p>
-              </div>
-              <svg className="ml-auto h-4 w-4 text-BrandGray2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
           </div>
         </section>
 
@@ -1073,7 +992,7 @@ export default function Admin() {
           )}
 
           {errors.length > 0 && (
-            <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-1 rounded-xl">
+            <div className="hide-scroll max-h-[60vh] overflow-y-auto space-y-2 pr-1 rounded-xl">
               {errors.map((r) => {
                 const isExpanded = expandedError === r.id;
                 const device = r.device_info || {};
@@ -1126,7 +1045,7 @@ export default function Admin() {
                         {r.error_stack && (
                           <div className="mt-3">
                             <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-BrandGray2">Stack Trace</p>
-                            <pre className="max-h-40 overflow-auto rounded-lg bg-BrandBlack/50 p-2 text-[11px] leading-relaxed text-red-400/80">{r.error_stack}</pre>
+                            <pre className="hide-scroll max-h-40 overflow-auto rounded-lg bg-BrandBlack/50 p-2 text-[11px] leading-relaxed text-red-400/80">{r.error_stack}</pre>
                           </div>
                         )}
                         <div className="mt-3 flex items-center justify-between">
@@ -1248,3 +1167,4 @@ export default function Admin() {
     </div>
   );
 }
+
