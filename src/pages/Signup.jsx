@@ -88,7 +88,7 @@ export default function Signup() {
             {inviteCode ? "Sign up and you'll be added to your team automatically." : "Get started with Coachable in seconds."}
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
+          <form noValidate onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-BrandBlack">Full name</label>
               <input

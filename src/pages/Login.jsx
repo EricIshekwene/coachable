@@ -66,7 +66,7 @@ export default function Login() {
             Sign in to your account to continue.
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
+          <form noValidate onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-BrandBlack">Email</label>
               <input

@@ -26,7 +26,7 @@ const SUITE_DESCRIPTIONS = {
   "Interpolation": "Animation interpolation engine — calculates player positions between keyframes during playback using linear interpolation.",
   "Import / Export": "Play file serialization — building export JSON, validating imports, and verifying data survives the round trip.",
   "Animation Schema": "Animation data structure utilities — keyframe sorting, track normalization, upsert/delete operations, and deep cloning.",
-  "Routes": "Critical user journeys — login success/failure, onboarding team creation, and play saving against real route contracts.",
+  "Routes": "Route guards, auth recovery, public share links, and critical login/onboarding/save flows against real route contracts.",
 };
 
 // ─── Sub-components ─────────────────────────────────────────────────────────

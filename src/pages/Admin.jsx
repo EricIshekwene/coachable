@@ -3,6 +3,12 @@ import { apiFetch } from "../utils/api";
 import logo from "../assets/logos/full_Coachable_logo.png";
 import ConfirmModal from "../components/subcomponents/ConfirmModal";
 import { formatFailedTestsReport } from "../testing/formatFailedTestsReport";
+import {
+  isAdminElevated,
+  getAdminElevatedUntil,
+  setAdminElevated,
+  clearAdminElevated,
+} from "../utils/adminElevation";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -15,7 +21,7 @@ const SUITE_DESCRIPTIONS = {
   "Interpolation": "Player positions between keyframes",
   "Import / Export": "Play file serialization round-trip",
   "Animation Schema": "Keyframe sorting, track normalization",
-  "Routes": "Critical login, onboarding, and play-saving flows",
+  "Routes": "Route guards, auth recovery, public links, and critical login/onboarding/save flows",
 };
 
 // ── Error report helpers ───────────────────────────────────────────────────
@@ -135,6 +141,7 @@ export default function Admin() {
   const [createForm, setCreateForm] = useState({ name: "", email: "", password: "", teamName: "", sport: "" });
   const [creating, setCreating] = useState(false);
   const [usersSearch, setUsersSearch] = useState("");
+  const [hideDemoAccounts, setHideDemoAccounts] = useState(true);
   const [usersPerPage, setUsersPerPage] = useState(10);
 
   // ── Tests ──
@@ -165,6 +172,26 @@ export default function Admin() {
   const [confirmModal, setConfirmModal] = useState({ open: false });
   const confirmResolveRef = useRef(null);
 
+  // ── Danger Mode (elevated permissions) ──
+  const [elevatedUntil, setElevatedUntil] = useState(() => getAdminElevatedUntil());
+  const [elevateModal, setElevateModal] = useState(false);
+  const [elevatePassword, setElevatePassword] = useState("");
+  const [elevateError, setElevateError] = useState("");
+  const [elevating, setElevating] = useState(false);
+  const elevateResolveRef = useRef(null);
+  // Tick every second so the countdown display stays live
+  useEffect(() => {
+    const id = setInterval(() => {
+      const until = getAdminElevatedUntil();
+      setElevatedUntil(until);
+      if (until && Date.now() > until) {
+        clearAdminElevated();
+        setElevatedUntil(0);
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
   /**
    * Open a confirmation modal and return a promise that resolves to
    * true (confirmed) or false (cancelled).
@@ -185,6 +212,13 @@ export default function Admin() {
   const handleConfirmCancel = () => {
     setConfirmModal({ open: false });
     confirmResolveRef.current?.(false);
+  };
+
+  const handleElevateCancel = () => {
+    setElevateModal(false);
+    setElevatePassword("");
+    setElevateError("");
+    elevateResolveRef.current?.(false);
   };
 
   // ── Admin fetch helper ──
@@ -231,9 +265,55 @@ export default function Admin() {
   const handleLogout = () => {
     adminFetch("/admin/logout", { method: "POST" }).catch(() => {});
     sessionStorage.removeItem(SESSION_KEY);
+    clearAdminElevated();
+    setElevatedUntil(0);
     setSession("");
     setUsers([]);
   };
+
+  /**
+   * Submit the elevation password to enter Danger Mode.
+   * Resolves the pending ensureElevated promise on success.
+   * @param {React.FormEvent} e
+   */
+  const handleElevate = async (e) => {
+    e.preventDefault();
+    setElevateError("");
+    setElevating(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/elevate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-session": session },
+        body: JSON.stringify({ password: elevatePassword }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Elevation failed");
+      setAdminElevated(data.elevatedUntil);
+      setElevatedUntil(data.elevatedUntil);
+      setElevatePassword("");
+      setElevateModal(false);
+      elevateResolveRef.current?.(true);
+    } catch (err) {
+      setElevateError(err.message || "Invalid password");
+    } finally {
+      setElevating(false);
+    }
+  };
+
+  /**
+   * Ensure Danger Mode is active before a destructive action.
+   * If already elevated, resolves immediately. Otherwise shows the elevation modal.
+   * @returns {Promise<boolean>} true if elevated, false if cancelled
+   */
+  const ensureElevated = useCallback(() => {
+    if (isAdminElevated()) return Promise.resolve(true);
+    return new Promise((resolve) => {
+      elevateResolveRef.current = resolve;
+      setElevatePassword("");
+      setElevateError("");
+      setElevateModal(true);
+    });
+  }, []);
 
   // ── Users ──
   const fetchUsers = useCallback(async () => {
@@ -250,6 +330,8 @@ export default function Admin() {
   }, [adminFetch]);
 
   const handleDeleteUser = async (id, name) => {
+    const elevated = await ensureElevated();
+    if (!elevated) return;
     const ok = await openConfirm({ message: `Delete "${name}"?`, subtitle: "This cannot be undone.", confirmLabel: "Delete", danger: true });
     if (!ok) return;
     try {
@@ -277,6 +359,8 @@ export default function Admin() {
   };
 
   const handleDeleteAll = async () => {
+    const elevated = await ensureElevated();
+    if (!elevated) return;
     const ok1 = await openConfirm({ message: "Delete ALL users?", subtitle: "This cannot be undone!", confirmLabel: "Delete All", danger: true });
     if (!ok1) return;
     const ok2 = await openConfirm({ message: "Are you absolutely sure?", subtitle: "ALL accounts will be permanently deleted.", confirmLabel: "Yes, Delete All", danger: true });
@@ -475,15 +559,16 @@ export default function Admin() {
   const betaTesterCount = users.filter((u) => u.is_beta_tester).length;
   const normalizedUsersSearch = usersSearch.trim().toLowerCase();
   const filteredUsers = useMemo(() => {
-    if (!normalizedUsersSearch) return users;
     return users.filter((u) => {
+      if (hideDemoAccounts && u.email?.endsWith("@coachable-seed.invalid")) return false;
+      if (!normalizedUsersSearch) return true;
       const haystack = [u.name, u.email, u.team_name, u.role]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
       return haystack.includes(normalizedUsersSearch);
     });
-  }, [users, normalizedUsersSearch]);
+  }, [users, normalizedUsersSearch, hideDemoAccounts]);
   const usersTableMaxHeight = usersPerPage * 56 + 56;
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -521,6 +606,13 @@ export default function Admin() {
   // ──────────────────────────────────────────────────────────────────────────
   // DASHBOARD
   // ──────────────────────────────────────────────────────────────────────────
+
+  // ── Danger Mode countdown display ──
+  const dangerSecsLeft = elevatedUntil > 0 ? Math.max(0, Math.ceil((elevatedUntil - Date.now()) / 1000)) : 0;
+  const dangerMinsDisplay = dangerSecsLeft > 0
+    ? `${Math.floor(dangerSecsLeft / 60)}:${String(dangerSecsLeft % 60).padStart(2, "0")}`
+    : null;
+
   return (
     <div className="h-screen overflow-y-auto bg-[#13151a] font-DmSans text-white">
       <ConfirmModal
@@ -532,6 +624,49 @@ export default function Admin() {
         onConfirm={handleConfirmOk}
         onCancel={handleConfirmCancel}
       />
+
+      {/* ── Danger Mode (elevation) modal ── */}
+      {elevateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-red-500/30 bg-[#1a0e0e] p-7 shadow-2xl">
+            <div className="mb-1 flex items-center gap-2">
+              <span className="text-lg">⚠</span>
+              <h2 className="font-Manrope text-base font-bold text-red-400">Danger Mode Required</h2>
+            </div>
+            <p className="mb-5 text-xs text-red-300/70">
+              Re-enter your admin password to unlock destructive operations for 10 minutes.
+            </p>
+            <form onSubmit={handleElevate} className="flex flex-col gap-3">
+              <input
+                type="password"
+                value={elevatePassword}
+                onChange={(e) => setElevatePassword(e.target.value)}
+                placeholder="Admin password"
+                autoFocus
+                className="w-full rounded-lg border border-red-500/20 bg-black/40 px-3.5 py-2.5 text-sm text-white outline-none placeholder:text-red-300/30 focus:border-red-500/60"
+              />
+              {elevateError && <p className="text-xs text-red-400">{elevateError}</p>}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleElevateCancel}
+                  className="flex-1 rounded-lg border border-white/8 py-2.5 text-xs text-BrandGray transition hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={elevating || !elevatePassword}
+                  className="flex-1 rounded-lg bg-red-600 py-2.5 text-xs font-semibold text-white transition hover:bg-red-500 disabled:opacity-50"
+                >
+                  {elevating ? "Verifying..." : "Unlock Danger Mode"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* ── Sticky Header ── */}
       <div className="sticky top-0 z-20 border-b border-white/6 bg-[#13151a]/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
@@ -540,6 +675,11 @@ export default function Admin() {
             <span className="rounded bg-BrandOrange/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-BrandOrange">
               Admin
             </span>
+            {dangerMinsDisplay && (
+              <span className="animate-pulse rounded bg-red-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-red-400">
+                ⚠ Danger Mode · {dangerMinsDisplay}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -604,6 +744,7 @@ export default function Admin() {
           {/* Users table */}
           <div className="overflow-hidden rounded-xl border border-white/6">
             <div className="border-b border-white/6 bg-[#1a1d23] px-4 py-3">
+              <div className="flex items-center gap-4">
               <div className="relative w-full max-w-xl">
                 <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-BrandGray2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35m1.85-5.15a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" />
@@ -624,6 +765,16 @@ export default function Admin() {
                     Clear
                   </button>
                 )}
+              </div>
+              <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-BrandGray select-none">
+                <input
+                  type="checkbox"
+                  checked={hideDemoAccounts}
+                  onChange={(e) => setHideDemoAccounts(e.target.checked)}
+                  className="accent-BrandOrange"
+                />
+                Hide demo accounts
+              </label>
               </div>
             </div>
             <div className="hide-scroll overflow-auto" style={{ maxHeight: `${usersTableMaxHeight}px` }}>

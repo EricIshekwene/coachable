@@ -44,7 +44,7 @@ import NoTeam from "./pages/NoTeam";
 import Resources from "./pages/Resources";
 import Enterprise from "./pages/Enterprise";
 
-function SlateRoot({ adminMode = false, sport = null }) {
+export function SlateRoot({ adminMode = false, sport = null }) {
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
   useThemeColor("#121212");
   return (
@@ -72,19 +72,19 @@ function SlateRoot({ adminMode = false, sport = null }) {
 }
 
 /** Reads the :sport param from the URL and passes it to SlateRoot. */
-function SlateWithSportParam({ adminMode = false }) {
+export function SlateWithSportParam({ adminMode = false }) {
   const { sport } = useParams();
   return <SlateRoot adminMode={adminMode} sport={sport} />;
 }
 
 /** Guards admin sub-routes that lack their own session check (e.g. /admin/slate). */
-function RequireAdminSession({ children }) {
+export function RequireAdminSession({ children }) {
   const session = sessionStorage.getItem("coachable_admin_session");
   if (!session) return <Navigate to="/admin" replace />;
   return children;
 }
 
-function RequireAuth({ children }) {
+export function RequireAuth({ children }) {
   const { user, loading } = useAuth();
   const location = useLocation();
 
@@ -97,13 +97,17 @@ function RequireAuth({ children }) {
   }
 
   if (!user) {
+    if (sessionStorage.getItem("coachable_logging_out") === "1") {
+      sessionStorage.removeItem("coachable_logging_out");
+      return <Navigate to="/" replace />;
+    }
     return <Navigate to={`/login?returnTo=${encodeURIComponent(location.pathname)}`} replace />;
   }
 
   return children;
 }
 
-function RequireOnboarded({ children }) {
+export function RequireOnboarded({ children }) {
   const { user, allTeams } = useAuth();
   if (user && !user.onboarded) return <Navigate to="/onboarding" replace />;
   // Onboarded but somehow lost all memberships — safety net
@@ -112,13 +116,13 @@ function RequireOnboarded({ children }) {
 }
 
 /** Prevent already-onboarded users from revisiting onboarding. */
-function RequireNotOnboarded({ children }) {
+export function RequireNotOnboarded({ children }) {
   const { user } = useAuth();
   if (user?.onboarded) return <Navigate to="/app/plays" replace />;
   return children;
 }
 
-function LandingGate() {
+export function LandingGate() {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -135,7 +139,7 @@ function LandingGate() {
   return <Landing />;
 }
 
-function AppRoutes() {
+export function AppRoutes() {
   return (
     <Routes>
       {/* Public */}

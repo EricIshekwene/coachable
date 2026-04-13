@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { FiUserPlus, FiPlusCircle, FiUser } from "react-icons/fi";
 import { useAuth } from "../context/AuthContext";
 
@@ -9,7 +9,7 @@ import { useAuth } from "../context/AuthContext";
  * or getting a personal workspace.
  */
 export default function NoTeam() {
-  const { user, joinTeam, createTeam, createPersonalWorkspace } = useAuth();
+  const { user, allTeams, joinTeam, createTeam, createPersonalWorkspace } = useAuth();
   const navigate = useNavigate();
 
   const [view, setView] = useState("menu"); // "menu" | "join" | "create"
@@ -69,6 +69,10 @@ export default function NoTeam() {
       setLoading(false);
     }
   };
+
+  if (allTeams.length > 0) {
+    return <Navigate to="/app/plays" replace />;
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-BrandBlack px-6 py-12">

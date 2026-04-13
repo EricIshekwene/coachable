@@ -8,6 +8,12 @@ import {
 } from "react-icons/fi";
 import PlayPreviewCard from "../components/PlayPreviewCard";
 import ConfirmModal from "../components/subcomponents/ConfirmModal";
+import {
+  isAdminElevated,
+  getAdminElevatedUntil,
+  setAdminElevated,
+  clearAdminElevated,
+} from "../utils/adminElevation";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -1439,6 +1445,25 @@ export default function AdminPlaysPage() {
   const [dragSrcId, setDragSrcId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
 
+  // ── Danger Mode (elevated permissions) ──
+  const [elevatedUntil, setElevatedUntil] = useState(() => getAdminElevatedUntil());
+  const [elevateModal, setElevateModal] = useState(false);
+  const [elevatePassword, setElevatePassword] = useState("");
+  const [elevateError, setElevateError] = useState("");
+  const [elevating, setElevating] = useState(false);
+  const elevateResolveRef = useRef(null);
+  useEffect(() => {
+    const id = setInterval(() => {
+      const until = getAdminElevatedUntil();
+      setElevatedUntil(until);
+      if (until && Date.now() > until) {
+        clearAdminElevated();
+        setElevatedUntil(0);
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
   useEffect(() => {
     if (!session) navigate("/admin", { replace: true });
   }, [session, navigate]);
@@ -1482,13 +1507,66 @@ export default function AdminPlaysPage() {
       headers: { "x-admin-session": session },
     }).catch(() => {});
     sessionStorage.removeItem(SESSION_KEY);
+    clearAdminElevated();
+    setElevatedUntil(0);
     navigate("/admin", { replace: true });
   };
+
+  /**
+   * Submit the elevation password to enter Danger Mode.
+   * @param {React.FormEvent} e
+   */
+  const handleElevate = async (e) => {
+    e.preventDefault();
+    setElevateError("");
+    setElevating(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/elevate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-session": session },
+        body: JSON.stringify({ password: elevatePassword }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Elevation failed");
+      setAdminElevated(data.elevatedUntil);
+      setElevatedUntil(data.elevatedUntil);
+      setElevatePassword("");
+      setElevateModal(false);
+      elevateResolveRef.current?.(true);
+    } catch (err) {
+      setElevateError(err.message || "Invalid password");
+    } finally {
+      setElevating(false);
+    }
+  };
+
+  const handleElevateCancel = () => {
+    setElevateModal(false);
+    setElevatePassword("");
+    setElevateError("");
+    elevateResolveRef.current?.(false);
+  };
+
+  /**
+   * Ensure Danger Mode is active before a destructive action.
+   * @returns {Promise<boolean>}
+   */
+  const ensureElevated = useCallback(() => {
+    if (isAdminElevated()) return Promise.resolve(true);
+    return new Promise((resolve) => {
+      elevateResolveRef.current = resolve;
+      setElevatePassword("");
+      setElevateError("");
+      setElevateModal(true);
+    });
+  }, []);
 
   const handleEdit = (play) => navigate(`/admin/plays/${play.id}/edit`);
   const handleNew = () => navigate("/admin/plays/new/edit");
 
-  const handleDelete = (play) => {
+  const handleDelete = async (play) => {
+    const elevated = await ensureElevated();
+    if (!elevated) return;
     setConfirmModal({ type: "play", item: play });
   };
 
@@ -1564,7 +1642,9 @@ export default function AdminPlaysPage() {
   };
 
   /** Delete a folder; plays inside become un-foldered. */
-  const handleDeleteFolder = (folder) => {
+  const handleDeleteFolder = async (folder) => {
+    const elevated = await ensureElevated();
+    if (!elevated) return;
     setConfirmModal({ type: "folder", item: folder });
   };
 
@@ -1658,8 +1738,57 @@ export default function AdminPlaysPage() {
 
   const currentFolder = folders.find((f) => f.id === currentFolderId);
 
+  // ── Danger Mode countdown display ──
+  const dangerSecsLeft = elevatedUntil > 0 ? Math.max(0, Math.ceil((elevatedUntil - Date.now()) / 1000)) : 0;
+  const dangerMinsDisplay = dangerSecsLeft > 0
+    ? `${Math.floor(dangerSecsLeft / 60)}:${String(dangerSecsLeft % 60).padStart(2, "0")}`
+    : null;
+
   return (
     <div className="hide-scroll bg-[#13151a] font-DmSans text-white" style={{ height: "100dvh", overflowY: "auto" }}>
+
+      {/* ── Danger Mode (elevation) modal ── */}
+      {elevateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-red-500/30 bg-[#1a0e0e] p-7 shadow-2xl">
+            <div className="mb-1 flex items-center gap-2">
+              <span className="text-lg">⚠</span>
+              <h2 className="font-Manrope text-base font-bold text-red-400">Danger Mode Required</h2>
+            </div>
+            <p className="mb-5 text-xs text-red-300/70">
+              Re-enter your admin password to unlock destructive operations for 10 minutes.
+            </p>
+            <form onSubmit={handleElevate} className="flex flex-col gap-3">
+              <input
+                type="password"
+                value={elevatePassword}
+                onChange={(e) => setElevatePassword(e.target.value)}
+                placeholder="Admin password"
+                autoFocus
+                className="w-full rounded-lg border border-red-500/20 bg-black/40 px-3.5 py-2.5 text-sm text-white outline-none placeholder:text-red-300/30 focus:border-red-500/60"
+              />
+              {elevateError && <p className="text-xs text-red-400">{elevateError}</p>}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleElevateCancel}
+                  className="flex-1 rounded-lg border border-white/8 py-2.5 text-xs text-BrandGray transition hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={elevating || !elevatePassword}
+                  className="flex-1 rounded-lg bg-red-600 py-2.5 text-xs font-semibold text-white transition hover:bg-red-500 disabled:opacity-50"
+                >
+                  {elevating ? "Verifying..." : "Unlock Danger Mode"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="sticky top-0 z-20 border-b border-white/6 bg-[#13151a]/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-6 py-3.5">
@@ -1670,6 +1799,11 @@ export default function AdminPlaysPage() {
             <span className="rounded bg-BrandOrange/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-BrandOrange">
               Admin
             </span>
+            {dangerMinsDisplay && (
+              <span className="animate-pulse rounded bg-red-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-red-400">
+                ⚠ Danger Mode · {dangerMinsDisplay}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1 rounded-lg border border-white/8 bg-[#1e2228] p-0.5">
             <button

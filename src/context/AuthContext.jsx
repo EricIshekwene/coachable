@@ -445,6 +445,7 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(() => {
     // Tell server to clear the session cookie and remove local token
+    sessionStorage.setItem("coachable_logging_out", "1");
     apiFetch("/auth/logout", { method: "POST" }).catch(() => {});
     setAuthToken(null);
     setUser(null);

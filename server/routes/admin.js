@@ -12,6 +12,7 @@ if (!ADMIN_HASH) {
 // In-memory session store (resets on server restart — fine for admin)
 const sessions = new Map();
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+const ELEVATED_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 export function requireAdmin(req, res, next) {
   const sid = req.headers["x-admin-session"];
@@ -26,6 +27,26 @@ export function requireAdmin(req, res, next) {
   next();
 }
 
+/**
+ * Middleware that requires the session to be in an elevated (Danger Mode) state.
+ * Elevation is granted via POST /admin/elevate and expires after ELEVATED_TTL_MS.
+ */
+export function requireElevated(req, res, next) {
+  const sid = req.headers["x-admin-session"];
+  if (!sid || !sessions.has(sid)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  const session = sessions.get(sid);
+  if (Date.now() > session.expiresAt) {
+    sessions.delete(sid);
+    return res.status(401).json({ error: "Session expired" });
+  }
+  if (!session.elevatedAt || Date.now() - session.elevatedAt > ELEVATED_TTL_MS) {
+    return res.status(403).json({ error: "Danger Mode required. Re-authenticate to perform this action." });
+  }
+  next();
+}
+
 // POST /admin/login
 router.post("/login", async (req, res) => {
   const { password } = req.body;
@@ -35,8 +56,23 @@ router.post("/login", async (req, res) => {
   if (!valid) return res.status(401).json({ error: "Invalid password" });
 
   const sid = crypto.randomBytes(32).toString("hex");
-  sessions.set(sid, { expiresAt: Date.now() + SESSION_TTL_MS });
+  sessions.set(sid, { expiresAt: Date.now() + SESSION_TTL_MS, elevatedAt: null });
   res.json({ session: sid });
+});
+
+// POST /admin/elevate — re-authenticate to enter Danger Mode (elevated permissions)
+router.post("/elevate", requireAdmin, async (req, res) => {
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: "Password required" });
+
+  const valid = await bcrypt.compare(password, ADMIN_HASH);
+  if (!valid) return res.status(401).json({ error: "Invalid password" });
+
+  const sid = req.headers["x-admin-session"];
+  const session = sessions.get(sid);
+  session.elevatedAt = Date.now();
+  const elevatedUntil = session.elevatedAt + ELEVATED_TTL_MS;
+  res.json({ ok: true, elevatedUntil });
 });
 
 // POST /admin/logout
@@ -90,8 +126,8 @@ async function deleteUserCascade(userId) {
   }
 }
 
-// DELETE /admin/users/:id — delete a single user and their owned teams
-router.delete("/users/:id", requireAdmin, async (req, res, next) => {
+// DELETE /admin/users/:id — delete a single user and their owned teams (requires Danger Mode)
+router.delete("/users/:id", requireElevated, async (req, res, next) => {
   try {
     await deleteUserCascade(req.params.id);
     res.json({ ok: true });
@@ -100,8 +136,8 @@ router.delete("/users/:id", requireAdmin, async (req, res, next) => {
   }
 });
 
-// DELETE /admin/users — delete ALL users
-router.delete("/users", requireAdmin, async (_req, res, next) => {
+// DELETE /admin/users — delete ALL users (requires Danger Mode)
+router.delete("/users", requireElevated, async (_req, res, next) => {
   try {
     // Delete all teams first (cascades to memberships, invites, plays, etc.)
     await pool.query("DELETE FROM teams");
@@ -354,8 +390,8 @@ router.post("/plays/:id/restore", requireAdmin, async (req, res, next) => {
   }
 });
 
-// DELETE /admin/plays/:id — delete a platform play
-router.delete("/plays/:id", requireAdmin, async (req, res, next) => {
+// DELETE /admin/plays/:id — delete a platform play (requires Danger Mode)
+router.delete("/plays/:id", requireElevated, async (req, res, next) => {
   try {
     // Clear any page sections referencing this play before deleting
     const { rows: clearedSections } = await pool.query(
@@ -460,8 +496,8 @@ router.patch("/platform-folders/:id", requireAdmin, async (req, res, next) => {
   }
 });
 
-// DELETE /admin/platform-folders/:id — delete a folder (plays become un-foldered)
-router.delete("/platform-folders/:id", requireAdmin, async (req, res, next) => {
+// DELETE /admin/platform-folders/:id — delete a folder (plays become un-foldered) (requires Danger Mode)
+router.delete("/platform-folders/:id", requireElevated, async (req, res, next) => {
   try {
     await pool.query("DELETE FROM platform_play_folders WHERE id = $1", [req.params.id]);
     res.json({ ok: true });
