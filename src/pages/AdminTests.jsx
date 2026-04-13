@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { runAllSuites } from "../testing/testRunner";
 import logo from "../assets/logos/full_Coachable_logo.png";
+import { formatFailedTestsReport } from "../testing/formatFailedTestsReport";
 
 // Import test suites
 import drawingGeometrySuite from "../testing/suites/drawingGeometry.suite";
@@ -25,7 +26,7 @@ const SUITE_DESCRIPTIONS = {
   "Interpolation": "Animation interpolation engine — calculates player positions between keyframes during playback using linear interpolation.",
   "Import / Export": "Play file serialization — building export JSON, validating imports, and verifying data survives the round trip.",
   "Animation Schema": "Animation data structure utilities — keyframe sorting, track normalization, upsert/delete operations, and deep cloning.",
-  "Routes": "Page component validation — verifies every route component imports correctly and renders with mock auth providers without crashing.",
+  "Routes": "Critical user journeys — login success/failure, onboarding team creation, and play saving against real route contracts.",
 };
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
@@ -122,6 +123,7 @@ function SuiteCheckbox({ name, checked, onChange, testCount }) {
 export default function AdminTests() {
   const [results, setResults] = useState(null);
   const [running, setRunning] = useState(false);
+  const [copied, setCopied] = useState(null);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [expandedTests, setExpandedTests] = useState(new Set());
@@ -202,6 +204,7 @@ export default function AdminTests() {
     }
     return { total, passed, failed, avgMs: total > 0 ? sumMs / total : 0 };
   }, [results]);
+  const failedTestsReport = useMemo(() => formatFailedTestsReport(results), [results]);
 
   // Filter + search
   const searchLower = search.toLowerCase();
@@ -221,6 +224,12 @@ export default function AdminTests() {
   }, [results, filter, searchLower]);
 
   const totalRegistered = Object.values(ALL_SUITES).reduce((n, s) => n + s.length, 0);
+  const copyToClipboard = useCallback((text, id) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(id);
+      setTimeout(() => setCopied(null), 1500);
+    }).catch(() => {});
+  }, []);
 
   return (
     <div className="h-screen overflow-y-auto bg-BrandBlack font-DmSans text-white">
@@ -277,6 +286,16 @@ export default function AdminTests() {
                 sub={stats.failed > 0 ? "needs attention" : "per test"}
               />
             </div>
+            {stats.failed > 0 && failedTestsReport && (
+              <div className="mb-5 flex justify-end">
+                <button
+                  onClick={() => copyToClipboard(failedTestsReport, "all-failed-tests")}
+                  className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/20"
+                >
+                  {copied === "all-failed-tests" ? "Copied!" : "Copy Failed Tests"}
+                </button>
+              </div>
+            )}
 
             {/* Suite selector + Search + Filter */}
             <div className="mb-5 flex flex-col gap-3">

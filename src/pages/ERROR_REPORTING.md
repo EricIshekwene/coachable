@@ -9,12 +9,14 @@ then stores them in Postgres for admin review via a dedicated dashboard.
 ### Client Side
 - **`src/utils/errorReporter.js`** — Core utility
   - `reportError()` — fire-and-forget POST to `/error-reports`
-  - `installGlobalErrorHandlers()` — catches `window.onerror` and `unhandledrejection`
+  - `reportApiError()` — standardized backend/route failure reports for shared API calls
+  - `installGlobalErrorHandlers()` — catches `window.onerror` and `unhandledrejection` in production
   - `setErrorReporterUserId()` — syncs with AuthContext for user attribution
   - Auto-collects: device info, screen size, pixel ratio, mobile detection, page URL, user agent
 
 - **Wiring:**
   - `App.jsx` → calls `installGlobalErrorHandlers()` on mount (ThemeInit component)
+  - `api.js` → reports backend connection failures and 5xx route failures through `reportApiError()`
   - `AuthContext.jsx` → syncs user ID via `setErrorReporterUserId()`
   - `Slate.jsx` → explicit `reportError()` call in video export catch block with extra context (codec, resolution, quality settings)
 
@@ -40,7 +42,7 @@ Each error report contains:
 - `error_message` — the error text
 - `error_stack` — stack trace if available
 - `component` — which module (e.g., "videoExport", "global")
-- `action` — what the user was doing (e.g., "exportVideo", "uncaughtError")
+- `action` — what the user was doing (e.g., "exportVideo", "POST /auth/login")
 - `page_url` — full URL where error occurred
 - `user_agent` — raw UA string
 - `device_info` — structured JSON: platform, screen size, pixel ratio, mobile flag
@@ -53,5 +55,9 @@ Each error report contains:
   Payload is size-capped (2000 chars message, 5000 chars stack) to prevent abuse.
 - **Fire-and-forget**: `reportError()` never throws or blocks the UI. If reporting
   fails, it fails silently — we never want error reporting to cause more errors.
+- **Route-first backend reporting**: shared API failures now report as `component: "api"`
+  with normalized route actions so admin can focus on login/team/playbook breakages.
+- **No dev-time global noise**: uncaught syntax/runtime handlers are disabled in local dev
+  so hot-reload mistakes do not flood production-facing admin reports.
 - **Session ID per tab**: Generated with `crypto.randomUUID()` on module load. Helps
   group related errors from the same user session without requiring auth.

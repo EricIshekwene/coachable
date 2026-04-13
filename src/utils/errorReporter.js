@@ -6,6 +6,7 @@
  */
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const IS_DEV = Boolean(import.meta.env.DEV);
 
 let _userId = null;
 let _sessionId = null;
@@ -27,6 +28,10 @@ const DEDUP_WINDOW_MS = 10_000;
 const GLOBAL_THROTTLE_WINDOW_MS = 10_000;
 const GLOBAL_THROTTLE_MAX_REPORTS = 5;
 const _globalReportTimestamps = [];
+const GLOBAL_IGNORED_MESSAGES = [
+  "ResizeObserver loop limit exceeded",
+  "ResizeObserver loop completed with undelivered notifications",
+];
 
 function normalizeErrorMessage(value) {
   const normalized = String(value ?? "")
@@ -35,6 +40,15 @@ function normalizeErrorMessage(value) {
     .replace(/\s+/g, " ")
     .trim();
   return normalized || "Unknown error";
+}
+
+function normalizeRoutePath(value) {
+  const raw = String(value || "");
+  const pathOnly = raw.split("?")[0].split("#")[0];
+  return pathOnly
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, ":id")
+    .replace(/\/\d+(?=\/|$)/g, "/:id")
+    .replace(/\/[A-Za-z0-9_-]{16,}(?=\/|$)/g, "/:id");
 }
 
 function buildDedupKey({ component, action, errorMessage, errorStack }) {
@@ -61,6 +75,12 @@ function shouldThrottleGlobalReport(now = Date.now()) {
   }
   _globalReportTimestamps.push(now);
   return false;
+}
+
+function shouldIgnoreGlobalError(message) {
+  const normalizedMessage = normalizeErrorMessage(message).toLowerCase();
+  if (!normalizedMessage) return true;
+  return GLOBAL_IGNORED_MESSAGES.some((entry) => normalizedMessage.includes(entry.toLowerCase()));
 }
 
 /**
@@ -162,16 +182,41 @@ export function reportError({ errorMessage, errorStack, component, action, extra
 }
 
 /**
+ * Report a backend or route-level API failure in a consistent format.
+ *
+ * @param {Object} opts
+ * @param {string} opts.path
+ * @param {string} [opts.method]
+ * @param {number|null} [opts.status]
+ * @param {string} opts.errorMessage
+ * @param {string|null} [opts.errorStack]
+ * @param {Object} [opts.extra]
+ */
+export function reportApiError({ path, method = "GET", status = null, errorMessage, errorStack = null, extra = {} }) {
+  reportError({
+    errorMessage,
+    errorStack,
+    component: "api",
+    action: `${String(method || "GET").toUpperCase()} ${normalizeRoutePath(path || "/")}`,
+    extra: {
+      status,
+      ...extra,
+    },
+  });
+}
+
+/**
  * Install global error handlers (window.onerror + unhandledrejection).
  * Call once at app startup. Safe to call multiple times.
  */
 let _installed = false;
 export function installGlobalErrorHandlers() {
-  if (_installed) return;
+  if (_installed || IS_DEV) return;
   _installed = true;
 
   window.addEventListener("error", (event) => {
     if (shouldThrottleGlobalReport()) return;
+    if (shouldIgnoreGlobalError(event.message)) return;
     reportError({
       errorMessage: normalizeErrorMessage(event.message),
       errorStack: event.error?.stack || `${event.filename}:${event.lineno}:${event.colno}`,
@@ -183,11 +228,19 @@ export function installGlobalErrorHandlers() {
   window.addEventListener("unhandledrejection", (event) => {
     if (shouldThrottleGlobalReport()) return;
     const err = event.reason;
+    const message = normalizeErrorMessage(err?.message || String(err));
+    if (shouldIgnoreGlobalError(message)) return;
     reportError({
-      errorMessage: normalizeErrorMessage(err?.message || String(err)),
+      errorMessage: message,
       errorStack: err?.stack || null,
       component: "global",
       action: "unhandledRejection",
     });
   });
+}
+
+export function __resetErrorReporterForTests() {
+  _userId = null;
+  _dedup.clear();
+  _globalReportTimestamps.length = 0;
 }

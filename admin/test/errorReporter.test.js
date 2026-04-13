@@ -1,10 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { reportError, setErrorReporterUserId } from "../../src/utils/errorReporter.js";
+import {
+  __resetErrorReporterForTests,
+  reportApiError,
+  reportError,
+  setErrorReporterUserId,
+} from "../../src/utils/errorReporter.js";
 
 describe("reportError", () => {
   let fetchSpy;
 
   beforeEach(() => {
+    __resetErrorReporterForTests();
     fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true });
   });
 
@@ -82,5 +88,21 @@ describe("reportError", () => {
     const body = JSON.parse(fetchSpy.mock.calls[0][1].body);
     expect(body.sessionId).toBeTruthy();
     expect(typeof body.sessionId).toBe("string");
+  });
+
+  it("reports API failures with normalized route actions", () => {
+    reportApiError({
+      path: "/teams/123/plays/456",
+      method: "PATCH",
+      status: 503,
+      errorMessage: "Upstream timeout",
+      extra: { kind: "server" },
+    });
+
+    const body = JSON.parse(fetchSpy.mock.calls[0][1].body);
+    expect(body.component).toBe("api");
+    expect(body.action).toBe("PATCH /teams/:id/plays/:id");
+    expect(body.extra.status).toBe(503);
+    expect(body.extra.kind).toBe("server");
   });
 });

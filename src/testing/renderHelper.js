@@ -7,6 +7,7 @@ import { createRoot } from "react-dom/client";
 import { flushSync } from "react-dom";
 import { MemoryRouter, Routes, Route, Outlet } from "react-router-dom";
 import AuthContext from "../context/AuthContext";
+import { AuthProvider } from "../context/AuthContext";
 import { AppMessageProvider } from "../context/AppMessageContext";
 
 /** Mock user matching the shape from AuthContext */
@@ -64,6 +65,36 @@ const MOCK_AUTH = {
 
 const MOCK_MESSAGES = { showMessage: () => {}, hideMessage: () => {} };
 
+function renderIntoContainer(tree) {
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+
+  flushSync(() => root.render(tree));
+
+  return {
+    container,
+    cleanup() {
+      root.unmount();
+      container.remove();
+    },
+  };
+}
+
+function wrapProviders(children, { authMode = "mock", authValue = MOCK_AUTH, messageValue = MOCK_MESSAGES } = {}) {
+  const routerWrapped = createElement(
+    AppMessageProvider,
+    { value: messageValue },
+    children
+  );
+
+  if (authMode === "real") {
+    return createElement(AuthProvider, null, routerWrapped);
+  }
+
+  return createElement(AuthContext.Provider, { value: authValue }, routerWrapped);
+}
+
 /**
  * Renders a component wrapped in AuthContext + AppMessageContext + MemoryRouter.
  * Returns a cleanup function that unmounts and removes the DOM node.
@@ -83,20 +114,12 @@ export function renderWithProviders(Component, opts = {}) {
     asLayout = false,
   } = opts;
 
-  const container = document.createElement("div");
-  document.body.appendChild(container);
-  const root = createRoot(container);
-
   const routeElement = asLayout
     ? createElement(Component, props, createElement(Outlet))
     : createElement(Component, props);
 
-  const tree = createElement(
-    AuthContext.Provider,
-    { value: MOCK_AUTH },
-    createElement(
-      AppMessageProvider,
-      { value: MOCK_MESSAGES },
+  return renderIntoContainer(
+    wrapProviders(
       createElement(
         MemoryRouter,
         { initialEntries: [entry] },
@@ -114,14 +137,80 @@ export function renderWithProviders(Component, opts = {}) {
       )
     )
   );
+}
 
-  flushSync(() => root.render(tree));
+/**
+ * Render an arbitrary route tree with mock or real providers.
+ */
+export function renderRouteTree(tree, opts = {}) {
+  const { entry = "/", authMode = "mock", authValue = MOCK_AUTH, messageValue = MOCK_MESSAGES } = opts;
+  return renderIntoContainer(
+    wrapProviders(
+      createElement(MemoryRouter, { initialEntries: [entry] }, tree),
+      { authMode, authValue, messageValue }
+    )
+  );
+}
 
-  return {
-    container,
-    cleanup() {
-      root.unmount();
-      container.remove();
-    },
-  };
+/**
+ * Wait until a predicate becomes truthy.
+ */
+export function waitFor(predicate, { timeoutMs = 3000, intervalMs = 16, errorMessage = "Timed out waiting for condition" } = {}) {
+  const startedAt = Date.now();
+
+  return new Promise((resolve, reject) => {
+    const check = () => {
+      try {
+        const result = predicate();
+        if (result) {
+          resolve(result);
+          return;
+        }
+      } catch (error) {
+        reject(error);
+        return;
+      }
+
+      if (Date.now() - startedAt >= timeoutMs) {
+        reject(new Error(errorMessage));
+        return;
+      }
+
+      window.setTimeout(check, intervalMs);
+    };
+
+    check();
+  });
+}
+
+function setNativeElementValue(element, value) {
+  const prototype = element instanceof HTMLTextAreaElement
+    ? HTMLTextAreaElement.prototype
+    : element instanceof HTMLSelectElement
+      ? HTMLSelectElement.prototype
+      : HTMLInputElement.prototype;
+
+  const descriptor = Object.getOwnPropertyDescriptor(prototype, "value");
+  descriptor?.set?.call(element, value);
+}
+
+export function typeInto(element, value) {
+  if (!element) throw new Error("typeInto requires a valid element");
+  setNativeElementValue(element, value);
+  element.dispatchEvent(new InputEvent("input", { bubbles: true, data: String(value) }));
+  element.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+export function clickElement(element) {
+  if (!element) throw new Error("clickElement requires a valid element");
+  element.click();
+}
+
+export function submitForm(form) {
+  if (!form) throw new Error("submitForm requires a valid form element");
+  if (typeof form.requestSubmit === "function") {
+    form.requestSubmit();
+    return;
+  }
+  form.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true }));
 }

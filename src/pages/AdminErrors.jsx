@@ -58,6 +58,16 @@ function deriveTitle(r) {
   const msg = (r.error_message || "").toLowerCase();
   const component = (r.component || "").toLowerCase();
   const action = (r.action || "").toLowerCase();
+  const extra = r.extra || {};
+
+  if (component === "api") {
+    if (extra.kind === "network" || msg.includes("could not reach the server")) return "Backend Connection Failure";
+    if (action.includes("/auth/login")) return "Login Route Failure";
+    if (action.includes("/onboarding")) return "Onboarding Route Failure";
+    if (action.includes("/teams/") && action.includes("/plays")) return "Play Save Route Failure";
+    if (extra.status >= 500) return `Backend ${extra.status} Error`;
+    return "API Route Failure";
+  }
 
   // Video export failures
   if (component === "videoexport" || action.includes("export")) {
@@ -278,6 +288,7 @@ export default function AdminErrors() {
               className="rounded-lg border border-BrandGray2/40 bg-BrandBlack px-3 py-1.5 text-xs text-white outline-none focus:border-BrandOrange"
             >
               <option value="">All components</option>
+              <option value="api">API / Backend</option>
               <option value="videoExport">Video Export</option>
               <option value="global">Global (uncaught)</option>
             </select>
@@ -327,7 +338,9 @@ export default function AdminErrors() {
                   >
                     {/* Component badge */}
                     <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
-                      r.component === "videoExport"
+                      r.component === "api"
+                        ? "bg-BrandOrange/20 text-BrandOrange"
+                        : r.component === "videoExport"
                         ? "bg-purple-500/20 text-purple-400"
                         : r.component === "global"
                           ? "bg-red-500/20 text-red-400"

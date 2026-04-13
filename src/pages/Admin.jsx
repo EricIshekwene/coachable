@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { apiFetch } from "../utils/api";
 import logo from "../assets/logos/full_Coachable_logo.png";
 import ConfirmModal from "../components/subcomponents/ConfirmModal";
+import { formatFailedTestsReport } from "../testing/formatFailedTestsReport";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -14,7 +15,7 @@ const SUITE_DESCRIPTIONS = {
   "Interpolation": "Player positions between keyframes",
   "Import / Export": "Play file serialization round-trip",
   "Animation Schema": "Keyframe sorting, track normalization",
-  "Routes": "Route component render validation",
+  "Routes": "Critical login, onboarding, and play-saving flows",
 };
 
 // ── Error report helpers ───────────────────────────────────────────────────
@@ -44,6 +45,15 @@ function deriveTitle(r) {
   const msg = (r.error_message || "").toLowerCase();
   const component = (r.component || "").toLowerCase();
   const action = (r.action || "").toLowerCase();
+  const extra = r.extra || {};
+  if (component === "api") {
+    if (extra.kind === "network" || msg.includes("could not reach the server")) return "Backend Connection Failure";
+    if (action.includes("/auth/login")) return "Login Route Failure";
+    if (action.includes("/onboarding")) return "Onboarding Route Failure";
+    if (action.includes("/teams/") && action.includes("/plays")) return "Play Save Route Failure";
+    if (extra.status >= 500) return `Backend ${extra.status} Error`;
+    return "API Route Failure";
+  }
   if (component === "videoexport" || action.includes("export")) {
     if (msg.includes("encoding") || msg.includes("encoder")) return "Video Export — Encoding Failed";
     if (msg.includes("muxer") || msg.includes("finalize") || msg.includes("colorspace")) return "Video Export — MP4 Muxer Crash";
@@ -366,6 +376,7 @@ export default function Admin() {
     }
     return { total, passed, failed };
   }, [testResults]);
+  const failedTestsReport = useMemo(() => formatFailedTestsReport(testResults), [testResults]);
 
   // ── Errors ──
   const fetchErrors = useCallback(async () => {
@@ -818,6 +829,14 @@ export default function Admin() {
                 {testStats.failed === 0 ? "All Passing" : `${testStats.failed} Failing`}
               </div>
               <span className="text-xs text-BrandGray">{testStats.passed}/{testStats.total} passed</span>
+              {testStats.failed > 0 && failedTestsReport && (
+                <button
+                  onClick={() => copyToClipboard(failedTestsReport, "all-failed-tests")}
+                  className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-[11px] font-semibold text-red-300 transition hover:bg-red-500/20"
+                >
+                  {copied === "all-failed-tests" ? "Copied!" : "Copy Failed Tests"}
+                </button>
+              )}
               <span className="ml-auto font-mono text-xs text-BrandGray2">{testTotalMs.toFixed(0)}ms</span>
             </div>
           )}
@@ -1007,7 +1026,9 @@ export default function Admin() {
                       className="flex w-full items-start gap-3 px-4 py-3.5 text-left"
                     >
                       <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
-                        r.component === "videoExport"
+                        r.component === "api"
+                          ? "bg-BrandOrange/20 text-BrandOrange"
+                          : r.component === "videoExport"
                           ? "bg-purple-500/20 text-purple-400"
                           : r.component === "global"
                             ? "bg-red-500/20 text-red-400"

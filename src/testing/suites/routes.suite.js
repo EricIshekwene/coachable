@@ -1,142 +1,529 @@
 /**
- * In-browser test suite for route components.
- * Renders each page with mock auth/router providers, verifies mount, cleans up.
+ * In-browser suite for critical user flows.
+ * Focuses on login, onboarding, and play-saving paths instead of import-only checks.
  */
+import { createElement, Fragment } from "react";
+import { Route, Routes, useLocation } from "react-router-dom";
 import { buildSuite } from "../testRunner";
-import { renderWithProviders } from "../renderHelper";
-import { createElement } from "react";
+import {
+  clickElement,
+  renderRouteTree,
+  submitForm,
+  typeInto,
+  waitFor,
+} from "../renderHelper";
+import { __resetErrorReporterForTests } from "../../utils/errorReporter";
 
-import Landing from "../../pages/Landing";
-import Signup from "../../pages/Signup";
 import Login from "../../pages/Login";
 import Onboarding from "../../pages/Onboarding";
-import VerifyEmail from "../../pages/VerifyEmail";
-import Admin from "../../pages/Admin";
-import AdminTests from "../../pages/AdminTests";
-import SharedPlay from "../../pages/SharedPlay";
-import SharedPlayView from "../../pages/SharedPlayView";
-import SharedFolder from "../../pages/SharedFolder";
-import PlayEditPage from "../../pages/PlayEditPage";
-import PlayViewOnlyPage from "../../pages/PlayViewOnlyPage";
-import Plays from "../../pages/app/Plays";
-import PlayNew from "../../pages/app/PlayNew";
-import PlayView from "../../pages/app/PlayView";
-import Team from "../../pages/app/Team";
-import Profile from "../../pages/app/Profile";
-import ProfileEmailVerification from "../../pages/app/ProfileEmailVerification";
-import Settings from "../../pages/app/Settings";
-import AppLayout from "../../layouts/AppLayout";
+import SaveToPlaybookModal from "../../components/SaveToPlaybookModal";
 
-const ROUTES = [
-  { name: "Landing", component: Landing, path: "/", entry: "/",
-    desc: "The landing/marketing page. It checks auth state and redirects logged-in users. If this fails to render, new visitors will see a blank page instead of the landing page." },
-  { name: "Signup", component: Signup, path: "/signup", entry: "/signup",
-    desc: "The signup form page. Uses useAuth for the signup function and router for redirects. Failure here means new users can't create accounts." },
-  { name: "Login", component: Login, path: "/login", entry: "/login",
-    desc: "The login form page. If this fails, existing users can't sign in. Check that useAuth().login is being called correctly and form state is initialized." },
-  { name: "Onboarding", component: Onboarding, path: "/onboarding", entry: "/onboarding",
-    desc: "The team creation/join flow shown after signup. Requires auth context for completeOnboarding. Failure blocks new users from completing setup." },
-  { name: "VerifyEmail", component: VerifyEmail, path: "/verify-email", entry: "/verify-email",
-    desc: "Email verification page that processes verification tokens from URL params. Makes an API call on mount. Failure means users can't verify their email addresses." },
-  { name: "Admin", component: Admin, path: "/admin", entry: "/admin",
-    desc: "The admin dashboard (user management). Has its own session auth separate from user auth. If this fails to render, you can't manage users or access admin features." },
-  { name: "AdminTests", component: AdminTests, path: "/admin/tests", entry: "/admin/tests",
-    desc: "This test runner page itself. A render failure here would be ironic but also mean the test dashboard is broken. Check for circular import issues." },
-  { name: "SharedPlay", component: SharedPlay, path: "/shared/:token", entry: "/shared/test-token",
-    desc: "Public shared play page (no auth required). Fetches play data via the share token. Failure means shared play links won't work for recipients." },
-  { name: "SharedPlayView", component: SharedPlayView, path: "/shared/:token/view", entry: "/shared/test-token/view",
-    desc: "Full-screen view of a shared play. Uses useParams to read the share token. Failure means the 'view' link from shared play page is broken." },
-  { name: "SharedFolder", component: SharedFolder, path: "/shared/folder/:token", entry: "/shared/folder/test-token",
-    desc: "Shared folder page showing multiple plays. Uses useParams for the folder token. Failure means shared folder links won't display plays." },
-  { name: "PlayEditPage", component: PlayEditPage, path: "/app/plays/:playId/edit", entry: "/app/plays/test-123/edit",
-    desc: "Full-screen play editor (the main Slate canvas). Requires auth + playId param. This is the core feature — failure here means coaches can't edit plays." },
-  { name: "PlayViewOnlyPage", component: PlayViewOnlyPage, path: "/app/plays/:playId/view", entry: "/app/plays/test-123/view",
-    desc: "Read-only play viewer for players/assistants. Requires auth + playId. Failure means team members can't view plays shared with them." },
-  { name: "Plays", component: Plays, path: "/app/plays", entry: "/app/plays",
-    desc: "The plays list page (main app view). Fetches all plays and folders from the API. Failure means coaches can't see or manage their play library." },
-  { name: "PlayNew", component: PlayNew, path: "/app/plays/new", entry: "/app/plays/new",
-    desc: "Create new play page/modal. Uses auth context for team info. Failure means coaches can't create new plays." },
-  { name: "PlayView", component: PlayView, path: "/app/plays/:playId", entry: "/app/plays/test-123",
-    desc: "Play detail/preview page within the app layout. Shows play info and action buttons. Failure means the play detail view is broken." },
-  { name: "Team", component: Team, path: "/app/team", entry: "/app/team",
-    desc: "Team management page (invite codes, member list). Makes API calls for invite codes. Failure means coaches can't manage their team roster." },
-  { name: "Profile", component: Profile, path: "/app/profile", entry: "/app/profile",
-    desc: "User profile page (name, email editing). Uses auth context for user data and update functions. Failure means users can't update their profile." },
-  { name: "ProfileEmailVerification", component: ProfileEmailVerification, path: "/app/profile/verify-email", entry: "/app/profile/verify-email",
-    desc: "In-app email change verification page. Reads pendingEmailChange from auth context. Failure means users can't complete email address changes." },
-  { name: "Settings", component: Settings, path: "/app/settings", entry: "/app/settings",
-    desc: "App settings page (notifications, team settings, theme). Uses auth for preferences. Failure means users can't change their notification or team settings." },
-  { name: "AppLayout", component: AppLayout, path: "/app/*", entry: "/app/plays", asLayout: true,
-    desc: "The main app shell with sidebar navigation and mobile bottom nav. All /app/* routes render inside this layout. If this fails, the entire app navigation is broken." },
-];
+function jsonResponse(status, body) {
+  return new Response(body ? JSON.stringify(body) : null, {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+function normalizeMethod(value) {
+  return String(value || "GET").toUpperCase();
+}
+
+function installFetchMock(definitions) {
+  const calls = [];
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async (input, init = {}) => {
+    const url = typeof input === "string" ? input : input?.url || "";
+    const method = normalizeMethod(init.method);
+    const call = {
+      url,
+      method,
+      init,
+      body: (() => {
+        if (!init.body) return null;
+        try {
+          return JSON.parse(init.body);
+        } catch {
+          return init.body;
+        }
+      })(),
+    };
+    calls.push(call);
+
+    const match = definitions.find((definition) => {
+      if (normalizeMethod(definition.method) !== method) return false;
+      if (typeof definition.match === "string") return url.includes(definition.match);
+      if (definition.match instanceof RegExp) return definition.match.test(url);
+      if (typeof definition.match === "function") return definition.match(call);
+      return false;
+    });
+
+    if (!match) {
+      call.error = "No mock matched this request";
+      throw new Error(`Unhandled fetch mock for ${method} ${url}`);
+    }
+
+    if (match.reject) {
+      call.error = match.reject?.message || String(match.reject);
+      throw match.reject;
+    }
+
+    try {
+      const response = typeof match.response === "function"
+        ? await match.response(call)
+        : match.response;
+      call.status = response?.status ?? "unknown";
+      return response;
+    } catch (error) {
+      call.error = error?.message || String(error);
+      throw error;
+    }
+  };
+
+  return {
+    calls,
+    restore() {
+      globalThis.fetch = originalFetch;
+    },
+  };
+}
+
+function resetBrowserState() {
+  localStorage.clear();
+  sessionStorage.clear();
+  __resetErrorReporterForTests();
+}
+
+function findButton(container, label) {
+  return Array.from(container.querySelectorAll("button")).find((button) =>
+    button.textContent.replace(/\s+/g, " ").trim().includes(label)
+  );
+}
+
+function createLocationProbe(pathRef) {
+  return function LocationProbe() {
+    const location = useLocation();
+    pathRef.current = `${location.pathname}${location.search}`;
+    return null;
+  };
+}
+
+function withLocationProbe(tree, pathRef) {
+  const LocationProbe = createLocationProbe(pathRef);
+  return createElement(Fragment, null, createElement(LocationProbe), tree);
+}
+
+function truncateText(value, maxLength = 700) {
+  const normalized = String(value || "").replace(/\s+/g, " ").trim();
+  if (!normalized) return "(empty)";
+  return normalized.length > maxLength
+    ? `${normalized.slice(0, maxLength)}...`
+    : normalized;
+}
+
+function formatFetchLog(calls) {
+  if (!calls?.length) return "No fetch calls recorded.";
+  return calls.map((call, index) => {
+    const path = call.url.replace(/^https?:\/\/[^/]+/i, "");
+    const outcome = call.error
+      ? `error=${call.error}`
+      : `status=${call.status ?? "pending"}`;
+    const body = call.body
+      ? ` body=${truncateText(typeof call.body === "string" ? call.body : JSON.stringify(call.body), 220)}`
+      : "";
+    return `${index + 1}. ${call.method} ${path} ${outcome}${body}`;
+  }).join("\n");
+}
+
+function formatMessages(messages) {
+  if (!messages?.length) return "No app messages shown.";
+  return messages.map((message, index) => `${index + 1}. ${message.filter(Boolean).join(" | ")}`).join("\n");
+}
+
+function formatUiSnapshot(container) {
+  if (!container) return "No container available.";
+  const text = truncateText(container.textContent, 500);
+  const buttons = Array.from(container.querySelectorAll("button"))
+    .map((button) => `${truncateText(button.textContent, 60)} [${button.disabled ? "disabled" : "enabled"}]`)
+    .slice(0, 8)
+    .join("; ") || "none";
+  const inputs = Array.from(container.querySelectorAll("input, textarea"))
+    .map((field) => {
+      const name = field.getAttribute("placeholder") || field.getAttribute("type") || field.tagName.toLowerCase();
+      return `${name}=${truncateText(field.value, 80)}`;
+    })
+    .slice(0, 8)
+    .join("; ") || "none";
+  return `Text: ${text}\nButtons: ${buttons}\nInputs: ${inputs}`;
+}
+
+function attachDiagnostics(error, { ref, fetchMock, messages = [], pathRef, extras = {} }) {
+  const details = [
+    `Current route: ${pathRef?.current || "(unknown)"}`,
+    `Fetch log:\n${formatFetchLog(fetchMock?.calls || [])}`,
+    `Messages:\n${formatMessages(messages)}`,
+    `UI snapshot:\n${formatUiSnapshot(ref?.container)}`,
+  ];
+
+  const extraEntries = Object.entries(extras).filter(([, value]) => value !== undefined);
+  if (extraEntries.length > 0) {
+    details.push(extraEntries.map(([key, value]) => `${key}: ${typeof value === "string" ? value : JSON.stringify(value)}`).join("\n"));
+  }
+
+  return new Error(`${error?.message || String(error)}\n\n${details.join("\n\n")}`);
+}
+
+function createRealAuthUser(overrides = {}) {
+  return {
+    id: "user-1",
+    name: "Coach Taylor",
+    email: "coach@example.com",
+    emailVerified: true,
+    role: "coach",
+    teamId: null,
+    teamName: null,
+    sport: "",
+    seasonYear: "2026",
+    ownerId: "user-1",
+    isPersonalTeam: false,
+    onboarded: false,
+    notifications: {},
+    assistantPermissions: {},
+    ...overrides,
+  };
+}
 
 export default buildSuite(({ describe, it, expect }) => {
-  // ─── Component Validity ───────────────────────────────────────────────
-  describe("Route Components — Import Check", () => {
-    for (const route of ROUTES) {
-      it(`${route.name} is a valid function`, () => {
-        expect(typeof route.component).toBe("function");
-      }, `Verifies that the ${route.name} component module exports a valid React function. If this fails, the import is broken — likely a syntax error, missing file, or circular dependency in the component or its imports.`);
-    }
-  });
+  describe("Critical Flows", () => {
+    it("login submits credentials and navigates to the requested route", async () => {
+      resetBrowserState();
+      const messages = [];
+      const pathRef = { current: null };
+      const fetchMock = installFetchMock([
+        { method: "GET", match: "/auth/me", response: jsonResponse(401, { error: "Unauthorized" }) },
+        {
+          method: "POST",
+          match: "/auth/login",
+          response: jsonResponse(200, {
+            token: "login-token",
+            user: createRealAuthUser({
+              onboarded: true,
+              role: "owner",
+              teamId: "team-1",
+              teamName: "River City RFC",
+              sport: "rugby",
+            }),
+            allTeams: [{
+              teamId: "team-1",
+              teamName: "River City RFC",
+              sport: "rugby",
+              seasonYear: "2026",
+              ownerId: "user-1",
+              isPersonal: false,
+              role: "owner",
+            }],
+          }),
+        },
+        {
+          method: "GET",
+          match: /\/teams\/team-1\/members$/,
+          response: jsonResponse(200, {
+            members: [{ id: "user-1", name: "Coach Taylor", role: "owner", email: "coach@example.com" }],
+          }),
+        },
+      ]);
 
-  // ─── Render with Auth ─────────────────────────────────────────────────
-  describe("Route Components — Render with Mock Auth", () => {
-    for (const route of ROUTES) {
-      it(`${route.name} mounts without crashing`, () => {
-        let ref;
+      let ref;
+      try {
+        ref = renderRouteTree(
+          withLocationProbe(
+            createElement(
+              Routes,
+              null,
+              createElement(Route, { path: "/login", element: createElement(Login) }),
+              createElement(Route, { path: "/app/plays", element: createElement("div", null, "plays-loaded") })
+            ),
+            pathRef
+          ),
+          {
+            entry: "/login?returnTo=/app/plays",
+            authMode: "real",
+            messageValue: {
+              showMessage: (...args) => messages.push(args),
+              hideMessage: () => {},
+            },
+          }
+        );
+
+        typeInto(ref.container.querySelector('input[type="email"]'), "coach@example.com");
+        typeInto(ref.container.querySelector('input[type="password"]'), "secret-pass");
+        submitForm(ref.container.querySelector("form"));
+
         try {
-          ref = renderWithProviders(route.component, {
-            path: route.path,
-            entry: route.entry,
-            asLayout: route.asLayout || false,
+          await waitFor(
+            () => ref.container.textContent.includes("plays-loaded"),
+            { errorMessage: "Login flow did not navigate to the plays route" }
+          );
+
+          expect(localStorage.getItem("coachable_token")).toBe("login-token");
+          expect(messages).toHaveLength(0);
+          expect(fetchMock.calls.some((call) => call.url.includes("/auth/login"))).toBeTruthy();
+        } catch (error) {
+          throw attachDiagnostics(error, {
+            ref,
+            fetchMock,
+            messages,
+            pathRef,
+            extras: {
+              storedToken: localStorage.getItem("coachable_token") || "(none)",
+            },
           });
-          expect(ref.container).toBeTruthy();
-        } finally {
-          if (ref) ref.cleanup();
         }
-      }, route.desc);
-    }
-  });
-
-  // ─── Route Config Completeness ────────────────────────────────────────
-  describe("Route Configuration", () => {
-    it("all route paths are non-empty strings", () => {
-      for (const route of ROUTES) {
-        expect(typeof route.path).toBe("string");
-        expect(route.path.length).toBeGreaterThan(0);
+      } finally {
+        ref?.cleanup();
+        fetchMock.restore();
+        resetBrowserState();
       }
-    }, "Every route must have a non-empty path string. An empty path would cause React Router to throw or match unexpectedly, breaking navigation.");
+    }, "Runs the real login screen through AuthContext, verifies /auth/login succeeds, the JWT is stored, and the user lands on the requested destination.");
 
-    it("no duplicate components (each page used once)", () => {
-      const components = ROUTES.map((r) => r.component);
-      const unique = new Set(components);
-      expect(unique.size).toBe(components.length);
-    }, "Each page component should only appear once in the route map. Duplicates would mean two routes render the same component, which is usually a copy-paste error in the router config.");
+    it("login connection failures raise a user-facing error and send an API error report", async () => {
+      resetBrowserState();
+      const messages = [];
+      const pathRef = { current: null };
+      const fetchMock = installFetchMock([
+        { method: "GET", match: "/auth/me", response: jsonResponse(401, { error: "Unauthorized" }) },
+        {
+          method: "POST",
+          match: "/auth/login",
+          reject: new TypeError("Failed to fetch"),
+        },
+        {
+          method: "POST",
+          match: "/error-reports",
+          response: jsonResponse(201, { ok: true }),
+        },
+      ]);
 
-    it("expected number of routes registered", () => {
-      expect(ROUTES.length).toBeGreaterThanOrEqual(19);
-    }, "Sanity check that all expected routes are defined. If this number drops, a route was accidentally removed from the test suite and won't be tested.");
+      let ref;
+      try {
+        ref = renderRouteTree(
+          withLocationProbe(
+            createElement(
+              Routes,
+              null,
+              createElement(Route, { path: "/login", element: createElement(Login) })
+            ),
+            pathRef
+          ),
+          {
+            entry: "/login",
+            authMode: "real",
+            messageValue: {
+              showMessage: (...args) => messages.push(args),
+              hideMessage: () => {},
+            },
+          }
+        );
 
-    it("public routes include landing, login, signup", () => {
-      const names = ROUTES.map((r) => r.name);
-      expect(names).toContain("Landing");
-      expect(names).toContain("Login");
-      expect(names).toContain("Signup");
-    }, "The three core public routes must exist. If any are missing, unauthenticated users can't access the app at all.");
+        typeInto(ref.container.querySelector('input[type="email"]'), "coach@example.com");
+        typeInto(ref.container.querySelector('input[type="password"]'), "secret-pass");
+        submitForm(ref.container.querySelector("form"));
 
-    it("admin routes include Admin and AdminTests", () => {
-      const names = ROUTES.map((r) => r.name);
-      expect(names).toContain("Admin");
-      expect(names).toContain("AdminTests");
-    }, "Both admin pages must be registered. If AdminTests is missing, this test dashboard route is broken.");
+        try {
+          await waitFor(
+            () => messages.length > 0,
+            { errorMessage: "Login failure message never surfaced to the user" }
+          );
+          await waitFor(
+            () => fetchMock.calls.some((call) => call.url.includes("/error-reports")),
+            { errorMessage: "API failure was not reported to the error reporter" }
+          );
 
-    it("app routes include Plays, Team, Profile, Settings", () => {
-      const names = ROUTES.map((r) => r.name);
-      expect(names).toContain("Plays");
-      expect(names).toContain("Team");
-      expect(names).toContain("Profile");
-      expect(names).toContain("Settings");
-    }, "The four main app sections must all be present. A missing route means that section is inaccessible from the sidebar navigation.");
+          expect(messages[0][0]).toBe("Login failed");
+          expect(messages[0][1]).toContain("Could not reach the server");
+
+          const reportCall = fetchMock.calls.find((call) => call.url.includes("/error-reports"));
+          expect(reportCall.body.component).toBe("api");
+          expect(reportCall.body.action).toBe("POST /auth/login");
+          expect(reportCall.body.extra.kind).toBe("network");
+        } catch (error) {
+          throw attachDiagnostics(error, {
+            ref,
+            fetchMock,
+            messages,
+            pathRef,
+            extras: {
+              storedToken: localStorage.getItem("coachable_token") || "(none)",
+            },
+          });
+        }
+      } finally {
+        ref?.cleanup();
+        fetchMock.restore();
+        resetBrowserState();
+      }
+    }, "Checks the exact failure path you care about: backend connection loss during login should show a usable error and create an actionable admin report tied to the route.");
+
+    it("onboarding create-team flow posts to the backend and lands on plays", async () => {
+      resetBrowserState();
+      const pathRef = { current: null };
+      const fetchMock = installFetchMock([
+        {
+          method: "GET",
+          match: "/auth/me",
+          response: jsonResponse(200, {
+            user: createRealAuthUser(),
+            allTeams: [],
+          }),
+        },
+        {
+          method: "POST",
+          match: "/onboarding/create-team",
+          response: jsonResponse(200, {
+            team: {
+              id: "team-new",
+              name: "River City RFC",
+              sport: "rugby",
+              ownerId: "user-1",
+            },
+          }),
+        },
+        {
+          method: "GET",
+          match: /\/teams\/team-new\/members$/,
+          response: jsonResponse(200, {
+            members: [{ id: "user-1", name: "Coach Taylor", role: "coach", email: "coach@example.com" }],
+          }),
+        },
+      ]);
+
+      let ref;
+      try {
+        ref = renderRouteTree(
+          withLocationProbe(
+            createElement(
+              Routes,
+              null,
+              createElement(Route, { path: "/onboarding", element: createElement(Onboarding) }),
+              createElement(Route, { path: "/app/plays", element: createElement("div", null, "plays-loaded") })
+            ),
+            pathRef
+          ),
+          {
+            entry: "/onboarding",
+            authMode: "real",
+          }
+        );
+
+        typeInto(ref.container.querySelector('input[placeholder="e.g. Riverside Rugby"]'), "River City RFC");
+        clickElement(findButton(ref.container, "Finish setup"));
+
+        try {
+          await waitFor(
+            () => ref.container.textContent.includes("plays-loaded"),
+            { errorMessage: "Onboarding create-team flow did not navigate to plays" }
+          );
+
+          const createTeamCall = fetchMock.calls.find((call) => call.url.includes("/onboarding/create-team"));
+          expect(createTeamCall.body.teamName).toBe("River City RFC");
+        } catch (error) {
+          throw attachDiagnostics(error, {
+            ref,
+            fetchMock,
+            pathRef,
+          });
+        }
+      } finally {
+        ref?.cleanup();
+        fetchMock.restore();
+        resetBrowserState();
+      }
+    }, "Exercises the actual onboarding create-team route so regressions in payload shape, auth state updates, or post-setup navigation show up immediately.");
+
+    it("save-to-playbook creates a play and returns the saved record", async () => {
+      resetBrowserState();
+      const pathRef = { current: null };
+      let savedPlay = null;
+      let closed = false;
+
+      const fetchMock = installFetchMock([
+        {
+          method: "GET",
+          match: /\/teams\/team-1\/folders$/,
+          response: jsonResponse(200, { folders: [] }),
+        },
+        {
+          method: "POST",
+          match: /\/teams\/team-1\/plays$/,
+          response: jsonResponse(201, {
+            play: {
+              id: "play-1",
+              teamId: "team-1",
+              title: "Counter Sweep",
+              tags: [],
+              playData: { frames: [] },
+              notes: "",
+              notesAuthorName: "",
+              favorited: false,
+              hiddenFromPlayers: false,
+              createdAt: "2026-04-12T10:00:00.000Z",
+              updatedAt: "2026-04-12T10:00:00.000Z",
+            },
+          }),
+        },
+      ]);
+
+      let ref;
+      try {
+        ref = renderRouteTree(
+          withLocationProbe(
+            createElement(SaveToPlaybookModal, {
+              open: true,
+              playName: "Counter Sweep",
+              playData: { frames: [] },
+              onClose: () => { closed = true; },
+              onSaved: (play) => { savedPlay = play; },
+            }),
+            pathRef
+          )
+        );
+
+        try {
+          await waitFor(
+            () => {
+              const button = findButton(ref.container, "Save Play");
+              return button && !button.disabled ? button : null;
+            },
+            { errorMessage: "Save Play button never became ready" }
+          );
+          clickElement(findButton(ref.container, "Save Play"));
+
+          await waitFor(
+            () => savedPlay?.id === "play-1",
+            { errorMessage: "Save to playbook did not return a saved play" }
+          );
+
+          const createPlayCall = fetchMock.calls.find((call) => /\/teams\/team-1\/plays$/.test(call.url));
+          expect(createPlayCall.body.title).toBe("Counter Sweep");
+          expect(savedPlay.title).toBe("Counter Sweep");
+          expect(closed).toBeTruthy();
+        } catch (error) {
+          throw attachDiagnostics(error, {
+            ref,
+            fetchMock,
+            pathRef,
+            extras: {
+              savedPlay,
+              closed,
+            },
+          });
+        }
+      } finally {
+        ref?.cleanup();
+        fetchMock.restore();
+        resetBrowserState();
+      }
+    }, "Covers the save flow that actually matters to coaches: loading folders, creating a play, and closing the modal with the saved record.");
   });
 });

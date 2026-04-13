@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { normalizeAnimation, samplePosesAtTime } from "../animation";
+import { normalizeAnimation, samplePosesAtTime, getDirectionAtTime } from "../animation";
 import RugbyField from "../assets/objects/Field Vectors/Rugby_Field.png";
 import SoccerField from "../assets/objects/Field Vectors/Soccer_Field.png";
 import FootballField from "../assets/objects/Field Vectors/Football_Field.png";
@@ -24,6 +24,9 @@ const DEFAULT_PITCH_COLOR = "#4FA85D";
 const DEFAULT_DURATION_MS = 30000;
 const DEFAULT_PADDING_PX = 70;
 const MIN_CAMERA_SPAN_PX = 220;
+
+// Round-ball sports: skip directional rotation (only oblong balls like Rugby/Football rotate).
+const ROUND_BALL_FIELD_TYPES = new Set(["soccer", "lacrosse", "basketball"]);
 
 const FIELD_TYPE_TO_IMAGE_SRC = {
   Rugby: RugbyField,
@@ -721,15 +724,27 @@ export default function PlayPreviewCard({
 
           {Object.entries(ballsById).map(([id]) => {
             const pose = poses?.[id] || fallbackPoses?.[id] || { x: 0, y: 0 };
-            return (
+            const isOblongBall = !ROUND_BALL_FIELD_TYPES.has(fieldType.toLowerCase());
+            let ballRotation = null;
+            if (isOblongBall) {
+              const track = animation?.tracks?.[id];
+              ballRotation = track ? getDirectionAtTime(track, displayTimeMs) : null;
+            }
+            const ballImg = (
               <image
-                key={id}
                 href={FIELD_TYPE_TO_BALL_IMAGE_SRC[fieldType] ?? WhiteBall}
                 x={pose.x - ballRadius}
                 y={pose.y - ballRadius}
                 width={ballSizePx}
                 height={ballSizePx}
               />
+            );
+            return ballRotation !== null ? (
+              <g key={id} transform={`rotate(${ballRotation} ${pose.x} ${pose.y})`}>
+                {ballImg}
+              </g>
+            ) : (
+              <g key={id}>{ballImg}</g>
             );
           })}
         </svg>
