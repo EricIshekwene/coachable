@@ -4,6 +4,7 @@ import "./index.css";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Slate from "./features/slate/Slate";
+import SlateRecord from "./features/slate/SlateRecord";
 import MessagePopup from "./components/MessagePopup/MessagePopup";
 import { useMessagePopup } from "./components/messaging/useMessagePopup";
 import useThemeColor from "./utils/useThemeColor";
@@ -65,6 +66,36 @@ export function SlateRoot({ adminMode = false, sport = null }) {
           onShowMessage={showMessage}
           adminMode={adminMode}
           sport={sport}
+        />
+      </MobileViewOnlyGate>
+    </div>
+  );
+}
+
+/**
+ * Admin-only wrapper for the record-mode slate.
+ * Accessible only at /admin/record (guarded by RequireAdminSession).
+ */
+export function SlateRecordRoot() {
+  const { messagePopup, showMessage, hideMessage } = useMessagePopup();
+  useThemeColor("#121212");
+  return (
+    <div
+      className="w-full bg-BrandBlack flex flex-row justify-between relative overflow-hidden"
+      style={{ height: "100dvh" }}
+    >
+      <MessagePopup
+        message={messagePopup.message}
+        subtitle={messagePopup.subtitle}
+        visible={messagePopup.visible}
+        type={messagePopup.type}
+        autoHideDuration={messagePopup.autoHideDuration}
+        onClose={hideMessage}
+      />
+      <MobileViewOnlyGate>
+        <SlateRecord
+          onShowMessage={showMessage}
+          adminMode
         />
       </MobileViewOnlyGate>
     </div>
@@ -172,6 +203,7 @@ export function AppRoutes() {
       <Route path="/slate" element={<SportPickerPage />} />
       <Route path="/slate/:sport" element={<SlateWithSportParam />} />
       <Route path="/admin/slate" element={<RequireAdminSession><SlateRoot adminMode /></RequireAdminSession>} />
+      <Route path="/admin/record" element={<RequireAdminSession><SlateRecordRoot /></RequireAdminSession>} />
       <Route path="/admin/app" element={<RequireAdminSession><AdminPlaysPage /></RequireAdminSession>} />
       <Route path="/admin/plays/:playId/edit" element={<RequireAdminSession><AdminPlayEditPage /></RequireAdminSession>} />
       <Route path="/admin/user-issues" element={<RequireAdminSession><AdminUserIssues /></RequireAdminSession>} />

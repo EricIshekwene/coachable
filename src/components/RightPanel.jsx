@@ -9,6 +9,7 @@ import AllPlayersSection from "./rightPanel/AllPlayersSection";
 import SelectedPlayersSection from "./rightPanel/SelectedPlayersSection";
 import ExportActions from "./rightPanel/ExportActions";
 import RecordingPlayerList from "./rightPanel/RecordingPlayerList";
+import RecordingModeToggle from "./rightPanel/RecordingModeToggle";
 import ObjectsSection from "./rightPanel/ObjectsSection";
 import PlayerTransformSection from "./rightPanel/PlayerTransformSection";
 
@@ -106,6 +107,15 @@ export default function RightPanel({
   onResumeRecording,
   onClearPlayerRecording,
   onClearAllRecordings,
+  // Optional: show the toggle button (admin record slate only)
+  onRecordingModeToggle,
+  recordingDurationMs,
+  onRecordingDurationChange,
+  recordingStabilization,
+  onRecordingStabilizationChange,
+  // Optional: focused player for timeline segment highlighting
+  recordingFocusedId,
+  onRecordingFocusId,
 }) {
   return (
     <aside
@@ -172,6 +182,18 @@ export default function RightPanel({
             />
           )}
 
+          {onRecordingModeToggle && (
+            <RecordingModeToggle
+              enabled={recordingModeEnabled}
+              onChange={onRecordingModeToggle}
+              durationMs={recordingDurationMs}
+              onDurationChange={onRecordingDurationChange}
+              stabilization={recordingStabilization}
+              onStabilizationChange={onRecordingStabilizationChange}
+              isBusy={recordingGlobalState !== "idle"}
+            />
+          )}
+
           {recordingModeEnabled && (
             <RecordingPlayerList
               playersById={playersById}
@@ -184,6 +206,8 @@ export default function RightPanel({
               onResumeRecording={onResumeRecording}
               onClearPlayerRecording={onClearPlayerRecording}
               onClearAllRecordings={onClearAllRecordings}
+              focusedId={recordingFocusedId}
+              onFocusId={onRecordingFocusId}
             />
           )}
 

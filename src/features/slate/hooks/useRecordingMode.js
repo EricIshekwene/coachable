@@ -162,6 +162,29 @@ export function useRecordingMode({
   const finishRecording = useCallback(
     (reason = "unknown") => {
       const pid = recordingPlayerIdRef.current;
+
+      // Guard: pid must be a non-empty string. If it's an object (the "[object Object]" bug)
+      // just reset state without writing corrupted track data.
+      if (pid && typeof pid !== "string") {
+        logRecordingDebug(
+          `finishRec ABORT invalid pid type=${typeof pid} value=${String(pid)} reason=${reason}`
+        );
+        if (rafIdRef.current) { cancelAnimationFrame(rafIdRef.current); rafIdRef.current = null; }
+        recordingBufferRef.current = [];
+        recordingStartRef.current = null;
+        pausedElapsedRef.current = 0;
+        preRecordingTrackRef.current = null;
+        lastSampleElapsedRef.current = 0;
+        lastFeedAtRef.current = 0;
+        feedCountRef.current = 0;
+        sampleCountRef.current = 0;
+        lastLogAtRef.current = -Infinity;
+        setGlobalState("idle");
+        setRecordingPlayerId(null);
+        setRecordingTimeMs(0);
+        return;
+      }
+
       if (rafIdRef.current) {
         cancelAnimationFrame(rafIdRef.current);
         rafIdRef.current = null;
@@ -185,13 +208,34 @@ export function useRecordingMode({
         );
         setAnimationDataWithMeta((base) => {
           const nextTracks = { ...base.tracks };
+          // Also strip any invalid (non-string) keys that may have accumulated.
+          Object.keys(nextTracks).forEach((k) => {
+            if (!k || typeof k !== "string" || k === "[object Object]") {
+              delete nextTracks[k];
+            }
+          });
           nextTracks[pid] = { keyframes };
           return { ...base, tracks: nextTracks };
         });
-        setPlayerStates((prev) => ({ ...prev, [pid]: "recorded" }));
+        setPlayerStates((prev) => {
+          const next = {};
+          // Strip invalid keys while copying.
+          Object.entries(prev).forEach(([k, v]) => {
+            if (k && typeof k === "string" && k !== "[object Object]") next[k] = v;
+          });
+          next[pid] = "recorded";
+          return next;
+        });
       } else if (pid) {
         // No frames recorded, mark idle.
-        setPlayerStates((prev) => ({ ...prev, [pid]: "idle" }));
+        setPlayerStates((prev) => {
+          const next = {};
+          Object.entries(prev).forEach(([k, v]) => {
+            if (k && typeof k === "string" && k !== "[object Object]") next[k] = v;
+          });
+          next[pid] = "idle";
+          return next;
+        });
       }
 
       // Position all recorded players at their last recorded position (idle overview).
@@ -297,6 +341,17 @@ export function useRecordingMode({
   // Internal: actually begin recording (called after countdown).
   const beginRecordingInternal = useCallback(
     (playerId) => {
+      // Guard: playerId must be a non-empty string. Objects accidentally used as keys
+      // produce the "[object Object]" corruption bug.
+      if (!playerId || typeof playerId !== "string") {
+        logRecordingDebug(
+          `beginRec ABORT invalid playerId type=${typeof playerId} value=${String(playerId)}`
+        );
+        setGlobalState("idle");
+        setRecordingPlayerId(null);
+        return;
+      }
+
       // If already recording, stop first.
       if (rafIdRef.current) {
         cancelAnimationFrame(rafIdRef.current);
@@ -907,6 +962,16 @@ export function useRecordingMode({
     };
   }, []);
 
+  /**
+   * Returns the current preview elapsed time directly from the RAF ref.
+   * Reads `currentPreviewElapsedRef.current` so callers can poll at their
+   * own rate without waiting for the throttled React state update (200 ms).
+   */
+  const getPreviewTimeMs = useCallback(
+    () => currentPreviewElapsedRef.current,
+    []
+  );
+
   return {
     recordingModeEnabled,
     setRecordingModeEnabled,
@@ -925,6 +990,7 @@ export function useRecordingMode({
     syncPlayerStates,
     feedPosition,
     getDebugSnapshot,
+    getPreviewTimeMs,
     startRecording,
     stopRecording,
     pauseRecording,

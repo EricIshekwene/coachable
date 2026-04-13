@@ -18,6 +18,9 @@ export default function RecordingPlayerList({
   onResumeRecording,
   onClearPlayerRecording,
   onClearAllRecordings,
+  // Optional: focus a player to highlight their segment in the timeline pill
+  focusedId,
+  onFocusId,
 }) {
   const playerIds = representedPlayerIds || [];
   const ballIds = Object.keys(ballsById || {});
@@ -61,15 +64,20 @@ export default function RecordingPlayerList({
           const isRecorded = state === "recorded";
           const isIdle = state === "idle";
 
+          const isFocused = onFocusId && focusedId === id;
+
           return (
             <div
               key={id}
+              onClick={() => onFocusId?.(focusedId === id ? null : id)}
               className={`
                 flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors
+                ${onFocusId ? "cursor-pointer" : ""}
                 ${isCurrentlyRecording ? "bg-red-500/15 border border-red-500/30" : ""}
                 ${isPlayerPaused ? "bg-yellow-500/10 border border-yellow-500/25" : ""}
                 ${isRecorded && !isPlayerPaused ? "bg-green-500/10 border border-green-500/20" : ""}
                 ${isIdle && !isCurrentlyRecording ? "bg-BrandGray2/20 border border-transparent" : ""}
+                ${isFocused ? "ring-1 ring-BrandOrange/60" : ""}
               `}
             >
               {/* Status icon */}
@@ -113,8 +121,8 @@ export default function RecordingPlayerList({
                 </>
               )}
 
-              {/* Action buttons */}
-              <div className="flex items-center gap-1 shrink-0">
+              {/* Action buttons — stop click from bubbling to the focus handler */}
+              <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                 {/* Resume button for paused players */}
                 {isPlayerPaused && !isCurrentlyRecording && !isBusy && (
                   <button

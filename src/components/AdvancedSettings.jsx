@@ -11,6 +11,7 @@ import AnimationSettingsSection from "./advancedSettings/AnimationSettingsSectio
 import LoggerSettingsSection from "./advancedSettings/LoggerSettingsSection";
 import PlayPreviewCard from "./PlayPreviewCard";
 import DebugPanel from "./rightPanel/DebugPanel";
+import RecordDebugPanel from "./advancedSettings/RecordDebugPanel";
 import { SPORT_DEFAULTS } from "../features/slate/hooks/useAdvancedSettings";
 
 export default function AdvancedSettings({
@@ -44,6 +45,7 @@ export default function AdvancedSettings({
     currentTimeMs = 0,
     actionLog = [],
     adminMode = false,
+    recordingDebug = null,
 }) {
     const [showPreviewDebug, setShowPreviewDebug] = React.useState(false);
     const settings = value ?? {};
@@ -201,6 +203,29 @@ export default function AdvancedSettings({
                         animationData={animationData}
                         currentTimeMs={currentTimeMs}
                         actionLog={actionLog}
+                    />
+                </div>
+                )}
+                {adminMode && recordingDebug && (
+                <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1 sm:gap-2">
+                    <div className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans">
+                        Record Debug
+                    </div>
+                    <RecordDebugPanel
+                        globalState={recordingDebug.globalState}
+                        countdownValue={recordingDebug.countdownValue}
+                        recordingModeEnabled={recordingDebug.recordingModeEnabled}
+                        recordingPlayerId={recordingDebug.recordingPlayerId}
+                        recordingTimeMs={recordingDebug.recordingTimeMs}
+                        previewTimeMs={recordingDebug.previewTimeMs}
+                        recordingDurationMs={recordingDebug.recordingDurationMs}
+                        stabilization={recordingDebug.stabilization}
+                        recordedCount={recordingDebug.recordedCount}
+                        totalCount={recordingDebug.totalCount}
+                        playerStates={recordingDebug.playerStates}
+                        playersById={recordingDebug.playersById}
+                        getDebugSnapshot={recordingDebug.getDebugSnapshot}
+                        animationData={recordingDebug.animationData}
                     />
                 </div>
                 )}
