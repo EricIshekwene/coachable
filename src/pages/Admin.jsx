@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../utils/api";
 import logo from "../assets/logos/full_Coachable_logo.png";
 import ConfirmModal from "../components/subcomponents/ConfirmModal";
@@ -98,6 +99,28 @@ function formatReportText(r) {
   return lines.join("\n");
 }
 
+function formatRole(role) {
+  if (!role) return "Unknown";
+  return role
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function getSortedMemberships(memberships = []) {
+  const rolePriority = {
+    owner: 0,
+    coach: 1,
+    assistant_coach: 2,
+    player: 3,
+  };
+  return [...memberships].sort((a, b) => {
+    const roleDelta = (rolePriority[a.role] ?? 99) - (rolePriority[b.role] ?? 99);
+    if (roleDelta !== 0) return roleDelta;
+    return new Date(b.joinedAt || 0).getTime() - new Date(a.joinedAt || 0).getTime();
+  });
+}
+
 // ── Shared UI helpers ──────────────────────────────────────────────────────
 function SectionHeader({ title, badge, badgeColor = "bg-BrandOrange/20 text-BrandOrange", children }) {
   return (
@@ -126,6 +149,7 @@ function StatCard({ label, value, color = "text-white" }) {
 
 // ── Main component ─────────────────────────────────────────────────────────
 export default function Admin() {
+  const navigate = useNavigate();
   // ── Auth ──
   const [session, setSession] = useState(() => sessionStorage.getItem(SESSION_KEY) || "");
   const [password, setPassword] = useState("");
@@ -390,6 +414,10 @@ export default function Admin() {
   };
 
   // ── Platform Plays ──
+  const handleOpenUserActivity = useCallback((userId) => {
+    navigate(`/admin/users/${userId}`);
+  }, [navigate]);
+
   const fetchPlatformPlays = useCallback(async () => {
     setPlaysLoading(true);
     setPlaysError("");
@@ -562,7 +590,15 @@ export default function Admin() {
     return users.filter((u) => {
       if (hideDemoAccounts && u.email?.endsWith("@coachable-seed.invalid")) return false;
       if (!normalizedUsersSearch) return true;
-      const haystack = [u.name, u.email, u.team_name, u.role]
+      const haystack = [
+        u.name,
+        u.email,
+        ...(u.memberships || []).flatMap((membership) => [
+          membership.teamName,
+          membership.role,
+          membership.sport,
+        ]),
+      ]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
@@ -805,62 +841,110 @@ export default function Admin() {
                     <td colSpan={6} className="px-4 py-8 text-center text-xs text-BrandGray2">No users match your search</td>
                   </tr>
                 )}
-                {filteredUsers.map((u) => (
-                  <tr
-                    key={u.id}
-                    className={`border-b border-white/4 transition hover:bg-white/2 ${!u.onboarded_at ? "opacity-60" : ""}`}
-                  >
-                    <td className="px-4 py-3 font-medium">
-                      {u.name}
-                      {!u.onboarded_at && (
-                        <span className="ml-2 rounded bg-yellow-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-yellow-400">
-                          Not onboarded
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-BrandGray">{u.email}</td>
-                    <td className="px-4 py-3 text-BrandGray">
-                      {u.team_name ? (
-                        <span>{u.team_name} <span className="text-xs text-BrandGray2">({u.role})</span></span>
-                      ) : (
-                        <span className="text-BrandGray2">-</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1.5">
-                        <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${
-                          u.email_verified_at
-                            ? "bg-green-500/15 text-green-400"
-                            : "bg-white/6 text-BrandGray2"
-                        }`}>
-                          {u.email_verified_at ? "Verified" : "Unverified"}
-                        </span>
-                        <button
-                          onClick={() => handleToggleBetaTester(u)}
-                          title={u.is_beta_tester ? "Remove beta tester" : "Make beta tester"}
-                          className={`rounded-full px-2 py-1 text-[10px] font-semibold transition ${
-                            u.is_beta_tester
-                              ? "bg-purple-500/20 text-purple-400 hover:bg-purple-500/30"
-                              : "bg-white/6 text-BrandGray2 hover:bg-white/10 hover:text-white"
-                          }`}
-                        >
-                          {u.is_beta_tester ? "Beta Tester" : "Standard"}
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-BrandGray2">
-                      {new Date(u.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => handleDeleteUser(u.id, u.name)}
-                        className="rounded px-2 py-1 text-xs text-red-400/70 transition hover:bg-red-600/15 hover:text-red-400"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {filteredUsers.map((u) => {
+                  const memberships = getSortedMemberships(u.memberships);
+                  const hasCoachingRole = Boolean(u.can_view_activity);
+
+                  return (
+                    <tr
+                      key={u.id}
+                      className={`border-b border-white/4 transition hover:bg-white/2 ${!u.onboarded_at ? "opacity-60" : ""}`}
+                    >
+                      <td className="px-4 py-3 font-medium">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenUserActivity(u.id)}
+                            className="cursor-pointer text-left text-white transition hover:text-BrandOrange hover:underline"
+                          >
+                            {u.name}
+                          </button>
+                          {hasCoachingRole && (
+                            <span className="rounded bg-BrandOrange/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-BrandOrange">
+                              Activity
+                            </span>
+                          )}
+                          {!u.onboarded_at && (
+                            <span className="rounded bg-yellow-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-yellow-400">
+                              Not onboarded
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-xs text-BrandGray2">
+                          {hasCoachingRole ? "Click name to open activity" : "Click name to open details"}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3 text-BrandGray">{u.email}</td>
+                      <td className="px-4 py-3 text-BrandGray">
+                        {memberships.length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {memberships.slice(0, 2).map((membership) => (
+                              <span
+                                key={`${u.id}-${membership.teamId}-${membership.role}`}
+                                className="rounded-full bg-white/6 px-2 py-1 text-[10px] font-semibold text-BrandGray"
+                              >
+                                {membership.teamName} <span className="text-BrandGray2">({formatRole(membership.role)})</span>
+                              </span>
+                            ))}
+                            {memberships.length > 2 && (
+                              <span className="rounded-full bg-white/6 px-2 py-1 text-[10px] font-semibold text-BrandGray2">
+                                +{memberships.length - 2} more
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-BrandGray2">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1.5">
+                          <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${
+                            u.email_verified_at
+                              ? "bg-green-500/15 text-green-400"
+                              : "bg-white/6 text-BrandGray2"
+                          }`}>
+                            {u.email_verified_at ? "Verified" : "Unverified"}
+                          </span>
+                          <button
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleToggleBetaTester(u);
+                            }}
+                            title={u.is_beta_tester ? "Remove beta tester" : "Make beta tester"}
+                            className={`rounded-full px-2 py-1 text-[10px] font-semibold transition ${
+                              u.is_beta_tester
+                                ? "bg-purple-500/20 text-purple-400 hover:bg-purple-500/30"
+                                : "bg-white/6 text-BrandGray2 hover:bg-white/10 hover:text-white"
+                            }`}
+                          >
+                            {u.is_beta_tester ? "Beta Tester" : "Standard"}
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-BrandGray2">
+                        {new Date(u.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleOpenUserActivity(u.id)}
+                            className="rounded px-2 py-1 text-xs text-BrandOrange transition hover:bg-BrandOrange/10"
+                          >
+                            {hasCoachingRole ? "Activity" : "Details"}
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleDeleteUser(u.id, u.name);
+                            }}
+                            className="rounded px-2 py-1 text-xs text-red-400/70 transition hover:bg-red-600/15 hover:text-red-400"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
               </table>
             </div>

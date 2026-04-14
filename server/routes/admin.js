@@ -4,7 +4,8 @@ import crypto from "crypto";
 import pool from "../db/pool.js";
 
 const router = Router();
-const ADMIN_HASH = process.env.ADMIN_HASH;
+const COACHING_ROLES = ["owner", "coach", "assistant_coach"];
+const ADMIN_HASH = globalThis.process.env.ADMIN_HASH;
 if (!ADMIN_HASH) {
   throw new Error("ADMIN_HASH environment variable must be set.");
 }
@@ -87,13 +88,242 @@ router.get("/users", requireAdmin, async (_req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT u.id, u.name, u.email, u.email_verified_at, u.onboarded_at, u.created_at,
-              u.is_beta_tester, tm.role, t.name AS team_name
+              u.is_beta_tester,
+              COALESCE(
+                json_agg(
+                  json_build_object(
+                    'teamId', t.id,
+                    'teamName', t.name,
+                    'sport', t.sport,
+                    'role', tm.role,
+                    'joinedAt', tm.joined_at,
+                    'isPersonal', t.is_personal
+                  )
+                  ORDER BY tm.joined_at
+                ) FILTER (WHERE tm.id IS NOT NULL),
+                '[]'::json
+              ) AS memberships,
+              COALESCE(bool_or(tm.role = ANY($1::team_role[])), false) AS can_view_activity
        FROM users u
        LEFT JOIN team_memberships tm ON tm.user_id = u.id
        LEFT JOIN teams t ON t.id = tm.team_id
-       ORDER BY u.created_at DESC`
+       GROUP BY u.id, u.name, u.email, u.email_verified_at, u.onboarded_at, u.created_at, u.is_beta_tester
+       ORDER BY u.created_at DESC`,
+      [COACHING_ROLES]
     );
     res.json({ users: rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /admin/users/:id/activity - detail + recent activity for a single user
+router.get("/users/:id/activity", requireAdmin, async (req, res, next) => {
+  try {
+    const userId = req.params.id;
+
+    const [userResult, summaryResult, recentPlaysResult, recentActivityResult] = await Promise.all([
+      pool.query(
+        `SELECT u.id, u.name, u.email, u.email_verified_at, u.onboarded_at, u.created_at,
+                u.updated_at, u.active_team_id, u.is_beta_tester,
+                COALESCE(
+                  json_agg(
+                    json_build_object(
+                      'teamId', t.id,
+                      'teamName', t.name,
+                      'sport', t.sport,
+                      'role', tm.role,
+                      'joinedAt', tm.joined_at,
+                      'isPersonal', t.is_personal,
+                      'isOwner', t.owner_user_id = u.id
+                    )
+                    ORDER BY tm.joined_at
+                  ) FILTER (WHERE tm.id IS NOT NULL),
+                  '[]'::json
+                ) AS memberships,
+                COALESCE(bool_or(tm.role = ANY($2::team_role[])), false) AS can_view_activity
+         FROM users u
+         LEFT JOIN team_memberships tm ON tm.user_id = u.id
+         LEFT JOIN teams t ON t.id = tm.team_id
+         WHERE u.id = $1
+         GROUP BY u.id, u.name, u.email, u.email_verified_at, u.onboarded_at, u.created_at, u.updated_at, u.active_team_id, u.is_beta_tester`,
+        [userId, COACHING_ROLES]
+      ),
+      pool.query(
+        `SELECT
+           (SELECT COUNT(*)::int FROM plays WHERE created_by_user_id = $1) AS plays_created,
+           (SELECT COUNT(*)::int FROM plays WHERE updated_by_user_id = $1 AND created_by_user_id <> $1) AS plays_updated,
+           (SELECT COUNT(*)::int FROM play_folders WHERE created_by_user_id = $1) AS folders_created,
+           (SELECT COUNT(*)::int FROM play_share_links WHERE created_by_user_id = $1) AS play_shares_created,
+           (SELECT COUNT(*)::int FROM folder_share_links WHERE created_by_user_id = $1) AS folder_shares_created,
+           (SELECT COUNT(*)::int FROM team_invites WHERE invited_by_user_id = $1) AS invites_sent,
+           (SELECT COUNT(*)::int FROM user_issues WHERE user_id = $1) AS issues_reported,
+           (SELECT COUNT(*)::int FROM error_reports WHERE user_id = $1) AS error_reports,
+           (SELECT COUNT(*)::int FROM play_favorites WHERE user_id = $1) AS favorite_plays`,
+        [userId]
+      ),
+      pool.query(
+        `SELECT p.id, p.title,
+                p.play_data AS "playData",
+                p.thumbnail_url AS thumbnail,
+                p.created_at AS "createdAt",
+                p.updated_at AS "updatedAt",
+                p.archived_at AS "archivedAt",
+                p.hidden_from_players AS "hiddenFromPlayers",
+                t.id AS "teamId",
+                t.name AS "teamName",
+                t.sport AS sport,
+                pf.name AS "folderName"
+         FROM plays p
+         JOIN teams t ON t.id = p.team_id
+         LEFT JOIN play_folders pf ON pf.id = p.folder_id
+         WHERE p.created_by_user_id = $1
+         ORDER BY p.created_at DESC
+         LIMIT 25`,
+        [userId]
+      ),
+      pool.query(
+        `SELECT activity_type, activity_id, label, team_name, occurred_at, meta
+         FROM (
+           SELECT
+             'play_created' AS activity_type,
+             p.id::text AS activity_id,
+             p.title AS label,
+             t.name AS team_name,
+             p.created_at AS occurred_at,
+             json_build_object(
+               'playId', p.id,
+               'hiddenFromPlayers', p.hidden_from_players,
+               'archivedAt', p.archived_at
+             ) AS meta
+           FROM plays p
+           JOIN teams t ON t.id = p.team_id
+           WHERE p.created_by_user_id = $1
+
+           UNION ALL
+
+           SELECT
+             'play_updated' AS activity_type,
+             p.id::text AS activity_id,
+             p.title AS label,
+             t.name AS team_name,
+             p.updated_at AS occurred_at,
+             json_build_object('playId', p.id) AS meta
+           FROM plays p
+           JOIN teams t ON t.id = p.team_id
+           WHERE p.updated_by_user_id = $1
+             AND p.created_by_user_id <> $1
+
+           UNION ALL
+
+           SELECT
+             'folder_created' AS activity_type,
+             pf.id::text AS activity_id,
+             pf.name AS label,
+             t.name AS team_name,
+             pf.created_at AS occurred_at,
+             json_build_object('folderId', pf.id) AS meta
+           FROM play_folders pf
+           JOIN teams t ON t.id = pf.team_id
+           WHERE pf.created_by_user_id = $1
+
+           UNION ALL
+
+           SELECT
+             'play_share_created' AS activity_type,
+             psl.id::text AS activity_id,
+             p.title AS label,
+             t.name AS team_name,
+             psl.created_at AS occurred_at,
+             json_build_object(
+               'playId', p.id,
+               'expiresAt', psl.expires_at,
+               'revokedAt', psl.revoked_at
+             ) AS meta
+           FROM play_share_links psl
+           JOIN plays p ON p.id = psl.play_id
+           JOIN teams t ON t.id = p.team_id
+           WHERE psl.created_by_user_id = $1
+
+           UNION ALL
+
+           SELECT
+             'folder_share_created' AS activity_type,
+             fsl.id::text AS activity_id,
+             pf.name AS label,
+             t.name AS team_name,
+             fsl.created_at AS occurred_at,
+             json_build_object(
+               'folderId', pf.id,
+               'expiresAt', fsl.expires_at,
+               'revokedAt', fsl.revoked_at
+             ) AS meta
+           FROM folder_share_links fsl
+           JOIN play_folders pf ON pf.id = fsl.folder_id
+           JOIN teams t ON t.id = pf.team_id
+           WHERE fsl.created_by_user_id = $1
+
+           UNION ALL
+
+           SELECT
+             'invite_sent' AS activity_type,
+             ti.id::text AS activity_id,
+             COALESCE(ti.contact_email, ti.contact_phone, ti.requested_role::text) AS label,
+             t.name AS team_name,
+             ti.created_at AS occurred_at,
+             json_build_object(
+               'requestedRole', ti.requested_role,
+               'status', ti.status,
+               'acceptedAt', ti.accepted_at
+             ) AS meta
+           FROM team_invites ti
+           JOIN teams t ON t.id = ti.team_id
+           WHERE ti.invited_by_user_id = $1
+
+           UNION ALL
+
+           SELECT
+             'issue_reported' AS activity_type,
+             ui.id::text AS activity_id,
+             ui.title AS label,
+             NULL::text AS team_name,
+             ui.created_at AS occurred_at,
+             json_build_object('status', ui.status) AS meta
+           FROM user_issues ui
+           WHERE ui.user_id = $1
+
+           UNION ALL
+
+           SELECT
+             'error_reported' AS activity_type,
+             er.id::text AS activity_id,
+             COALESCE(er.component, er.action, er.error_message, 'Error report') AS label,
+             NULL::text AS team_name,
+             er.created_at AS occurred_at,
+             json_build_object(
+               'action', er.action,
+               'pageUrl', er.page_url
+             ) AS meta
+           FROM error_reports er
+           WHERE er.user_id = $1
+         ) activity
+         ORDER BY occurred_at DESC
+         LIMIT 50`,
+        [userId]
+      ),
+    ]);
+
+    const user = userResult.rows[0];
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json({
+      user,
+      summary: summaryResult.rows[0],
+      recentPlays: recentPlaysResult.rows,
+      activity: recentActivityResult.rows,
+    });
   } catch (err) {
     next(err);
   }

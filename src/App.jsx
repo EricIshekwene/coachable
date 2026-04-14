@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { installGlobalErrorHandlers } from "./utils/errorReporter";
 import "./index.css";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
@@ -21,7 +21,9 @@ import AdminTests from "./pages/AdminTests";
 import AdminErrors from "./pages/AdminErrors";
 import AdminPlayEditPage from "./pages/AdminPlayEditPage";
 import AdminPlaysPage from "./pages/AdminPlaysPage";
+import AdminUserActivity from "./pages/AdminUserActivity";
 import AdminUserIssues from "./pages/AdminUserIssues";
+import AdminMobileView from "./pages/AdminMobileView";
 import AppLayout from "./layouts/AppLayout";
 import Plays from "./pages/app/Plays";
 import PlayNew from "./pages/app/PlayNew";
@@ -206,7 +208,9 @@ export function AppRoutes() {
       <Route path="/admin/record" element={<RequireAdminSession><SlateRecordRoot /></RequireAdminSession>} />
       <Route path="/admin/app" element={<RequireAdminSession><AdminPlaysPage /></RequireAdminSession>} />
       <Route path="/admin/plays/:playId/edit" element={<RequireAdminSession><AdminPlayEditPage /></RequireAdminSession>} />
+      <Route path="/admin/users/:userId" element={<RequireAdminSession><AdminUserActivity /></RequireAdminSession>} />
       <Route path="/admin/user-issues" element={<RequireAdminSession><AdminUserIssues /></RequireAdminSession>} />
+      <Route path="/admin/mobile-view" element={<RequireAdminSession><AdminMobileView /></RequireAdminSession>} />
 
       {/* Full-screen play editor (outside AppLayout — no nav chrome) */}
       <Route path="/app/plays/:playId/edit" element={<RequireAuth><RequireOnboarded><PlayEditPage /></RequireOnboarded></RequireAuth>} />

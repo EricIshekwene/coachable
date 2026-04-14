@@ -1,25 +1,15 @@
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { runAllSuites } from "../testing/testRunner";
 import logo from "../assets/logos/full_Coachable_logo.png";
 import { formatFailedTestsReport } from "../testing/formatFailedTestsReport";
 
-// Import test suites
-import drawingGeometrySuite from "../testing/suites/drawingGeometry.suite";
-import interpolateSuite from "../testing/suites/interpolate.suite";
-import importExportSuite from "../testing/suites/importExport.suite";
-import animationSchemaSuite from "../testing/suites/animationSchema.suite";
-import routesSuite from "../testing/suites/routes.suite";
-
-const ALL_SUITES = {
-  "Drawing Geometry": drawingGeometrySuite,
-  "Interpolation": interpolateSuite,
-  "Import / Export": importExportSuite,
-  "Animation Schema": animationSchemaSuite,
-  "Routes": routesSuite,
-};
-
-const SUITE_NAMES = Object.keys(ALL_SUITES);
+const SUITE_NAMES = [
+  "Drawing Geometry",
+  "Interpolation",
+  "Import / Export",
+  "Animation Schema",
+  "Routes",
+];
 
 const SUITE_DESCRIPTIONS = {
   "Drawing Geometry": "Pure math utilities for the canvas drawing editor — bounds calculation, hit-testing, resize, rotate, and polygon operations.",
@@ -121,6 +111,7 @@ function SuiteCheckbox({ name, checked, onChange, testCount }) {
 // ─── Main Component ─────────────────────────────────────────────────────────
 
 export default function AdminTests() {
+  const [allSuites, setAllSuites] = useState(null);
   const [results, setResults] = useState(null);
   const [running, setRunning] = useState(false);
   const [copied, setCopied] = useState(null);
@@ -129,8 +120,29 @@ export default function AdminTests() {
   const [expandedTests, setExpandedTests] = useState(new Set());
   const [collapsedSuites, setCollapsedSuites] = useState(new Set());
   const [enabledSuites, setEnabledSuites] = useState(() => new Set(SUITE_NAMES));
+  const runAllSuitesRef = useRef(null);
   const startTimeRef = useRef(0);
   const [totalMs, setTotalMs] = useState(0);
+
+  useEffect(() => {
+    Promise.all([
+      import("../testing/testRunner"),
+      import("../testing/suites/drawingGeometry.suite"),
+      import("../testing/suites/interpolate.suite"),
+      import("../testing/suites/importExport.suite"),
+      import("../testing/suites/animationSchema.suite"),
+      import("../testing/suites/routes.suite"),
+    ]).then(([runner, drawingGeometry, interpolation, importExport, animationSchema, routes]) => {
+      runAllSuitesRef.current = runner.runAllSuites;
+      setAllSuites({
+        "Drawing Geometry": drawingGeometry.default,
+        "Interpolation": interpolation.default,
+        "Import / Export": importExport.default,
+        "Animation Schema": animationSchema.default,
+        "Routes": routes.default,
+      });
+    }).catch((err) => console.error("Failed to load test suites:", err));
+  }, []);
 
   const toggleSuiteEnabled = useCallback((name, enabled) => {
     setEnabledSuites((prev) => {
@@ -144,12 +156,13 @@ export default function AdminTests() {
   const selectNone = useCallback(() => setEnabledSuites(new Set()), []);
 
   const selectedSuiteMap = useMemo(() => {
+    if (!allSuites) return {};
     const map = {};
     for (const name of enabledSuites) {
-      if (ALL_SUITES[name]) map[name] = ALL_SUITES[name];
+      if (allSuites[name]) map[name] = allSuites[name];
     }
     return map;
-  }, [enabledSuites]);
+  }, [allSuites, enabledSuites]);
 
   const selectedTestCount = useMemo(
     () => Object.values(selectedSuiteMap).reduce((n, s) => n + s.length, 0),
@@ -157,14 +170,14 @@ export default function AdminTests() {
   );
 
   const runSelected = useCallback(async () => {
-    if (enabledSuites.size === 0) return;
+    if (enabledSuites.size === 0 || !runAllSuitesRef.current) return;
     setRunning(true);
     setResults(null);
     setExpandedTests(new Set());
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     startTimeRef.current = performance.now();
     try {
-      const suiteResults = await runAllSuites(selectedSuiteMap);
+      const suiteResults = await runAllSuitesRef.current(selectedSuiteMap);
       setResults(suiteResults);
       setTotalMs(performance.now() - startTimeRef.current);
     } catch (err) {
@@ -223,7 +236,9 @@ export default function AdminTests() {
     }).filter((s) => s.filteredResults.length > 0);
   }, [results, filter, searchLower]);
 
-  const totalRegistered = Object.values(ALL_SUITES).reduce((n, s) => n + s.length, 0);
+  const totalRegistered = allSuites
+    ? Object.values(allSuites).reduce((n, s) => n + s.length, 0)
+    : 0;
   const copyToClipboard = useCallback((text, id) => {
     navigator.clipboard.writeText(text).then(() => {
       setCopied(id);
@@ -244,7 +259,7 @@ export default function AdminTests() {
           <div className="flex items-center gap-2">
             <button
               onClick={runSelected}
-              disabled={running || enabledSuites.size === 0}
+              disabled={running || enabledSuites.size === 0 || !allSuites}
               className="rounded-lg bg-BrandOrange px-4 py-2 text-xs font-semibold text-white transition hover:brightness-110 active:scale-[0.97] disabled:opacity-50"
             >
               {running ? (
@@ -252,6 +267,8 @@ export default function AdminTests() {
                   <span className="inline-block h-3 w-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
                   Running...
                 </span>
+              ) : !allSuites ? (
+                "Loading suites..."
               ) : enabledSuites.size === SUITE_NAMES.length
                 ? "Run All Tests"
                 : `Run ${enabledSuites.size} Suite${enabledSuites.size !== 1 ? "s" : ""}`}
@@ -308,7 +325,7 @@ export default function AdminTests() {
                     name={name}
                     checked={enabledSuites.has(name)}
                     onChange={(v) => toggleSuiteEnabled(name, v)}
-                    testCount={ALL_SUITES[name].length}
+                    testCount={allSuites?.[name]?.length ?? "..."}
                   />
                 ))}
                 <div className="ml-auto flex gap-2 text-[11px]">
@@ -414,7 +431,7 @@ export default function AdminTests() {
                       </div>
                     </div>
                     <p className="mt-1.5 text-xs text-BrandGray2 leading-relaxed">{SUITE_DESCRIPTIONS[name]}</p>
-                    <p className="mt-2 text-xs text-BrandGray">{ALL_SUITES[name].length} tests</p>
+                    <p className="mt-2 text-xs text-BrandGray">{allSuites?.[name]?.length ?? "..."} tests</p>
                   </div>
                 );
               })}

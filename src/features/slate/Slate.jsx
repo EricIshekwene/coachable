@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import WideSidebar from "../../components/WideSidebar";
 import ControlPill from "../../components/controlPill/ControlPill";
 import RightPanel from "../../components/RightPanel";
+import MobileEditorBar from "../../components/MobileEditorBar";
 import AdvancedSettings from "../../components/AdvancedSettings";
 import KonvaCanvasRoot from "../../canvas/KonvaCanvasRoot";
 import DrawToolsPill from "../../components/DrawToolsPill";
@@ -188,6 +189,7 @@ function Slate({
   viewOnly: viewOnlyProp = false,
   adminMode = false,
   sport: sportProp = null,
+  mobileLayout = false,
 }) {
   const [viewOnlyLocal, setViewOnlyLocal] = useState(viewOnlyProp);
   const viewOnly = viewOnlyProp || viewOnlyLocal;
@@ -2958,7 +2960,7 @@ function Slate({
           </div>
         </div>
       )}
-      {showEditPanels && (
+      {showEditPanels && !mobileLayout && (
         <div
           className={`shrink-0 overflow-hidden transition-[max-width,opacity] duration-300 ease-in-out ${
             panelsExpanded ? "max-w-[12rem] opacity-100" : "max-w-0 opacity-0"
@@ -3116,7 +3118,7 @@ function Slate({
             onResumeRecording={recording.resumeRecording}
             onCancelRecording={recording.cancelRecording}
           />
-        ) : (
+        ) : mobileLayout ? null : (
           <ControlPill
             durationMs={animationData.durationMs}
             currentTimeMs={timelineDisplayTimeMs}
@@ -3179,7 +3181,38 @@ function Slate({
         </>
       )}
 
-      {showEditPanels && <div
+      {/* Mobile editor bar — rendered as a flex sibling so it pushes the canvas up */}
+      {mobileLayout && showEditPanels && !recording.recordingModeEnabled && (
+        <MobileEditorBar
+          durationMs={animationData.durationMs}
+          currentTimeMs={timelineDisplayTimeMs}
+          isPlaying={isPlaying}
+          keyframesMs={visibleKeyframesMs}
+          onSeek={seekTimeline}
+          onPause={pauseTimeline}
+          onPlayToggle={togglePlayback}
+          onAddKeyframe={handleAddKeyframe}
+          activeTool={canvasTool}
+          onToolChange={handleToolChange}
+          onUndo={slateHistory.onUndo}
+          onRedo={slateHistory.onRedo}
+          onReset={onReset}
+          onDeleteSelected={handleDeleteSelectedLogged}
+          onAddPlayer={handleAddPlayerLogged}
+          zoomPercent={fieldViewport.zoomPercent}
+          onZoomIn={fieldViewport.zoomIn}
+          onZoomOut={fieldViewport.zoomOut}
+          playersById={entities.playersById}
+          representedPlayerIds={entities.representedPlayerIds}
+          selectedPlayerIds={entities.selectedPlayerIds}
+          onSelectPlayer={entities.handleSelectPlayer}
+          onDeletePlayer={entities.handleDeletePlayer}
+          onOpenAdvancedSettings={() => setShowAdvancedSettings(true)}
+          onSaveToPlaybook={onSaveToPlaybook}
+          onImport={handleImportClick}
+        />
+      )}
+      {showEditPanels && !mobileLayout && <div
         className={`shrink-0 overflow-hidden transition-[max-width,opacity] duration-300 ease-in-out ${
           panelsExpanded ? "max-w-[12rem] opacity-100" : "max-w-0 opacity-0"
         }`}
