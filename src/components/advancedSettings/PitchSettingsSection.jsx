@@ -16,7 +16,7 @@ const PITCH_COLOR_OPTIONS = [
     { name: "Tactical Blue", hex: "#4A78A8" },
 ];
 
-const FIELD_TYPE_OPTIONS = ["Rugby", "Soccer", "Football", "Lacrosse", "Basketball"];
+const FIELD_TYPE_OPTIONS = ["Rugby", "Soccer", "Football", "Lacrosse", "Womens Lacrosse", "Basketball"];
 
 export default function PitchSettingsSection({ value = {}, onChange, adminMode = false }) {
     const fieldType = value.fieldType ?? "Rugby";

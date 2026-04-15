@@ -6,6 +6,7 @@ import logo from "../assets/logos/full_Coachable_logo.png";
 import whiteLogo from "../assets/logos/White_Full_Coachable.png";
 import brandImage from "../assets/pictures/female_football_coach_short.png";
 import { isValidEmail } from "../utils/inputValidation";
+import { FiArrowLeft } from "react-icons/fi";
 
 export default function Signup() {
   const [name, setName] = useState("");
@@ -79,6 +80,10 @@ export default function Signup() {
       {/* Left - Form */}
       <div className="flex w-full flex-col justify-center overflow-auto bg-white px-8 sm:px-16 md:w-1/2 lg:px-24 xl:px-32">
         <div className="mx-auto w-full max-w-md">
+          <Link to="/" className="mb-6 inline-flex items-center gap-1.5 text-xs text-BrandGray2 transition hover:text-BrandBlack">
+            <FiArrowLeft className="text-sm" /> Back to home
+          </Link>
+
           <img src={logo} alt="Coachable" className="mb-10 h-7" />
 
           <h1 className="font-Manrope text-2xl font-bold tracking-tight text-BrandBlack">

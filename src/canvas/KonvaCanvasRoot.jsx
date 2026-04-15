@@ -18,6 +18,7 @@ import RugbyField from "../assets/objects/Field Vectors/Rugby_Field.png";
 import SoccerField from "../assets/objects/Field Vectors/Soccer_Field.png";
 import FootballField from "../assets/objects/Field Vectors/Football_Field.png";
 import LacrosseField from "../assets/objects/Field Vectors/Lacrosse_Field.png";
+import WomensLacrosseField from "../assets/objects/Field Vectors/Womans_Lacrosse_Field.png";
 import BasketballField from "../assets/objects/Field Vectors/Basketball_Field.png";
 import WhiteBall from "../assets/objects/balls/white_ball.png";
 import SoccerBall from "../assets/objects/balls/Soccer_ball.png";
@@ -37,9 +38,10 @@ const FIELD_TYPE_TO_IMAGE_SRC = {
   Soccer: SoccerField,
   Football: FootballField,
   Lacrosse: LacrosseField,
+  "Womens Lacrosse": WomensLacrosseField,
   Basketball: BasketballField,
 };
-const ROUND_BALL_FIELD_TYPES = new Set(["soccer", "lacrosse", "basketball"]);
+const ROUND_BALL_FIELD_TYPES = new Set(["soccer", "lacrosse", "womens lacrosse", "basketball"]);
 
 /** Loads an HTML Image from a URL and tracks loading status. */
 const useImage = (src) => {

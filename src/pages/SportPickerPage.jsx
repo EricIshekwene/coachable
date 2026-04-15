@@ -1,10 +1,12 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { FiArrowLeft } from "react-icons/fi";
 import whiteLogo from "../assets/logos/White_Full_Coachable.png";
 import brandImage from "../assets/pictures/Rugby_coach_holding_ipad_long.png";
 import RugbyField from "../assets/objects/Field Vectors/Rugby_Field.png";
 import SoccerField from "../assets/objects/Field Vectors/Soccer_Field.png";
 import FootballField from "../assets/objects/Field Vectors/Football_Field.png";
 import LacrosseField from "../assets/objects/Field Vectors/Lacrosse_Field.png";
+import WomensLacrosseField from "../assets/objects/Field Vectors/Womans_Lacrosse_Field.png";
 import BasketballField from "../assets/objects/Field Vectors/Basketball_Field.png";
 
 const SPORTS = [
@@ -12,6 +14,7 @@ const SPORTS = [
   { key: "soccer", label: "Soccer", image: SoccerField, color: "#3E8E5B" },
   { key: "football", label: "Football", image: FootballField, color: "#1F5F3F" },
   { key: "lacrosse", label: "Lacrosse", image: LacrosseField, color: "#4FA85D" },
+  { key: "womens lacrosse", label: "Women's Lacrosse", image: WomensLacrosseField, color: "#4FA85D" },
   { key: "basketball", label: "Basketball", image: BasketballField, color: "#D8C3A5" },
 ];
 
@@ -27,6 +30,11 @@ export default function SportPickerPage() {
       {/* Left - Sport picker */}
       <div className="flex w-full flex-col overflow-y-auto hide-scroll bg-BrandBlack px-6 py-8 sm:px-12 md:w-1/2 lg:px-20 xl:px-24">
         <div className="mx-auto w-full max-w-lg flex flex-col flex-1">
+          {/* Back to home */}
+          <Link to="/" className="mb-4 inline-flex items-center gap-1.5 text-xs text-white/40 transition hover:text-white/80">
+            <FiArrowLeft className="text-sm" /> Back to home
+          </Link>
+
           {/* Logo */}
           <img src={whiteLogo} alt="Coachable" className="mb-8 h-6 self-start opacity-70" />
 

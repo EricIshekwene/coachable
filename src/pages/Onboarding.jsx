@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useAppMessage } from "../context/AppMessageContext";
 import logo from "../assets/logos/full_Coachable_logo.png";
@@ -7,11 +7,11 @@ import whiteLogo from "../assets/logos/White_Full_Coachable.png";
 import brandImage from "../assets/pictures/female_football_coach_short.png";
 import { MdOutlineCreateNewFolder } from "react-icons/md";
 import { FaRegHandshake } from "react-icons/fa6";
-import { FiArrowRight, FiChevronDown, FiEdit } from "react-icons/fi";
+import { FiArrowRight, FiArrowLeft, FiChevronDown, FiEdit } from "react-icons/fi";
 
 const SPORTS = [
   "Rugby", "Soccer", "Basketball", "Football", "Baseball",
-  "Field Hockey", "Ice Hockey", "Lacrosse", "Volleyball",
+  "Field Hockey", "Ice Hockey", "Lacrosse", "Womens Lacrosse", "Volleyball",
   "Cricket", "Water Polo", "Ultimate Frisbee", "Handball",
   "Softball", "Other",
 ];
@@ -100,6 +100,10 @@ export default function Onboarding() {
       <div className="flex h-screen font-DmSans">
         <div className="flex w-full flex-col justify-center overflow-auto bg-white px-8 sm:px-16 md:w-3/5 lg:px-24 xl:px-32">
           <div className="mx-auto w-full max-w-lg">
+            <Link to="/" className="mb-6 inline-flex items-center gap-1.5 text-xs text-BrandGray2 transition hover:text-BrandBlack">
+              <FiArrowLeft className="text-sm" /> Back to home
+            </Link>
+
             <img src={logo} alt="Coachable" className="mb-10 h-7" />
 
             <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-BrandOrange/10">
@@ -164,6 +168,10 @@ export default function Onboarding() {
     <div className="flex h-screen font-DmSans">
       <div className="flex w-full flex-col justify-center overflow-auto bg-white px-8 sm:px-16 md:w-3/5 lg:px-24 xl:px-32">
         <div className="mx-auto w-full max-w-lg">
+          <Link to="/" className="mb-6 inline-flex items-center gap-1.5 text-xs text-BrandGray2 transition hover:text-BrandBlack">
+            <FiArrowLeft className="text-sm" /> Back to home
+          </Link>
+
           <img src={logo} alt="Coachable" className="mb-10 h-7" />
 
           <h1 className="font-Manrope text-2xl font-bold tracking-tight text-BrandBlack">

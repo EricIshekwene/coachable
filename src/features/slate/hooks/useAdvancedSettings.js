@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 
-const SUPPORTED_FIELD_TYPES = ["Rugby", "Soccer", "Football", "Lacrosse", "Basketball"];
+const SUPPORTED_FIELD_TYPES = ["Rugby", "Soccer", "Football", "Lacrosse", "Womens Lacrosse", "Basketball"];
 
 export function resolveFieldTypeFromSport(sport) {
   const normalizedSport = String(sport ?? "").trim().toLowerCase();
   if (normalizedSport === "soccer") return "Soccer";
   if (normalizedSport === "football") return "Football";
+  if (normalizedSport === "womens lacrosse" || normalizedSport === "women's lacrosse") return "Womens Lacrosse";
   if (normalizedSport === "lacrosse") return "Lacrosse";
   if (normalizedSport === "basketball") return "Basketball";
   return "Rugby";
@@ -15,6 +16,7 @@ export function resolveFieldTypeFromSport(sport) {
 export const SPORT_DEFAULTS = {
   Football: { baseSizePx: 25, sizePercent: 70, coneSizePercent: 65, usePositionLabels: true },
   Lacrosse: { sizePercent: 65, defaultFieldRotation: 90, usePositionLabels: true },
+  "Womens Lacrosse": { sizePercent: 65, defaultFieldRotation: 90, usePositionLabels: true },
   Soccer: { usePositionLabels: true },
   Basketball: { sizePercent: 80, pitchColor: "#D8C3A5", defaultFieldRotation: 90 },
 };
@@ -41,6 +43,11 @@ export const SPORT_POSITION_PRESETS = {
   Lacrosse: [
     { category: "Attack", positions: ["A", "X", "C", "W"] },
     { category: "Midfield", positions: ["M", "LSM", "FOGO"] },
+    { category: "Defense", positions: ["D", "G"] },
+  ],
+  "Womens Lacrosse": [
+    { category: "Attack", positions: ["A", "X", "C", "W"] },
+    { category: "Midfield", positions: ["M", "LSM"] },
     { category: "Defense", positions: ["D", "G"] },
   ],
 };
