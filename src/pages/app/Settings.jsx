@@ -21,22 +21,15 @@ const THEME_OPTIONS = [
   { value: "system", icon: FiMonitor, label: "System", desc: "Match your device" },
 ];
 
+/** Sports that map to a supported field type in the editor. */
 const SPORT_OPTIONS = [
-  "rugby",
-  "soccer",
-  "basketball",
-  "football",
-  "baseball",
-  "field hockey",
-  "ice hockey",
-  "lacrosse",
-  "volleyball",
-  "cricket",
-  "water polo",
-  "ultimate frisbee",
-  "handball",
-  "softball",
-  "other",
+  { value: "rugby", label: "Rugby" },
+  { value: "soccer", label: "Soccer" },
+  { value: "football", label: "Football" },
+  { value: "lacrosse", label: "Lacrosse" },
+  { value: "womens lacrosse", label: "Women's Lacrosse" },
+  { value: "basketball", label: "Basketball" },
+  { value: "blank", label: "Blank Canvas" },
 ];
 
 function resolveTheme(theme) {
@@ -171,7 +164,7 @@ export default function Settings() {
       <h1 className="font-Manrope text-xl font-bold tracking-tight">Settings</h1>
       <p className="mt-1.5 text-sm text-BrandGray2">
         {isPersonal
-          ? "Customize your app appearance."
+          ? "Manage your workspace settings and app appearance."
           : isPlayer
             ? "Manage your notification preferences and app appearance."
             : "Manage notifications, team defaults, and app appearance."}
@@ -261,26 +254,28 @@ export default function Settings() {
       </div>
       )}
 
-      {!isPlayer && !isPersonal && (
+      {!isPlayer && (
       <div className="mt-6 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-5">
         <div className="mb-4 flex items-center gap-2">
           <FiUsers className="text-sm text-BrandOrange" />
-          <p className="text-xs font-semibold uppercase tracking-widest text-BrandGray2">Team Defaults</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-BrandGray2">
+            {isPersonal ? "Workspace Settings" : "Team Defaults"}
+          </p>
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
           <div className="flex flex-col gap-1.5 md:col-span-2">
-            <label className="text-xs font-semibold">Team Name</label>
+            <label className="text-xs font-semibold">{isPersonal ? "Workspace Name" : "Team Name"}</label>
             <input
               type="text"
               value={teamDefaults.teamName}
               onChange={(e) => setTeamDefaults((prev) => ({ ...prev, teamName: e.target.value }))}
               className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
-              placeholder="Riverside Rugby"
+              placeholder={isPersonal ? "Personal Workspace" : "Riverside Rugby"}
             />
           </div>
 
-          <div className="flex flex-col gap-1.5">
+          <div className={`flex flex-col gap-1.5 ${isPersonal ? "md:col-span-2" : ""}`}>
             <label className="text-xs font-semibold">Sport</label>
             <select
               value={teamDefaults.sport}
@@ -288,14 +283,15 @@ export default function Settings() {
               className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none transition hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
             >
               <option value="">Select sport</option>
-              {SPORT_OPTIONS.map((sportOption) => (
-                <option key={sportOption} value={sportOption} className="bg-BrandBlack">
-                  {sportOption.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
+              {SPORT_OPTIONS.map((s) => (
+                <option key={s.value} value={s.value} className="bg-BrandBlack">
+                  {s.label}
                 </option>
               ))}
             </select>
           </div>
 
+          {!isPersonal && (
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold">Season / Year</label>
             <input
@@ -306,6 +302,7 @@ export default function Settings() {
               className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
             />
           </div>
+          )}
 
         </div>
       </div>

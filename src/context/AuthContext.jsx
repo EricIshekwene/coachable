@@ -273,10 +273,15 @@ export function AuthProvider({ children }) {
   }, []);
 
   /**
-   * Create or switch to personal workspace (post-onboarding).
+   * Create a new personal workspace (post-onboarding).
+   * @param {string} [name] - Optional workspace name; auto-numbered if omitted.
+   * @param {string} [sport] - Optional sport for the workspace.
    */
-  const createPersonalWorkspace = useCallback(async () => {
-    const data = await apiFetch("/teams/create-personal", { method: "POST" });
+  const createPersonalWorkspace = useCallback(async (name, sport) => {
+    const data = await apiFetch("/teams/create-personal", {
+      method: "POST",
+      body: { name: name || undefined, sport: sport || undefined },
+    });
     setUser((prev) => applyActiveTeam(prev, data.newActiveTeam));
     setAllTeams(data.allTeams || []);
     setPlayerViewMode(false);

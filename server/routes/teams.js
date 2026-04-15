@@ -127,24 +127,59 @@ router.post("/create", requireAuth, async (req, res, next) => {
   }
 });
 
-// POST /teams/create-personal — create personal workspace (works when already onboarded)
+// POST /teams/create-personal — create a new personal workspace (always creates new, with optional name/sport)
 router.post("/create-personal", requireAuth, async (req, res, next) => {
   try {
+    const { name: rawName, sport: rawSport } = req.body;
+    const sport = rawSport?.trim().toLowerCase() || null;
+
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
 
-      const personalTeam = await ensurePersonalWorkspace(req.userId, client);
+      // Resolve workspace name — auto-number if no name provided
+      let workspaceName;
+      if (rawName?.trim()) {
+        workspaceName = rawName.trim();
+      } else {
+        const { rows: existing } = await client.query(
+          `SELECT t.name FROM teams t
+           JOIN team_memberships tm ON tm.team_id = t.id
+           WHERE tm.user_id = $1 AND t.is_personal = true`,
+          [req.userId]
+        );
+        const takenNames = new Set(existing.map((r) => r.name));
+        workspaceName = "Personal Workspace";
+        let counter = 1;
+        while (takenNames.has(workspaceName)) {
+          workspaceName = `Personal Workspace (${counter++})`;
+        }
+      }
 
-      // Switch active team to personal workspace
+      // Create the workspace
+      const teamRes = await client.query(
+        `INSERT INTO teams (name, sport, owner_user_id, is_personal)
+         VALUES ($1, $2, $3, true)
+         RETURNING id, name`,
+        [workspaceName, sport, req.userId]
+      );
+      const team = teamRes.rows[0];
+
+      await client.query("INSERT INTO team_settings (team_id) VALUES ($1)", [team.id]);
+      await client.query(
+        `INSERT INTO team_memberships (team_id, user_id, role) VALUES ($1, $2, 'owner')`,
+        [team.id, req.userId]
+      );
+
+      // Switch active team
       await client.query(
         "UPDATE users SET active_team_id = $1, updated_at = now() WHERE id = $2",
-        [personalTeam.teamId, req.userId]
+        [team.id, req.userId]
       );
 
       await client.query("COMMIT");
 
-      const { activeTeam, allTeams } = await resolveActiveTeam(req.userId, personalTeam.teamId);
+      const { activeTeam, allTeams } = await resolveActiveTeam(req.userId, team.id);
       res.json({ newActiveTeam: activeTeam, allTeams });
     } catch (err) {
       await client.query("ROLLBACK");

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-const SUPPORTED_FIELD_TYPES = ["Rugby", "Soccer", "Football", "Lacrosse", "Womens Lacrosse", "Basketball"];
+const SUPPORTED_FIELD_TYPES = ["Rugby", "Soccer", "Football", "Lacrosse", "Womens Lacrosse", "Basketball", "Blank"];
 
 export function resolveFieldTypeFromSport(sport) {
   const normalizedSport = String(sport ?? "").trim().toLowerCase();
@@ -9,6 +9,7 @@ export function resolveFieldTypeFromSport(sport) {
   if (normalizedSport === "womens lacrosse" || normalizedSport === "women's lacrosse") return "Womens Lacrosse";
   if (normalizedSport === "lacrosse") return "Lacrosse";
   if (normalizedSport === "basketball") return "Basketball";
+  if (normalizedSport === "blank" || normalizedSport === "" || normalizedSport === "other") return "Blank";
   return "Rugby";
 }
 
@@ -19,6 +20,7 @@ export const SPORT_DEFAULTS = {
   "Womens Lacrosse": { sizePercent: 65, defaultFieldRotation: 90, usePositionLabels: true },
   Soccer: { usePositionLabels: true },
   Basketball: { sizePercent: 80, pitchColor: "#D8C3A5", defaultFieldRotation: 90 },
+  Blank: { pitchColor: "#4FA85D", sizePercent: 75 },
 };
 
 /**
@@ -54,7 +56,7 @@ export const SPORT_POSITION_PRESETS = {
 
 /** Default values for all advanced settings (pitch, players, ball, export, animation, logging). */
 export function createDefaultAdvancedSettings(fieldType = "Rugby") {
-  const resolvedFieldType = SUPPORTED_FIELD_TYPES.includes(fieldType) ? fieldType : "Rugby";
+  const resolvedFieldType = SUPPORTED_FIELD_TYPES.includes(fieldType) ? fieldType : (fieldType ? "Rugby" : "Blank");
   const sportDefaults = SPORT_DEFAULTS[resolvedFieldType] || {};
   return {
     pitch: {

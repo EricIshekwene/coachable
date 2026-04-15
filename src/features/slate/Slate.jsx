@@ -282,6 +282,8 @@ function Slate({
   const [playbookThumbnail, setPlaybookThumbnail] = useState(null);
   const pendingPrefabRef = useRef(null);
   const [slateLoadPhase, setSlateLoadPhase] = useState("loading"); // "loading" | "fading" | "done"
+  const [slateLoadStuck, setSlateLoadStuck] = useState(false);
+  const [debugCopied, setDebugCopied] = useState(false);
   const slateLoadStartRef = useRef(Date.now());
   const handleAssetsLoaded = useCallback(() => {
     const MIN_DISPLAY_MS = 600;
@@ -289,6 +291,26 @@ function Slate({
     const remaining = Math.max(0, MIN_DISPLAY_MS - elapsed);
     setTimeout(() => setSlateLoadPhase("fading"), remaining);
   }, []);
+  // After 10 s, show the "copy issue" escape hatch
+  useEffect(() => {
+    if (slateLoadPhase === "done") return;
+    const t = setTimeout(() => setSlateLoadStuck(true), 10_000);
+    return () => clearTimeout(t);
+  }, [slateLoadPhase]);
+  const handleCopyLoadDebug = useCallback(() => {
+    const info = {
+      timestamp: new Date().toISOString(),
+      slateLoadPhase,
+      sportProp,
+      playId,
+      userAgent: navigator.userAgent,
+      url: window.location.href,
+    };
+    navigator.clipboard?.writeText(JSON.stringify(info, null, 2)).then(() => {
+      setDebugCopied(true);
+      setTimeout(() => setDebugCopied(false), 2500);
+    });
+  }, [slateLoadPhase, sportProp, playId]);
   const [speedMultiplier, setSpeedMultiplier] = useState(DEFAULT_SPEED_MULTIPLIER);
   const [autoplayEnabled, setAutoplayEnabled] = useState(true);
   const [selectedKeyframeMs, setSelectedKeyframeMs] = useState(null);
@@ -2957,6 +2979,20 @@ function Slate({
             <span className="text-sm text-BrandGray tracking-wide">
               Loading slate&hellip;
             </span>
+            {slateLoadStuck && (
+              <div className="mt-2 flex flex-col items-center gap-2">
+                <span className="text-xs text-BrandGray2 text-center max-w-55">
+                  Taking longer than expected&hellip;
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyLoadDebug}
+                  className="rounded-lg border border-BrandGray2/30 px-3 py-1.5 text-xs text-BrandGray transition hover:border-BrandGray2 hover:text-BrandText"
+                >
+                  {debugCopied ? "Copied!" : "Copy issue details"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

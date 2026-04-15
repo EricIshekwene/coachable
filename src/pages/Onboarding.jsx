@@ -10,10 +10,7 @@ import { FaRegHandshake } from "react-icons/fa6";
 import { FiArrowRight, FiArrowLeft, FiChevronDown, FiEdit } from "react-icons/fi";
 
 const SPORTS = [
-  "Rugby", "Soccer", "Basketball", "Football", "Baseball",
-  "Field Hockey", "Ice Hockey", "Lacrosse", "Womens Lacrosse", "Volleyball",
-  "Cricket", "Water Polo", "Ultimate Frisbee", "Handball",
-  "Softball", "Other",
+  "Rugby", "Soccer", "Football", "Lacrosse", "Womens Lacrosse", "Basketball", "Other",
 ];
 
 export default function Onboarding() {
@@ -27,6 +24,7 @@ export default function Onboarding() {
   const [inviteCode, setInviteCode] = useState(inviteFromUrl);
   const [sport, setSport] = useState("");
   const [sportOpen, setSportOpen] = useState(false);
+  const [soloSport, setSoloSport] = useState("");
 
   const { completeOnboarding } = useAuth();
   const { showMessage } = useAppMessage();
@@ -76,7 +74,11 @@ export default function Onboarding() {
         inviteCode: inviteCode.trim(),
         sport,
       });
-      navigate(returnTo || "/app/plays");
+      if (teamAction === "solo") {
+        navigate(returnTo || `/slate/${soloSport || "blank"}`);
+      } else {
+        navigate(returnTo || "/app/plays");
+      }
     } catch (err) {
       showMessage("Setup failed", err.message || "Could not complete setup.", "error");
     } finally {
@@ -252,7 +254,7 @@ export default function Onboarding() {
                     <FiChevronDown className={`text-sm text-BrandGray transition ${sportOpen ? "rotate-180" : ""}`} />
                   </button>
                   {sportOpen && (
-                    <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-52 overflow-auto rounded-lg border border-BrandGray/30 bg-white shadow-lg">
+                    <div className="absolute left-0 right-0 bottom-full z-20 mb-1 max-h-52 overflow-auto rounded-lg border border-BrandGray/30 bg-white shadow-lg">
                       {SPORTS.map((s) => (
                         <button
                           key={s}
@@ -279,10 +281,39 @@ export default function Onboarding() {
           )}
 
           {teamAction === "solo" && (
-            <div className="mt-6 rounded-lg border border-BrandGray/20 bg-BrandGray/5 px-4 py-3">
-              <p className="text-sm text-BrandGray2">
-                You can create and edit plays right away. You can always create or join a team later from Settings.
-              </p>
+            <div className="mt-6 flex flex-col gap-3">
+              <div>
+                <p className="text-xs font-semibold text-BrandBlack">
+                  Sport <span className="font-normal text-BrandGray">(optional)</span>
+                </p>
+                <p className="mt-0.5 text-[11px] text-BrandGray2">
+                  Pick a sport to pre-load the right field. Skip to start on a blank canvas.
+                </p>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { key: "", label: "Blank Canvas" },
+                  { key: "rugby", label: "Rugby" },
+                  { key: "soccer", label: "Soccer" },
+                  { key: "football", label: "Football" },
+                  { key: "lacrosse", label: "Lacrosse" },
+                  { key: "womens lacrosse", label: "Women's Lacrosse" },
+                  { key: "basketball", label: "Basketball" },
+                ].map((s) => (
+                  <button
+                    key={s.key || "blank"}
+                    type="button"
+                    onClick={() => setSoloSport(s.key)}
+                    className={`rounded-lg border px-3 py-2 text-left text-xs font-medium transition ${
+                      soloSport === s.key
+                        ? "border-BrandOrange bg-BrandOrange/5 text-BrandBlack shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+                        : "border-BrandGray/30 text-BrandGray2 hover:border-BrandGray hover:text-BrandBlack"
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 

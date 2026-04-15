@@ -27,7 +27,7 @@ const DEFAULT_PADDING_PX = 70;
 const MIN_CAMERA_SPAN_PX = 220;
 
 // Round-ball sports: skip directional rotation (only oblong balls like Rugby/Football rotate).
-const ROUND_BALL_FIELD_TYPES = new Set(["soccer", "lacrosse", "womens lacrosse", "basketball"]);
+const ROUND_BALL_FIELD_TYPES = new Set(["soccer", "lacrosse", "womens lacrosse", "basketball", "blank"]);
 
 const FIELD_TYPE_TO_IMAGE_SRC = {
   Rugby: RugbyField,
@@ -36,6 +36,7 @@ const FIELD_TYPE_TO_IMAGE_SRC = {
   Lacrosse: LacrosseField,
   "Womens Lacrosse": WomensLacrosseField,
   Basketball: BasketballField,
+  Blank: null,
 };
 
 const SHAPE_CLASS_BY_VARIANT = {
@@ -586,7 +587,7 @@ export default function PlayPreviewCard({
   }, []);
 
   const fieldTypeRaw = pitchSettings?.fieldType ?? "Rugby";
-  const fieldType = FIELD_TYPE_TO_IMAGE_SRC[fieldTypeRaw] ? fieldTypeRaw : "Rugby";
+  const fieldType = (fieldTypeRaw in FIELD_TYPE_TO_IMAGE_SRC) ? fieldTypeRaw : "Rugby";
   const fieldImageSrc = FIELD_TYPE_TO_IMAGE_SRC[fieldType] || null;
   const fieldImageSize = useImageDimensions(fieldImageSrc);
   const fieldRotation = toFiniteNumber(canvas?.fieldRotation, 0);

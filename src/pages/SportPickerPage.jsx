@@ -16,6 +16,7 @@ const SPORTS = [
   { key: "lacrosse", label: "Lacrosse", image: LacrosseField, color: "#4FA85D" },
   { key: "womens lacrosse", label: "Women's Lacrosse", image: WomensLacrosseField, color: "#4FA85D" },
   { key: "basketball", label: "Basketball", image: BasketballField, color: "#D8C3A5" },
+  { key: "blank", label: "Blank Canvas", image: null, color: "#4FA85D" },
 ];
 
 /**
@@ -59,12 +60,22 @@ export default function SportPickerPage() {
                 className="group relative flex flex-col items-center justify-end aspect-square rounded-xl border border-white/6 overflow-hidden transition-all duration-200 hover:border-BrandOrange/50 hover:shadow-[0_0_24px_-6px_rgba(255,122,24,0.25)] cursor-pointer focus:outline-none focus:ring-2 focus:ring-BrandOrange/40"
                 style={{ backgroundColor: sport.color }}
               >
-                <img
-                  src={sport.image}
-                  alt=""
-                  className="absolute inset-0 w-full h-full object-contain opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-200"
-                  draggable={false}
-                />
+                {sport.image ? (
+                  <img
+                    src={sport.image}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-contain opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-200"
+                    draggable={false}
+                  />
+                ) : (
+                  /* Blank canvas: subtle grid pattern */
+                  <div className="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity duration-200"
+                    style={{
+                      backgroundImage: "linear-gradient(rgba(255,255,255,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.4) 1px, transparent 1px)",
+                      backgroundSize: "24px 24px",
+                    }}
+                  />
+                )}
                 <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
                 <span className="relative z-10 mb-3 text-sm sm:text-base font-semibold text-white group-hover:text-BrandOrange transition-colors">
                   {sport.label}

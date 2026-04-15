@@ -19,6 +19,17 @@ const ROLE_LABELS = {
   player: "Player",
 };
 
+/** Sports that map to a supported field type in the editor. */
+const SPORT_OPTIONS = [
+  { value: "rugby", label: "Rugby" },
+  { value: "soccer", label: "Soccer" },
+  { value: "football", label: "Football" },
+  { value: "lacrosse", label: "Lacrosse" },
+  { value: "womens lacrosse", label: "Women's Lacrosse" },
+  { value: "basketball", label: "Basketball" },
+  { value: "blank", label: "Blank Canvas" },
+];
+
 /**
  * TeamSwitcher — shows the active team name and opens a dropdown
  * that lets the user switch teams, join a new team, create a team,
@@ -29,10 +40,13 @@ export default function TeamSwitcher() {
   const navigate = useNavigate();
 
   const [open, setOpen] = useState(false);
-  const [view, setView] = useState("list"); // "list" | "join" | "create"
+  // "list" | "join" | "create" | "personal"
+  const [view, setView] = useState("list");
   const [inviteCode, setInviteCode] = useState("");
   const [newTeamName, setNewTeamName] = useState("");
   const [newTeamSport, setNewTeamSport] = useState("");
+  const [personalName, setPersonalName] = useState("");
+  const [personalSport, setPersonalSport] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -56,6 +70,8 @@ export default function TeamSwitcher() {
     setInviteCode("");
     setNewTeamName("");
     setNewTeamSport("");
+    setPersonalName("");
+    setPersonalSport("");
     setError("");
   };
 
@@ -103,10 +119,14 @@ export default function TeamSwitcher() {
       setError("Team name must be at least 2 characters.");
       return;
     }
+    if (!newTeamSport) {
+      setError("Please select a sport.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
-      await createTeam(name, newTeamSport || undefined);
+      await createTeam(name, newTeamSport);
       navigate("/app/plays");
       handleClose();
     } catch (err) {
@@ -116,11 +136,16 @@ export default function TeamSwitcher() {
     }
   };
 
-  const handlePersonal = async () => {
+  const handlePersonal = async (e) => {
+    e.preventDefault();
+    if (!personalSport) {
+      setError("Please select a sport.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
-      await createPersonalWorkspace();
+      await createPersonalWorkspace(personalName.trim() || undefined, personalSport);
       navigate("/app/plays");
       handleClose();
     } catch (err) {
@@ -130,9 +155,15 @@ export default function TeamSwitcher() {
     }
   };
 
-  const hasPersonalWorkspace = allTeams.some((t) => t.isPersonal);
   const isPersonal = user?.isPersonalTeam;
-  const displayName = isPersonal ? "Personal Workspace" : (user?.teamName || "My Team");
+  const displayName = isPersonal ? (user?.teamName || "Personal Workspace") : (user?.teamName || "My Team");
+
+  const viewTitle = {
+    list: "Switch Team",
+    join: "Join a Team",
+    create: "Create a Team",
+    personal: "Personal Workspace",
+  }[view];
 
   return (
     <div className="relative mx-4 mb-4" ref={dropdownRef}>
@@ -159,7 +190,7 @@ export default function TeamSwitcher() {
           {/* Header */}
           <div className="flex items-center justify-between border-b border-BrandGray2/10 px-3 py-2">
             <span className="text-[11px] font-semibold uppercase tracking-widest text-BrandGray2">
-              {view === "list" ? "Switch Team" : view === "join" ? "Join a Team" : "Create a Team"}
+              {viewTitle}
             </span>
             <button
               type="button"
@@ -186,7 +217,7 @@ export default function TeamSwitcher() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-semibold">
-                      {t.isPersonal ? "Personal Workspace" : t.teamName}
+                      {t.isPersonal ? (t.teamName || "Personal Workspace") : t.teamName}
                     </p>
                     <p className="text-[10px] text-BrandGray2">
                       {t.isPersonal ? "solo" : ROLE_LABELS[t.role] || t.role}
@@ -215,17 +246,14 @@ export default function TeamSwitcher() {
                   <FiPlusCircle className="text-sm text-BrandGray2" />
                   Create a Team
                 </button>
-                {!hasPersonalWorkspace && (
-                  <button
-                    type="button"
-                    onClick={handlePersonal}
-                    disabled={loading}
-                    className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-BrandGray transition hover:bg-BrandBlack2/60 hover:text-BrandText disabled:opacity-50"
-                  >
-                    <FiUsers className="text-sm text-BrandGray2" />
-                    Create Personal Workspace
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => { setView("personal"); setError(""); }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-BrandGray transition hover:bg-BrandBlack2/60 hover:text-BrandText"
+                >
+                  <FiUsers className="text-sm text-BrandGray2" />
+                  Create Personal Workspace
+                </button>
               </div>
             </div>
           )}
@@ -265,7 +293,7 @@ export default function TeamSwitcher() {
             </form>
           )}
 
-          {/* Create view */}
+          {/* Create team view */}
           {view === "create" && (
             <form onSubmit={handleCreate} className="p-3 flex flex-col gap-2">
               <input
@@ -276,13 +304,19 @@ export default function TeamSwitcher() {
                 autoFocus
                 className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3 py-2 text-sm text-BrandText outline-none placeholder:text-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
               />
-              <input
-                type="text"
+              <select
                 value={newTeamSport}
                 onChange={(e) => setNewTeamSport(e.target.value)}
-                placeholder="Sport (optional)"
-                className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3 py-2 text-sm text-BrandText outline-none placeholder:text-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
-              />
+                required
+                className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3 py-2 text-sm text-BrandText outline-none focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+              >
+                <option value="" disabled>Select sport</option>
+                {SPORT_OPTIONS.map((s) => (
+                  <option key={s.value} value={s.value} className="bg-BrandBlack">
+                    {s.label}
+                  </option>
+                ))}
+              </select>
               {error && <p className="text-[11px] text-red-400">{error}</p>}
               <div className="flex items-center gap-2">
                 <button
@@ -294,7 +328,51 @@ export default function TeamSwitcher() {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading || newTeamName.trim().length < 2}
+                  disabled={loading || newTeamName.trim().length < 2 || !newTeamSport}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-BrandOrange py-2 text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-40"
+                >
+                  {loading ? "Creating…" : <>Create <FiArrowRight /></>}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Create personal workspace view */}
+          {view === "personal" && (
+            <form onSubmit={handlePersonal} className="p-3 flex flex-col gap-2">
+              <input
+                type="text"
+                value={personalName}
+                onChange={(e) => setPersonalName(e.target.value)}
+                placeholder="Workspace name (optional)"
+                autoFocus
+                className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3 py-2 text-sm text-BrandText outline-none placeholder:text-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+              />
+              <select
+                value={personalSport}
+                onChange={(e) => setPersonalSport(e.target.value)}
+                required
+                className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3 py-2 text-sm text-BrandText outline-none focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+              >
+                <option value="" disabled>Select sport</option>
+                {SPORT_OPTIONS.map((s) => (
+                  <option key={s.value} value={s.value} className="bg-BrandBlack">
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+              {error && <p className="text-[11px] text-red-400">{error}</p>}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setView("list"); setError(""); }}
+                  className="flex-1 rounded-lg border border-BrandGray2/30 py-2 text-xs text-BrandGray transition hover:border-BrandGray2 hover:text-BrandText"
+                >
+                  Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading || !personalSport}
                   className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-BrandOrange py-2 text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-40"
                 >
                   {loading ? "Creating…" : <>Create <FiArrowRight /></>}

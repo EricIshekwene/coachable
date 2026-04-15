@@ -40,8 +40,9 @@ const FIELD_TYPE_TO_IMAGE_SRC = {
   Lacrosse: LacrosseField,
   "Womens Lacrosse": WomensLacrosseField,
   Basketball: BasketballField,
+  Blank: null,
 };
-const ROUND_BALL_FIELD_TYPES = new Set(["soccer", "lacrosse", "womens lacrosse", "basketball"]);
+const ROUND_BALL_FIELD_TYPES = new Set(["soccer", "lacrosse", "womens lacrosse", "basketball", "blank"]);
 
 /** Loads an HTML Image from a URL and tracks loading status. */
 const useImage = (src) => {
@@ -199,7 +200,7 @@ function KonvaCanvasRoot({
   const ball = advancedSettings?.ball ?? {};
 
   const fieldType = pitch.fieldType ?? "Rugby";
-  const resolvedFieldType = FIELD_TYPE_TO_IMAGE_SRC[fieldType] ? fieldType : "Rugby";
+  const resolvedFieldType = (fieldType in FIELD_TYPE_TO_IMAGE_SRC) ? fieldType : "Rugby";
   const useRoundBallSprite = ROUND_BALL_FIELD_TYPES.has(String(resolvedFieldType).toLowerCase());
   const fieldOpacityPercent = clamp(Number(pitch.fieldOpacity ?? 100), 0, 100);
   const fieldOpacity = fieldOpacityPercent / 100;
@@ -229,12 +230,14 @@ function KonvaCanvasRoot({
   const ballImageElement = ballImage.image;
   const coneImageElement = coneImage.image;
 
-  // Notify parent when essential assets (field image + ball) are loaded
+  // Notify parent when essential assets (field image + ball) are loaded.
+  // A field status of "error" (e.g. Blank canvas which has no image src) is also
+  // treated as ready — there is simply nothing to load for that field type.
   const assetsLoadedRef = useRef(false);
   useEffect(() => {
     if (assetsLoadedRef.current) return;
-    const fieldReady = !showMarkings || fieldImage.status === "loaded";
-    const ballReady = ballImage.status === "loaded";
+    const fieldReady = !showMarkings || fieldImage.status === "loaded" || fieldImage.status === "error";
+    const ballReady = ballImage.status === "loaded" || ballImage.status === "error";
     if (fieldReady && ballReady) {
       assetsLoadedRef.current = true;
       onAssetsLoaded?.();
