@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import darkLogo from "../assets/logos/White_Coachable_Logo.png";
 import lightLogo from "../assets/logos/coachable_Logo.png";
-import { FiBookOpen, FiUsers, FiUser, FiLogOut, FiSettings, FiEye, FiX, FiFlag, FiArchive } from "react-icons/fi";
+import { FiBookOpen, FiUsers, FiUser, FiLogOut, FiSettings, FiEye, FiX, FiFlag } from "react-icons/fi";
 import useThemeColor from "../utils/useThemeColor";
 import TeamSwitcher from "../components/TeamSwitcher";
 
@@ -20,21 +20,14 @@ const BASE_SOLO_NAV = [
   { to: "/app/settings", icon: FiSettings, label: "Settings" },
 ];
 
-const PLAYBOOKS_NAV_ITEM = { to: "/app/playbooks", icon: FiArchive, label: "Playbooks" };
-
 export default function AppLayout() {
   const { user, logout, playerViewMode, setPlayerViewMode } = useAuth();
   const navigate = useNavigate();
-  const isCoachRole = user?.role === "coach" || user?.role === "owner";
   const isPersonal = user?.isPersonalTeam;
   const baseNav = isPersonal ? BASE_SOLO_NAV : BASE_TEAM_NAV;
-  // Insert Playbooks nav item for coaches/owners right after Plays
-  const baseNavWithPlaybooks = isCoachRole
-    ? [baseNav[0], PLAYBOOKS_NAV_ITEM, ...baseNav.slice(1)]
-    : baseNav;
   const navItems = user?.isBetaTester
-    ? [...baseNavWithPlaybooks, { to: "/app/report-issue", icon: FiFlag, label: "Report Issue" }]
-    : baseNavWithPlaybooks;
+    ? [...baseNav, { to: "/app/report-issue", icon: FiFlag, label: "Report Issue" }]
+    : baseNav;
   const [isLight, setIsLight] = useState(document.documentElement.getAttribute("data-theme") === "light");
 
   useEffect(() => {
