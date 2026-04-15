@@ -18,6 +18,7 @@ export default function PlayerEditPanel({
   fieldType = "Rugby",
 }) {
   const firstInputRef = useRef(null);
+  const nameTextareaRef = useRef(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -25,9 +26,17 @@ export default function PlayerEditPanel({
     }
   }, [isOpen]);
 
+  const nameValue = draft?.name ?? player?.name ?? "";
+
+  useEffect(() => {
+    const el = nameTextareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [nameValue]);
+
   if (!isOpen) return null;
 
-  const nameValue = draft?.name ?? player?.name ?? "";
   const numberValue = draft?.number ?? player?.number ?? "";
   const sportCfg = SPORT_DEFAULTS[fieldType] || {};
   const useLabels = Boolean(sportCfg.usePositionLabels);
@@ -99,14 +108,15 @@ export default function PlayerEditPanel({
         )}
         <label className="flex flex-col gap-1">
           <span className="text-BrandOrange text-xs sm:text-sm font-DmSans">Name</span>
-          <input
-            type="text"
+          <textarea
+            ref={nameTextareaRef}
+            rows={1}
             value={nameValue}
             onChange={(e) => onChange?.({ name: e.target.value })}
             onKeyDown={(e) => {
               if (e.key === "Escape") onClose?.();
             }}
-            className={POPUP_DENSE_INPUT_CLASS}
+            className="w-full min-h-8 sm:min-h-9 bg-BrandBlack2 border border-BrandGray rounded-md px-2 py-1.5 text-BrandWhite text-xs sm:text-sm font-DmSans focus:outline-none focus:border-BrandOrange transition-colors resize-none overflow-hidden leading-tight"
           />
         </label>
       </div>

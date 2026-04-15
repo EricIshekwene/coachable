@@ -2086,14 +2086,15 @@ function KonvaCanvasRoot({
                       <Text
                         text={String(nameText)}
                         y={radius + 6}
-                        width={sizePx}
-                        offsetX={radius}
+                        width={sizePx * 8}
+                        offsetX={sizePx * 4}
                         align="center"
                         fontFamily="DmSans"
                         fontStyle="bold"
                         fontSize={Math.max(9, Math.round(sizePx * 0.32))}
                         fill="#111827"
                         listening={false}
+                        wrap="none"
                       />
                     )}
                   </Group>
