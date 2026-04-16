@@ -75,7 +75,7 @@ export default function NoTeam() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-BrandBlack px-6 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-BrandBlack px-6 py-12 text-BrandText">
       <div className="w-full max-w-sm">
         <h1 className="font-Manrope text-xl font-bold tracking-tight text-BrandText">
           Welcome back{user?.name ? `, ${user.name.split(" ")[0]}` : ""}

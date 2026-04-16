@@ -12,7 +12,7 @@ import playRoutes from "./routes/plays.js";
 import folderRoutes from "./routes/folders.js";
 import userRoutes from "./routes/users.js";
 import verificationRoutes from "./routes/verification.js";
-import adminRoutes, { cleanupStaleAccounts } from "./routes/admin.js";
+import adminRoutes, { cleanupStaleAccounts, cleanupDeletedTeams } from "./routes/admin.js";
 import sharedRoutes from "./routes/shared.js";
 import errorReportRoutes from "./routes/errorReports.js";
 import platformPlaysRoutes from "./routes/platformPlays.js";
@@ -130,4 +130,14 @@ autoMigrate().then(() => {
   };
   setTimeout(runCleanup, 30_000); // first run 30s after startup
   setInterval(runCleanup, CLEANUP_INTERVAL_MS);
+
+  // Auto-cleanup: hard-delete teams soft-deleted more than 30 days ago (runs every 24 hours)
+  const TEAM_CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+  const runTeamCleanup = () => {
+    cleanupDeletedTeams()
+      .then((r) => { if (r.cleaned > 0) console.log(`Team cleanup: hard-deleted ${r.cleaned} expired team(s)`); })
+      .catch((err) => console.error("Team cleanup error:", err.message));
+  };
+  setTimeout(runTeamCleanup, 60_000); // first run 60s after startup
+  setInterval(runTeamCleanup, TEAM_CLEANUP_INTERVAL_MS);
 });

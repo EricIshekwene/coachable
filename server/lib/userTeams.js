@@ -10,7 +10,7 @@ export async function getUserTeams(userId) {
     `SELECT tm.team_id, t.name, t.sport, t.season_year, t.owner_user_id, t.is_personal, tm.role
      FROM team_memberships tm
      JOIN teams t ON t.id = tm.team_id
-     WHERE tm.user_id = $1
+     WHERE tm.user_id = $1 AND t.deleted_at IS NULL
      ORDER BY tm.joined_at`,
     [userId]
   );
@@ -55,7 +55,7 @@ export async function ensurePersonalWorkspace(userId, client) {
   const existing = await db.query(
     `SELECT t.id, t.name FROM teams t
      JOIN team_memberships tm ON tm.team_id = t.id
-     WHERE tm.user_id = $1 AND t.is_personal = true
+     WHERE tm.user_id = $1 AND t.is_personal = true AND t.deleted_at IS NULL
      LIMIT 1`,
     [userId]
   );

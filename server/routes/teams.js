@@ -239,8 +239,11 @@ router.post("/:teamId/leave", requireAuth, requireTeamRole(), async (req, res, n
           });
         }
 
-        // Sole owner — delete the entire team (CASCADE handles plays, settings, etc.)
-        await client.query("DELETE FROM teams WHERE id = $1", [teamId]);
+        // Sole owner — soft-delete the team (cached for 30 days; restorable via admin)
+        await client.query(
+          "UPDATE teams SET deleted_at = now(), updated_at = now() WHERE id = $1",
+          [teamId]
+        );
         wasTeamDeleted = true;
       } else {
         // player / assistant_coach / coach — free to leave

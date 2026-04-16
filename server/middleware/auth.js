@@ -69,7 +69,9 @@ export function requireTeamRole(...allowedRoles) {
     // Import pool lazily to avoid circular deps
     const { default: pool } = await import("../db/pool.js");
     const { rows } = await pool.query(
-      "SELECT role FROM team_memberships WHERE team_id = $1 AND user_id = $2",
+      `SELECT tm.role FROM team_memberships tm
+       JOIN teams t ON t.id = tm.team_id
+       WHERE tm.team_id = $1 AND tm.user_id = $2 AND t.deleted_at IS NULL`,
       [teamId, req.userId]
     );
 

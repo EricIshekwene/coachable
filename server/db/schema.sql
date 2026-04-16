@@ -111,6 +111,14 @@ CREATE TABLE IF NOT EXISTS teams (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Migration: add soft-delete support to teams (safe to re-run)
+DO $$ BEGIN
+  ALTER TABLE teams ADD COLUMN deleted_at TIMESTAMPTZ;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+CREATE INDEX IF NOT EXISTS teams_deleted_at_idx ON teams(deleted_at) WHERE deleted_at IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS team_settings (
   team_id UUID PRIMARY KEY REFERENCES teams(id) ON DELETE CASCADE,
   assistant_can_create_edit_delete_plays BOOLEAN NOT NULL DEFAULT true,

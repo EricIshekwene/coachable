@@ -415,7 +415,7 @@ export default function Settings() {
  * Danger Zone section — handles all leave/delete flows for every role type:
  * - player / assistant_coach / coach: free to leave
  * - owner with other members: must transfer ownership first
- * - owner sole member: delete team (cascade deletes all plays)
+ * - owner sole member: delete team (soft-deletes; restorable within 30 days via admin)
  * - personal workspace: delete workspace
  */
 function DangerZone({
@@ -431,17 +431,21 @@ function DangerZone({
   leaveTeam,
   navigate,
 }) {
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+
   if (!user?.teamId) return null;
 
   const isOwner = user?.role === "owner" && !playerViewMode;
   const isPersonal = user?.isPersonalTeam;
   const otherMembers = (teamMembers || []).filter((m) => m.id !== user?.id);
   const ownerMustTransfer = isOwner && !isPersonal && otherMembers.length > 0;
+  const isDeletingTeam = isOwner && otherMembers.length === 0;
 
   const teamLabel = isPersonal ? "Personal Workspace" : (user?.teamName || "this team");
+  const confirmTarget = isPersonal ? "Personal Workspace" : (user?.teamName || "");
   const buttonLabel = isPersonal
     ? "Delete Personal Workspace"
-    : isOwner && otherMembers.length === 0
+    : isDeletingTeam
       ? `Delete "${user?.teamName}"`
       : `Leave "${user?.teamName}"`;
 
@@ -461,6 +465,11 @@ function DangerZone({
     } finally {
       setLeaveLoading(false);
     }
+  };
+
+  const handleCancelConfirm = () => {
+    setShowLeaveConfirm(false);
+    setDeleteConfirmText("");
   };
 
   return (
@@ -486,11 +495,11 @@ function DangerZone({
       ) : (
         <div>
           <p className="text-sm font-semibold text-BrandText">
-            {isOwner && !isPersonal ? `Delete ${teamLabel}` : isPersonal ? "Delete Personal Workspace" : `Leave ${teamLabel}`}
+            {isDeletingTeam ? `Delete ${teamLabel}` : isPersonal ? "Delete Personal Workspace" : `Leave ${teamLabel}`}
           </p>
           <p className="mt-1 text-xs text-BrandGray2">
-            {isOwner && !isPersonal
-              ? `You are the sole member. Deleting will permanently remove this team and all its plays.`
+            {isDeletingTeam
+              ? `You are the sole member. The team will be recoverable for 30 days via admin, then permanently deleted.`
               : isPersonal
                 ? "Permanently delete your personal workspace and all plays in it."
                 : `You will lose access to all plays in ${teamLabel}. Your content will remain for the team.`}
@@ -503,7 +512,7 @@ function DangerZone({
           {!showLeaveConfirm ? (
             <button
               type="button"
-              onClick={() => { setShowLeaveConfirm(true); setLeaveError(""); }}
+              onClick={() => { setShowLeaveConfirm(true); setLeaveError(""); setDeleteConfirmText(""); }}
               className="mt-3 flex items-center gap-2 rounded-lg border border-red-500/40 px-4 py-2 text-xs font-semibold text-red-400 transition hover:border-red-500 hover:bg-red-500/10"
             >
               {isOwner ? <FiTrash2 className="text-sm" /> : <FiLogOut className="text-sm" />}
@@ -512,14 +521,30 @@ function DangerZone({
           ) : (
             <div className="mt-3 rounded-lg border border-red-500/30 bg-BrandBlack2/30 p-3">
               <p className="text-xs font-semibold text-red-300">
-                {isOwner
-                  ? "Are you sure? This cannot be undone."
+                {isDeletingTeam
+                  ? `Are you sure? Type the team name to confirm.`
                   : `Are you sure you want to leave "${user?.teamName}"?`}
               </p>
+
+              {isDeletingTeam && (
+                <div className="mt-2">
+                  <p className="mb-1.5 text-[11px] text-BrandGray2">
+                    Type <span className="font-semibold text-BrandGray">"{confirmTarget}"</span> to confirm
+                  </p>
+                  <input
+                    type="text"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder={confirmTarget}
+                    className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3 py-2 text-xs text-BrandText placeholder-BrandGray2/50 outline-none focus:border-red-500/60"
+                  />
+                </div>
+              )}
+
               <div className="mt-3 flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowLeaveConfirm(false)}
+                  onClick={handleCancelConfirm}
                   className="flex-1 rounded-lg border border-BrandGray2/30 py-2 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
                 >
                   Cancel
@@ -527,10 +552,10 @@ function DangerZone({
                 <button
                   type="button"
                   onClick={handleLeave}
-                  disabled={leaveLoading}
+                  disabled={leaveLoading || (isDeletingTeam && deleteConfirmText !== confirmTarget)}
                   className="flex-1 rounded-lg bg-red-600 py-2 text-xs font-semibold text-white transition hover:bg-red-500 disabled:opacity-50"
                 >
-                  {leaveLoading ? "Processing…" : isOwner ? "Yes, Delete" : "Yes, Leave"}
+                  {leaveLoading ? "Processing…" : isDeletingTeam ? "Yes, Delete" : "Yes, Leave"}
                 </button>
               </div>
             </div>

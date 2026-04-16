@@ -117,13 +117,24 @@ export default function AdminUserActivity() {
   const [payload, setPayload] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showRestoreDeleted, setShowRestoreDeleted] = useState(false);
+  const [deletedTeams, setDeletedTeams] = useState([]);
+  const [deletedTeamsLoading, setDeletedTeamsLoading] = useState(false);
+  const [deletedTeamsError, setDeletedTeamsError] = useState("");
+  const [restoringId, setRestoringId] = useState(null);
 
   const authed = Boolean(session);
 
   const adminFetch = useCallback(
-    async (path) => {
+    async (path, options = {}) => {
+      const { method = "GET", body } = options;
       const res = await fetch(`${API_URL}${path}`, {
-        headers: { "x-admin-session": session },
+        method,
+        headers: {
+          "x-admin-session": session,
+          ...(body ? { "Content-Type": "application/json" } : {}),
+        },
+        ...(body ? { body: JSON.stringify(body) } : {}),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -146,6 +157,38 @@ export default function AdminUserActivity() {
       setLoading(false);
     }
   }, [adminFetch, userId]);
+
+  const fetchDeletedTeams = useCallback(async () => {
+    setDeletedTeamsLoading(true);
+    setDeletedTeamsError("");
+    try {
+      const data = await adminFetch(`/admin/users/${userId}/deleted-teams`);
+      setDeletedTeams(data.deletedTeams || []);
+    } catch (err) {
+      setDeletedTeamsError(err.message);
+    } finally {
+      setDeletedTeamsLoading(false);
+    }
+  }, [adminFetch, userId]);
+
+  const handleToggleRestoreDeleted = () => {
+    if (!showRestoreDeleted) {
+      fetchDeletedTeams();
+    }
+    setShowRestoreDeleted((prev) => !prev);
+  };
+
+  const handleRestoreTeam = async (teamId) => {
+    setRestoringId(teamId);
+    try {
+      await adminFetch(`/admin/teams/${teamId}/restore`, { method: "POST" });
+      setDeletedTeams((prev) => prev.filter((t) => t.id !== teamId));
+    } catch (err) {
+      setDeletedTeamsError(err.message);
+    } finally {
+      setRestoringId(null);
+    }
+  };
 
   useEffect(() => {
     if (authed) {
@@ -343,6 +386,68 @@ export default function AdminUserActivity() {
                       </p>
                     </div>
                   ))}
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-2xl border border-white/6 bg-[#1b1f25] p-6">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="font-Manrope text-lg font-bold text-white">Restore Deleted Teams</h2>
+                  <p className="mt-1 text-sm text-BrandGray">Teams deleted by this user, recoverable within 30 days.</p>
+                </div>
+                <button
+                  onClick={handleToggleRestoreDeleted}
+                  className="shrink-0 rounded-lg border border-white/8 px-3 py-1.5 text-xs text-BrandGray transition hover:border-white/20 hover:text-white"
+                >
+                  {showRestoreDeleted ? "Hide" : "Show Deleted"}
+                </button>
+              </div>
+
+              {showRestoreDeleted && (
+                <div className="mt-4">
+                  {deletedTeamsError && (
+                    <div className="mb-3 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                      {deletedTeamsError}
+                    </div>
+                  )}
+                  {deletedTeamsLoading ? (
+                    <div className="rounded-xl border border-white/6 bg-[#171a20] px-4 py-6 text-sm text-BrandGray">
+                      Loading deleted teams…
+                    </div>
+                  ) : deletedTeams.length === 0 ? (
+                    <div className="rounded-xl border border-white/6 bg-[#171a20] px-4 py-6 text-sm text-BrandGray">
+                      No deleted teams found for this user.
+                    </div>
+                  ) : (
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      {deletedTeams.map((team) => {
+                        const deletedMs = new Date(team.deleted_at).getTime();
+                        const expiresMs = deletedMs + 30 * 24 * 60 * 60 * 1000;
+                        const daysLeft = Math.ceil((expiresMs - Date.now()) / (1000 * 60 * 60 * 24));
+                        return (
+                          <div key={team.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/6 bg-[#171a20] px-4 py-4">
+                            <div className="min-w-0">
+                              <p className="truncate font-semibold text-white">{team.name}</p>
+                              <p className="mt-1 text-sm text-BrandGray">
+                                {team.sport || "No sport"} | Deleted {formatTime(team.deleted_at)}
+                              </p>
+                              <p className={`mt-1 text-xs ${daysLeft <= 5 ? "text-red-400" : "text-BrandGray2"}`}>
+                                {daysLeft > 0 ? `${daysLeft}d until permanent deletion` : "Expires today"}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => handleRestoreTeam(team.id)}
+                              disabled={restoringId === team.id}
+                              className="shrink-0 rounded-lg border border-green-500/30 px-3 py-1.5 text-xs font-semibold text-green-400 transition hover:border-green-500 hover:bg-green-500/10 disabled:opacity-50"
+                            >
+                              {restoringId === team.id ? "Restoring…" : "Restore"}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </section>

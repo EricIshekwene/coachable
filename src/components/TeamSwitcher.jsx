@@ -248,7 +248,7 @@ export default function TeamSwitcher() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setView("personal"); setError(""); }}
+                  onClick={() => { setView("personal"); setPersonalSport(user?.sport || ""); setError(""); }}
                   className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-BrandGray transition hover:bg-BrandBlack2/60 hover:text-BrandText"
                 >
                   <FiUsers className="text-sm text-BrandGray2" />

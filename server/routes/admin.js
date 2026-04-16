@@ -1054,6 +1054,61 @@ export async function cleanupStaleAccounts() {
   return { ok: true, cleaned: rows.length };
 }
 
+/**
+ * Hard-deletes teams that have been soft-deleted for more than 30 days.
+ * Called on server startup and every 24 hours.
+ * @returns {Promise<{ok: boolean, cleaned: number}>}
+ */
+export async function cleanupDeletedTeams() {
+  const { rows } = await pool.query(
+    "SELECT id FROM teams WHERE deleted_at IS NOT NULL AND deleted_at < now() - interval '30 days'"
+  );
+  let cleaned = 0;
+  for (const row of rows) {
+    try {
+      await pool.query("DELETE FROM teams WHERE id = $1", [row.id]);
+      cleaned++;
+    } catch (err) {
+      console.error(`Failed to hard-delete team ${row.id}:`, err.message);
+    }
+  }
+  return { ok: true, cleaned };
+}
+
+// GET /admin/users/:id/deleted-teams — list soft-deleted teams owned by a user
+router.get("/users/:id/deleted-teams", requireAdmin, async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, name, sport, season_year, deleted_at, created_at
+       FROM teams
+       WHERE owner_user_id = $1 AND deleted_at IS NOT NULL
+       ORDER BY deleted_at DESC`,
+      [req.params.id]
+    );
+    res.json({ deletedTeams: rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /admin/teams/:teamId/restore — restore a soft-deleted team
+router.post("/teams/:teamId/restore", requireAdmin, async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `UPDATE teams SET deleted_at = NULL, updated_at = now()
+       WHERE id = $1 AND deleted_at IS NOT NULL
+       RETURNING id, name`,
+      [req.params.teamId]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ error: "Team not found or not deleted" });
+    }
+    res.json({ ok: true, team: rows[0] });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // PATCH /admin/users/:id/beta-tester — toggle beta tester status for a user
 router.patch("/users/:id/beta-tester", requireAdmin, async (req, res, next) => {
   try {
