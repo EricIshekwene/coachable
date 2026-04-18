@@ -740,6 +740,7 @@ export default function PlayPreviewCard({
                 y={pose.y - ballRadius}
                 width={ballSizePx}
                 height={ballSizePx}
+                preserveAspectRatio="none"
               />
             );
             return ballRotation !== null ? (

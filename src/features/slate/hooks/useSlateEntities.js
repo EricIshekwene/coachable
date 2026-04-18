@@ -415,8 +415,6 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
   };
 
   const handleDeleteBall = (id) => {
-    const allBallIds = Object.keys(ballsById || {});
-    if (allBallIds.length <= 1) return; // must keep at least one ball
     if (!ballsById?.[id]) return;
     historyApiRef.current?.pushHistory?.();
     logEvent?.("slate", "deleteBall", { id });
@@ -454,11 +452,7 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
 
   const handleDeleteSelected = () => {
     const selectedBallIds = (selectedItemIds || []).filter((itemId) => ballsById?.[itemId]);
-    const allBallIds = Object.keys(ballsById || {});
-    const canDeleteAllSelectedBalls = selectedBallIds.length < allBallIds.length;
-    const ballIdsToDelete = canDeleteAllSelectedBalls
-      ? selectedBallIds
-      : selectedBallIds.slice(1);
+    const ballIdsToDelete = selectedBallIds;
     if (!selectedPlayerIds?.length && !ballIdsToDelete.length) return;
     historyApiRef.current?.pushHistory?.();
     logEvent?.("slate", "deleteSelected", {

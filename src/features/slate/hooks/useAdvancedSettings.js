@@ -18,7 +18,7 @@ export const SPORT_DEFAULTS = {
   Football: { baseSizePx: 25, sizePercent: 70, coneSizePercent: 65, usePositionLabels: true },
   Lacrosse: { sizePercent: 65, defaultFieldRotation: 90, usePositionLabels: true },
   "Womens Lacrosse": { sizePercent: 65, defaultFieldRotation: 90, usePositionLabels: true },
-  Soccer: { usePositionLabels: true },
+  Soccer: { sizePercent: 65, usePositionLabels: true },
   Basketball: { sizePercent: 80, pitchColor: "#D8C3A5", defaultFieldRotation: 90 },
   Blank: { pitchColor: "#4FA85D", sizePercent: 75 },
 };

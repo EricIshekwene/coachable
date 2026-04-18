@@ -376,18 +376,98 @@ export function useDrawingSelection({
         return true;
       }
 
-      // Resize
+      // Resize (with snap)
       if (gestureRef.current?.type === "resize") {
+        const handlePos = gestureRef.current.handlePosition;
         const dragDelta = {
           dx: world.x - gestureRef.current.startWorld.x,
           dy: world.y - gestureRef.current.startWorld.y,
         };
-        const newBounds = computeResizedBounds(
-          gestureRef.current.handlePosition,
+        let newBounds = computeResizedBounds(
+          handlePos,
           gestureRef.current.startBounds,
           dragDelta,
           { shiftKey: evt?.shiftKey, altKey: evt?.altKey }
         );
+
+        // Snap the moved edge(s) to field guide stops (skip during alt/center-resize)
+        if (drawGuides && clearGuides && guidelineOffsetWorld && !evt?.altKey) {
+          const stops = getDrawingSnapStops();
+          const startBounds = gestureRef.current.startBounds;
+          const guides = [];
+          const MIN_RESIZE = 4;
+
+          const resizesWest = handlePos.includes("w");
+          const resizesEast = handlePos.includes("e");
+          const resizesNorth = handlePos.includes("n");
+          const resizesSouth = handlePos.includes("s");
+
+          if (resizesWest || resizesEast) {
+            const vEdges = resizesWest
+              ? [{ guide: newBounds.x, snap: "left" }, { guide: newBounds.x + newBounds.width / 2, snap: "center" }]
+              : [{ guide: newBounds.x + newBounds.width, snap: "right" }, { guide: newBounds.x + newBounds.width / 2, snap: "center" }];
+            let closestV = null;
+            stops.vertical.forEach((stop) => {
+              vEdges.forEach((edge) => {
+                const diff = Math.abs(stop - edge.guide);
+                if (diff <= guidelineOffsetWorld && (!closestV || diff < closestV.diff)) {
+                  closestV = { lineGuide: stop, diff, snap: edge.snap };
+                }
+              });
+            });
+            if (closestV) {
+              if (resizesWest) {
+                const rightFixed = startBounds.x + startBounds.width;
+                const newX = closestV.snap === "left"
+                  ? closestV.lineGuide
+                  : closestV.lineGuide * 2 - rightFixed;
+                newBounds = { ...newBounds, x: newX, width: Math.max(MIN_RESIZE, rightFixed - newX) };
+              } else {
+                const leftFixed = startBounds.x;
+                const newRight = closestV.snap === "right"
+                  ? closestV.lineGuide
+                  : closestV.lineGuide * 2 - leftFixed;
+                newBounds = { ...newBounds, width: Math.max(MIN_RESIZE, newRight - leftFixed) };
+              }
+              guides.push({ orientation: "V", lineGuide: closestV.lineGuide, offset: 0, snap: closestV.snap });
+            }
+          }
+
+          if (resizesNorth || resizesSouth) {
+            const hEdges = resizesNorth
+              ? [{ guide: newBounds.y, snap: "top" }, { guide: newBounds.y + newBounds.height / 2, snap: "center" }]
+              : [{ guide: newBounds.y + newBounds.height, snap: "bottom" }, { guide: newBounds.y + newBounds.height / 2, snap: "center" }];
+            let closestH = null;
+            stops.horizontal.forEach((stop) => {
+              hEdges.forEach((edge) => {
+                const diff = Math.abs(stop - edge.guide);
+                if (diff <= guidelineOffsetWorld && (!closestH || diff < closestH.diff)) {
+                  closestH = { lineGuide: stop, diff, snap: edge.snap };
+                }
+              });
+            });
+            if (closestH) {
+              if (resizesNorth) {
+                const bottomFixed = startBounds.y + startBounds.height;
+                const newY = closestH.snap === "top"
+                  ? closestH.lineGuide
+                  : closestH.lineGuide * 2 - bottomFixed;
+                newBounds = { ...newBounds, y: newY, height: Math.max(MIN_RESIZE, bottomFixed - newY) };
+              } else {
+                const topFixed = startBounds.y;
+                const newBottom = closestH.snap === "bottom"
+                  ? closestH.lineGuide
+                  : closestH.lineGuide * 2 - topFixed;
+                newBounds = { ...newBounds, height: Math.max(MIN_RESIZE, newBottom - topFixed) };
+              }
+              guides.push({ orientation: "H", lineGuide: closestH.lineGuide, offset: 0, snap: closestH.snap });
+            }
+          }
+
+          if (guides.length) drawGuides(guides);
+          else clearGuides();
+        }
+
         const changes = applyResize(
           Array.from(gestureRef.current.startDrawingsSnapshot.values()),
           gestureRef.current.ids,

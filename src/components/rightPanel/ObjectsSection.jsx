@@ -13,7 +13,6 @@ export default function ObjectsSection({
 }) {
   const ballIds = Object.keys(ballsById || {});
   const count = ballIds.length;
-  const canDelete = count > 1;
 
   return (
     <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center">
@@ -66,19 +65,17 @@ export default function ObjectsSection({
                 >
                   {ball.hidden ? <FiEyeOff /> : <FiEye />}
                 </button>
-                {canDelete && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteBall?.(id);
-                    }}
-                    className="text-BrandOrange text-xs sm:text-sm md:text-base"
-                    aria-label={`Delete ${objectType}`}
-                  >
-                    <MdDeleteOutline />
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteBall?.(id);
+                  }}
+                  className="text-BrandOrange text-xs sm:text-sm md:text-base"
+                  aria-label={`Delete ${objectType}`}
+                >
+                  <MdDeleteOutline />
+                </button>
               </div>
             </div>
           );
