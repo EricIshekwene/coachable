@@ -1,11 +1,12 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import {
-  FiPlay, FiPause, FiPlus, FiMinus,
+  FiPlay, FiPause, FiPlus, FiMinus, FiX,
   FiRotateCcw, FiRotateCw,
-  FiTrash2, FiUsers, FiSettings, FiTool,
-  FiChevronDown, FiMousePointer, FiMove,
+  FiTrash2, FiUsers, FiTool,
+  FiChevronDown, FiMousePointer, FiMove, FiChevronRight,
 } from "react-icons/fi";
 import { PiPencilSimpleLine } from "react-icons/pi";
+import { SPORT_DEFAULTS } from "../features/slate/hooks/useAdvancedSettings";
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 const fmt = (ms) => {
@@ -18,36 +19,92 @@ const fmt = (ms) => {
 
 /**
  * MobileTimeline — touch-draggable scrubber bar for the mobile editor.
- * Sits above the nav bar. Shows keyframe tick marks and current time.
+ * Keyframe ticks are tappable to select them; a delete button appears when one is selected.
  */
 function MobileTimeline({
   durationMs,
   currentTimeMs,
   isPlaying,
   keyframesMs = [],
+  selectedKeyframeMs,
   onSeek,
   onPause,
   onPlayToggle,
   onAddKeyframe,
+  onSelectKeyframe,
+  onDeleteKeyframe,
+  onMoveKeyframe,
 }) {
   const duration = Math.max(1, durationMs);
   const progress = clamp(currentTimeMs / duration, 0, 1);
+  const trackRef = useRef(null);
+  // { fromMs, previewMs } while dragging a keyframe diamond
+  const [kfDrag, setKfDrag] = useState(null);
 
-  const handleTrackPointer = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const ratio = clamp((clientX - rect.left) / rect.width, 0, 1);
+  const clientXToMs = (clientX) => {
+    const rect = trackRef.current?.getBoundingClientRect();
+    if (!rect) return 0;
+    return clamp((clientX - rect.left) / rect.width, 0, 1) * duration;
+  };
+
+  // ── Track scrubbing ──────────────────────────────────────────────────────
+
+  const handleTrackPointerDown = (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
     onPause?.();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+    onSeek?.(ratio * duration, { source: "scrub" });
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handleTrackPointerMove = (e) => {
+    if (!e.buttons) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = clamp((e.clientX - rect.left) / rect.width, 0, 1);
     onSeek?.(ratio * duration, { source: "scrub" });
   };
 
+  const handleTouchScrub = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clientX = e.touches[0]?.clientX ?? 0;
+    const ratio = clamp((clientX - rect.left) / rect.width, 0, 1);
+    onSeek?.(ratio * duration, { source: "scrub" });
+  };
+
+  // ── Keyframe diamond drag ────────────────────────────────────────────────
+
+  const handleKfPointerDown = (e, kf) => {
+    e.stopPropagation();
+    if (e.button !== undefined && e.button !== 0) return;
+    onSelectKeyframe?.(kf);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setKfDrag({ fromMs: kf, previewMs: kf });
+  };
+
+  const handleKfPointerMove = (e, kf) => {
+    if (!e.buttons || kfDrag?.fromMs !== kf) return;
+    e.stopPropagation();
+    const newMs = clientXToMs(e.clientX);
+    setKfDrag((prev) => prev ? { ...prev, previewMs: newMs } : null);
+  };
+
+  const handleKfPointerUp = (e, kf) => {
+    if (kfDrag?.fromMs !== kf) return;
+    e.stopPropagation();
+    const toMs = clientXToMs(e.clientX);
+    onMoveKeyframe?.(kf, toMs);
+    onSelectKeyframe?.(Math.round(toMs));
+    setKfDrag(null);
+  };
+
   return (
-    <div className="flex items-center gap-3 px-4 py-2 bg-BrandBlack border-t border-white/10">
+    <div className="flex items-center gap-2 px-3 py-2 bg-BrandBlack border-t border-white/10">
       {/* Play / pause */}
       <button
         onPointerDown={(e) => e.stopPropagation()}
         onClick={onPlayToggle}
-        className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-BrandOrange text-white active:brightness-90"
+        className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-BrandOrange text-white active:brightness-90"
       >
         {isPlaying ? <FiPause className="text-base" /> : <FiPlay className="text-base ml-0.5" />}
       </button>
@@ -62,10 +119,12 @@ function MobileTimeline({
 
         {/* Scrubber track */}
         <div
+          ref={trackRef}
           className="relative h-5 flex items-center cursor-pointer touch-none"
-          onPointerDown={handleTrackPointer}
-          onTouchStart={handleTrackPointer}
-          onTouchMove={handleTrackPointer}
+          onPointerDown={handleTrackPointerDown}
+          onPointerMove={handleTrackPointerMove}
+          onTouchStart={(e) => { onPause?.(); handleTouchScrub(e); }}
+          onTouchMove={handleTouchScrub}
         >
           {/* Track bg */}
           <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-white/10" />
@@ -74,14 +133,32 @@ function MobileTimeline({
             className="absolute left-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-BrandOrange pointer-events-none"
             style={{ width: `${progress * 100}%` }}
           />
-          {/* Keyframe ticks */}
-          {keyframesMs.map((kf) => (
-            <div
-              key={kf}
-              className="absolute top-1/2 -translate-y-1/2 w-0.5 h-3 rounded-full bg-white/60 pointer-events-none"
-              style={{ left: `${(kf / duration) * 100}%` }}
-            />
-          ))}
+          {/* Keyframe diamonds — draggable */}
+          {keyframesMs.map((kf) => {
+            const isSelected = kf === selectedKeyframeMs;
+            const isDragging = kfDrag?.fromMs === kf;
+            const displayMs = isDragging ? kfDrag.previewMs : kf;
+            return (
+              <div
+                key={kf}
+                onPointerDown={(e) => handleKfPointerDown(e, kf)}
+                onPointerMove={(e) => handleKfPointerMove(e, kf)}
+                onPointerUp={(e) => handleKfPointerUp(e, kf)}
+                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-full flex items-center justify-center touch-none cursor-grab active:cursor-grabbing"
+                style={{ left: `${clamp(displayMs / duration, 0, 1) * 100}%` }}
+              >
+                <div
+                  className={`w-2.5 h-2.5 rotate-45 transition-colors ${
+                    isDragging
+                      ? "bg-BrandOrange scale-125"
+                      : isSelected
+                      ? "bg-BrandOrange"
+                      : "bg-white/70"
+                  }`}
+                />
+              </div>
+            );
+          })}
           {/* Thumb */}
           <div
             className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-white shadow pointer-events-none"
@@ -93,46 +170,57 @@ function MobileTimeline({
       {/* Add keyframe */}
       <button
         onClick={onAddKeyframe}
-        className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full border border-white/20 text-BrandGray active:bg-white/10"
+        className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full border border-white/20 text-BrandGray active:bg-white/10"
         title="Add keyframe"
       >
         <FiPlus className="text-base" />
       </button>
+
+      {/* Delete selected keyframe — only visible when one is selected */}
+      {selectedKeyframeMs !== null && selectedKeyframeMs !== undefined ? (
+        <button
+          onClick={() => onDeleteKeyframe?.(selectedKeyframeMs)}
+          className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full border border-red-500/40 text-red-400 active:bg-red-500/10"
+          title="Delete keyframe"
+        >
+          <FiX className="text-base" />
+        </button>
+      ) : (
+        <div className="shrink-0 w-9 h-9" />
+      )}
     </div>
   );
 }
 
 // ── Bottom sheet wrapper ─────────────────────────────────────────────────────
 
+/**
+ * BottomSheet — slide-up sheet with backdrop, handle, and header.
+ */
 function BottomSheet({ open, onClose, title, children }) {
   return (
     <>
-      {/* Backdrop */}
       {open && (
         <div
           className="fixed inset-0 z-40 bg-black/50"
           onClick={onClose}
         />
       )}
-      {/* Sheet */}
       <div
         className={`fixed bottom-0 inset-x-0 z-50 bg-[#1a1a1a] rounded-t-2xl transition-transform duration-300 ease-out ${
           open ? "translate-y-0" : "translate-y-full"
         }`}
         style={{ maxHeight: "70dvh" }}
       >
-        {/* Handle */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 rounded-full bg-white/20" />
         </div>
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-2 border-b border-white/10">
           <span className="text-sm font-semibold text-white font-DmSans">{title}</span>
           <button onClick={onClose} className="text-BrandGray2 active:text-white p-1">
             <FiChevronDown className="text-lg" />
           </button>
         </div>
-        {/* Content */}
         <div className="overflow-y-auto px-5 py-4" style={{ maxHeight: "calc(70dvh - 80px)" }}>
           {children}
         </div>
@@ -143,7 +231,11 @@ function BottomSheet({ open, onClose, title, children }) {
 
 // ── Sheet contents ───────────────────────────────────────────────────────────
 
-function ToolsSheet({ activeTool, onToolChange, onUndo, onRedo, onReset, onDeleteSelected, onAddPlayer, zoomPercent, onZoomIn, onZoomOut }) {
+/**
+ * ToolsSheet — tool picker, history actions, and zoom controls.
+ * Add Player lives in PlayersSheet now.
+ */
+function ToolsSheet({ activeTool, onToolChange, onUndo, onRedo, onReset, zoomPercent, onZoomIn, onZoomOut }) {
   const tools = [
     { id: "select", label: "Select", icon: <FiMousePointer className="text-lg" /> },
     { id: "hand",   label: "Pan",    icon: <FiMove className="text-lg" /> },
@@ -180,7 +272,7 @@ function ToolsSheet({ activeTool, onToolChange, onUndo, onRedo, onReset, onDelet
           {[
             { label: "Undo", icon: <FiRotateCcw />, action: onUndo },
             { label: "Redo", icon: <FiRotateCw />,  action: onRedo },
-            { label: "Reset", icon: <FiTrash2 />,  action: onReset },
+            { label: "Reset", icon: <FiTrash2 />,   action: onReset },
           ].map(({ label, icon, action }) => (
             <button
               key={label}
@@ -212,87 +304,132 @@ function ToolsSheet({ activeTool, onToolChange, onUndo, onRedo, onReset, onDelet
           </button>
         </div>
       </div>
-
-      {/* Add / delete */}
-      <div className="flex flex-col gap-2">
-        <button
-          onClick={onAddPlayer}
-          className="w-full py-3 rounded-xl bg-BrandOrange text-white font-semibold text-sm font-DmSans active:brightness-90"
-        >
-          + Add Player
-        </button>
-        <button
-          onClick={onDeleteSelected}
-          className="w-full py-3 rounded-xl border border-red-500/40 text-red-400 text-sm font-DmSans active:bg-red-500/10"
-        >
-          Delete Selected
-        </button>
-      </div>
     </div>
   );
 }
 
-function PlayersSheet({ playersById, representedPlayerIds, selectedPlayerIds, onSelectPlayer, onDeletePlayer }) {
+/**
+ * PlayersSheet — add player mode button, player list with inline editing.
+ */
+function PlayersSheet({
+  playersById,
+  representedPlayerIds,
+  selectedPlayerIds,
+  playerEditor,
+  fieldType,
+  onToolChange,
+  onClose,
+  onSelectPlayer,
+  onDeletePlayer,
+  onEditPlayer,
+  onEditDraftChange,
+  onCloseEditPlayer,
+}) {
   const players = useMemo(() => Object.values(playersById || {}), [playersById]);
+  const sportCfg = SPORT_DEFAULTS[fieldType] || {};
+  const useLabels = Boolean(sportCfg.usePositionLabels);
+  const labelText = useLabels ? "Label" : "Number";
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
+      {/* Add Player mode button */}
+      <button
+        onClick={() => {
+          onToolChange?.("addPlayer");
+          onClose?.();
+        }}
+        className="w-full py-3 rounded-xl bg-BrandOrange text-white font-semibold text-sm font-DmSans active:brightness-90"
+      >
+        + Add Player
+      </button>
+
+      {/* Player list */}
       {players.length === 0 && (
-        <p className="text-sm text-BrandGray2 text-center py-6">No players yet. Add one from the Tools tab.</p>
+        <p className="text-sm text-BrandGray2 text-center py-6">No players yet. Tap Add Player above.</p>
       )}
       {players.map((p) => {
         const isSelected = selectedPlayerIds?.includes(p.id);
         const hasPos = representedPlayerIds?.includes(p.id);
+        const isEditing = playerEditor?.open && playerEditor?.id === p.id;
+
         return (
           <div
             key={p.id}
-            onClick={() => onSelectPlayer(p.id, { multi: false })}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition ${
-              isSelected ? "border-BrandOrange bg-BrandOrange/10" : "border-white/10 active:bg-white/5"
+            className={`rounded-xl border transition ${
+              isEditing
+                ? "border-BrandOrange bg-BrandOrange/5"
+                : isSelected
+                ? "border-BrandOrange/50 bg-BrandOrange/5"
+                : "border-white/10"
             }`}
           >
-            {/* Colour swatch + number */}
+            {/* Row */}
             <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-              style={{ backgroundColor: p.color || "#ef4444" }}
+              className="flex items-center gap-3 px-4 py-3 cursor-pointer"
+              onClick={() => {
+                if (isEditing) {
+                  onCloseEditPlayer?.();
+                } else {
+                  onEditPlayer?.(p.id);
+                }
+              }}
             >
-              {p.number ?? "?"}
+              {/* Colour swatch + number */}
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                style={{ backgroundColor: p.color || "#ef4444" }}
+              >
+                {p.number ?? "?"}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-white font-DmSans truncate">{p.name || `Player ${p.number}`}</p>
+                <p className="text-[11px] text-BrandGray2">{hasPos ? "Has position" : "No position set"}</p>
+              </div>
+              <FiChevronRight
+                className={`text-sm text-BrandGray2 transition-transform ${isEditing ? "rotate-90 text-BrandOrange" : ""}`}
+              />
+              <button
+                onClick={(e) => { e.stopPropagation(); onDeletePlayer?.(p.id); }}
+                className="p-2 text-BrandGray2 active:text-red-400"
+              >
+                <FiTrash2 className="text-sm" />
+              </button>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-white font-DmSans truncate">{p.name || `Player ${p.number}`}</p>
-              <p className="text-[11px] text-BrandGray2">{hasPos ? "Has position" : "No position set"}</p>
-            </div>
-            <button
-              onClick={(e) => { e.stopPropagation(); onDeletePlayer(p.id); }}
-              className="p-2 text-BrandGray2 active:text-red-400"
-            >
-              <FiTrash2 className="text-sm" />
-            </button>
+
+            {/* Inline edit form */}
+            {isEditing && (
+              <div className="px-4 pb-4 flex flex-col gap-2 border-t border-white/10 pt-3">
+                <label className="flex flex-col gap-1">
+                  <span className="text-[11px] text-BrandOrange font-DmSans uppercase tracking-wider">{labelText}</span>
+                  <input
+                    type="text"
+                    value={playerEditor.draft?.number ?? ""}
+                    onChange={(e) => onEditDraftChange?.({ number: e.target.value })}
+                    placeholder={useLabels ? "e.g. QB" : "e.g. 7"}
+                    className="w-full bg-BrandBlack border border-BrandGray2/40 rounded-lg px-3 py-2 text-white text-sm font-DmSans focus:outline-none focus:border-BrandOrange"
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-[11px] text-BrandOrange font-DmSans uppercase tracking-wider">Name</span>
+                  <input
+                    type="text"
+                    value={playerEditor.draft?.name ?? ""}
+                    onChange={(e) => onEditDraftChange?.({ name: e.target.value })}
+                    placeholder="Player name"
+                    className="w-full bg-BrandBlack border border-BrandGray2/40 rounded-lg px-3 py-2 text-white text-sm font-DmSans focus:outline-none focus:border-BrandOrange"
+                  />
+                </label>
+                <button
+                  onClick={onCloseEditPlayer}
+                  className="w-full py-2 rounded-lg border border-white/20 text-BrandGray text-sm font-DmSans active:bg-white/5 mt-1"
+                >
+                  Done
+                </button>
+              </div>
+            )}
           </div>
         );
       })}
-    </div>
-  );
-}
-
-function SettingsSheet({ advancedSettings, onOpenAdvancedSettings, onSaveToPlaybook, onImport }) {
-  const rows = [
-    onSaveToPlaybook && { label: "Save to Playbook", action: onSaveToPlaybook },
-    onImport         && { label: "Import Play",       action: onImport },
-    onOpenAdvancedSettings && { label: "Advanced Settings", action: onOpenAdvancedSettings },
-  ].filter(Boolean);
-
-  return (
-    <div className="flex flex-col gap-2">
-      {rows.map(({ label, action }) => (
-        <button
-          key={label}
-          onClick={action}
-          className="w-full text-left px-4 py-3.5 rounded-xl border border-white/10 text-sm text-white font-DmSans active:bg-white/5"
-        >
-          {label}
-        </button>
-      ))}
     </div>
   );
 }
@@ -302,7 +439,6 @@ function SettingsSheet({ advancedSettings, onOpenAdvancedSettings, onSaveToPlayb
 const TABS = [
   { id: "tools",   label: "Tools",   icon: <FiTool className="text-xl" /> },
   { id: "players", label: "Players", icon: <FiUsers className="text-xl" /> },
-  { id: "settings",label: "More",   icon: <FiSettings className="text-xl" /> },
 ];
 
 // ── Main export ──────────────────────────────────────────────────────────────
@@ -312,8 +448,8 @@ const TABS = [
  * when the editor is rendered in mobileLayout mode.
  *
  * Renders:
- *  1. A compact touch-friendly timeline scrubber (with play/pause + add-KF)
- *  2. A bottom nav bar with three tabs (Tools, Players, More)
+ *  1. A compact touch-friendly timeline scrubber (play/pause, keyframe select/delete, add KF)
+ *  2. A bottom nav bar with two tabs (Tools, Players)
  *  3. A slide-up bottom sheet for each tab's controls
  */
 export default function MobileEditorBar({
@@ -322,18 +458,20 @@ export default function MobileEditorBar({
   currentTimeMs,
   isPlaying,
   keyframesMs,
+  selectedKeyframeMs,
   onSeek,
   onPause,
   onPlayToggle,
   onAddKeyframe,
+  onSelectKeyframe,
+  onDeleteKeyframe,
+  onMoveKeyframe,
   // Tools
   activeTool,
   onToolChange,
   onUndo,
   onRedo,
   onReset,
-  onDeleteSelected,
-  onAddPlayer,
   // Zoom
   zoomPercent,
   onZoomIn,
@@ -342,12 +480,13 @@ export default function MobileEditorBar({
   playersById,
   representedPlayerIds,
   selectedPlayerIds,
+  playerEditor,
+  fieldType,
   onSelectPlayer,
   onDeletePlayer,
-  // Settings
-  onOpenAdvancedSettings,
-  onSaveToPlaybook,
-  onImport,
+  onEditPlayer,
+  onEditDraftChange,
+  onCloseEditPlayer,
 }) {
   const [activeSheet, setActiveSheet] = useState(null);
 
@@ -362,10 +501,14 @@ export default function MobileEditorBar({
         currentTimeMs={currentTimeMs}
         isPlaying={isPlaying}
         keyframesMs={keyframesMs}
+        selectedKeyframeMs={selectedKeyframeMs}
         onSeek={onSeek}
         onPause={onPause}
         onPlayToggle={onPlayToggle}
         onAddKeyframe={onAddKeyframe}
+        onSelectKeyframe={onSelectKeyframe}
+        onDeleteKeyframe={onDeleteKeyframe}
+        onMoveKeyframe={onMoveKeyframe}
       />
 
       {/* Nav bar */}
@@ -384,7 +527,7 @@ export default function MobileEditorBar({
         ))}
       </div>
 
-      {/* Bottom sheets */}
+      {/* Tools sheet */}
       <BottomSheet open={activeSheet === "tools"} onClose={closeSheet} title="Tools">
         <ToolsSheet
           activeTool={activeTool}
@@ -392,29 +535,27 @@ export default function MobileEditorBar({
           onUndo={onUndo}
           onRedo={onRedo}
           onReset={onReset}
-          onDeleteSelected={onDeleteSelected}
-          onAddPlayer={() => { onAddPlayer?.(); closeSheet(); }}
           zoomPercent={zoomPercent}
           onZoomIn={onZoomIn}
           onZoomOut={onZoomOut}
         />
       </BottomSheet>
 
+      {/* Players sheet */}
       <BottomSheet open={activeSheet === "players"} onClose={closeSheet} title="Players">
         <PlayersSheet
           playersById={playersById}
           representedPlayerIds={representedPlayerIds}
           selectedPlayerIds={selectedPlayerIds}
+          playerEditor={playerEditor}
+          fieldType={fieldType}
+          onToolChange={onToolChange}
+          onClose={closeSheet}
           onSelectPlayer={onSelectPlayer}
-          onDeletePlayer={(id) => { onDeletePlayer(id); }}
-        />
-      </BottomSheet>
-
-      <BottomSheet open={activeSheet === "settings"} onClose={closeSheet} title="More">
-        <SettingsSheet
-          onOpenAdvancedSettings={onOpenAdvancedSettings ? () => { onOpenAdvancedSettings(); closeSheet(); } : null}
-          onSaveToPlaybook={onSaveToPlaybook ? () => { onSaveToPlaybook(); closeSheet(); } : null}
-          onImport={onImport ? () => { onImport(); closeSheet(); } : null}
+          onDeletePlayer={onDeletePlayer}
+          onEditPlayer={onEditPlayer}
+          onEditDraftChange={onEditDraftChange}
+          onCloseEditPlayer={onCloseEditPlayer}
         />
       </BottomSheet>
     </>

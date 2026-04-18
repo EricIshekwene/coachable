@@ -3107,6 +3107,17 @@ function Slate({
             onSubToolChange={handleDrawSubToolChange}
           />
         )}
+        {mobileLayout && !viewOnly && canvasTool === "addPlayer" && !screenshotMode && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-BrandBlack px-5 py-2 rounded-full border border-BrandOrange/40 shadow-lg">
+            <span className="text-xs font-semibold text-BrandOrange font-DmSans">Tap to place player</span>
+            <button
+              onClick={() => handleToolChange("select")}
+              className="text-xs text-BrandGray2 active:text-white font-DmSans"
+            >
+              Done
+            </button>
+          </div>
+        )}
         {showViewOverlay ? (
           <div
             className="transition-opacity duration-300 ease-in-out"
@@ -3224,28 +3235,32 @@ function Slate({
           currentTimeMs={timelineDisplayTimeMs}
           isPlaying={isPlaying}
           keyframesMs={visibleKeyframesMs}
+          selectedKeyframeMs={selectedKeyframeMs}
           onSeek={seekTimeline}
           onPause={pauseTimeline}
           onPlayToggle={togglePlayback}
           onAddKeyframe={handleAddKeyframe}
+          onSelectKeyframe={setSelectedKeyframeMs}
+          onDeleteKeyframe={handleDeleteKeyframe}
+          onMoveKeyframe={handleMoveKeyframe}
           activeTool={canvasTool}
           onToolChange={handleToolChange}
           onUndo={slateHistory.onUndo}
           onRedo={slateHistory.onRedo}
           onReset={onReset}
-          onDeleteSelected={handleDeleteSelectedLogged}
-          onAddPlayer={handleAddPlayerLogged}
           zoomPercent={fieldViewport.zoomPercent}
           onZoomIn={fieldViewport.zoomIn}
           onZoomOut={fieldViewport.zoomOut}
           playersById={entities.playersById}
           representedPlayerIds={entities.representedPlayerIds}
           selectedPlayerIds={entities.selectedPlayerIds}
+          playerEditor={entities.playerEditor}
+          fieldType={currentFieldType}
           onSelectPlayer={entities.handleSelectPlayer}
           onDeletePlayer={entities.handleDeletePlayer}
-          onOpenAdvancedSettings={() => setShowAdvancedSettings(true)}
-          onSaveToPlaybook={onSaveToPlaybook}
-          onImport={handleImportClick}
+          onEditPlayer={entities.handleEditPlayer}
+          onEditDraftChange={entities.handleEditDraftChange}
+          onCloseEditPlayer={entities.handleCloseEditPlayer}
         />
       )}
       {showEditPanels && !mobileLayout && <div
