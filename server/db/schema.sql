@@ -473,3 +473,26 @@ CREATE INDEX IF NOT EXISTS playbook_section_plays_play_idx
 
 CREATE INDEX IF NOT EXISTS user_issues_created_at_idx ON user_issues(created_at DESC);
 CREATE INDEX IF NOT EXISTS user_issues_user_id_idx ON user_issues(user_id);
+
+-- ============================================================
+-- 13. Demo videos (admin-managed tutorial videos)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS demo_videos (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title      TEXT NOT NULL,
+  youtube_url TEXT,
+  keywords   TEXT NOT NULL DEFAULT '',
+  done       BOOLEAN NOT NULL DEFAULT false,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Safe migration: add keywords to existing demo_videos rows
+DO $$ BEGIN
+  ALTER TABLE demo_videos ADD COLUMN keywords TEXT NOT NULL DEFAULT '';
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+CREATE INDEX IF NOT EXISTS demo_videos_sort_idx ON demo_videos(sort_order ASC, created_at ASC);

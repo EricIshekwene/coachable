@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import darkLogo from "../assets/logos/White_Coachable_Logo.png";
 import lightLogo from "../assets/logos/coachable_Logo.png";
-import { FiBookOpen, FiUsers, FiUser, FiLogOut, FiSettings, FiEye, FiX, FiFlag } from "react-icons/fi";
+import { FiBookOpen, FiUsers, FiUser, FiLogOut, FiSettings, FiEye, FiX, FiFlag, FiPlay } from "react-icons/fi";
 import useThemeColor from "../utils/useThemeColor";
 import TeamSwitcher from "../components/TeamSwitcher";
 
@@ -12,12 +12,14 @@ const BASE_TEAM_NAV = [
   { to: "/app/team", icon: FiUsers, label: "Team" },
   { to: "/app/profile", icon: FiUser, label: "Profile" },
   { to: "/app/settings", icon: FiSettings, label: "Settings" },
+  { to: "/app/videos", icon: FiPlay, label: "How To" },
 ];
 
 const BASE_SOLO_NAV = [
   { to: "/app/plays", icon: FiBookOpen, label: "Plays" },
   { to: "/app/profile", icon: FiUser, label: "Profile" },
   { to: "/app/settings", icon: FiSettings, label: "Settings" },
+  { to: "/app/videos", icon: FiPlay, label: "How To" },
 ];
 
 export default function AppLayout() {

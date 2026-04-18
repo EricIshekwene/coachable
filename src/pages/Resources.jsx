@@ -1,7 +1,88 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { FiChevronDown, FiArrowRight } from "react-icons/fi";
+import { FiChevronDown, FiArrowRight, FiPlay, FiClock } from "react-icons/fi";
 import logo from "../assets/logos/White_Full_Coachable.png";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
+/**
+ * Extract the YouTube video ID from a URL or bare ID string.
+ * @param {string|null} input
+ * @returns {string|null}
+ */
+function extractYouTubeId(input) {
+  if (!input) return null;
+  const trimmed = input.trim();
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
+  try {
+    const url = new URL(trimmed);
+    if (url.hostname === "youtu.be") return url.pathname.slice(1).split("?")[0];
+    if (url.searchParams.has("v")) return url.searchParams.get("v");
+    const embedMatch = url.pathname.match(/\/embed\/([a-zA-Z0-9_-]+)/);
+    if (embedMatch) return embedMatch[1];
+  } catch { /* not a URL */ }
+  return null;
+}
+
+/** @param {string} id */
+function buildEmbedUrl(id) {
+  return `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1&autoplay=1`;
+}
+
+/**
+ * Compact video card for the Resources page.
+ * @param {Object} props
+ * @param {Object} props.video
+ * @param {Function} props.onPlay
+ */
+function ResourceVideoCard({ video, onPlay }) {
+  const ytId = extractYouTubeId(video.youtubeUrl);
+  const isReady = video.done && ytId;
+
+  return (
+    <div
+      className={`group relative overflow-hidden rounded-xl border transition ${
+        isReady
+          ? "cursor-pointer border-BrandGray2/20 hover:border-BrandOrange/60"
+          : "cursor-default border-BrandGray2/10 opacity-50"
+      }`}
+      onClick={() => isReady && onPlay(ytId)}
+    >
+      <div className="relative aspect-video w-full overflow-hidden bg-[#1a1a1a]">
+        {ytId ? (
+          <img
+            src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`}
+            alt={video.title}
+            className="h-full w-full object-cover transition group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <FiClock className="text-2xl text-BrandGray2/30" />
+          </div>
+        )}
+        {isReady && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition group-hover:opacity-100">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-BrandOrange shadow-lg">
+              <FiPlay className="ml-0.5 text-base text-white" />
+            </div>
+          </div>
+        )}
+        {!isReady && (
+          <div className="absolute bottom-1.5 left-1.5">
+            <span className="rounded-full bg-black/70 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-BrandGray2">
+              Coming Soon
+            </span>
+          </div>
+        )}
+      </div>
+      <div className="px-3 py-2">
+        <p className={`text-xs font-medium leading-snug ${isReady ? "text-white" : "text-BrandGray"}`}>
+          {video.title}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 const FAQ_SECTIONS = [
   {
@@ -130,10 +211,22 @@ function FAQItem({ q, a }) {
 
 /**
  * Resources / FAQ page.
- * Full-page FAQ organized by category with accordion items.
+ * Full-page FAQ organized by category with accordion items and tutorial videos.
  * Matches the Landing page visual language (dark theme, BrandOrange accents).
  */
 export default function Resources() {
+  const [videos, setVideos] = useState([]);
+  const [activeYtId, setActiveYtId] = useState(null);
+
+  useEffect(() => {
+    fetch(`${API_URL}/demo-videos`)
+      .then((r) => r.json())
+      .then((data) => setVideos(data.videos || []))
+      .catch(() => {});
+  }, []);
+
+  const readyVideos = videos.filter((v) => v.done && extractYouTubeId(v.youtubeUrl));
+
   return (
     <div
       className="bg-BrandBlack text-white font-DmSans"
@@ -180,6 +273,45 @@ export default function Resources() {
           Can't find your answer? Reach out and we'll get back to you.
         </p>
       </section>
+
+      {/* ── Video player modal ── */}
+      {activeYtId && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setActiveYtId(null)}
+        >
+          <div className="w-full max-w-3xl overflow-hidden rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="relative" style={{ paddingBottom: "56.25%" }}>
+              <iframe
+                src={buildEmbedUrl(activeYtId)}
+                className="absolute inset-0 h-full w-full"
+                allow="autoplay; encrypted-media; picture-in-picture"
+                allowFullScreen
+                title="Tutorial video"
+              />
+            </div>
+            <div className="flex justify-end border-t border-BrandGray2/20 bg-[#1a1a1a] px-4 py-2">
+              <button onClick={() => setActiveYtId(null)} className="text-xs text-BrandGray transition hover:text-white">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Tutorial Videos ── */}
+      {readyVideos.length > 0 && (
+        <section className="pb-16 px-6 md:px-12 lg:px-20 max-w-4xl mx-auto">
+          <div className="flex items-center gap-4 mb-6">
+            <span className="h-px flex-1 bg-BrandGray2/15" />
+            <span className="font-Manrope text-xs font-bold uppercase tracking-widest text-BrandOrange shrink-0">Tutorial Videos</span>
+            <span className="h-px flex-1 bg-BrandGray2/15" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+            {readyVideos.map((video) => (
+              <ResourceVideoCard key={video.id} video={video} onPlay={setActiveYtId} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── FAQ Sections ── */}
       <section className="pb-24 px-6 md:px-12 lg:px-20 max-w-4xl mx-auto">

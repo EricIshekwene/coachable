@@ -1330,6 +1330,32 @@ export default function Admin() {
           )}
         </section>
 
+        {/* ══════════════════════════════════════════════════════════════════
+            DEMO VIDEOS SECTION
+        ══════════════════════════════════════════════════════════════════ */}
+        <section id="demo-videos" style={{ scrollMarginTop: "4rem" }}>
+          <SectionHeader title="Demo Videos" badge="Tutorial videos" badgeColor="bg-blue-500/15 text-blue-400">
+            <button
+              onClick={() => window.open("/admin/demo-videos", "_self")}
+              className="flex items-center gap-1.5 rounded-lg bg-blue-500/15 px-3 py-1.5 text-xs font-semibold text-blue-400 transition hover:bg-blue-500/25"
+            >
+              Manage Videos
+            </button>
+          </SectionHeader>
+          <div className="flex items-center justify-between rounded-xl border border-white/6 bg-[#1e2228] px-5 py-4">
+            <div>
+              <p className="text-sm font-semibold">Tutorial video library</p>
+              <p className="mt-0.5 text-xs text-BrandGray2">Manage which how-to videos appear on the Videos page for coaches</p>
+            </div>
+            <button
+              onClick={() => window.open("/admin/demo-videos", "_self")}
+              className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white transition hover:brightness-110 active:scale-[0.98]"
+            >
+              Open Video Manager
+            </button>
+          </div>
+        </section>
+
         <div className="h-6" />
       </div>
 
