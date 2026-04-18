@@ -2,8 +2,9 @@ import { useState, useMemo, useRef } from "react";
 import {
   FiPlay, FiPause, FiPlus, FiMinus, FiX,
   FiRotateCcw, FiRotateCw,
-  FiTrash2, FiUsers, FiTool,
+  FiTrash2, FiUsers, FiTool, FiUserPlus, FiCircle,
   FiChevronDown, FiMousePointer, FiMove, FiChevronRight,
+  FiLayers, FiEye, FiEyeOff,
 } from "react-icons/fi";
 import { PiPencilSimpleLine } from "react-icons/pi";
 import { SPORT_DEFAULTS } from "../features/slate/hooks/useAdvancedSettings";
@@ -144,7 +145,7 @@ function MobileTimeline({
                 onPointerDown={(e) => handleKfPointerDown(e, kf)}
                 onPointerMove={(e) => handleKfPointerMove(e, kf)}
                 onPointerUp={(e) => handleKfPointerUp(e, kf)}
-                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-full flex items-center justify-center touch-none cursor-grab active:cursor-grabbing"
+                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-full flex items-center justify-center touch-none cursor-grab active:cursor-grabbing z-10"
                 style={{ left: `${clamp(displayMs / duration, 0, 1) * 100}%` }}
               >
                 <div
@@ -161,8 +162,8 @@ function MobileTimeline({
           })}
           {/* Thumb */}
           <div
-            className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-white shadow pointer-events-none"
-            style={{ left: `calc(${progress * 100}% - 8px)` }}
+            className="absolute top-1/2 -translate-y-1/2 w-px h-4 bg-white/70 pointer-events-none z-0"
+            style={{ left: `calc(${progress * 100}%)` }}
           />
         </div>
       </div>
@@ -235,6 +236,33 @@ function BottomSheet({ open, onClose, title, children }) {
  * ToolsSheet — tool picker, history actions, and zoom controls.
  * Add Player lives in PlayersSheet now.
  */
+function AddSheet({ onToolChange, onClose }) {
+  return (
+    <div className="flex flex-col gap-2 px-4 py-3">
+      <button
+        onClick={() => { onToolChange?.("addPlayer"); onClose?.(); }}
+        className="flex items-center gap-3 w-full px-4 py-3 rounded-xl bg-BrandBlack2 active:bg-white/10 text-white"
+      >
+        <FiUserPlus className="text-xl text-BrandOrange shrink-0" />
+        <div className="flex flex-col items-start">
+          <span className="text-sm font-DmSans font-semibold">Add Player</span>
+          <span className="text-xs text-BrandGray2 font-DmSans">Tap field to place a player</span>
+        </div>
+      </button>
+      <button
+        onClick={() => { onToolChange?.("addBall"); onClose?.(); }}
+        className="flex items-center gap-3 w-full px-4 py-3 rounded-xl bg-BrandBlack2 active:bg-white/10 text-white"
+      >
+        <FiCircle className="text-xl text-BrandOrange shrink-0" />
+        <div className="flex flex-col items-start">
+          <span className="text-sm font-DmSans font-semibold">Add Ball</span>
+          <span className="text-xs text-BrandGray2 font-DmSans">Tap field to place the ball</span>
+        </div>
+      </button>
+    </div>
+  );
+}
+
 function ToolsSheet({ activeTool, onToolChange, onUndo, onRedo, onReset, zoomPercent, onZoomIn, onZoomOut }) {
   const tools = [
     { id: "select", label: "Select", icon: <FiMousePointer className="text-lg" /> },
@@ -317,31 +345,38 @@ function PlayersSheet({
   selectedPlayerIds,
   playerEditor,
   fieldType,
-  onToolChange,
-  onClose,
   onSelectPlayer,
   onDeletePlayer,
   onEditPlayer,
   onEditDraftChange,
   onCloseEditPlayer,
+  onTogglePlayerHidden,
+  allPlayersDisplay,
+  onAllPlayersDisplayChange,
 }) {
   const players = useMemo(() => Object.values(playersById || {}), [playersById]);
   const sportCfg = SPORT_DEFAULTS[fieldType] || {};
   const useLabels = Boolean(sportCfg.usePositionLabels);
   const labelText = useLabels ? "Label" : "Number";
+  const sizePercent = clamp(Number(allPlayersDisplay?.sizePercent ?? 100), 10, 400);
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Add Player mode button */}
-      <button
-        onClick={() => {
-          onToolChange?.("addPlayer");
-          onClose?.();
-        }}
-        className="w-full py-3 rounded-xl bg-BrandOrange text-white font-semibold text-sm font-DmSans active:brightness-90"
-      >
-        + Add Player
-      </button>
+      {/* Size slider */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[11px] text-BrandGray2 uppercase tracking-wider">Player Size</p>
+          <span className="text-[11px] text-BrandOrange font-DmSans font-semibold">{sizePercent}%</span>
+        </div>
+        <input
+          type="range"
+          min={30}
+          max={200}
+          value={sizePercent}
+          onChange={(e) => onAllPlayersDisplayChange?.({ ...(allPlayersDisplay || {}), sizePercent: Number(e.target.value) })}
+          className="w-full accent-BrandOrange"
+        />
+      </div>
 
       {/* Player list */}
       {players.length === 0 && (
@@ -351,6 +386,7 @@ function PlayersSheet({
         const isSelected = selectedPlayerIds?.includes(p.id);
         const hasPos = representedPlayerIds?.includes(p.id);
         const isEditing = playerEditor?.open && playerEditor?.id === p.id;
+        const isHidden = Boolean(p.hidden);
 
         return (
           <div
@@ -376,18 +412,25 @@ function PlayersSheet({
             >
               {/* Colour swatch + number */}
               <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 transition-opacity ${isHidden ? "opacity-30" : ""}`}
                 style={{ backgroundColor: p.color || "#ef4444" }}
               >
                 {p.number ?? "?"}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-white font-DmSans truncate">{p.name || `Player ${p.number}`}</p>
+                <p className={`text-sm font-DmSans truncate ${isHidden ? "text-BrandGray2 line-through" : "text-white"}`}>{p.name || `Player ${p.number}`}</p>
                 <p className="text-[11px] text-BrandGray2">{hasPos ? "Has position" : "No position set"}</p>
               </div>
               <FiChevronRight
                 className={`text-sm text-BrandGray2 transition-transform ${isEditing ? "rotate-90 text-BrandOrange" : ""}`}
               />
+              <button
+                onClick={(e) => { e.stopPropagation(); onTogglePlayerHidden?.(p.id); }}
+                className={`p-2 transition ${isHidden ? "text-BrandOrange" : "text-BrandGray2 active:text-white"}`}
+                title={isHidden ? "Show player" : "Hide player"}
+              >
+                {isHidden ? <FiEyeOff className="text-sm" /> : <FiEye className="text-sm" />}
+              </button>
               <button
                 onClick={(e) => { e.stopPropagation(); onDeletePlayer?.(p.id); }}
                 className="p-2 text-BrandGray2 active:text-red-400"
@@ -434,11 +477,44 @@ function PlayersSheet({
   );
 }
 
+// ── Prefabs sheet ────────────────────────────────────────────────────────────
+
+/**
+ * PrefabsSheet — shows saved prefab groups. Tapping one places it on the canvas.
+ */
+function PrefabsSheet({ customPrefabs = [], onPrefabSelect, onClose }) {
+  return (
+    <div className="flex flex-col gap-2">
+      {customPrefabs.length === 0 && (
+        <p className="text-sm text-BrandGray2 text-center py-6">
+          No prefabs yet. Select multiple players and tap Save Group.
+        </p>
+      )}
+      {customPrefabs.map((prefab) => (
+        <button
+          key={prefab.id}
+          onClick={() => { onPrefabSelect?.(prefab); onClose?.(); }}
+          className="w-full text-left px-4 py-3.5 rounded-xl border border-white/10 text-sm text-white font-DmSans active:bg-white/5 flex items-center gap-3"
+        >
+          <FiLayers className="text-BrandOrange shrink-0" />
+          <span className="truncate">{prefab.label || "Unnamed Group"}</span>
+          <span className="ml-auto text-xs text-BrandGray2 shrink-0">
+            {prefab.players?.length ?? 0} players
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ── Nav tab bar ──────────────────────────────────────────────────────────────
 
 const TABS = [
-  { id: "tools",   label: "Tools",   icon: <FiTool className="text-xl" /> },
-  { id: "players", label: "Players", icon: <FiUsers className="text-xl" /> },
+  { id: "tools",     label: "Tools",   icon: <FiTool className="text-xl" />,            sheet: true  },
+  { id: "players",   label: "Players", icon: <FiUsers className="text-xl" />,           sheet: true  },
+  { id: "add",       label: "Add",     icon: <FiUserPlus className="text-xl" />,        sheet: true  },
+  { id: "pen",       label: "Draw",    icon: <PiPencilSimpleLine className="text-xl" />, sheet: false },
+  { id: "prefabs",   label: "Prefabs", icon: <FiLayers className="text-xl" />,          sheet: true  },
 ];
 
 // ── Main export ──────────────────────────────────────────────────────────────
@@ -487,6 +563,11 @@ export default function MobileEditorBar({
   onEditPlayer,
   onEditDraftChange,
   onCloseEditPlayer,
+  onTogglePlayerHidden,
+  customPrefabs = [],
+  onPrefabSelect,
+  allPlayersDisplay,
+  onAllPlayersDisplayChange,
 }) {
   const [activeSheet, setActiveSheet] = useState(null);
 
@@ -511,21 +592,38 @@ export default function MobileEditorBar({
         onMoveKeyframe={onMoveKeyframe}
       />
 
-      {/* Nav bar */}
-      <div className="flex bg-[#111] border-t border-white/10" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => openSheet(tab.id)}
-            className={`flex-1 flex flex-col items-center gap-1 py-3 transition ${
-              activeSheet === tab.id ? "text-BrandOrange" : "text-BrandGray2 active:text-white"
-            }`}
-          >
-            {tab.icon}
-            <span className="text-[10px] font-DmSans">{tab.label}</span>
-          </button>
-        ))}
+      {/* Nav bar — horizontally scrollable */}
+      <div className="flex overflow-x-auto bg-[#111] border-t border-white/10 hide-scroll" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+        {TABS.map((tab) => {
+          const isActive = tab.sheet
+            ? activeSheet === tab.id || (tab.id === "add" && (activeTool === "addPlayer" || activeTool === "addBall"))
+            : activeTool === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => {
+                if (tab.sheet) {
+                  openSheet(tab.id);
+                } else {
+                  onToolChange?.(tab.id);
+                  closeSheet();
+                }
+              }}
+              className={`shrink-0 flex-1 min-w-16 flex flex-col items-center gap-1 py-3 transition ${
+                isActive ? "text-BrandOrange" : "text-BrandGray2 active:text-white"
+              }`}
+            >
+              {tab.icon}
+              <span className="text-[10px] font-DmSans">{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
+
+      {/* Add sheet */}
+      <BottomSheet open={activeSheet === "add"} onClose={closeSheet} title="Add">
+        <AddSheet onToolChange={onToolChange} onClose={closeSheet} />
+      </BottomSheet>
 
       {/* Tools sheet */}
       <BottomSheet open={activeSheet === "tools"} onClose={closeSheet} title="Tools">
@@ -549,13 +647,23 @@ export default function MobileEditorBar({
           selectedPlayerIds={selectedPlayerIds}
           playerEditor={playerEditor}
           fieldType={fieldType}
-          onToolChange={onToolChange}
-          onClose={closeSheet}
           onSelectPlayer={onSelectPlayer}
           onDeletePlayer={onDeletePlayer}
           onEditPlayer={onEditPlayer}
           onEditDraftChange={onEditDraftChange}
           onCloseEditPlayer={onCloseEditPlayer}
+          onTogglePlayerHidden={onTogglePlayerHidden}
+          allPlayersDisplay={allPlayersDisplay}
+          onAllPlayersDisplayChange={onAllPlayersDisplayChange}
+        />
+      </BottomSheet>
+
+      {/* Prefabs sheet */}
+      <BottomSheet open={activeSheet === "prefabs"} onClose={closeSheet} title="Prefabs">
+        <PrefabsSheet
+          customPrefabs={customPrefabs}
+          onPrefabSelect={onPrefabSelect}
+          onClose={closeSheet}
         />
       </BottomSheet>
     </>

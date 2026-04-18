@@ -89,6 +89,8 @@ router.get("/users", requireAdmin, async (_req, res, next) => {
     const { rows } = await pool.query(
       `SELECT u.id, u.name, u.email, u.email_verified_at, u.onboarded_at, u.created_at,
               u.is_beta_tester,
+              (SELECT COUNT(*)::int FROM plays WHERE created_by_user_id = u.id) AS plays_created,
+              (SELECT COUNT(*)::int FROM play_folders WHERE created_by_user_id = u.id) AS folders_created,
               COALESCE(
                 json_agg(
                   json_build_object(

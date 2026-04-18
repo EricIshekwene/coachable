@@ -162,6 +162,7 @@ function KonvaCanvasRoot({
   onAssetsLoaded,
   onFieldBoundsChange,
   viewOnly = false,
+  mobileLayout = false,
 }) {
   const viewportRef = useRef(null);
   const stageRef = useRef(null);
@@ -924,6 +925,18 @@ function KonvaCanvasRoot({
 
     if (tool === "select" && isPrimaryButton && target === stage) {
       if (panRef.current.active) return;
+      // On mobile, dragging empty field pans; a stationary tap deselects all
+      if (mobileLayout) {
+        const { clientX, clientY } = getPointerClientXY(evt);
+        panRef.current.active = true;
+        panRef.current.pointerId = evt?.pointerId ?? "touch";
+        panRef.current.last = { x: clientX, y: clientY };
+        panRef.current.tapStart = { x: clientX, y: clientY };
+        setIsPanning(true);
+        setIsHoveringItem(false);
+        onPanStart?.();
+        return;
+      }
       setIsHoveringItem(false);
       const pointer = stage?.getPointerPosition?.();
       if (!pointer) return;
@@ -1355,10 +1368,20 @@ function KonvaCanvasRoot({
     if (!panRef.current.active) return;
     const evt = e.evt;
     if (panRef.current.pointerId !== (evt?.pointerId ?? "touch")) return;
+    const tapStart = panRef.current.tapStart;
     panRef.current.active = false;
     panRef.current.pointerId = null;
+    panRef.current.tapStart = null;
     setIsPanning(false);
     setIsHoveringItem(false);
+    // Mobile: if the pointer barely moved, treat as a tap → deselect all
+    if (mobileLayout && tapStart) {
+      const { clientX, clientY } = getPointerClientXY(evt);
+      const dist = Math.hypot(clientX - tapStart.x, clientY - tapStart.y);
+      if (dist < 6) {
+        onSelectItem?.(null, null, { mode: "clear" });
+      }
+    }
   };
 
   const handleItemDragStart = (item) => () => {
@@ -1430,7 +1453,7 @@ function KonvaCanvasRoot({
     if (tool !== "select" && !viewOnly) return;
     if (draggingIdsRef.current.has(item.id)) return;
     const modifierKey = isModifierPressed(e?.evt);
-    const mode = modifierKey ? "toggle" : "replace";
+    const mode = modifierKey || mobileLayout ? "toggle" : "replace";
     onSelectItem?.(item.id, item.type, { mode });
     e.cancelBubble = true;
   };

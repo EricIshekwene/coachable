@@ -167,6 +167,12 @@ export default function Admin() {
   const [usersSearch, setUsersSearch] = useState("");
   const [hideDemoAccounts, setHideDemoAccounts] = useState(true);
   const [usersPerPage, setUsersPerPage] = useState(10);
+  const [filterRole, setFilterRole] = useState(""); // "coach"|"owner"|"assistant_coach"|"player"|""
+  const [filterVerified, setFilterVerified] = useState(""); // "verified"|"unverified"|""
+  const [filterOnboarded, setFilterOnboarded] = useState(""); // "yes"|"no"|""
+  const [filterMinPlays, setFilterMinPlays] = useState("");
+  const [filterMinFolders, setFilterMinFolders] = useState("");
+  const [emailCopied, setEmailCopied] = useState(null); // "outlook"|"gmail"|null
 
   // ── Tests ──
   const [testResults, setTestResults] = useState(null);
@@ -587,24 +593,54 @@ export default function Admin() {
   const betaTesterCount = users.filter((u) => u.is_beta_tester).length;
   const normalizedUsersSearch = usersSearch.trim().toLowerCase();
   const filteredUsers = useMemo(() => {
+    const minPlays = filterMinPlays !== "" ? parseInt(filterMinPlays, 10) : null;
+    const minFolders = filterMinFolders !== "" ? parseInt(filterMinFolders, 10) : null;
     return users.filter((u) => {
       if (hideDemoAccounts && u.email?.endsWith("@coachable-seed.invalid")) return false;
-      if (!normalizedUsersSearch) return true;
-      const haystack = [
-        u.name,
-        u.email,
-        ...(u.memberships || []).flatMap((membership) => [
-          membership.teamName,
-          membership.role,
-          membership.sport,
-        ]),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return haystack.includes(normalizedUsersSearch);
+      if (normalizedUsersSearch) {
+        const haystack = [
+          u.name,
+          u.email,
+          ...(u.memberships || []).flatMap((m) => [m.teamName, m.role, m.sport]),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(normalizedUsersSearch)) return false;
+      }
+      if (filterRole) {
+        const hasRole = (u.memberships || []).some((m) => m.role === filterRole);
+        if (!hasRole) return false;
+      }
+      if (filterVerified === "verified" && !u.email_verified_at) return false;
+      if (filterVerified === "unverified" && u.email_verified_at) return false;
+      if (filterOnboarded === "yes" && !u.onboarded_at) return false;
+      if (filterOnboarded === "no" && u.onboarded_at) return false;
+      if (minPlays !== null && !isNaN(minPlays) && (u.plays_created ?? 0) < minPlays) return false;
+      if (minFolders !== null && !isNaN(minFolders) && (u.folders_created ?? 0) < minFolders) return false;
+      return true;
     });
-  }, [users, normalizedUsersSearch, hideDemoAccounts]);
+  }, [users, normalizedUsersSearch, hideDemoAccounts, filterRole, filterVerified, filterOnboarded, filterMinPlays, filterMinFolders]);
+
+  const activeFilterCount = [filterRole, filterVerified, filterOnboarded, filterMinPlays, filterMinFolders].filter(Boolean).length;
+
+  /** Copy filtered user emails to clipboard in the given separator format. */
+  function handleCopyEmails(format) {
+    const sep = format === "outlook" ? "; " : ", ";
+    const text = filteredUsers.map((u) => u.email).join(sep);
+    navigator.clipboard.writeText(text).then(() => {
+      setEmailCopied(format);
+      setTimeout(() => setEmailCopied(null), 2000);
+    });
+  }
+
+  function resetFilters() {
+    setFilterRole("");
+    setFilterVerified("");
+    setFilterOnboarded("");
+    setFilterMinPlays("");
+    setFilterMinFolders("");
+  }
   const usersTableMaxHeight = usersPerPage * 56 + 56;
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -779,38 +815,120 @@ export default function Admin() {
 
           {/* Users table */}
           <div className="overflow-hidden rounded-xl border border-white/6">
-            <div className="border-b border-white/6 bg-[#1a1d23] px-4 py-3">
-              <div className="flex items-center gap-4">
-              <div className="relative w-full max-w-xl">
-                <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-BrandGray2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35m1.85-5.15a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" />
-                </svg>
-                <input
-                  type="text"
-                  value={usersSearch}
-                  onChange={(e) => setUsersSearch(e.target.value)}
-                  placeholder="Search by name, email, or team"
-                  className="w-full rounded-lg border border-white/8 bg-BrandBlack px-10 py-2.5 text-sm text-white outline-none placeholder:text-BrandGray2 focus:border-BrandOrange"
-                />
-                {usersSearch && (
+            <div className="border-b border-white/6 bg-[#1a1d23] px-4 py-3 flex flex-col gap-3">
+              {/* Row 1: search + demo toggle + copy buttons */}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative min-w-[220px] flex-1 max-w-xl">
+                  <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-BrandGray2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35m1.85-5.15a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={usersSearch}
+                    onChange={(e) => setUsersSearch(e.target.value)}
+                    placeholder="Search by name, email, or team"
+                    className="w-full rounded-lg border border-white/8 bg-BrandBlack px-10 py-2.5 text-sm text-white outline-none placeholder:text-BrandGray2 focus:border-BrandOrange"
+                  />
+                  {usersSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setUsersSearch("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-BrandGray2 transition hover:text-white"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-BrandGray select-none">
+                  <input
+                    type="checkbox"
+                    checked={hideDemoAccounts}
+                    onChange={(e) => setHideDemoAccounts(e.target.checked)}
+                    className="accent-BrandOrange"
+                  />
+                  Hide demo
+                </label>
+                <div className="ml-auto flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setUsersSearch("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-BrandGray2 transition hover:text-white"
+                    onClick={() => handleCopyEmails("outlook")}
+                    title="Copy emails separated by semicolons (Outlook format)"
+                    className="rounded-lg border border-white/8 bg-BrandBlack px-3 py-2 text-xs text-BrandGray transition hover:border-BrandOrange/40 hover:text-white"
                   >
-                    Clear
+                    {emailCopied === "outlook" ? "Copied!" : "Copy for Outlook"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyEmails("gmail")}
+                    title="Copy emails separated by commas (Gmail format)"
+                    className="rounded-lg border border-white/8 bg-BrandBlack px-3 py-2 text-xs text-BrandGray transition hover:border-BrandOrange/40 hover:text-white"
+                  >
+                    {emailCopied === "gmail" ? "Copied!" : "Copy for Gmail"}
+                  </button>
+                </div>
+              </div>
+              {/* Row 2: advanced filters */}
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={filterRole}
+                  onChange={(e) => setFilterRole(e.target.value)}
+                  className="rounded-lg border border-white/8 bg-BrandBlack px-3 py-2 text-xs text-white outline-none focus:border-BrandOrange"
+                >
+                  <option value="">All roles</option>
+                  <option value="owner">Owner</option>
+                  <option value="coach">Coach</option>
+                  <option value="assistant_coach">Assistant Coach</option>
+                  <option value="player">Player</option>
+                </select>
+                <select
+                  value={filterVerified}
+                  onChange={(e) => setFilterVerified(e.target.value)}
+                  className="rounded-lg border border-white/8 bg-BrandBlack px-3 py-2 text-xs text-white outline-none focus:border-BrandOrange"
+                >
+                  <option value="">Any verification</option>
+                  <option value="verified">Verified</option>
+                  <option value="unverified">Unverified</option>
+                </select>
+                <select
+                  value={filterOnboarded}
+                  onChange={(e) => setFilterOnboarded(e.target.value)}
+                  className="rounded-lg border border-white/8 bg-BrandBlack px-3 py-2 text-xs text-white outline-none focus:border-BrandOrange"
+                >
+                  <option value="">Any onboard status</option>
+                  <option value="yes">Onboarded</option>
+                  <option value="no">Not onboarded</option>
+                </select>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-BrandGray2">Min plays</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={filterMinPlays}
+                    onChange={(e) => setFilterMinPlays(e.target.value)}
+                    placeholder="0"
+                    className="w-16 rounded-lg border border-white/8 bg-BrandBlack px-2 py-2 text-xs text-white outline-none focus:border-BrandOrange"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-BrandGray2">Min folders</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={filterMinFolders}
+                    onChange={(e) => setFilterMinFolders(e.target.value)}
+                    placeholder="0"
+                    className="w-16 rounded-lg border border-white/8 bg-BrandBlack px-2 py-2 text-xs text-white outline-none focus:border-BrandOrange"
+                  />
+                </div>
+                {activeFilterCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    className="rounded-lg bg-white/6 px-3 py-2 text-xs text-BrandGray transition hover:bg-white/10 hover:text-white"
+                  >
+                    Reset filters ({activeFilterCount})
                   </button>
                 )}
-              </div>
-              <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-BrandGray select-none">
-                <input
-                  type="checkbox"
-                  checked={hideDemoAccounts}
-                  onChange={(e) => setHideDemoAccounts(e.target.checked)}
-                  className="accent-BrandOrange"
-                />
-                Hide demo accounts
-              </label>
               </div>
             </div>
             <div className="hide-scroll overflow-auto" style={{ maxHeight: `${usersTableMaxHeight}px` }}>
@@ -820,6 +938,8 @@ export default function Admin() {
                   <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Name</th>
                   <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Email</th>
                   <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Team</th>
+                  <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Plays</th>
+                  <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Folders</th>
                   <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Status</th>
                   <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Joined</th>
                   <th className="px-4 py-3"></th>
@@ -828,17 +948,17 @@ export default function Admin() {
               <tbody>
                 {usersLoading && users.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-xs text-BrandGray2">Loading...</td>
+                    <td colSpan={8} className="px-4 py-8 text-center text-xs text-BrandGray2">Loading...</td>
                   </tr>
                 )}
                 {!usersLoading && users.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-xs text-BrandGray2">No users found</td>
+                    <td colSpan={8} className="px-4 py-8 text-center text-xs text-BrandGray2">No users found</td>
                   </tr>
                 )}
                 {!usersLoading && users.length > 0 && filteredUsers.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-xs text-BrandGray2">No users match your search</td>
+                    <td colSpan={8} className="px-4 py-8 text-center text-xs text-BrandGray2">No users match your search</td>
                   </tr>
                 )}
                 {filteredUsers.map((u) => {
@@ -895,6 +1015,12 @@ export default function Admin() {
                         ) : (
                           <span className="text-BrandGray2">-</span>
                         )}
+                      </td>
+                      <td className="px-4 py-3 text-center text-sm font-semibold text-white">
+                        {u.plays_created ?? 0}
+                      </td>
+                      <td className="px-4 py-3 text-center text-sm font-semibold text-white">
+                        {u.folders_created ?? 0}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1.5">

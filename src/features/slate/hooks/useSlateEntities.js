@@ -301,7 +301,7 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
     });
   };
 
-  const handleAddPlayer = ({ number, name, color, position }) => {
+  const handleAddPlayer = ({ number, name, color, position, skipSelection = false }) => {
     historyApiRef.current?.pushHistory?.();
     const nextName = String(name ?? "").trim();
     const colorKey = color || currentPlayerColor || allPlayersDisplay.color || DEFAULT_PLAYER_COLOR;
@@ -331,18 +331,21 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
       [newId]: newPlayer,
     }));
     setRepresentedPlayerIds((prev) => [...prev, newId]);
-    setSelectedPlayerIds([newId]);
-    setSelectedItemIds([newId]);
+    if (!skipSelection) {
+      setSelectedPlayerIds([newId]);
+      setSelectedItemIds([newId]);
+    }
     logEvent?.("slate", "addPlayer", { id: newId, player: newPlayer });
-
+    return newId;
   };
 
-  const handleCanvasAddPlayer = ({ x, y }) => {
+  const handleCanvasAddPlayer = ({ x, y, skipSelection = false }) => {
     const colorKey = currentPlayerColor || allPlayersDisplay.color || DEFAULT_PLAYER_COLOR;
     logEvent?.("slate", "canvasAddPlayer", { x, y, color: colorKey });
-    handleAddPlayer({
+    return handleAddPlayer({
       color: colorKey,
       position: { x, y },
+      skipSelection,
     });
   };
 
@@ -359,6 +362,17 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
         number: player.number ?? "",
         name: player.name ?? "",
       },
+    });
+  };
+
+  /** Open the player editor for an already-selected player without changing selection state. */
+  const openPlayerEditor = (id) => {
+    const player = playersById?.[id];
+    if (!player) return;
+    setPlayerEditor({
+      open: true,
+      id,
+      draft: { number: player.number ?? "", name: player.name ?? "" },
     });
   };
 
@@ -773,6 +787,7 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
     handleAddPlayer,
     handleCanvasAddPlayer,
     handleEditPlayer,
+    openPlayerEditor,
     handleEditDraftChange,
     handleCloseEditPlayer,
     handleSaveEditPlayer,

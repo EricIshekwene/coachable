@@ -281,6 +281,7 @@ function Slate({
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
   const [playbookThumbnail, setPlaybookThumbnail] = useState(null);
   const pendingPrefabRef = useRef(null);
+  const lastMobileAddedPlayerIdRef = useRef(null);
   const [slateLoadPhase, setSlateLoadPhase] = useState("loading"); // "loading" | "fading" | "done"
   const [slateLoadStuck, setSlateLoadStuck] = useState(false);
   const [debugCopied, setDebugCopied] = useState(false);
@@ -1686,19 +1687,26 @@ function Slate({
           return prev;
         }
         logDrawDebug(`toolChange applied prev=${prev} next=${tool}`);
-        logKeyToolDebug(`toolChange applied prev=${prev} next=${tool}`);
+        logKeyToolDebug(`toolChange applied prev=${tool} next=${tool}`);
         if (prev === "prefab" && tool !== "prefab") {
           pendingPrefabRef.current = null;
         }
         return tool;
       });
+      if (mobileLayout && canvasTool === "addPlayer" && tool !== "addPlayer") {
+        const lastId = lastMobileAddedPlayerIdRef.current;
+        if (lastId) {
+          entities.handleSelectItem(lastId, "player", { mode: "set" });
+          lastMobileAddedPlayerIdRef.current = null;
+        }
+      }
       setSelectedDrawingIds([]);
       setTextEditing(null);
       return;
     }
     logDrawDebug(`toolChange ignored invalidTool=${tool}`);
     logKeyToolDebug(`toolChange ignored invalidTool=${tool}`);
-  }, []);
+  }, [mobileLayout, canvasTool, entities.handleSelectItem]);
 
   const getAuthoritativeTimeMs = useCallback(() => {
     return engineRef.current.getTime();
@@ -2999,7 +3007,7 @@ function Slate({
       {showEditPanels && !mobileLayout && (
         <div
           className={`shrink-0 overflow-hidden transition-[max-width,opacity] duration-300 ease-in-out ${
-            panelsExpanded ? "max-w-[12rem] opacity-100" : "max-w-0 opacity-0"
+            panelsExpanded ? "max-w-48 opacity-100" : "max-w-0 opacity-0"
           }`}
         >
           <WideSidebar
@@ -3025,6 +3033,7 @@ function Slate({
         <KonvaCanvasRoot
           tool={viewOnly ? "hand" : canvasTool}
           viewOnly={viewOnly}
+          mobileLayout={mobileLayout}
           camera={fieldViewport.camera}
           setCamera={fieldViewport.setCamera}
           items={entities.items}
@@ -3033,7 +3042,13 @@ function Slate({
           onItemChange={handleItemChange}
           onItemDragStart={handleItemDragStart}
           onItemDragEnd={handleItemDragEnd}
-          onCanvasAddPlayer={entities.handleCanvasAddPlayer}
+          onCanvasAddPlayer={mobileLayout
+            ? (args) => {
+                const newId = entities.handleCanvasAddPlayer({ ...args, skipSelection: true });
+                if (newId) lastMobileAddedPlayerIdRef.current = newId;
+              }
+            : entities.handleCanvasAddPlayer
+          }
           onCanvasAddBall={handleCanvasAddBall}
           onCanvasPlacePrefab={handleCanvasPlacePrefab}
           selectedPlayerIds={entities.selectedPlayerIds}
@@ -3107,15 +3122,136 @@ function Slate({
             onSubToolChange={handleDrawSubToolChange}
           />
         )}
-        {mobileLayout && !viewOnly && canvasTool === "addPlayer" && !screenshotMode && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-BrandBlack px-5 py-2 rounded-full border border-BrandOrange/40 shadow-lg">
-            <span className="text-xs font-semibold text-BrandOrange font-DmSans">Tap to place player</span>
+        {/* Add-ball mode pill */}
+        {mobileLayout && !viewOnly && canvasTool === "addBall" && !screenshotMode && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-[#1a1a1a] px-4 py-2 rounded-2xl border border-white/15 shadow-xl">
+            <span className="text-xs font-semibold text-BrandOrange font-DmSans whitespace-nowrap">Add Ball</span>
+            <div className="w-px h-4 bg-white/15" />
             <button
               onClick={() => handleToolChange("select")}
-              className="text-xs text-BrandGray2 active:text-white font-DmSans"
+              className="text-xs text-BrandGray2 active:text-white font-DmSans whitespace-nowrap"
             >
               Done
             </button>
+          </div>
+        )}
+        {/* Add-player mode pill */}
+        {mobileLayout && !viewOnly && canvasTool === "addPlayer" && !screenshotMode && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-[#1a1a1a] px-4 py-2 rounded-2xl border border-white/15 shadow-xl">
+            <span className="text-xs font-semibold text-BrandOrange font-DmSans whitespace-nowrap">Add Player</span>
+            <div className="w-px h-4 bg-white/15" />
+            {["#ef4444", "#3b82f6"].map((hex) => {
+              const isActive = entities.currentPlayerColor === hex;
+              return (
+                <button
+                  key={hex}
+                  onClick={() => entities.handlePlayerColorChange(hex)}
+                  className="shrink-0 w-7 h-7 rounded-full border-2 transition-transform active:scale-90"
+                  style={{
+                    backgroundColor: hex,
+                    borderColor: isActive ? "#FF7A18" : "transparent",
+                    boxShadow: isActive ? "0 0 0 1px #FF7A18" : "0 0 0 1px rgba(255,255,255,0.2)",
+                  }}
+                />
+              );
+            })}
+            <div className="w-px h-4 bg-white/15" />
+            <button
+              onClick={() => handleToolChange("select")}
+              className="text-xs text-BrandGray2 active:text-white font-DmSans whitespace-nowrap"
+            >
+              Done
+            </button>
+          </div>
+        )}
+        {/* Ball selection context bar */}
+        {mobileLayout && !viewOnly && canvasTool !== "addPlayer" && !screenshotMode &&
+          entities.selectedPlayerIds.length === 0 &&
+          (entities.selectedItemIds || []).includes("ball-1") && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-[#1a1a1a] px-4 py-2 rounded-2xl border border-white/15 shadow-xl">
+            <span className="text-xs font-semibold text-white font-DmSans whitespace-nowrap">Ball</span>
+            <div className="w-px h-5 bg-white/15 shrink-0" />
+            <button
+              onClick={handleDeleteSelectedLogged}
+              className="text-xs text-red-400 font-DmSans whitespace-nowrap active:opacity-70"
+            >
+              Delete
+            </button>
+          </div>
+        )}
+        {/* Player selection context bar */}
+        {mobileLayout && !viewOnly && entities.selectedPlayerIds.length > 0 && canvasTool !== "addPlayer" && !screenshotMode && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-[#1a1a1a] px-4 py-2 rounded-2xl border border-white/15 shadow-xl max-w-[calc(100vw-2rem)] overflow-x-auto">
+            {entities.selectedPlayerIds.length === 1 ? (
+              <>
+                <input
+                  type="text"
+                  value={entities.playerEditor.draft?.number ?? ""}
+                  onChange={(e) => entities.handleEditDraftChange({ number: e.target.value })}
+                  placeholder="#"
+                  className="w-10 bg-BrandBlack border border-white/15 rounded-lg px-2 py-1 text-white text-xs font-DmSans text-center focus:outline-none focus:border-BrandOrange"
+                />
+                <input
+                  type="text"
+                  value={entities.playerEditor.draft?.name ?? ""}
+                  onChange={(e) => entities.handleEditDraftChange({ name: e.target.value })}
+                  placeholder="Name"
+                  className="w-24 bg-BrandBlack border border-white/15 rounded-lg px-2 py-1 text-white text-xs font-DmSans focus:outline-none focus:border-BrandOrange"
+                />
+                <div className="w-px h-5 bg-white/15 shrink-0" />
+                {["#ef4444", "#3b82f6"].map((hex) => {
+                  const player = entities.playersById[entities.selectedPlayerIds[0]];
+                  const isActive = player?.color === hex;
+                  return (
+                    <button
+                      key={hex}
+                      onClick={() => entities.handleSelectedPlayersColorChange(hex, entities.selectedPlayerIds)}
+                      className="shrink-0 w-6 h-6 rounded-full border-2 transition-transform active:scale-90"
+                      style={{
+                        backgroundColor: hex,
+                        borderColor: isActive ? "#FF7A18" : "transparent",
+                        boxShadow: isActive ? "0 0 0 1px #FF7A18" : "0 0 0 1px rgba(255,255,255,0.2)",
+                      }}
+                    />
+                  );
+                })}
+                <div className="w-px h-5 bg-white/15 shrink-0" />
+                <button
+                  onClick={handleDeleteSelectedLogged}
+                  className="text-xs text-red-400 font-DmSans whitespace-nowrap shrink-0 active:opacity-70"
+                >
+                  Delete
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="text-xs font-semibold text-white font-DmSans whitespace-nowrap shrink-0">
+                  {entities.selectedPlayerIds.length} selected
+                </span>
+                <div className="w-px h-5 bg-white/15 shrink-0" />
+                {["#ef4444", "#3b82f6"].map((hex) => (
+                  <button
+                    key={hex}
+                    onClick={() => entities.handleSelectedPlayersColorChange(hex, entities.selectedPlayerIds)}
+                    className="shrink-0 w-6 h-6 rounded-full border-2 border-transparent transition-transform active:scale-90"
+                    style={{ backgroundColor: hex, boxShadow: "0 0 0 1px rgba(255,255,255,0.2)" }}
+                  />
+                ))}
+                <div className="w-px h-5 bg-white/15 shrink-0" />
+                <button
+                  onClick={() => setSavePrefabModalOpen(true)}
+                  className="text-xs text-BrandOrange font-DmSans whitespace-nowrap shrink-0 active:opacity-70"
+                >
+                  Save Group
+                </button>
+                <button
+                  onClick={handleDeleteSelectedLogged}
+                  className="text-xs text-red-400 font-DmSans whitespace-nowrap shrink-0 active:opacity-70"
+                >
+                  Delete
+                </button>
+              </>
+            )}
           </div>
         )}
         {showViewOverlay ? (
@@ -3261,11 +3397,16 @@ function Slate({
           onEditPlayer={entities.handleEditPlayer}
           onEditDraftChange={entities.handleEditDraftChange}
           onCloseEditPlayer={entities.handleCloseEditPlayer}
+          onTogglePlayerHidden={entities.handleTogglePlayerHidden}
+          customPrefabs={customPrefabs}
+          onPrefabSelect={handlePrefabSelect}
+          allPlayersDisplay={entities.allPlayersDisplay}
+          onAllPlayersDisplayChange={entities.setAllPlayersDisplay}
         />
       )}
       {showEditPanels && !mobileLayout && <div
         className={`shrink-0 overflow-hidden transition-[max-width,opacity] duration-300 ease-in-out ${
-          panelsExpanded ? "max-w-[12rem] opacity-100" : "max-w-0 opacity-0"
+          panelsExpanded ? "max-w-48 opacity-100" : "max-w-0 opacity-0"
         }`}
       ><RightPanel
         canvasTool={canvasTool}
@@ -3362,14 +3503,16 @@ function Slate({
             className="hidden"
             onChange={handleImportFileChange}
           />
-          <PlayerEditPanel
-            isOpen={entities.playerEditor.open}
-            player={entities.playerEditor.id ? entities.playersById[entities.playerEditor.id] : null}
-            draft={entities.playerEditor.draft}
-            onChange={entities.handleEditDraftChange}
-            onClose={entities.handleCloseEditPlayer}
-            fieldType={currentFieldType}
-          />
+          {!mobileLayout && (
+            <PlayerEditPanel
+              isOpen={entities.playerEditor.open}
+              player={entities.playerEditor.id ? entities.playersById[entities.playerEditor.id] : null}
+              draft={entities.playerEditor.draft}
+              onChange={entities.handleEditDraftChange}
+              onClose={entities.handleCloseEditPlayer}
+              fieldType={currentFieldType}
+            />
+          )}
         </>
       )}
       {!viewOnly && showAdvancedSettings && (
