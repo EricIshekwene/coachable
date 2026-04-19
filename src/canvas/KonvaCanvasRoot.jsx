@@ -195,6 +195,8 @@ function KonvaCanvasRoot({
     end: { x: 0, y: 0 },
     shiftKey: false,
   });
+  // Long-press hold state for mobile marquee activation
+  const holdRef = useRef({ timer: null, clientX: 0, clientY: 0, worldStart: null });
 
   const pitch = advancedSettings?.pitch ?? {};
   const players = advancedSettings?.players ?? {};
@@ -763,6 +765,10 @@ function KonvaCanvasRoot({
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
+        if (holdRef.current.timer) {
+          clearTimeout(holdRef.current.timer);
+          holdRef.current.timer = null;
+        }
         const marqueeActive = Boolean(marqueeRef.current.active);
         logKeyToolDebug(`canvas keydown Escape marqueeActive=${marqueeActive}`);
         if (!marqueeActive) return;
@@ -925,9 +931,12 @@ function KonvaCanvasRoot({
 
     if (tool === "select" && isPrimaryButton && target === stage) {
       if (panRef.current.active) return;
-      // On mobile, dragging empty field pans; a stationary tap deselects all
+      // On mobile: hold to marquee-select, immediate drag pans
       if (mobileLayout) {
         const { clientX, clientY } = getPointerClientXY(evt);
+        const pointer = stageRef.current?.getPointerPosition?.();
+        const worldStart = pointer ? toWorldCoords(pointer) : null;
+        // Start as pan (immediate drag cancels hold and pans)
         panRef.current.active = true;
         panRef.current.pointerId = evt?.pointerId ?? "touch";
         panRef.current.last = { x: clientX, y: clientY };
@@ -935,6 +944,24 @@ function KonvaCanvasRoot({
         setIsPanning(true);
         setIsHoveringItem(false);
         onPanStart?.();
+        // Start hold timer — if finger stays still, activate marquee
+        if (holdRef.current.timer) clearTimeout(holdRef.current.timer);
+        holdRef.current.clientX = clientX;
+        holdRef.current.clientY = clientY;
+        holdRef.current.worldStart = worldStart;
+        holdRef.current.timer = setTimeout(() => {
+          holdRef.current.timer = null;
+          if (!panRef.current.active) return;
+          // Cancel pan and switch to marquee
+          panRef.current.active = false;
+          panRef.current.pointerId = null;
+          panRef.current.tapStart = null;
+          setIsPanning(false);
+          if (worldStart) {
+            marqueeRef.current = { active: true, start: worldStart, end: worldStart, shiftKey: false };
+            setMarquee({ x: worldStart.x, y: worldStart.y, width: 0, height: 0 });
+          }
+        }, 350);
         return;
       }
       setIsHoveringItem(false);
@@ -1291,6 +1318,17 @@ function KonvaCanvasRoot({
       setMarquee({ x, y, width, height });
       return;
     }
+    // Cancel hold timer if finger moves too much (commit as pan instead)
+    if (holdRef.current.timer) {
+      const evt = e.evt;
+      const { clientX, clientY } = getPointerClientXY(evt);
+      const dx = clientX - holdRef.current.clientX;
+      const dy = clientY - holdRef.current.clientY;
+      if (Math.sqrt(dx * dx + dy * dy) > 8) {
+        clearTimeout(holdRef.current.timer);
+        holdRef.current.timer = null;
+      }
+    }
     if (!panRef.current.active) return;
     const evt = e.evt;
     if (panRef.current.pointerId !== (evt?.pointerId ?? "touch")) return;
@@ -1307,6 +1345,12 @@ function KonvaCanvasRoot({
       screenshotDragRef.current = null;
       clearGuides();
       return;
+    }
+
+    // Clear any pending hold timer on pointer-up
+    if (holdRef.current.timer) {
+      clearTimeout(holdRef.current.timer);
+      holdRef.current.timer = null;
     }
 
     // Drawing tools

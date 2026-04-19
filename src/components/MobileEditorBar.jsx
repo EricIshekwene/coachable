@@ -1,13 +1,15 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
   FiPlay, FiPause, FiPlus, FiMinus, FiX,
   FiRotateCcw, FiRotateCw,
   FiTrash2, FiUsers, FiTool, FiUserPlus, FiCircle,
-  FiChevronDown, FiMousePointer, FiMove, FiChevronRight,
+  FiChevronDown, FiChevronUp, FiMousePointer, FiMove, FiChevronRight,
   FiLayers, FiEye, FiEyeOff,
 } from "react-icons/fi";
 import { PiPencilSimpleLine } from "react-icons/pi";
 import { SPORT_DEFAULTS } from "../features/slate/hooks/useAdvancedSettings";
+import { Slider } from "@mui/material";
+import { BRAND_SLIDER_SX } from "./subcomponents/sliderStyles";
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 const fmt = (ms) => {
@@ -25,6 +27,7 @@ const fmt = (ms) => {
 function MobileTimeline({
   durationMs,
   currentTimeMs,
+  currentTimeMsRef,
   isPlaying,
   keyframesMs = [],
   selectedKeyframeMs,
@@ -39,8 +42,33 @@ function MobileTimeline({
   const duration = Math.max(1, durationMs);
   const progress = clamp(currentTimeMs / duration, 0, 1);
   const trackRef = useRef(null);
+  const filledBarRef = useRef(null);
+  const thumbRef = useRef(null);
+
+  // RAF loop: directly update filled bar and thumb for smooth 60fps scrubbing
+  useEffect(() => {
+    const dur = Math.max(1, durationMs);
+    let rafId;
+    const tick = () => {
+      const ms = currentTimeMsRef?.current ?? 0;
+      const pct = clamp(ms / dur, 0, 1) * 100;
+      if (filledBarRef.current) filledBarRef.current.style.width = `${pct}%`;
+      if (thumbRef.current) thumbRef.current.style.left = `${pct}%`;
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [durationMs, currentTimeMsRef]);
   // { fromMs, previewMs } while dragging a keyframe diamond
   const [kfDrag, setKfDrag] = useState(null);
+
+  // Show delete when a keyframe is selected OR playhead is within 300 ms of one
+  const nearKfMs = useMemo(() => {
+    const TOLERANCE_MS = 300;
+    return keyframesMs.find((kf) => Math.abs(kf - currentTimeMs) <= TOLERANCE_MS) ?? null;
+  }, [keyframesMs, currentTimeMs]);
+  const deleteTargetMs = selectedKeyframeMs ?? nearKfMs;
+  const showDelete = deleteTargetMs !== null && deleteTargetMs !== undefined;
 
   const clientXToMs = (clientX) => {
     const rect = trackRef.current?.getBoundingClientRect();
@@ -100,7 +128,7 @@ function MobileTimeline({
   };
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2 bg-BrandBlack border-t border-white/10">
+    <div className="flex items-center gap-3 px-5 py-2.5 bg-BrandBlack border-t border-white/10">
       {/* Play / pause */}
       <button
         onPointerDown={(e) => e.stopPropagation()}
@@ -111,9 +139,9 @@ function MobileTimeline({
       </button>
 
       {/* Track */}
-      <div className="flex-1 flex flex-col gap-1">
-        {/* Time label row */}
-        <div className="flex justify-between text-[10px] text-BrandGray2 font-DmSans select-none">
+      <div className="flex-1 flex flex-col">
+        {/* Time label row — sits above the scrubber */}
+        <div className="flex justify-between text-[10px] text-BrandGray2 font-DmSans select-none mb-2">
           <span>{fmt(currentTimeMs)}</span>
           <span>{fmt(duration)}</span>
         </div>
@@ -131,6 +159,7 @@ function MobileTimeline({
           <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-white/10" />
           {/* Filled portion */}
           <div
+            ref={filledBarRef}
             className="absolute left-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-BrandOrange pointer-events-none"
             style={{ width: `${progress * 100}%` }}
           />
@@ -162,10 +191,13 @@ function MobileTimeline({
           })}
           {/* Thumb */}
           <div
+            ref={thumbRef}
             className="absolute top-1/2 -translate-y-1/2 w-px h-4 bg-white/70 pointer-events-none z-0"
-            style={{ left: `calc(${progress * 100}%)` }}
+            style={{ left: `${progress * 100}%` }}
           />
         </div>
+        {/* Spacer matching label height so scrubber sits centered */}
+        <div className="h-4" />
       </div>
 
       {/* Add keyframe */}
@@ -177,56 +209,42 @@ function MobileTimeline({
         <FiPlus className="text-base" />
       </button>
 
-      {/* Delete selected keyframe — only visible when one is selected */}
-      {selectedKeyframeMs !== null && selectedKeyframeMs !== undefined ? (
+      {/* Delete keyframe — visible only when on or near a keyframe */}
+      {showDelete && (
         <button
-          onClick={() => onDeleteKeyframe?.(selectedKeyframeMs)}
+          onClick={() => onDeleteKeyframe?.(deleteTargetMs)}
           className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full border border-red-500/40 text-red-400 active:bg-red-500/10"
           title="Delete keyframe"
         >
           <FiX className="text-base" />
         </button>
-      ) : (
-        <div className="shrink-0 w-9 h-9" />
       )}
     </div>
   );
 }
 
-// ── Bottom sheet wrapper ─────────────────────────────────────────────────────
+// ── Top sheet wrapper (drops down from nav bar) ──────────────────────────────
 
 /**
- * BottomSheet — slide-up sheet with backdrop, handle, and header.
+ * TopSheet — drop-down sheet that slides out below the top nav bar.
  */
-function BottomSheet({ open, onClose, title, children }) {
+function TopSheet({ open, onClose, title, children }) {
   return (
-    <>
-      {open && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50"
-          onClick={onClose}
-        />
-      )}
-      <div
-        className={`fixed bottom-0 inset-x-0 z-50 bg-[#1a1a1a] rounded-t-2xl transition-transform duration-300 ease-out ${
-          open ? "translate-y-0" : "translate-y-full"
-        }`}
-        style={{ maxHeight: "70dvh" }}
-      >
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-white/20" />
-        </div>
-        <div className="flex items-center justify-between px-5 py-2 border-b border-white/10">
-          <span className="text-sm font-semibold text-white font-DmSans">{title}</span>
-          <button onClick={onClose} className="text-BrandGray2 active:text-white p-1">
-            <FiChevronDown className="text-lg" />
-          </button>
-        </div>
-        <div className="overflow-y-auto px-5 py-4" style={{ maxHeight: "calc(70dvh - 80px)" }}>
-          {children}
-        </div>
+    <div
+      className={`overflow-hidden transition-[max-height] duration-300 ease-out bg-[#1a1a1a] ${
+        open ? "max-h-[65dvh]" : "max-h-0"
+      }`}
+    >
+      <div className="flex items-center justify-between px-5 py-2 border-b border-white/10">
+        <span className="text-sm font-semibold text-white font-DmSans">{title}</span>
+        <button onClick={onClose} className="text-BrandGray2 active:text-white p-1">
+          <FiChevronUp className="text-lg" />
+        </button>
       </div>
-    </>
+      <div className="overflow-y-auto px-5 py-4" style={{ maxHeight: "calc(65dvh - 44px)" }}>
+        {children}
+      </div>
+    </div>
   );
 }
 
@@ -364,18 +382,21 @@ function PlayersSheet({
     <div className="flex flex-col gap-3">
       {/* Size slider */}
       <div>
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-1">
           <p className="text-[11px] text-BrandGray2 uppercase tracking-wider">Player Size</p>
           <span className="text-[11px] text-BrandOrange font-DmSans font-semibold">{sizePercent}%</span>
         </div>
-        <input
-          type="range"
-          min={30}
-          max={200}
-          value={sizePercent}
-          onChange={(e) => onAllPlayersDisplayChange?.({ ...(allPlayersDisplay || {}), sizePercent: Number(e.target.value) })}
-          className="w-full accent-BrandOrange"
-        />
+        <div className="px-2">
+          <Slider
+            min={5}
+            max={200}
+            step={5}
+            value={sizePercent}
+            onChange={(_, v) => onAllPlayersDisplayChange?.({ ...(allPlayersDisplay || {}), sizePercent: Array.isArray(v) ? v[0] : v })}
+            sx={BRAND_SLIDER_SX}
+            aria-label="Player size percent"
+          />
+        </div>
       </div>
 
       {/* Player list */}
@@ -532,6 +553,7 @@ export default function MobileEditorBar({
   // Playback
   durationMs,
   currentTimeMs,
+  currentTimeMsRef,
   isPlaying,
   keyframesMs,
   selectedKeyframeMs,
@@ -576,96 +598,113 @@ export default function MobileEditorBar({
 
   return (
     <>
-      {/* Timeline */}
-      <MobileTimeline
-        durationMs={durationMs}
-        currentTimeMs={currentTimeMs}
-        isPlaying={isPlaying}
-        keyframesMs={keyframesMs}
-        selectedKeyframeMs={selectedKeyframeMs}
-        onSeek={onSeek}
-        onPause={onPause}
-        onPlayToggle={onPlayToggle}
-        onAddKeyframe={onAddKeyframe}
-        onSelectKeyframe={onSelectKeyframe}
-        onDeleteKeyframe={onDeleteKeyframe}
-        onMoveKeyframe={onMoveKeyframe}
-      />
+      {/* ── Top nav bar + drop-down sheets (fixed to top of screen) ── */}
+      <div
+        className="fixed top-0 inset-x-0 z-60"
+        style={{ paddingTop: "env(safe-area-inset-top)" }}
+      >
+        {/* Tab row */}
+        <div className="relative z-10 flex overflow-x-auto bg-[#111] border-b border-white/10 hide-scroll">
+          {TABS.map((tab) => {
+            const isActive = tab.sheet
+              ? activeSheet === tab.id || (tab.id === "add" && (activeTool === "addPlayer" || activeTool === "addBall"))
+              : activeTool === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  if (tab.sheet) {
+                    openSheet(tab.id);
+                  } else {
+                    onToolChange?.(tab.id);
+                    closeSheet();
+                  }
+                }}
+                className={`shrink-0 flex-1 min-w-16 flex flex-col items-center gap-1 py-3 transition ${
+                  isActive ? "text-BrandOrange" : "text-BrandGray2 active:text-white"
+                }`}
+              >
+                {tab.icon}
+                <span className="text-[10px] font-DmSans">{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
 
-      {/* Nav bar — horizontally scrollable */}
-      <div className="flex overflow-x-auto bg-[#111] border-t border-white/10 hide-scroll" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-        {TABS.map((tab) => {
-          const isActive = tab.sheet
-            ? activeSheet === tab.id || (tab.id === "add" && (activeTool === "addPlayer" || activeTool === "addBall"))
-            : activeTool === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => {
-                if (tab.sheet) {
-                  openSheet(tab.id);
-                } else {
-                  onToolChange?.(tab.id);
-                  closeSheet();
-                }
-              }}
-              className={`shrink-0 flex-1 min-w-16 flex flex-col items-center gap-1 py-3 transition ${
-                isActive ? "text-BrandOrange" : "text-BrandGray2 active:text-white"
-              }`}
-            >
-              {tab.icon}
-              <span className="text-[10px] font-DmSans">{tab.label}</span>
-            </button>
-          );
-        })}
+        {/* Drop-down sheets — render below the tab row */}
+        <TopSheet open={activeSheet === "add"} onClose={closeSheet} title="Add">
+          <AddSheet onToolChange={onToolChange} onClose={closeSheet} />
+        </TopSheet>
+
+        <TopSheet open={activeSheet === "tools"} onClose={closeSheet} title="Tools">
+          <ToolsSheet
+            activeTool={activeTool}
+            onToolChange={(t) => { onToolChange(t); closeSheet(); }}
+            onUndo={onUndo}
+            onRedo={onRedo}
+            onReset={onReset}
+            zoomPercent={zoomPercent}
+            onZoomIn={onZoomIn}
+            onZoomOut={onZoomOut}
+          />
+        </TopSheet>
+
+        <TopSheet open={activeSheet === "players"} onClose={closeSheet} title="Players">
+          <PlayersSheet
+            playersById={playersById}
+            representedPlayerIds={representedPlayerIds}
+            selectedPlayerIds={selectedPlayerIds}
+            playerEditor={playerEditor}
+            fieldType={fieldType}
+            onSelectPlayer={onSelectPlayer}
+            onDeletePlayer={onDeletePlayer}
+            onEditPlayer={onEditPlayer}
+            onEditDraftChange={onEditDraftChange}
+            onCloseEditPlayer={onCloseEditPlayer}
+            onTogglePlayerHidden={onTogglePlayerHidden}
+            allPlayersDisplay={allPlayersDisplay}
+            onAllPlayersDisplayChange={onAllPlayersDisplayChange}
+          />
+        </TopSheet>
+
+        <TopSheet open={activeSheet === "prefabs"} onClose={closeSheet} title="Prefabs">
+          <PrefabsSheet
+            customPrefabs={customPrefabs}
+            onPrefabSelect={onPrefabSelect}
+            onClose={closeSheet}
+          />
+        </TopSheet>
       </div>
 
-      {/* Add sheet */}
-      <BottomSheet open={activeSheet === "add"} onClose={closeSheet} title="Add">
-        <AddSheet onToolChange={onToolChange} onClose={closeSheet} />
-      </BottomSheet>
-
-      {/* Tools sheet */}
-      <BottomSheet open={activeSheet === "tools"} onClose={closeSheet} title="Tools">
-        <ToolsSheet
-          activeTool={activeTool}
-          onToolChange={(t) => { onToolChange(t); closeSheet(); }}
-          onUndo={onUndo}
-          onRedo={onRedo}
-          onReset={onReset}
-          zoomPercent={zoomPercent}
-          onZoomIn={onZoomIn}
-          onZoomOut={onZoomOut}
+      {/* Backdrop — closes sheet when tapping canvas */}
+      {activeSheet && (
+        <div
+          className="fixed inset-0 z-55 bg-black/50"
+          onClick={closeSheet}
         />
-      </BottomSheet>
+      )}
 
-      {/* Players sheet */}
-      <BottomSheet open={activeSheet === "players"} onClose={closeSheet} title="Players">
-        <PlayersSheet
-          playersById={playersById}
-          representedPlayerIds={representedPlayerIds}
-          selectedPlayerIds={selectedPlayerIds}
-          playerEditor={playerEditor}
-          fieldType={fieldType}
-          onSelectPlayer={onSelectPlayer}
-          onDeletePlayer={onDeletePlayer}
-          onEditPlayer={onEditPlayer}
-          onEditDraftChange={onEditDraftChange}
-          onCloseEditPlayer={onCloseEditPlayer}
-          onTogglePlayerHidden={onTogglePlayerHidden}
-          allPlayersDisplay={allPlayersDisplay}
-          onAllPlayersDisplayChange={onAllPlayersDisplayChange}
+      {/* ── Bottom timeline bar (fixed to bottom of screen) ── */}
+      <div
+        className="fixed bottom-0 inset-x-0 z-60"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        <MobileTimeline
+          durationMs={durationMs}
+          currentTimeMs={currentTimeMs}
+          currentTimeMsRef={currentTimeMsRef}
+          isPlaying={isPlaying}
+          keyframesMs={keyframesMs}
+          selectedKeyframeMs={selectedKeyframeMs}
+          onSeek={onSeek}
+          onPause={onPause}
+          onPlayToggle={onPlayToggle}
+          onAddKeyframe={onAddKeyframe}
+          onSelectKeyframe={onSelectKeyframe}
+          onDeleteKeyframe={onDeleteKeyframe}
+          onMoveKeyframe={onMoveKeyframe}
         />
-      </BottomSheet>
-
-      {/* Prefabs sheet */}
-      <BottomSheet open={activeSheet === "prefabs"} onClose={closeSheet} title="Prefabs">
-        <PrefabsSheet
-          customPrefabs={customPrefabs}
-          onPrefabSelect={onPrefabSelect}
-          onClose={closeSheet}
-        />
-      </BottomSheet>
+      </div>
     </>
   );
 }

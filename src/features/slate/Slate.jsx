@@ -863,11 +863,11 @@ function Slate({
   ]);
 
   // Show ALL keyframes from all tracks, not just selected ones.
-  // This ensures keyframes remain visible even when only some players are selected.
-  const visibleKeyframesMs = useMemo(
-    () => getTrackKeyframeTimes(animationData, representedTrackIds),
-    [animationData, representedTrackIds]
-  );
+  // Always includes t=0 so the locked start keyframe is always visible.
+  const visibleKeyframesMs = useMemo(() => {
+    const times = getTrackKeyframeTimes(animationData, representedTrackIds);
+    return times.includes(0) ? times : [0, ...times];
+  }, [animationData, representedTrackIds]);
 
   useEffect(() => {
     if (selectedKeyframeMs === null || selectedKeyframeMs === undefined) return;
@@ -1683,6 +1683,8 @@ function Slate({
     if (tool === "hand" || tool === "select" || tool === "pen" || tool === "addPlayer" || tool === "addBall" || tool === "addCone" || tool === "color" || tool === "prefab") {
       setCanvasTool((prev) => {
         if (prev === tool) {
+          // Pen toggles off back to select; all other tools are no-ops when re-selected
+          if (tool === "pen") return "select";
           logKeyToolDebug(`toolChange noop current=${prev}`);
           return prev;
         }
@@ -2212,6 +2214,10 @@ function Slate({
       if (!targetTrackIds.length) return;
       const roundedTime = Math.round(timeMs);
 
+      // Block deletion of the first keyframe
+      const firstKf = getTrackKeyframeTimes(animationDataRef.current, targetTrackIds)[0];
+      if (Number.isFinite(firstKf) && Math.abs(roundedTime - firstKf) <= 0.5) return;
+
       setAnimationDataWithMeta((base) => {
         const nextTracks = { ...base.tracks };
         targetTrackIds.forEach((itemId) => {
@@ -2222,7 +2228,7 @@ function Slate({
         return { ...base, tracks: nextTracks };
       });
     },
-    [getKeyframeActionTrackIds, setAnimationDataWithMeta, logAction]
+    [getKeyframeActionTrackIds, setAnimationDataWithMeta, logAction, animationDataRef]
   );
 
   const handleDeleteAllKeyframes = useCallback(() => {
@@ -3120,11 +3126,12 @@ function Slate({
           <DrawToolsPill
             activeSubTool={drawSubTool}
             onSubToolChange={handleDrawSubToolChange}
+            onClose={() => handleToolChange("pen")}
           />
         )}
         {/* Add-ball mode pill */}
         {mobileLayout && !viewOnly && canvasTool === "addBall" && !screenshotMode && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-[#1a1a1a] px-4 py-2 rounded-2xl border border-white/15 shadow-xl">
+          <div className="absolute top-17 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-[#1a1a1a] px-4 py-2 rounded-2xl border border-white/15 shadow-xl">
             <span className="text-xs font-semibold text-BrandOrange font-DmSans whitespace-nowrap">Add Ball</span>
             <div className="w-px h-4 bg-white/15" />
             <button
@@ -3137,7 +3144,7 @@ function Slate({
         )}
         {/* Add-player mode pill */}
         {mobileLayout && !viewOnly && canvasTool === "addPlayer" && !screenshotMode && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-[#1a1a1a] px-4 py-2 rounded-2xl border border-white/15 shadow-xl">
+          <div className="absolute top-17 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-[#1a1a1a] px-4 py-2 rounded-2xl border border-white/15 shadow-xl">
             <span className="text-xs font-semibold text-BrandOrange font-DmSans whitespace-nowrap">Add Player</span>
             <div className="w-px h-4 bg-white/15" />
             {["#ef4444", "#3b82f6"].map((hex) => {
@@ -3165,10 +3172,10 @@ function Slate({
           </div>
         )}
         {/* Ball selection context bar */}
-        {mobileLayout && !viewOnly && canvasTool !== "addPlayer" && !screenshotMode &&
+        {mobileLayout && !viewOnly && canvasTool !== "addPlayer" && canvasTool !== "pen" && !screenshotMode &&
           entities.selectedPlayerIds.length === 0 &&
-          (entities.selectedItemIds || []).includes("ball-1") && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-[#1a1a1a] px-4 py-2 rounded-2xl border border-white/15 shadow-xl">
+          (entities.selectedItemIds || []).some((id) => entities.ballsById?.[id]) && (
+          <div className="absolute top-17 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-[#1a1a1a] px-4 py-2 rounded-2xl border border-white/15 shadow-xl">
             <span className="text-xs font-semibold text-white font-DmSans whitespace-nowrap">Ball</span>
             <div className="w-px h-5 bg-white/15 shrink-0" />
             <button
@@ -3180,8 +3187,8 @@ function Slate({
           </div>
         )}
         {/* Player selection context bar */}
-        {mobileLayout && !viewOnly && entities.selectedPlayerIds.length > 0 && canvasTool !== "addPlayer" && !screenshotMode && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-[#1a1a1a] px-4 py-2 rounded-2xl border border-white/15 shadow-xl max-w-[calc(100vw-2rem)] overflow-x-auto">
+        {mobileLayout && !viewOnly && entities.selectedPlayerIds.length > 0 && canvasTool !== "addPlayer" && canvasTool !== "pen" && !screenshotMode && (
+          <div className="absolute top-17 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-[#1a1a1a] px-4 py-2 rounded-2xl border border-white/15 shadow-xl max-w-[calc(100vw-2rem)] overflow-x-auto">
             {entities.selectedPlayerIds.length === 1 ? (
               <>
                 <input
@@ -3368,6 +3375,7 @@ function Slate({
       {mobileLayout && showEditPanels && !recording.recordingModeEnabled && (
         <MobileEditorBar
           durationMs={animationData.durationMs}
+          currentTimeMsRef={currentTimeRef}
           currentTimeMs={timelineDisplayTimeMs}
           isPlaying={isPlaying}
           keyframesMs={visibleKeyframesMs}
