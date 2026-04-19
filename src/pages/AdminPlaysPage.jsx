@@ -4,7 +4,7 @@ import logo from "../assets/logos/full_Coachable_logo.png";
 import {
   FiPlus, FiEdit2, FiTrash2, FiLogOut, FiFolder, FiFolderPlus,
   FiChevronRight, FiLink, FiCheck, FiX, FiEdit3, FiLayout, FiSearch, FiCopy,
-  FiBookOpen, FiEye, FiEyeOff, FiMoreHorizontal, FiMenu, FiClock,
+  FiBookOpen, FiEye, FiEyeOff, FiMoreHorizontal, FiMenu, FiClock, FiTag,
 } from "react-icons/fi";
 import PlayPreviewCard from "../components/PlayPreviewCard";
 import ConfirmModal from "../components/subcomponents/ConfirmModal";
@@ -111,6 +111,23 @@ async function movePlay(session, playId, folderId) {
     body: JSON.stringify({ folderId: folderId || null }),
   });
   if (!res.ok) throw new Error("Failed to move play");
+  return (await res.json()).play;
+}
+
+/**
+ * Update the tags array for a platform play.
+ * @param {string} session - Admin session token
+ * @param {string} playId - Play ID
+ * @param {string[]} tags - New tags array
+ * @returns {Promise<Object>} Updated play object
+ */
+async function updatePlayTags(session, playId, tags) {
+  const res = await fetch(`${API_URL}/admin/plays/${playId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-admin-session": session },
+    body: JSON.stringify({ tags }),
+  });
+  if (!res.ok) throw new Error("Failed to update tags");
   return (await res.json()).play;
 }
 
@@ -487,11 +504,14 @@ function DuplicateButton({ play, onDuplicate, onClose }) {
  * @param {Function} props.onMove - Called with (play, folderId) to move to folder
  * @param {Function} props.onDuplicate - Called with play to duplicate it
  * @param {Function} props.onAddToSection - Called with (play, sectionId) to add play to a section
+ * @param {Function} props.onTagsUpdate - Called with (play, newTags[]) to update play tags
  */
-function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, onDuplicate, onAddToSection }) {
-  // null → closed  |  "main" → first popup  |  "sections" / "folders" → sub-pickers
+function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, onDuplicate, onAddToSection, onTagsUpdate }) {
+  // null → closed  |  "main" → first popup  |  "sections" / "folders" / "tags" → sub-pickers
   const [menuStep, setMenuStep] = useState(null);
+  const [tagInput, setTagInput] = useState("");
   const menuRef = useRef(null);
+  const tagInputRef = useRef(null);
 
   useEffect(() => {
     if (!menuStep) return;
@@ -564,6 +584,16 @@ function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, o
               >
                 <FiFolder className={`shrink-0 text-[10px] ${play.folderId ? "text-blue-400" : ""}`} />
                 Move to Folder
+                <FiChevronRight className="ml-auto shrink-0 text-[10px] text-BrandGray2" />
+              </button>
+
+              {/* Edit tags → sub-popup */}
+              <button
+                onClick={() => { setTagInput(""); setMenuStep("tags"); setTimeout(() => tagInputRef.current?.focus(), 50); }}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs text-BrandGray transition hover:bg-white/6 hover:text-white"
+              >
+                <FiTag className="shrink-0 text-[10px]" />
+                Edit Tags
                 <FiChevronRight className="ml-auto shrink-0 text-[10px] text-BrandGray2" />
               </button>
 
@@ -654,8 +684,88 @@ function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, o
               </div>
             </div>
           )}
+
+          {/* ── Step 2c: tags editor ── */}
+          {menuStep === "tags" && (
+            <div className="absolute right-0 top-full z-30 mt-1 w-60 overflow-hidden rounded-xl border border-white/10 bg-[#1a1d24] shadow-xl">
+              <div className="flex items-center gap-2 border-b border-white/6 px-3 py-2.5">
+                <button
+                  onClick={() => setMenuStep("main")}
+                  className="flex items-center gap-1 text-[11px] text-BrandGray2 transition hover:text-white"
+                >
+                  <FiChevronRight className="rotate-180 text-[10px]" /> Back
+                </button>
+                <span className="flex-1 text-center text-[11px] font-semibold text-white">Edit Tags</span>
+              </div>
+              <div className="p-2">
+                {/* Input to add a new tag */}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const val = tagInput.trim().toLowerCase();
+                    if (!val) return;
+                    const current = play.tags || [];
+                    if (current.includes(val)) { setTagInput(""); return; }
+                    onTagsUpdate(play, [...current, val]);
+                    setTagInput("");
+                  }}
+                  className="flex gap-1.5 mb-2"
+                >
+                  <input
+                    ref={tagInputRef}
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    placeholder="Add tag…"
+                    className="flex-1 min-w-0 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-white placeholder-BrandGray2 outline-none focus:border-BrandOrange/50"
+                  />
+                  <button
+                    type="submit"
+                    className="rounded-md bg-BrandOrange/20 px-2 py-1 text-[11px] text-BrandOrange transition hover:bg-BrandOrange/30"
+                  >
+                    Add
+                  </button>
+                </form>
+                {/* Existing tags */}
+                {(play.tags || []).length === 0 ? (
+                  <p className="px-1 py-1 text-[11px] text-BrandGray2">No tags yet</p>
+                ) : (
+                  <div className="flex flex-wrap gap-1">
+                    {(play.tags || []).map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center gap-1 rounded-md bg-BrandGray2/20 px-2 py-0.5 text-[10px] text-BrandGray"
+                      >
+                        {tag}
+                        <button
+                          onClick={() => onTagsUpdate(play, (play.tags || []).filter((t) => t !== tag))}
+                          className="ml-0.5 transition hover:text-red-400"
+                        >
+                          <FiX className="text-[9px]" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Tags */}
+      {(play.tags || []).length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {(play.tags || []).map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center gap-1 rounded-md bg-BrandGray2/20 px-2 py-0.5 text-[10px] text-BrandGray"
+            >
+              <FiTag className="text-[8px]" />
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Footer: time + edit */}
       <div className="mt-auto pt-3 flex items-center justify-between">
@@ -1621,6 +1731,14 @@ export default function AdminPlaysPage() {
     } catch (err) { setError(err.message); }
   };
 
+  /** Update the tags for a play. */
+  const handleUpdateTags = async (play, tags) => {
+    try {
+      const updated = await updatePlayTags(session, play.id, tags);
+      setPlays((prev) => prev.map((p) => (p.id === play.id ? updated : p)));
+    } catch (err) { setError(err.message); }
+  };
+
   /** Create a new folder at root level. */
   const handleCreateFolder = async () => {
     const name = newFolderName.trim();
@@ -2105,6 +2223,7 @@ export default function AdminPlaysPage() {
                     onMove={handleMove}
                     onDuplicate={handleDuplicate}
                     onAddToSection={handleAddToSection}
+                    onTagsUpdate={handleUpdateTags}
                   />
                 </div>
               ))}

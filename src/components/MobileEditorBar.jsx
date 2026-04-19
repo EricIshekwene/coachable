@@ -4,12 +4,17 @@ import {
   FiRotateCcw, FiRotateCw,
   FiTrash2, FiUsers, FiTool, FiUserPlus, FiCircle,
   FiChevronDown, FiChevronUp, FiMousePointer, FiMove, FiChevronRight,
-  FiLayers, FiEye, FiEyeOff,
+  FiLayers, FiEye, FiEyeOff, FiSettings, FiUpload, FiDownload,
 } from "react-icons/fi";
 import { PiPencilSimpleLine } from "react-icons/pi";
+import coneIcon from "../assets/objects/cone.png";
 import { SPORT_DEFAULTS } from "../features/slate/hooks/useAdvancedSettings";
 import { Slider } from "@mui/material";
 import { BRAND_SLIDER_SX } from "./subcomponents/sliderStyles";
+import PitchSettingsSection from "./advancedSettings/PitchSettingsSection";
+import PlayerSettingsSection from "./advancedSettings/PlayerSettingsSection";
+import BallSettingsSection from "./advancedSettings/BallSettingsSection";
+import AnimationSettingsSection from "./advancedSettings/AnimationSettingsSection";
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 const fmt = (ms) => {
@@ -38,6 +43,7 @@ function MobileTimeline({
   onSelectKeyframe,
   onDeleteKeyframe,
   onMoveKeyframe,
+  onDeselectKeyframe,
 }) {
   const duration = Math.max(1, durationMs);
   const progress = clamp(currentTimeMs / duration, 0, 1);
@@ -61,6 +67,7 @@ function MobileTimeline({
   }, [durationMs, currentTimeMsRef]);
   // { fromMs, previewMs } while dragging a keyframe diamond
   const [kfDrag, setKfDrag] = useState(null);
+  const kfHasDraggedRef = useRef(false);
 
   // Show delete when a keyframe is selected OR playhead is within 300 ms of one
   const nearKfMs = useMemo(() => {
@@ -81,6 +88,7 @@ function MobileTimeline({
   const handleTrackPointerDown = (e) => {
     if (e.button !== undefined && e.button !== 0) return;
     onPause?.();
+    onDeselectKeyframe?.();
     const rect = e.currentTarget.getBoundingClientRect();
     const ratio = clamp((e.clientX - rect.left) / rect.width, 0, 1);
     onSeek?.(ratio * duration, { source: "scrub" });
@@ -89,12 +97,14 @@ function MobileTimeline({
 
   const handleTrackPointerMove = (e) => {
     if (!e.buttons) return;
+    onDeselectKeyframe?.();
     const rect = e.currentTarget.getBoundingClientRect();
     const ratio = clamp((e.clientX - rect.left) / rect.width, 0, 1);
     onSeek?.(ratio * duration, { source: "scrub" });
   };
 
   const handleTouchScrub = (e) => {
+    onDeselectKeyframe?.();
     const rect = e.currentTarget.getBoundingClientRect();
     const clientX = e.touches[0]?.clientX ?? 0;
     const ratio = clamp((clientX - rect.left) / rect.width, 0, 1);
@@ -106,14 +116,20 @@ function MobileTimeline({
   const handleKfPointerDown = (e, kf) => {
     e.stopPropagation();
     if (e.button !== undefined && e.button !== 0) return;
+    onPause?.();
+    onSeek?.(kf, { source: "keyframe" });
     onSelectKeyframe?.(kf);
+    const firstKf = Math.min(...keyframesMs);
+    if (kf === firstKf) return;
     e.currentTarget.setPointerCapture(e.pointerId);
+    kfHasDraggedRef.current = false;
     setKfDrag({ fromMs: kf, previewMs: kf });
   };
 
   const handleKfPointerMove = (e, kf) => {
     if (!e.buttons || kfDrag?.fromMs !== kf) return;
     e.stopPropagation();
+    kfHasDraggedRef.current = true;
     const newMs = clientXToMs(e.clientX);
     setKfDrag((prev) => prev ? { ...prev, previewMs: newMs } : null);
   };
@@ -121,9 +137,12 @@ function MobileTimeline({
   const handleKfPointerUp = (e, kf) => {
     if (kfDrag?.fromMs !== kf) return;
     e.stopPropagation();
-    const toMs = clientXToMs(e.clientX);
-    onMoveKeyframe?.(kf, toMs);
-    onSelectKeyframe?.(Math.round(toMs));
+    if (kfHasDraggedRef.current) {
+      const toMs = clientXToMs(e.clientX);
+      onMoveKeyframe?.(kf, toMs);
+      onSelectKeyframe?.(Math.round(toMs));
+    }
+    kfHasDraggedRef.current = false;
     setKfDrag(null);
   };
 
@@ -168,13 +187,14 @@ function MobileTimeline({
             const isSelected = kf === selectedKeyframeMs;
             const isDragging = kfDrag?.fromMs === kf;
             const displayMs = isDragging ? kfDrag.previewMs : kf;
+            const isFirst = kf === Math.min(...keyframesMs);
             return (
               <div
                 key={kf}
                 onPointerDown={(e) => handleKfPointerDown(e, kf)}
                 onPointerMove={(e) => handleKfPointerMove(e, kf)}
                 onPointerUp={(e) => handleKfPointerUp(e, kf)}
-                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-full flex items-center justify-center touch-none cursor-grab active:cursor-grabbing z-10"
+                className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-full flex items-center justify-center touch-none z-10 ${isFirst ? "cursor-default" : "cursor-grab active:cursor-grabbing"}`}
                 style={{ left: `${clamp(displayMs / duration, 0, 1) * 100}%` }}
               >
                 <div
@@ -200,23 +220,22 @@ function MobileTimeline({
         <div className="h-4" />
       </div>
 
-      {/* Add keyframe */}
-      <button
-        onClick={onAddKeyframe}
-        className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full border border-white/20 text-BrandGray active:bg-white/10"
-        title="Add keyframe"
-      >
-        <FiPlus className="text-base" />
-      </button>
-
-      {/* Delete keyframe — visible only when on or near a keyframe */}
-      {showDelete && (
+      {/* Add / Delete keyframe — swaps based on whether playhead is on a keyframe */}
+      {showDelete ? (
         <button
           onClick={() => onDeleteKeyframe?.(deleteTargetMs)}
           className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full border border-red-500/40 text-red-400 active:bg-red-500/10"
           title="Delete keyframe"
         >
           <FiX className="text-base" />
+        </button>
+      ) : (
+        <button
+          onClick={onAddKeyframe}
+          className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full border border-white/20 text-BrandGray active:bg-white/10"
+          title="Add keyframe"
+        >
+          <FiPlus className="text-base" />
         </button>
       )}
     </div>
@@ -231,8 +250,8 @@ function MobileTimeline({
 function TopSheet({ open, onClose, title, children }) {
   return (
     <div
-      className={`overflow-hidden transition-[max-height] duration-300 ease-out bg-[#1a1a1a] ${
-        open ? "max-h-[65dvh]" : "max-h-0"
+      className={`overflow-hidden transition-[max-height] duration-300 ease-out bg-BrandBlack/90 ${
+        open ? "max-h-[65dvh] border-b border-white/15 shadow-xl" : "max-h-0"
       }`}
     >
       <div className="flex items-center justify-between px-5 py-2 border-b border-white/10">
@@ -275,6 +294,16 @@ function AddSheet({ onToolChange, onClose }) {
         <div className="flex flex-col items-start">
           <span className="text-sm font-DmSans font-semibold">Add Ball</span>
           <span className="text-xs text-BrandGray2 font-DmSans">Tap field to place the ball</span>
+        </div>
+      </button>
+      <button
+        onClick={() => { onToolChange?.("addCone"); onClose?.(); }}
+        className="flex items-center gap-3 w-full px-4 py-3 rounded-xl bg-BrandBlack2 active:bg-white/10 text-white"
+      >
+        <img src={coneIcon} alt="Cone" className="w-5 h-5 object-contain shrink-0" />
+        <div className="flex flex-col items-start">
+          <span className="text-sm font-DmSans font-semibold">Add Cone</span>
+          <span className="text-xs text-BrandGray2 font-DmSans">Tap field to place a cone</span>
         </div>
       </button>
     </div>
@@ -503,7 +532,7 @@ function PlayersSheet({
 /**
  * PrefabsSheet — shows saved prefab groups. Tapping one places it on the canvas.
  */
-function PrefabsSheet({ customPrefabs = [], onPrefabSelect, onClose }) {
+function PrefabsSheet({ customPrefabs = [], onPrefabSelect, onDeleteCustomPrefab, onClose }) {
   return (
     <div className="flex flex-col gap-2">
       {customPrefabs.length === 0 && (
@@ -512,23 +541,128 @@ function PrefabsSheet({ customPrefabs = [], onPrefabSelect, onClose }) {
         </p>
       )}
       {customPrefabs.map((prefab) => (
-        <button
-          key={prefab.id}
-          onClick={() => { onPrefabSelect?.(prefab); onClose?.(); }}
-          className="w-full text-left px-4 py-3.5 rounded-xl border border-white/10 text-sm text-white font-DmSans active:bg-white/5 flex items-center gap-3"
-        >
-          <FiLayers className="text-BrandOrange shrink-0" />
-          <span className="truncate">{prefab.label || "Unnamed Group"}</span>
-          <span className="ml-auto text-xs text-BrandGray2 shrink-0">
-            {prefab.players?.length ?? 0} players
-          </span>
-        </button>
+        <div key={prefab.id} className="flex items-center gap-2">
+          <button
+            onClick={() => { onPrefabSelect?.(prefab); onClose?.(); }}
+            className="flex-1 min-w-0 text-left px-4 py-3.5 rounded-xl border border-white/10 text-sm text-white font-DmSans active:bg-white/5 flex items-center gap-3"
+          >
+            <FiLayers className="text-BrandOrange shrink-0" />
+            <span className="truncate">{prefab.label || "Unnamed Group"}</span>
+            <span className="ml-auto text-xs text-BrandGray2 shrink-0">
+              {prefab.players?.length ?? 0} players
+            </span>
+          </button>
+          <button
+            onClick={() => onDeleteCustomPrefab?.(prefab.id)}
+            className="shrink-0 p-3 rounded-xl border border-white/10 text-BrandGray2 active:bg-red-500/10 active:text-red-400"
+          >
+            <FiTrash2 className="text-base" />
+          </button>
+        </div>
       ))}
     </div>
   );
 }
 
+
+/**
+ * SelectionBanner — floating pill shown when 2+ objects are selected.
+ * Provides a "Save Group" button to open the save-prefab modal.
+ */
+function SelectionBanner({ selectedCount, onSavePrefab }) {
+  if (selectedCount < 2) return null;
+  return (
+    <div
+      className="fixed inset-x-0 z-70 flex justify-center pointer-events-none"
+      style={{ bottom: "calc(env(safe-area-inset-bottom) + 72px)" }}
+    >
+      <div className="pointer-events-auto flex items-center gap-3 px-4 py-2.5 rounded-full bg-BrandBlack/90 border border-white/15 shadow-xl backdrop-blur-sm">
+        <span className="text-xs text-BrandGray2 font-DmSans">{selectedCount} selected</span>
+        <button
+          onClick={onSavePrefab}
+          className="px-3 py-1 rounded-full bg-BrandOrange text-white text-xs font-DmSans font-semibold active:brightness-90"
+        >
+          Save Prefab
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Nav tab bar ──────────────────────────────────────────────────────────────
+
+// ── Advanced Settings sheet ──────────────────────────────────────────────────
+
+/**
+ * AdvancedSettingsSheet — mirrors the desktop AdvancedSettings panel for mobile.
+ */
+function AdvancedSettingsSheet({
+  advancedSettings,
+  onAdvancedSettingsChange,
+  onAdvancedSettingsReset,
+  onFieldTypeChange,
+  autoplayEnabled,
+  onAutoplayChange,
+  onDeleteAllKeyframes,
+  onDownload,
+  onImport,
+  adminMode,
+}) {
+  const settings = advancedSettings ?? {};
+  const pitch = settings.pitch ?? {};
+  const players = settings.players ?? {};
+  const ball = settings.ball ?? {};
+  const animation = settings.animation ?? {};
+
+  const update = (patch) => onAdvancedSettingsChange?.({ ...settings, ...patch });
+  const updatePitch = (patch) => {
+    const newPitch = { ...pitch, ...patch };
+    if (patch.fieldType && patch.fieldType !== pitch.fieldType) {
+      const sd = SPORT_DEFAULTS[patch.fieldType] || {};
+      newPitch.pitchColor = sd.pitchColor ?? "#4FA85D";
+      update({
+        pitch: newPitch,
+        players: { ...players, baseSizePx: sd.baseSizePx ?? 30 },
+        ball: { ...ball, sizePercent: sd.sizePercent ?? 100, coneSizePercent: sd.coneSizePercent ?? 70 },
+      });
+      onFieldTypeChange?.(patch.fieldType);
+    } else {
+      update({ pitch: newPitch });
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <PitchSettingsSection value={pitch} onChange={updatePitch} />
+      <PlayerSettingsSection value={players} onChange={(patch) => update({ players: { ...players, ...patch } })} />
+      <BallSettingsSection value={ball} onChange={(patch) => update({ ball: { ...ball, ...patch } })} />
+      <AnimationSettingsSection value={animation} onChange={(patch) => update({ animation: { ...animation, ...patch } })} />
+
+      {/* Playback */}
+      <div className="flex flex-col border-b border-BrandGray2 pb-3 items-start justify-center gap-2">
+        <p className="text-white text-xs font-DmSans">Playback</p>
+        <div className="flex items-center justify-between w-full">
+          <span className="text-BrandGray text-xs font-DmSans">Autoplay</span>
+          <button
+            onClick={() => onAutoplayChange?.(!autoplayEnabled)}
+            className={`relative w-9 h-4.5 rounded-full transition-colors duration-200 ${autoplayEnabled ? "bg-BrandOrange" : "bg-BrandGray2"}`}
+            aria-label="Toggle autoplay"
+          >
+            <span className={`absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-BrandBlack rounded-full shadow-sm transition-transform duration-200 ${autoplayEnabled ? "translate-x-5" : "translate-x-0.5"}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* Reset to Default */}
+      <button
+        onClick={onAdvancedSettingsReset}
+        className="w-full h-7 mt-1 bg-BrandOrange text-white text-xs font-DmSans font-semibold rounded-md active:brightness-90"
+      >
+        Reset to Default
+      </button>
+    </div>
+  );
+}
 
 const TABS = [
   { id: "tools",     label: "Tools",   icon: <FiTool className="text-xl" />,            sheet: true  },
@@ -536,6 +670,7 @@ const TABS = [
   { id: "add",       label: "Add",     icon: <FiUserPlus className="text-xl" />,        sheet: true  },
   { id: "pen",       label: "Draw",    icon: <PiPencilSimpleLine className="text-xl" />, sheet: false },
   { id: "prefabs",   label: "Prefabs", icon: <FiLayers className="text-xl" />,          sheet: true  },
+  { id: "settings",  label: "Settings", icon: <FiSettings className="text-xl" />,       sheet: true  },
 ];
 
 // ── Main export ──────────────────────────────────────────────────────────────
@@ -574,6 +709,9 @@ export default function MobileEditorBar({
   zoomPercent,
   onZoomIn,
   onZoomOut,
+  // Selection
+  selectedItemIds = [],
+  onSavePrefab,
   // Players
   playersById,
   representedPlayerIds,
@@ -588,16 +726,35 @@ export default function MobileEditorBar({
   onTogglePlayerHidden,
   customPrefabs = [],
   onPrefabSelect,
+  onDeleteCustomPrefab,
   allPlayersDisplay,
   onAllPlayersDisplayChange,
+  // Advanced settings
+  advancedSettings,
+  onAdvancedSettingsChange,
+  onAdvancedSettingsReset,
+  onFieldTypeChange,
+  autoplayEnabled,
+  onAutoplayChange,
+  onDeleteAllKeyframes,
+  onDownload,
+  onImport,
+  adminMode,
 }) {
   const [activeSheet, setActiveSheet] = useState(null);
 
   const openSheet = (id) => setActiveSheet((prev) => (prev === id ? null : id));
   const closeSheet = () => setActiveSheet(null);
 
+
   return (
     <>
+      {/* ── Selection banner — floats above timeline when 2+ objects selected ── */}
+      <SelectionBanner
+        selectedCount={selectedItemIds.length}
+        onSavePrefab={onSavePrefab}
+      />
+
       {/* ── Top nav bar + drop-down sheets (fixed to top of screen) ── */}
       <div
         className="fixed top-0 inset-x-0 z-60"
@@ -607,7 +764,7 @@ export default function MobileEditorBar({
         <div className="relative z-10 flex overflow-x-auto bg-[#111] border-b border-white/10 hide-scroll">
           {TABS.map((tab) => {
             const isActive = tab.sheet
-              ? activeSheet === tab.id || (tab.id === "add" && (activeTool === "addPlayer" || activeTool === "addBall"))
+              ? activeSheet === tab.id || (tab.id === "add" && (activeTool === "addPlayer" || activeTool === "addBall" || activeTool === "addCone"))
               : activeTool === tab.id;
             return (
               <button
@@ -671,7 +828,23 @@ export default function MobileEditorBar({
           <PrefabsSheet
             customPrefabs={customPrefabs}
             onPrefabSelect={onPrefabSelect}
+            onDeleteCustomPrefab={onDeleteCustomPrefab}
             onClose={closeSheet}
+          />
+        </TopSheet>
+
+        <TopSheet open={activeSheet === "settings"} onClose={closeSheet} title="Advanced Settings">
+          <AdvancedSettingsSheet
+            advancedSettings={advancedSettings}
+            onAdvancedSettingsChange={onAdvancedSettingsChange}
+            onAdvancedSettingsReset={onAdvancedSettingsReset}
+            onFieldTypeChange={onFieldTypeChange}
+            autoplayEnabled={autoplayEnabled}
+            onAutoplayChange={onAutoplayChange}
+            onDeleteAllKeyframes={onDeleteAllKeyframes}
+            onDownload={onDownload}
+            onImport={onImport}
+            adminMode={adminMode}
           />
         </TopSheet>
       </div>
@@ -701,6 +874,7 @@ export default function MobileEditorBar({
           onPlayToggle={onPlayToggle}
           onAddKeyframe={onAddKeyframe}
           onSelectKeyframe={onSelectKeyframe}
+          onDeselectKeyframe={() => onSelectKeyframe?.(null)}
           onDeleteKeyframe={onDeleteKeyframe}
           onMoveKeyframe={onMoveKeyframe}
         />

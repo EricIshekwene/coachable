@@ -3129,86 +3129,98 @@ function Slate({
             onClose={() => handleToolChange("pen")}
           />
         )}
-        {/* Add-ball mode pill */}
-        {mobileLayout && !viewOnly && canvasTool === "addBall" && !screenshotMode && (
-          <div className="absolute top-17 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-[#1a1a1a] px-4 py-2 rounded-2xl border border-white/15 shadow-xl">
-            <span className="text-xs font-semibold text-BrandOrange font-DmSans whitespace-nowrap">Add Ball</span>
-            <div className="w-px h-4 bg-white/15" />
-            <button
-              onClick={() => handleToolChange("select")}
-              className="text-xs text-BrandGray2 active:text-white font-DmSans whitespace-nowrap"
-            >
-              Done
-            </button>
-          </div>
-        )}
-        {/* Add-player mode pill */}
-        {mobileLayout && !viewOnly && canvasTool === "addPlayer" && !screenshotMode && (
-          <div className="absolute top-17 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-[#1a1a1a] px-4 py-2 rounded-2xl border border-white/15 shadow-xl">
-            <span className="text-xs font-semibold text-BrandOrange font-DmSans whitespace-nowrap">Add Player</span>
-            <div className="w-px h-4 bg-white/15" />
-            {["#ef4444", "#3b82f6"].map((hex) => {
-              const isActive = entities.currentPlayerColor === hex;
-              return (
-                <button
-                  key={hex}
-                  onClick={() => entities.handlePlayerColorChange(hex)}
-                  className="shrink-0 w-7 h-7 rounded-full border-2 transition-transform active:scale-90"
-                  style={{
-                    backgroundColor: hex,
-                    borderColor: isActive ? "#FF7A18" : "transparent",
-                    boxShadow: isActive ? "0 0 0 1px #FF7A18" : "0 0 0 1px rgba(255,255,255,0.2)",
-                  }}
-                />
-              );
-            })}
-            <div className="w-px h-4 bg-white/15" />
-            <button
-              onClick={() => handleToolChange("select")}
-              className="text-xs text-BrandGray2 active:text-white font-DmSans whitespace-nowrap"
-            >
-              Done
-            </button>
-          </div>
-        )}
-        {/* Ball selection context bar */}
-        {mobileLayout && !viewOnly && canvasTool !== "addPlayer" && canvasTool !== "pen" && !screenshotMode &&
-          entities.selectedPlayerIds.length === 0 &&
-          (entities.selectedItemIds || []).some((id) => entities.ballsById?.[id]) && (
-          <div className="absolute top-17 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-[#1a1a1a] px-4 py-2 rounded-2xl border border-white/15 shadow-xl">
-            <span className="text-xs font-semibold text-white font-DmSans whitespace-nowrap">Ball</span>
-            <div className="w-px h-5 bg-white/15 shrink-0" />
-            <button
-              onClick={handleDeleteSelectedLogged}
-              className="text-xs text-red-400 font-DmSans whitespace-nowrap active:opacity-70"
-            >
-              Delete
-            </button>
-          </div>
-        )}
-        {/* Player selection context bar */}
-        {mobileLayout && !viewOnly && entities.selectedPlayerIds.length > 0 && canvasTool !== "addPlayer" && canvasTool !== "pen" && !screenshotMode && (
-          <div className="absolute top-17 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-[#1a1a1a] px-4 py-2 rounded-2xl border border-white/15 shadow-xl max-w-[calc(100vw-2rem)] overflow-x-auto">
-            {entities.selectedPlayerIds.length === 1 ? (
-              <>
-                <input
-                  type="text"
-                  value={entities.playerEditor.draft?.number ?? ""}
-                  onChange={(e) => entities.handleEditDraftChange({ number: e.target.value })}
-                  placeholder="#"
-                  className="w-10 bg-BrandBlack border border-white/15 rounded-lg px-2 py-1 text-white text-xs font-DmSans text-center focus:outline-none focus:border-BrandOrange"
-                />
-                <input
-                  type="text"
-                  value={entities.playerEditor.draft?.name ?? ""}
-                  onChange={(e) => entities.handleEditDraftChange({ name: e.target.value })}
-                  placeholder="Name"
-                  className="w-24 bg-BrandBlack border border-white/15 rounded-lg px-2 py-1 text-white text-xs font-DmSans focus:outline-none focus:border-BrandOrange"
-                />
-                <div className="w-px h-5 bg-white/15 shrink-0" />
+        {/* ── Mobile context pill — one unified pill for all placement/selection states ── */}
+        {mobileLayout && !viewOnly && !screenshotMode && (() => {
+          const pillBase = "absolute top-17 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-BrandBlack/90 backdrop-blur-sm px-4 py-2.5 rounded-full border border-white/15 shadow-xl max-w-[calc(100vw-2rem)]";
+          const divider = <div className="w-px h-4 bg-white/15 shrink-0" />;
+
+          // Placement modes
+          if (canvasTool === "addPlayer") {
+            return (
+              <div className={pillBase}>
+                <span className="text-xs font-semibold text-BrandOrange font-DmSans whitespace-nowrap">Add Player</span>
+                {divider}
                 {["#ef4444", "#3b82f6"].map((hex) => {
-                  const player = entities.playersById[entities.selectedPlayerIds[0]];
-                  const isActive = player?.color === hex;
+                  const isActive = entities.currentPlayerColor === hex;
+                  return (
+                    <button
+                      key={hex}
+                      onClick={() => entities.handlePlayerColorChange(hex)}
+                      className="shrink-0 w-7 h-7 rounded-full border-2 transition-transform active:scale-90"
+                      style={{
+                        backgroundColor: hex,
+                        borderColor: isActive ? "#FF7A18" : "transparent",
+                        boxShadow: isActive ? "0 0 0 1px #FF7A18" : "0 0 0 1px rgba(255,255,255,0.2)",
+                      }}
+                    />
+                  );
+                })}
+                {divider}
+                <button onClick={() => handleToolChange("select")} className="text-xs text-BrandGray2 active:text-white font-DmSans whitespace-nowrap">Done</button>
+              </div>
+            );
+          }
+          if (canvasTool === "addBall") {
+            return (
+              <div className={pillBase}>
+                <span className="text-xs font-semibold text-BrandOrange font-DmSans whitespace-nowrap">Add Ball</span>
+                {divider}
+                <button onClick={() => handleToolChange("select")} className="text-xs text-BrandGray2 active:text-white font-DmSans whitespace-nowrap">Done</button>
+              </div>
+            );
+          }
+          if (canvasTool === "addCone") {
+            return (
+              <div className={pillBase}>
+                <span className="text-xs font-semibold text-BrandOrange font-DmSans whitespace-nowrap">Add Cone</span>
+                {divider}
+                <button onClick={() => handleToolChange("select")} className="text-xs text-BrandGray2 active:text-white font-DmSans whitespace-nowrap">Done</button>
+              </div>
+            );
+          }
+
+          // Ball selected (no players)
+          const ballSelected = canvasTool !== "pen" && entities.selectedPlayerIds.length === 0 &&
+            (entities.selectedItemIds || []).some((id) => entities.ballsById?.[id]);
+          if (ballSelected) {
+            return (
+              <div className={pillBase}>
+                <span className="text-xs font-semibold text-white font-DmSans whitespace-nowrap">Ball</span>
+                {divider}
+                <button onClick={handleDeleteSelectedLogged} className="text-xs text-red-400 font-DmSans whitespace-nowrap active:opacity-70">Delete</button>
+              </div>
+            );
+          }
+
+          // Player(s) selected
+          if (entities.selectedPlayerIds.length > 0 && canvasTool !== "pen") {
+            const isSingle = entities.selectedPlayerIds.length === 1;
+            return (
+              <div className={`${pillBase} overflow-x-auto`}>
+                {isSingle ? (
+                  <>
+                    <input
+                      type="text"
+                      value={entities.playerEditor.draft?.number ?? ""}
+                      onChange={(e) => entities.handleEditDraftChange({ number: e.target.value })}
+                      placeholder="#"
+                      className="w-10 bg-BrandBlack border border-white/15 rounded-lg px-2 py-1 text-white text-xs font-DmSans text-center focus:outline-none focus:border-BrandOrange shrink-0"
+                    />
+                    <input
+                      type="text"
+                      value={entities.playerEditor.draft?.name ?? ""}
+                      onChange={(e) => entities.handleEditDraftChange({ name: e.target.value })}
+                      placeholder="Name"
+                      className="w-24 bg-BrandBlack border border-white/15 rounded-lg px-2 py-1 text-white text-xs font-DmSans focus:outline-none focus:border-BrandOrange shrink-0"
+                    />
+                  </>
+                ) : (
+                  <span className="text-xs font-semibold text-white font-DmSans whitespace-nowrap shrink-0">{entities.selectedPlayerIds.length} selected</span>
+                )}
+                {divider}
+                {["#ef4444", "#3b82f6"].map((hex) => {
+                  const player = isSingle ? entities.playersById[entities.selectedPlayerIds[0]] : null;
+                  const isActive = isSingle ? player?.color === hex : false;
                   return (
                     <button
                       key={hex}
@@ -3222,45 +3234,17 @@ function Slate({
                     />
                   );
                 })}
-                <div className="w-px h-5 bg-white/15 shrink-0" />
-                <button
-                  onClick={handleDeleteSelectedLogged}
-                  className="text-xs text-red-400 font-DmSans whitespace-nowrap shrink-0 active:opacity-70"
-                >
-                  Delete
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="text-xs font-semibold text-white font-DmSans whitespace-nowrap shrink-0">
-                  {entities.selectedPlayerIds.length} selected
-                </span>
-                <div className="w-px h-5 bg-white/15 shrink-0" />
-                {["#ef4444", "#3b82f6"].map((hex) => (
-                  <button
-                    key={hex}
-                    onClick={() => entities.handleSelectedPlayersColorChange(hex, entities.selectedPlayerIds)}
-                    className="shrink-0 w-6 h-6 rounded-full border-2 border-transparent transition-transform active:scale-90"
-                    style={{ backgroundColor: hex, boxShadow: "0 0 0 1px rgba(255,255,255,0.2)" }}
-                  />
-                ))}
-                <div className="w-px h-5 bg-white/15 shrink-0" />
-                <button
-                  onClick={() => setSavePrefabModalOpen(true)}
-                  className="text-xs text-BrandOrange font-DmSans whitespace-nowrap shrink-0 active:opacity-70"
-                >
-                  Save Group
-                </button>
-                <button
-                  onClick={handleDeleteSelectedLogged}
-                  className="text-xs text-red-400 font-DmSans whitespace-nowrap shrink-0 active:opacity-70"
-                >
-                  Delete
-                </button>
-              </>
-            )}
-          </div>
-        )}
+                {divider}
+                {!isSingle && (
+                  <button onClick={() => setSavePrefabModalOpen(true)} className="text-xs text-BrandOrange font-DmSans whitespace-nowrap shrink-0 active:opacity-70">Save Group</button>
+                )}
+                <button onClick={handleDeleteSelectedLogged} className="text-xs text-red-400 font-DmSans whitespace-nowrap shrink-0 active:opacity-70">Delete</button>
+              </div>
+            );
+          }
+
+          return null;
+        })()}
         {showViewOverlay ? (
           <div
             className="transition-opacity duration-300 ease-in-out"
@@ -3406,10 +3390,31 @@ function Slate({
           onEditDraftChange={entities.handleEditDraftChange}
           onCloseEditPlayer={entities.handleCloseEditPlayer}
           onTogglePlayerHidden={entities.handleTogglePlayerHidden}
+          selectedItemIds={entities.selectedItemIds}
+          onSavePrefab={() => setSavePrefabModalOpen(true)}
           customPrefabs={customPrefabs}
           onPrefabSelect={handlePrefabSelect}
+          onDeleteCustomPrefab={handleDeleteCustomPrefab}
           allPlayersDisplay={entities.allPlayersDisplay}
           onAllPlayersDisplayChange={entities.setAllPlayersDisplay}
+          advancedSettings={advancedSettings}
+          onAdvancedSettingsChange={setAdvancedSettings}
+          onAdvancedSettingsReset={() => {
+            setAdvancedSettings(createDefaultAdvancedSettings(defaultFieldType));
+            const sd = SPORT_DEFAULTS[defaultFieldType] || {};
+            fieldViewport.setFieldRotation(sd.defaultFieldRotation ?? 0);
+          }}
+          onFieldTypeChange={(newFieldType) => {
+            entities.handleFieldTypeChange(newFieldType);
+            const sd = SPORT_DEFAULTS[newFieldType] || {};
+            fieldViewport.setFieldRotation(sd.defaultFieldRotation ?? 0);
+          }}
+          autoplayEnabled={autoplayEnabled}
+          onAutoplayChange={setAutoplayEnabled}
+          onDeleteAllKeyframes={handleDeleteAllKeyframes}
+          onDownload={onDownload}
+          onImport={handleImportClick}
+          adminMode={adminMode}
         />
       )}
       {showEditPanels && !mobileLayout && <div
