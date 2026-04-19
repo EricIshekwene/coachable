@@ -3422,6 +3422,7 @@ function Slate({
           panelsExpanded ? "max-w-48 opacity-100" : "max-w-0 opacity-0"
         }`}
       ><RightPanel
+        adminMode={adminMode}
         canvasTool={canvasTool}
         drawSubTool={drawSubTool}
         drawColor={drawColor}

@@ -45,6 +45,7 @@ export default function RightPanel({
   advancedSettingsOpen,
   onOpenAdvancedSettings,
 
+  adminMode = false,
   onSaveToPlaybook,
   onScreenshot,
   onVideoExport,
@@ -301,6 +302,7 @@ export default function RightPanel({
       {/* Fixed bottom area */}
       <div className="shrink-0 pt-1.5 sm:pt-2 border-t border-BrandGray2/60">
         <ExportActions
+          adminMode={adminMode}
           onSaveToPlaybook={onSaveToPlaybook}
           onScreenshot={onScreenshot}
           onVideoExport={onVideoExport}

@@ -32,6 +32,7 @@ export default function ExportActions({
   onSaveToPlaybook,
   onScreenshot,
   onVideoExport,
+  adminMode = false,
 }) {
   return (
     <div className="w-full flex flex-col gap-2">
@@ -46,27 +47,31 @@ export default function ExportActions({
         <span className="min-w-0 flex-1 truncate">Save to Playbook</span>
       </button>
 
-      <button
-        type="button"
-        onClick={() => onScreenshot?.()}
-        className={fullWidthActionButtonClass}
-      >
-        <span className={iconWrapClass}>
-          <MdCameraAlt className={iconClass} aria-hidden />
-        </span>
-        <span className="min-w-0 flex-1 truncate">Photo</span>
-      </button>
+      {adminMode && (
+        <button
+          type="button"
+          onClick={() => onScreenshot?.()}
+          className={fullWidthActionButtonClass}
+        >
+          <span className={iconWrapClass}>
+            <MdCameraAlt className={iconClass} aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1 truncate">Photo</span>
+        </button>
+      )}
 
-      <button
-        type="button"
-        onClick={() => onVideoExport?.()}
-        className={fullWidthActionButtonClass}
-      >
-        <span className={iconWrapClass}>
-          <MdVideocam className={iconClass} aria-hidden />
-        </span>
-        <span className="min-w-0 flex-1 truncate">Video</span>
-      </button>
+      {adminMode && (
+        <button
+          type="button"
+          onClick={() => onVideoExport?.()}
+          className={fullWidthActionButtonClass}
+        >
+          <span className={iconWrapClass}>
+            <MdVideocam className={iconClass} aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1 truncate">Video</span>
+        </button>
+      )}
     </div>
   );
 }

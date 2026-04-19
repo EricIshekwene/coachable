@@ -506,10 +506,11 @@ function DuplicateButton({ play, onDuplicate, onClose }) {
  * @param {Function} props.onAddToSection - Called with (play, sectionId) to add play to a section
  * @param {Function} props.onTagsUpdate - Called with (play, newTags[]) to update play tags
  */
-function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, onDuplicate, onAddToSection, onTagsUpdate }) {
+function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, onDuplicate, onAddToSection, onTagsUpdate, allTags }) {
   // null → closed  |  "main" → first popup  |  "sections" / "folders" / "tags" → sub-pickers
   const [menuStep, setMenuStep] = useState(null);
   const [tagInput, setTagInput] = useState("");
+  const [showTagSuggestions, setShowTagSuggestions] = useState(false);
   const menuRef = useRef(null);
   const tagInputRef = useRef(null);
 
@@ -686,69 +687,97 @@ function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, o
           )}
 
           {/* ── Step 2c: tags editor ── */}
-          {menuStep === "tags" && (
-            <div className="absolute right-0 top-full z-30 mt-1 w-60 overflow-hidden rounded-xl border border-white/10 bg-[#1a1d24] shadow-xl">
-              <div className="flex items-center gap-2 border-b border-white/6 px-3 py-2.5">
-                <button
-                  onClick={() => setMenuStep("main")}
-                  className="flex items-center gap-1 text-[11px] text-BrandGray2 transition hover:text-white"
-                >
-                  <FiChevronRight className="rotate-180 text-[10px]" /> Back
-                </button>
-                <span className="flex-1 text-center text-[11px] font-semibold text-white">Edit Tags</span>
-              </div>
-              <div className="p-2">
-                {/* Input to add a new tag */}
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const val = tagInput.trim().toLowerCase();
-                    if (!val) return;
-                    const current = play.tags || [];
-                    if (current.includes(val)) { setTagInput(""); return; }
-                    onTagsUpdate(play, [...current, val]);
-                    setTagInput("");
-                  }}
-                  className="flex gap-1.5 mb-2"
-                >
-                  <input
-                    ref={tagInputRef}
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    placeholder="Add tag…"
-                    className="flex-1 min-w-0 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-white placeholder-BrandGray2 outline-none focus:border-BrandOrange/50"
-                  />
+          {menuStep === "tags" && (() => {
+            const query = tagInput.trim().toLowerCase();
+            const current = play.tags || [];
+            const tagSuggestions = (allTags || [])
+              .filter((t) => !current.includes(t) && (!query || t.toLowerCase().includes(query)));
+            return (
+              <div className="absolute right-0 top-full z-30 mt-1 w-72 rounded-xl border border-white/10 bg-[#1a1d24] shadow-xl">
+                <div className="flex items-center gap-2 border-b border-white/6 px-3 py-2.5">
                   <button
-                    type="submit"
-                    className="rounded-md bg-BrandOrange/20 px-2 py-1 text-[11px] text-BrandOrange transition hover:bg-BrandOrange/30"
+                    onClick={() => setMenuStep("main")}
+                    className="flex items-center gap-1 text-[11px] text-BrandGray2 transition hover:text-white"
                   >
-                    Add
+                    <FiChevronRight className="rotate-180 text-[10px]" /> Back
                   </button>
-                </form>
-                {/* Existing tags */}
-                {(play.tags || []).length === 0 ? (
-                  <p className="px-1 py-1 text-[11px] text-BrandGray2">No tags yet</p>
-                ) : (
-                  <div className="flex flex-wrap gap-1">
-                    {(play.tags || []).map((tag) => (
-                      <span
-                        key={tag}
-                        className="inline-flex items-center gap-1 rounded-md bg-BrandGray2/20 px-2 py-0.5 text-[10px] text-BrandGray"
-                      >
-                        {tag}
-                        <button
-                          onClick={() => onTagsUpdate(play, (play.tags || []).filter((t) => t !== tag))}
-                          className="ml-0.5 transition hover:text-red-400"
-                        >
-                          <FiX className="text-[9px]" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
+                  <span className="flex-1 text-center text-[11px] font-semibold text-white">Edit Tags</span>
+                </div>
+                <div className="p-2.5 flex flex-col gap-2.5">
+                  {/* Input */}
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const val = tagInput.trim().toLowerCase();
+                      if (!val) return;
+                      if (!current.includes(val)) onTagsUpdate(play, [...current, val]);
+                      setTagInput("");
+                    }}
+                    className="flex gap-1.5"
+                  >
+                    <input
+                      ref={tagInputRef}
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      placeholder="Type a tag…"
+                      className="flex-1 min-w-0 rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-[11px] text-white placeholder-BrandGray2 outline-none focus:border-BrandOrange/50"
+                    />
+                    <button
+                      type="submit"
+                      className="rounded-md bg-BrandOrange/20 px-2.5 py-1 text-[11px] text-BrandOrange transition hover:bg-BrandOrange/30"
+                    >
+                      Add
+                    </button>
+                  </form>
+
+                  {/* Past tags to click */}
+                  {tagSuggestions.length > 0 && (
+                    <div>
+                      <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wide text-BrandGray2">Past tags</p>
+                      <div className="flex flex-wrap gap-1 max-h-28 overflow-y-auto">
+                        {tagSuggestions.map((t) => (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => { onTagsUpdate(play, [...current, t]); setTagInput(""); tagInputRef.current?.focus(); }}
+                            className="inline-flex items-center rounded-md bg-white/6 px-2 py-0.5 text-[10px] text-BrandGray transition hover:bg-BrandOrange/20 hover:text-BrandOrange"
+                          >
+                            {t}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Current tags on this play */}
+                  {current.length > 0 && (
+                    <div>
+                      <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wide text-BrandGray2">On this play</p>
+                      <div className="flex flex-wrap gap-1">
+                        {current.map((tag) => (
+                          <span
+                            key={tag}
+                            className="inline-flex items-center gap-1 rounded-md bg-BrandGray2/20 px-2 py-0.5 text-[10px] text-BrandGray"
+                          >
+                            {tag}
+                            <button
+                              onClick={() => onTagsUpdate(play, current.filter((t) => t !== tag))}
+                              className="ml-0.5 transition hover:text-red-400"
+                            >
+                              <FiX className="text-[9px]" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {current.length === 0 && tagSuggestions.length === 0 && (
+                    <p className="text-[11px] text-BrandGray2">No tags yet — type one above.</p>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       </div>
 
@@ -1544,6 +1573,7 @@ export default function AdminPlaysPage() {
   const [sections, setSections] = useState([]);
   const [playbookSections, setPlaybookSections] = useState([]);
   const [loading, setLoading] = useState(true);
+  const allTags = [...new Set(plays.flatMap((p) => p.tags || []))].sort();
   const [error, setError] = useState("");
   const [deletionWarning, setDeletionWarning] = useState(null);
   const [search, setSearch] = useState("");
@@ -2224,6 +2254,7 @@ export default function AdminPlaysPage() {
                     onDuplicate={handleDuplicate}
                     onAddToSection={handleAddToSection}
                     onTagsUpdate={handleUpdateTags}
+                    allTags={allTags}
                   />
                 </div>
               ))}

@@ -104,7 +104,7 @@ export default function SelectedPlayersSection({
         <button
           type="button"
           onClick={onSavePrefab}
-          className="w-full mt-1.5 flex items-center justify-center gap-1.5 py-1.5 rounded-md border border-BrandOrange/60 bg-BrandBlack2 text-BrandOrange text-[10px] sm:text-xs font-DmSans font-semibold hover:bg-BrandBlack transition-colors cursor-pointer"
+          className="w-full mt-2 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-BrandBlack2 text-BrandGray text-[10px] sm:text-xs font-DmSans font-semibold hover:bg-BrandBlack hover:text-BrandWhite active:brightness-90 transition-all cursor-pointer"
         >
           <IoSaveOutline className="text-sm shrink-0" aria-hidden />
           Save as Prefab

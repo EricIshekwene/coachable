@@ -131,6 +131,12 @@ export async function bulkMovePlays(teamId, playIds, folderId) {
   await apiFetch(`/teams/${teamId}/plays/bulk/move`, { method: "POST", body: { playIds, folderId } });
 }
 
+/** Fetch all tag labels ever used by a team, most recent first. */
+export async function fetchTeamTags(teamId) {
+  const data = await apiFetch(`/teams/${teamId}/tags`);
+  return data.tags || [];
+}
+
 /** Bulk add tags to plays. */
 export async function bulkTagPlays(teamId, playIds, tags) {
   await apiFetch(`/teams/${teamId}/plays/bulk/tags`, { method: "POST", body: { playIds, tags } });

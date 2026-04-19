@@ -343,6 +343,24 @@ router.delete(
   }
 );
 
+// GET /teams/:teamId/tags
+router.get(
+  "/:teamId/tags",
+  requireAuth,
+  requireTeamRole(),
+  async (req, res, next) => {
+    try {
+      const { rows } = await pool.query(
+        `SELECT label FROM play_tags WHERE team_id = $1 ORDER BY created_at DESC`,
+        [req.params.teamId]
+      );
+      res.json({ tags: rows.map((r) => r.label) });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 // PATCH /teams/:teamId/plays/:playId/tags
 router.patch(
   "/:teamId/plays/:playId/tags",

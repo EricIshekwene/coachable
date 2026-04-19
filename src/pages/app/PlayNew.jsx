@@ -1,29 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiArrowLeft, FiX } from "react-icons/fi";
+import { FiArrowLeft, FiX, FiClock } from "react-icons/fi";
 import { useAppMessage } from "../../context/AppMessageContext";
 import { useAuth } from "../../context/AuthContext";
-import { createPlay } from "../../utils/apiPlays";
+import { createPlay, fetchTeamTags } from "../../utils/apiPlays";
 
-const PRESET_TAGS = [
-  // Phase of Play
-  "Attack", "Defense", "Transition", "Counterattack", "Build Up", "Press", "Reset", "Fast Break",
-  // Set Piece / Restart
-  "Set Piece", "Kickoff", "Free Kick", "Penalty", "Lineout", "Scrum", "Throw-In", "Corner", "Inbound",
-  // Tactical Objective
-  "Scoring", "Territory Gain", "Ball Retention", "Pressure", "Overload", "Isolation",
-  "Misdirection", "Decoy", "Screen", "Pick", "Switch", "Cross",
-  // Formation / Structure
-  "Spread", "Compact", "Diamond", "Triangle", "Stack", "Trips", "Bunch", "Zone", "Man Marking",
-  // Tempo / Style
-  "Fast", "Slow", "Quick Hit", "Delayed", "Structured", "Improvised",
-  // Difficulty / Complexity
-  "Beginner", "Intermediate", "Advanced", "Game Ready",
-  // Practice Context
-  "Training Drill", "Game Play", "End Game", "Special Situation",
-  // Field Location
-  "Red Zone", "Midfield", "Defensive Third", "Attacking Third", "Sideline", "Goal Line",
-];
 const MAX_TITLE_LENGTH = 80;
 const MAX_TAG_LENGTH = 24;
 const MAX_TAG_COUNT = 12;
@@ -35,18 +16,31 @@ export default function PlayNew() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [teamTags, setTeamTags] = useState([]);
   const inputRef = useRef(null);
   const navigate = useNavigate();
   const { showMessage } = useAppMessage();
   const { user } = useAuth();
 
-  const suggestions = tagInput.trim()
-    ? PRESET_TAGS.filter(
-        (t) =>
-          t.toLowerCase().includes(tagInput.toLowerCase()) &&
-          !tags.includes(t)
-      ).slice(0, 8)
-    : [];
+  useEffect(() => {
+    if (user?.teamId) {
+      fetchTeamTags(user.teamId).then(setTeamTags).catch(() => {});
+    }
+  }, [user?.teamId]);
+
+  const suggestions = (() => {
+    const query = tagInput.trim().toLowerCase();
+    if (!query) {
+      // Show recent team tags when focused with no input
+      return teamTags.filter((t) => !tags.includes(t)).slice(0, 8);
+    }
+    const matches = teamTags.filter(
+      (t) => t.toLowerCase().includes(query) && !tags.includes(t)
+    );
+    return matches.slice(0, 8);
+  })();
+
+  const isRecentSection = !tagInput.trim() && suggestions.length > 0;
 
   useEffect(() => {
     setHighlightedIndex(0);
@@ -222,6 +216,12 @@ export default function PlayNew() {
           {showSuggestions && suggestions.length > 0 && (
             <div className="relative">
               <div className="absolute left-0 right-0 top-0 z-20 max-h-56 overflow-auto rounded-lg border border-BrandGray2/30 bg-BrandBlack shadow-lg">
+                {isRecentSection && (
+                  <div className="flex items-center gap-1.5 border-b border-BrandGray2/15 px-3.5 py-1.5">
+                    <FiClock className="text-[10px] text-BrandGray2" />
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-BrandGray2">Recent</span>
+                  </div>
+                )}
                 {suggestions.map((tag, i) => (
                   <button
                     key={tag}

@@ -90,7 +90,7 @@ export default function AdvancedSettings({
 
                    "
             >
-                <div className="flex flex-row border-b border-BrandGray2 pb-1.5 sm:pb-2 items-center justify-center gap-1.5 sm:gap-2 font-DmSans font-bold">
+                <div className="flex flex-row pb-1.5 sm:pb-2 items-center justify-center gap-1.5 sm:gap-2 font-DmSans font-bold">
                     <p
                         className="text-BrandWhite text-lg sm:text-xl md:text-2xl bg-transparent border-none outline-none focus:outline-none text-center font-DmSans font-bold w-full max-w-[100px] sm:max-w-[110px] md:max-w-[120px]"
                     >
@@ -98,7 +98,7 @@ export default function AdvancedSettings({
                     </p>
                 </div>
 
-                <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3">
+                <div className="flex flex-col pb-2 sm:pb-3">
                     <button
                         type="button"
                         onClick={() => onRecordModeComingSoon?.()}
@@ -117,7 +117,7 @@ export default function AdvancedSettings({
                 <PitchSettingsSection value={pitch} onChange={updatePitch} adminMode={adminMode} />
 
                 {/* Playback settings (moved from control pill dropdown) */}
-                <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1.5 sm:gap-2">
+                <div className="flex flex-col pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1.5 sm:gap-2">
                     <div className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans">
                         Playback
                     </div>
@@ -149,7 +149,7 @@ export default function AdvancedSettings({
                 <BallSettingsSection value={ball} onChange={updateBall} />
                 {adminMode && <ExportVideoSettingsSection value={exportVideo} onChange={updateExportVideo} />}
                 {adminMode && (
-                <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1 sm:gap-2">
+                <div className="flex flex-col pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1 sm:gap-2">
                     <div className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans">
                         Export
                     </div>
@@ -192,7 +192,7 @@ export default function AdvancedSettings({
                 />
                 )}
                 {adminMode && (
-                <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1 sm:gap-2">
+                <div className="flex flex-col pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1 sm:gap-2">
                     <div className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans">
                         Animation Debug
                     </div>
@@ -207,7 +207,7 @@ export default function AdvancedSettings({
                 </div>
                 )}
                 {adminMode && recordingDebug && (
-                <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1 sm:gap-2">
+                <div className="flex flex-col pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1 sm:gap-2">
                     <div className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans">
                         Record Debug
                     </div>
@@ -230,7 +230,7 @@ export default function AdvancedSettings({
                 </div>
                 )}
                 {adminMode && (
-                <div className="flex flex-col border-b border-BrandGray2 pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1 sm:gap-2">
+                <div className="flex flex-col pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1 sm:gap-2">
                     <div className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans">
                         Preview Debug
                     </div>
