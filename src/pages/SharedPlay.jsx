@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { fetchSharedPlay, copySharedPlay } from "../utils/apiPlays";
 import PlayPreviewCard from "../components/PlayPreviewCard";
+import PlayPreviewPlayer from "../components/PlayPreviewPlayer";
 import useThemeColor from "../utils/useThemeColor";
 import { FiLoader, FiClock, FiTag, FiPlus, FiExternalLink, FiCheck, FiUser } from "react-icons/fi";
 import darkLogo from "../assets/logos/White_Full_Coachable.png";
@@ -240,10 +241,9 @@ export default function SharedPlay() {
         )}
 
         {/* Play preview */}
-        <div className="mt-8 mb-4 cursor-pointer" onClick={() => navigate(`/shared/${token}/view`)}>
-          <PlayPreviewCard
+        <div className="mt-8 mb-4">
+          <PlayPreviewPlayer
             playData={play.playData}
-            autoplay="always"
             shape="wide"
             cameraMode="fit-distribution"
             background="field"

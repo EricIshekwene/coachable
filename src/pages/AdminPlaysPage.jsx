@@ -539,11 +539,6 @@ function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, o
           minSpanPx={100}
           showHoverHint={false}
         />
-        {play.sport && (
-          <span className="absolute right-2.5 top-2.5 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white/80 backdrop-blur-sm">
-            {play.sport}
-          </span>
-        )}
       </div>
 
       {/* Title + three-dots menu */}
@@ -1514,11 +1509,6 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-white">{play.title}</p>
                         <div className="mt-0.5 flex items-center gap-2">
-                          {play.sport && (
-                            <span className="rounded bg-white/8 px-1.5 py-0.5 text-[10px] text-BrandGray2">
-                              {play.sport}
-                            </span>
-                          )}
                           {play.tags?.slice(0, 3).map((tag) => (
                             <span key={tag} className="text-[10px] text-BrandGray2">#{tag}</span>
                           ))}
@@ -1575,7 +1565,6 @@ export default function AdminPlaysPage() {
   const [loading, setLoading] = useState(true);
   const allTags = [...new Set(plays.flatMap((p) => p.tags || []))].sort();
   const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
   const [deletionWarning, setDeletionWarning] = useState(null);
   const [search, setSearch] = useState("");
   const [currentFolderId, setCurrentFolderId] = useState(null);
@@ -1639,6 +1628,20 @@ export default function AdminPlaysPage() {
   }, [session, navigate]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Strip any sport-name tags that were previously auto-applied.
+  const SPORT_TAGS = new Set(["rugby", "soccer", "football", "lacrosse", "womens lacrosse", "basketball", "blank"]);
+  useEffect(() => {
+    if (loading || !plays.length) return;
+    plays.forEach(async (play) => {
+      const cleaned = (play.tags || []).filter((t) => !SPORT_TAGS.has(t.toLowerCase()));
+      if (cleaned.length === (play.tags || []).length) return;
+      try {
+        await updatePlayTags(session, play.id, cleaned);
+        setPlays((prev) => prev.map((p) => p.id === play.id ? { ...p, tags: cleaned } : p));
+      } catch { /* ignore */ }
+    });
+  }, [loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (newFolderMode) setTimeout(() => newFolderRef.current?.focus(), 0);
@@ -1709,35 +1712,6 @@ export default function AdminPlaysPage() {
   const handleNewPlayConfirm = () => {
     setNewPlayModal(false);
     navigate("/admin/plays/new/edit", { state: { sport: newPlaySport } });
-  };
-
-  const [autoTagging, setAutoTagging] = useState(false);
-  /**
-   * Bulk-tag all plays based on their field type from playData.advancedSettings.pitch.fieldType.
-   * Adds the field type as a lowercase tag if not already present on the play.
-   */
-  const handleAutoTagBySport = async () => {
-    if (autoTagging) return;
-    setAutoTagging(true);
-    let updated = 0;
-    try {
-      for (const play of plays) {
-        const fieldType = play.playData?.advancedSettings?.pitch?.fieldType;
-        if (!fieldType) continue;
-        const tag = fieldType.toLowerCase();
-        const currentTags = play.tags || [];
-        if (currentTags.includes(tag)) continue;
-        const newTags = [...currentTags, tag];
-        await updatePlayTags(session, play.id, newTags);
-        setPlays((prev) => prev.map((p) => p.id === play.id ? { ...p, tags: newTags } : p));
-        updated++;
-      }
-      setSuccessMsg(`Auto-tagged ${updated} play${updated !== 1 ? "s" : ""} by field type.`);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setAutoTagging(false);
-    }
   };
 
   const handleDelete = async (play) => {
@@ -2056,14 +2030,6 @@ export default function AdminPlaysPage() {
           </div>
           <div className="ml-auto flex items-center gap-2">
             <button
-              onClick={handleAutoTagBySport}
-              disabled={autoTagging}
-              title="Auto-tag all plays by their field type"
-              className="flex items-center gap-1.5 rounded-lg border border-white/8 px-3.5 py-2 text-xs text-BrandGray transition hover:border-white/20 hover:text-white disabled:opacity-50"
-            >
-              <FiTag /> {autoTagging ? "Tagging…" : "Auto-tag by Sport"}
-            </button>
-            <button
               onClick={handleNew}
               className="flex items-center gap-1.5 rounded-lg bg-BrandOrange px-3.5 py-2 text-xs font-semibold text-white transition hover:brightness-110 active:scale-[0.97]"
             >
@@ -2275,14 +2241,6 @@ export default function AdminPlaysPage() {
           {/* Error */}
           {error && (
             <div className="mb-4 rounded-lg bg-red-600/10 px-4 py-2 text-sm text-red-400">{error}</div>
-          )}
-
-          {/* Success */}
-          {successMsg && (
-            <div className="mb-4 flex items-center justify-between rounded-lg bg-green-600/10 px-4 py-2 text-sm text-green-400">
-              <span>{successMsg}</span>
-              <button onClick={() => setSuccessMsg("")} className="ml-4 text-green-400/60 hover:text-green-400"><FiX /></button>
-            </div>
           )}
 
           {/* Loading */}

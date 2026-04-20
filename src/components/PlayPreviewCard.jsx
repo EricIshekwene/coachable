@@ -462,6 +462,7 @@ export default function PlayPreviewCard({
   playData,
   fallbackImageSrc = null,
   autoplay = "always", // "always" | "hover" | "off"
+  controlledTimeMs = null, // when set, skips internal RAF and uses this value directly
   shape = "landscape", // "square" | "landscape" | "wide"
   cameraMode = "fit-distribution", // "fit-distribution" | "fit-field"
   background = "field", // "field" | "none"
@@ -532,8 +533,11 @@ export default function PlayPreviewCard({
   }, [playersById, ballsById]);
 
   const durationMs = Math.max(1, Math.round(toFiniteNumber(animation?.durationMs, DEFAULT_DURATION_MS)));
-  const shouldPlay = autoplay === "always" || (autoplay === "hover" && isHovered);
-  const displayTimeMs = autoplay === "hover" && !isHovered ? 0 : timeMs;
+  const isControlled = controlledTimeMs !== null && controlledTimeMs !== undefined;
+  const speedMult = toFiniteNumber(play?.playback?.speedMultiplier, 50);
+  const internalPlaybackRate = (0.25 + (speedMult / 100) * 3.75) * 3;
+  const shouldPlay = !isControlled && (autoplay === "always" || (autoplay === "hover" && isHovered));
+  const displayTimeMs = isControlled ? controlledTimeMs : (autoplay === "hover" && !isHovered ? 0 : timeMs);
 
   const poses = useMemo(
     () => samplePosesAtTime(animation, displayTimeMs, fallbackPoses, entityIds),
@@ -569,7 +573,7 @@ export default function PlayPreviewCard({
       }
       const deltaMs = Math.max(0, stamp - lastFrameAtRef.current);
       lastFrameAtRef.current = stamp;
-      setTimeMs((prev) => (prev + deltaMs * 1.5) % durationMs);
+      setTimeMs((prev) => (prev + deltaMs * internalPlaybackRate) % durationMs);
       rafIdRef.current = requestAnimationFrame(tick);
     };
 
@@ -580,7 +584,7 @@ export default function PlayPreviewCard({
         rafIdRef.current = null;
       }
     };
-  }, [autoplay, durationMs, shouldPlay]);
+  }, [autoplay, durationMs, shouldPlay, internalPlaybackRate]);
 
   useEffect(() => () => {
     if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
