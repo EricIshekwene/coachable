@@ -15,6 +15,7 @@ export function resolveFieldTypeFromSport(sport) {
 
 /** Per-sport default overrides for player/ball/cone sizes, pitch color, and field rotation. */
 export const SPORT_DEFAULTS = {
+  Rugby: { baseSizePx: 23, sizePercent: 75 },
   Football: { baseSizePx: 25, sizePercent: 70, coneSizePercent: 65, usePositionLabels: true },
   Lacrosse: { sizePercent: 65, defaultFieldRotation: 90, usePositionLabels: true },
   "Womens Lacrosse": { sizePercent: 65, defaultFieldRotation: 90, usePositionLabels: true },
