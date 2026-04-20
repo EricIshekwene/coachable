@@ -1177,4 +1177,77 @@ router.delete("/user-issues/:id", requireAdmin, async (req, res, next) => {
   }
 });
 
+// ── Admin Prefabs ────────────────────────────────────────────────────────────
+
+/**
+ * GET /admin/prefabs
+ * Returns all admin-saved prefabs (cross-device, all sports).
+ */
+router.get("/prefabs", requireAdmin, async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, label, prefab_data, created_at
+         FROM admin_prefabs
+        ORDER BY created_at ASC`
+    );
+    const prefabs = rows.map((r) => ({
+      ...r.prefab_data,
+      id: r.id,
+      label: r.label,
+      createdAt: r.created_at,
+    }));
+    res.json({ prefabs });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /admin/prefabs
+ * Save a new admin prefab.
+ * Body: { label, prefab_data }
+ */
+router.post("/prefabs", requireAdmin, async (req, res, next) => {
+  const { label, prefab_data } = req.body;
+  if (!label || !prefab_data) {
+    return res.status(400).json({ error: "label and prefab_data are required" });
+  }
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO admin_prefabs (label, prefab_data)
+       VALUES ($1, $2)
+       RETURNING id, label, prefab_data, created_at`,
+      [label, prefab_data]
+    );
+    const row = rows[0];
+    res.status(201).json({
+      prefab: {
+        ...row.prefab_data,
+        id: row.id,
+        label: row.label,
+        createdAt: row.created_at,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * DELETE /admin/prefabs/:id
+ * Delete an admin prefab by ID.
+ */
+router.delete("/prefabs/:id", requireAdmin, async (req, res, next) => {
+  try {
+    const { rowCount } = await pool.query(
+      `DELETE FROM admin_prefabs WHERE id = $1`,
+      [req.params.id]
+    );
+    if (!rowCount) return res.status(404).json({ error: "Prefab not found" });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

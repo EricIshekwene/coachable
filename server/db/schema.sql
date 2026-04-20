@@ -496,3 +496,28 @@ EXCEPTION WHEN duplicate_column THEN NULL;
 END $$;
 
 CREATE INDEX IF NOT EXISTS demo_videos_sort_idx ON demo_videos(sort_order ASC, created_at ASC);
+
+-- ============================================================
+-- User prefabs (per-user, cross-device)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS user_prefabs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  label TEXT NOT NULL,
+  prefab_data JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS user_prefabs_user_idx ON user_prefabs(user_id);
+
+-- ============================================================
+-- Admin prefabs (global, cross-device, all sports)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS admin_prefabs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  label TEXT NOT NULL,
+  prefab_data JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Slate from "../features/slate/Slate";
 import MessagePopup from "../components/MessagePopup/MessagePopup";
 import { useMessagePopup } from "../components/messaging/useMessagePopup";
@@ -100,6 +100,8 @@ function clearLocalStorageCache(playId) {
 export default function AdminPlayEditPage() {
   const { playId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const initialSport = location.state?.sport || null;
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
   const [ready, setReady] = useState(false);
   const [loadingPlay, setLoadingPlay] = useState(true);
@@ -152,7 +154,7 @@ export default function AdminPlayEditPage() {
         const title = playName?.trim() || "Untitled";
         if (!persistedId) {
           // First save — create the play
-          const created = await adminCreatePlay(session, { title, playData });
+          const created = await adminCreatePlay(session, { title, playData, ...(initialSport ? { sport: initialSport.toLowerCase() } : {}) });
           const newId = created.id;
           // Move any autosaved data from the "new" key to the real UUID key so
           // crash recovery finds it on the next open.
@@ -264,6 +266,7 @@ export default function AdminPlayEditPage() {
         onNavigateHome={handleNavigateHome}
         onReady={() => setReady(true)}
         adminMode
+        sport={initialSport}
       />
     </div>
   );

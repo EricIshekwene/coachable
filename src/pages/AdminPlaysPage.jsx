@@ -1575,6 +1575,7 @@ export default function AdminPlaysPage() {
   const [loading, setLoading] = useState(true);
   const allTags = [...new Set(plays.flatMap((p) => p.tags || []))].sort();
   const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
   const [deletionWarning, setDeletionWarning] = useState(null);
   const [search, setSearch] = useState("");
   const [currentFolderId, setCurrentFolderId] = useState(null);
@@ -1582,6 +1583,8 @@ export default function AdminPlaysPage() {
   const [newFolderName, setNewFolderName] = useState("");
   const newFolderRef = useRef(null);
   const [confirmModal, setConfirmModal] = useState(null);
+  const [newPlayModal, setNewPlayModal] = useState(false);
+  const [newPlaySport, setNewPlaySport] = useState("Rugby");
   const [dragSrcId, setDragSrcId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
 
@@ -1702,7 +1705,40 @@ export default function AdminPlaysPage() {
   }, []);
 
   const handleEdit = (play) => navigate(`/admin/plays/${play.id}/edit`);
-  const handleNew = () => navigate("/admin/plays/new/edit");
+  const handleNew = () => { setNewPlaySport("Rugby"); setNewPlayModal(true); };
+  const handleNewPlayConfirm = () => {
+    setNewPlayModal(false);
+    navigate("/admin/plays/new/edit", { state: { sport: newPlaySport } });
+  };
+
+  const [autoTagging, setAutoTagging] = useState(false);
+  /**
+   * Bulk-tag all plays based on their field type from playData.advancedSettings.pitch.fieldType.
+   * Adds the field type as a lowercase tag if not already present on the play.
+   */
+  const handleAutoTagBySport = async () => {
+    if (autoTagging) return;
+    setAutoTagging(true);
+    let updated = 0;
+    try {
+      for (const play of plays) {
+        const fieldType = play.playData?.advancedSettings?.pitch?.fieldType;
+        if (!fieldType) continue;
+        const tag = fieldType.toLowerCase();
+        const currentTags = play.tags || [];
+        if (currentTags.includes(tag)) continue;
+        const newTags = [...currentTags, tag];
+        await updatePlayTags(session, play.id, newTags);
+        setPlays((prev) => prev.map((p) => p.id === play.id ? { ...p, tags: newTags } : p));
+        updated++;
+      }
+      setSuccessMsg(`Auto-tagged ${updated} play${updated !== 1 ? "s" : ""} by field type.`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setAutoTagging(false);
+    }
+  };
 
   const handleDelete = async (play) => {
     const elevated = await ensureElevated();
@@ -1895,6 +1931,42 @@ export default function AdminPlaysPage() {
   return (
     <div className="hide-scroll bg-[#13151a] font-DmSans text-white" style={{ height: "100dvh", overflowY: "auto" }}>
 
+      {/* ── New Play sport picker modal ── */}
+      {newPlayModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-xs rounded-2xl border border-white/10 bg-[#1e2228] p-7 shadow-2xl">
+            <h2 className="mb-1 font-Manrope text-base font-bold text-white">New Play</h2>
+            <p className="mb-5 text-xs text-BrandGray2">Choose the sport for this play. This sets the field type and defaults.</p>
+            <div className="flex flex-col gap-3">
+              <select
+                autoFocus
+                value={newPlaySport}
+                onChange={(e) => setNewPlaySport(e.target.value)}
+                className="w-full rounded-lg border border-white/10 bg-[#13151a] px-3.5 py-2.5 text-sm text-white outline-none focus:border-BrandOrange/50"
+              >
+                {["Rugby", "Football", "Soccer", "Lacrosse", "Womens Lacrosse", "Basketball", "Blank"].map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setNewPlayModal(false)}
+                  className="flex-1 rounded-lg border border-white/10 py-2 text-xs text-BrandGray transition hover:border-white/20 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleNewPlayConfirm}
+                  className="flex-1 rounded-lg bg-BrandOrange py-2 text-xs font-semibold text-white transition hover:brightness-110"
+                >
+                  Create Play
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Danger Mode (elevation) modal ── */}
       {elevateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -1983,6 +2055,14 @@ export default function AdminPlaysPage() {
             <span>{plays.length} total</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={handleAutoTagBySport}
+              disabled={autoTagging}
+              title="Auto-tag all plays by their field type"
+              className="flex items-center gap-1.5 rounded-lg border border-white/8 px-3.5 py-2 text-xs text-BrandGray transition hover:border-white/20 hover:text-white disabled:opacity-50"
+            >
+              <FiTag /> {autoTagging ? "Tagging…" : "Auto-tag by Sport"}
+            </button>
             <button
               onClick={handleNew}
               className="flex items-center gap-1.5 rounded-lg bg-BrandOrange px-3.5 py-2 text-xs font-semibold text-white transition hover:brightness-110 active:scale-[0.97]"
@@ -2195,6 +2275,14 @@ export default function AdminPlaysPage() {
           {/* Error */}
           {error && (
             <div className="mb-4 rounded-lg bg-red-600/10 px-4 py-2 text-sm text-red-400">{error}</div>
+          )}
+
+          {/* Success */}
+          {successMsg && (
+            <div className="mb-4 flex items-center justify-between rounded-lg bg-green-600/10 px-4 py-2 text-sm text-green-400">
+              <span>{successMsg}</span>
+              <button onClick={() => setSuccessMsg("")} className="ml-4 text-green-400/60 hover:text-green-400"><FiX /></button>
+            </div>
           )}
 
           {/* Loading */}

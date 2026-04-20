@@ -22,7 +22,8 @@ import {
 import { useFieldViewport } from "./hooks/useFieldViewport";
 import { INITIAL_BALL, useSlateEntities, getNextPlayerId } from "./hooks/useSlateEntities";
 import SavePrefabModal from "../../components/SavePrefabModal";
-import { loadCustomPrefabs, saveCustomPrefabs, buildCustomPrefab, deleteCustomPrefab } from "../../utils/customPrefabs";
+import { buildCustomPrefab } from "../../utils/customPrefabs";
+import { fetchPrefabs, savePrefabToServer, deletePrefabFromServer } from "../../utils/prefabsApi";
 import { useSlateHistory } from "./hooks/useSlateHistory";
 import { useSlateActionLog } from "./hooks/useSlateActionLog";
 import {
@@ -275,7 +276,43 @@ function Slate({
     const normalizedInitialPlayName = String(initialPlayName ?? "").trim();
     return normalizedInitialPlayName || DEFAULT_PLAY_NAME;
   });
-  const [customPrefabs, setCustomPrefabs] = useState(() => loadCustomPrefabs());
+  const [customPrefabs, setCustomPrefabs] = useState([]);
+
+  // Load prefabs from server on mount; migrate any localStorage prefabs for non-admin users.
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      const serverPrefabs = await fetchPrefabs(adminMode);
+      if (cancelled) return;
+
+      if (!adminMode && serverPrefabs.length === 0) {
+        // One-time migration: push any existing localStorage prefabs to the server.
+        try {
+          const raw = localStorage.getItem("coachable-custom-prefabs");
+          if (raw) {
+            const local = JSON.parse(raw);
+            if (Array.isArray(local) && local.length > 0) {
+              const migrated = await Promise.all(
+                local.map((p) => savePrefabToServer(p, false))
+              );
+              if (!cancelled) {
+                setCustomPrefabs(migrated.filter(Boolean));
+                localStorage.removeItem("coachable-custom-prefabs");
+              }
+              return;
+            }
+          }
+        } catch {
+          // ignore migration errors
+        }
+      }
+
+      if (!cancelled) setCustomPrefabs(serverPrefabs);
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [adminMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [savePrefabModalOpen, setSavePrefabModalOpen] = useState(false);
   const [saveToPlaybookOpen, setSaveToPlaybookOpen] = useState(false);
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
@@ -2121,7 +2158,7 @@ function Slate({
     setCanvasTool("select");
   }, [entities, currentFieldType]);
 
-  const handleSavePrefab = useCallback((name) => {
+  const handleSavePrefab = useCallback(async (name) => {
     const selectedPlayers = (entities.selectedPlayerIds || [])
       .map((id) => entities.playersById[id])
       .filter(Boolean);
@@ -2138,9 +2175,12 @@ function Slate({
       return;
     }
     const prefab = buildCustomPrefab(name, selectedPlayers, ball);
-    const updated = [...customPrefabs, prefab];
-    saveCustomPrefabs(updated);
-    setCustomPrefabs(updated);
+    const saved = await savePrefabToServer(prefab, adminMode);
+    if (!saved) {
+      onShowMessage?.("Prefab not saved", "Failed to save prefab. Please try again.", "error");
+      return;
+    }
+    setCustomPrefabs((prev) => [...prev, saved]);
     setSavePrefabModalOpen(false);
     const parts = [];
     if (selectedPlayers.length) parts.push(`${selectedPlayers.length} player${selectedPlayers.length > 1 ? "s" : ""}`);
@@ -2152,13 +2192,14 @@ function Slate({
     entities.playersById,
     entities.ballsById,
     customPrefabs,
+    adminMode,
     onShowMessage,
   ]);
 
-  const handleDeleteCustomPrefab = useCallback((id) => {
-    const updated = deleteCustomPrefab(id);
-    setCustomPrefabs(updated);
-  }, []);
+  const handleDeleteCustomPrefab = useCallback(async (id) => {
+    const ok = await deletePrefabFromServer(id, adminMode);
+    if (ok) setCustomPrefabs((prev) => prev.filter((p) => p.id !== id));
+  }, [adminMode]);
 
   const seekTimeline = useCallback((timeMs, meta = {}) => {
     const source = typeof meta?.source === "string" ? meta.source : "engine";
