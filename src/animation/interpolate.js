@@ -59,7 +59,9 @@ export const getPoseAtTime = (track, timeMs, fallbackPose = { x: 0, y: 0, r: 0 }
 /**
  * Computes the travel direction angle (in Konva degrees) for a track at a given time.
  * Used to orient oblong balls (football, rugby) so the tip points toward movement.
- * Returns null if direction cannot be determined (< 2 keyframes or no movement).
+ * Uses the current segment's direction instantly; falls back to the nearest moving segment
+ * when the current one has < 10px of movement (avoids snapping to 0° on stationary segments).
+ * Returns null only when no movement exists anywhere in the track.
  * @param {Object} track - Track with keyframes array.
  * @param {number} timeMs - Time in milliseconds.
  * @returns {number|null} Rotation in degrees (0 = pointing right, 90 = down, etc.)
@@ -69,39 +71,47 @@ export const getDirectionAtTime = (track, timeMs) => {
   if (keyframes.length < 2) return null;
 
   const t = Number.isFinite(Number(timeMs)) ? Number(timeMs) : 0;
+
+  const segDir = (a, b) => {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    if (Math.sqrt(dx * dx + dy * dy) < 10) return null;
+    return Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+  };
+
+  // Scan outward from segIdx to find the nearest segment with real movement.
+  const nearestDir = (segIdx) => {
+    for (let step = 0; step < keyframes.length; step += 1) {
+      const lo = segIdx - step;
+      const hi = segIdx + step;
+      if (lo >= 0 && lo < keyframes.length - 1) {
+        const d = segDir(keyframes[lo], keyframes[lo + 1]);
+        if (d !== null) return d;
+      }
+      if (hi !== lo && hi >= 0 && hi < keyframes.length - 1) {
+        const d = segDir(keyframes[hi], keyframes[hi + 1]);
+        if (d !== null) return d;
+      }
+    }
+    return null;
+  };
+
   const first = keyframes[0];
   const last = keyframes[keyframes.length - 1];
 
-  let dx, dy;
-  if (t <= first.t) {
-    const second = keyframes[1];
-    dx = second.x - first.x;
-    dy = second.y - first.y;
-  } else if (t >= last.t) {
-    const prev = keyframes[keyframes.length - 2];
-    dx = last.x - prev.x;
-    dy = last.y - prev.y;
-  } else {
-    let left = first;
-    let right = last;
-    for (let i = 0; i < keyframes.length - 1; i += 1) {
-      if (t >= keyframes[i].t && t < keyframes[i + 1].t) {
-        left = keyframes[i];
-        right = keyframes[i + 1];
-        break;
-      }
+  if (t <= first.t) return nearestDir(0);
+  if (t >= last.t) return nearestDir(keyframes.length - 2);
+
+  let leftIdx = 0;
+  for (let i = 0; i < keyframes.length - 1; i += 1) {
+    if (t >= keyframes[i].t && t < keyframes[i + 1].t) {
+      leftIdx = i;
+      break;
     }
-    dx = right.x - left.x;
-    dy = right.y - left.y;
   }
 
-  // Only rotate if the ball moves more than 10px between neighboring keyframes,
-  // to avoid jittery rotation from tiny positional noise.
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist < 10) return null;
-  // Ball images are drawn tip-up (0° = upright). atan2 gives 0° for rightward movement,
-  // so add 90° so the tip aligns with the direction of travel.
-  return Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+  const dir = segDir(keyframes[leftIdx], keyframes[leftIdx + 1]);
+  return dir !== null ? dir : nearestDir(leftIdx);
 };
 
 /**
