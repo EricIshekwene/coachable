@@ -71,6 +71,7 @@ export default function Plays() {
   const [bulkTagOpen, setBulkTagOpen] = useState(false);
   const [bulkTagInput, setBulkTagInput] = useState("");
   const [copyFallbackUrl, setCopyFallbackUrl] = useState(null);
+  const [playSort, setPlaySort] = useState("updated");
 
   const menuRef = useRef(null);
   const renameRef = useRef(null);
@@ -273,7 +274,12 @@ export default function Plays() {
     if (!teamId) return;
     try {
       const newPlay = await apiDuplicatePlay(teamId, playId);
-      setPlays((prev) => [newPlay, ...prev]);
+      setPlays((prev) => {
+        const idx = prev.findIndex((p) => p.id === playId);
+        const next = [...prev];
+        next.splice(idx < 0 ? 0 : idx + 1, 0, newPlay);
+        return next;
+      });
       showToast(`Duplicated as "${newPlay.title}"`);
     } catch {
       showToast("Failed to duplicate play");
@@ -365,6 +371,13 @@ export default function Plays() {
   const visiblePlays = activeTag
     ? baseVisiblePlays.filter((p) => (p.tags || []).includes(activeTag))
     : baseVisiblePlays;
+
+  const sortedVisiblePlays = [...visiblePlays].sort((a, b) => {
+    if (playSort === "az") return (a.title || "").localeCompare(b.title || "");
+    if (playSort === "za") return (b.title || "").localeCompare(a.title || "");
+    if (playSort === "created") return new Date(b.createdAt) - new Date(a.createdAt);
+    return new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt);
+  });
 
   // Recently edited: top 5, only shown at root when not searching
   const recentlyEdited = (!currentFolderId && !isSearching)
@@ -568,9 +581,21 @@ export default function Plays() {
       )}
 
       <div className="mt-6">
-        {!currentFolderId && <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-BrandGray2">Plays</p>}
+        <div className="mb-3 flex items-center justify-between">
+          {!currentFolderId && <p className="text-[10px] font-semibold uppercase tracking-widest text-BrandGray2">Plays</p>}
+          <select
+            value={playSort}
+            onChange={(e) => setPlaySort(e.target.value)}
+            className="ml-auto rounded-md border border-BrandGray2/30 bg-BrandBlack2 px-2.5 py-1 text-[11px] text-BrandGray outline-none focus:border-BrandOrange cursor-pointer"
+          >
+            <option value="updated">Recently Updated</option>
+            <option value="created">Recently Created</option>
+            <option value="az">Name A→Z</option>
+            <option value="za">Name Z→A</option>
+          </select>
+        </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {visiblePlays.map((play) => (
+          {sortedVisiblePlays.map((play) => (
             <div key={play.id} draggable={isCoach && !bulkMode} onDragStart={(e) => handleDragStart(e, play.id)} onDragEnd={handleDragEnd} className={`group relative flex cursor-grab flex-col rounded-xl border p-5 transition active:cursor-grabbing ${bulkMode && bulkSelected.has(play.id) ? "border-BrandOrange bg-BrandOrange/5" : "border-BrandGray2/20 bg-BrandBlack2/30 hover:border-BrandOrange/30 hover:bg-BrandBlack2/60"}`} onClick={bulkMode ? () => toggleBulkSelect(play.id) : undefined}>
               {bulkMode && (
                 <div className="absolute top-3 left-3 z-10">

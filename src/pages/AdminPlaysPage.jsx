@@ -1576,6 +1576,7 @@ export default function AdminPlaysPage() {
   const [newPlaySport, setNewPlaySport] = useState("Rugby");
   const [dragSrcId, setDragSrcId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
+  const [playSort, setPlaySort] = useState("custom");
 
   // ── Danger Mode (elevated permissions) ──
   const [elevatedUntil, setElevatedUntil] = useState(() => getAdminElevatedUntil());
@@ -1755,11 +1756,16 @@ export default function AdminPlaysPage() {
     }
   };
 
-  /** Duplicate a play; appends the copy to the local plays list. */
+  /** Duplicate a play; inserts the copy right after the original in the list. */
   const handleDuplicate = async (play) => {
     try {
       const copy = await duplicatePlay(session, play.id);
-      setPlays((prev) => [...prev, copy]);
+      setPlays((prev) => {
+        const idx = prev.findIndex((p) => p.id === play.id);
+        const next = [...prev];
+        next.splice(idx < 0 ? next.length : idx + 1, 0, copy);
+        return next;
+      });
     } catch (err) { setError(err.message); }
   };
 
@@ -1880,19 +1886,27 @@ export default function AdminPlaysPage() {
     }
   };
 
-  const visiblePlays = plays.filter((p) => {
-    const inFolder =
-      currentFolderId === null ? !p.folderId : p.folderId === currentFolderId;
-    if (!inFolder) return false;
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return (
-      p.title?.toLowerCase().includes(q) ||
-      p.sport?.toLowerCase().includes(q) ||
-      p.description?.toLowerCase().includes(q) ||
-      p.tags?.some((t) => t.toLowerCase().includes(q))
-    );
-  });
+  const visiblePlays = plays
+    .filter((p) => {
+      const inFolder =
+        currentFolderId === null ? !p.folderId : p.folderId === currentFolderId;
+      if (!inFolder) return false;
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      return (
+        p.title?.toLowerCase().includes(q) ||
+        p.sport?.toLowerCase().includes(q) ||
+        p.description?.toLowerCase().includes(q) ||
+        p.tags?.some((t) => t.toLowerCase().includes(q))
+      );
+    })
+    .sort((a, b) => {
+      if (playSort === "az") return (a.title || "").localeCompare(b.title || "");
+      if (playSort === "za") return (b.title || "").localeCompare(a.title || "");
+      if (playSort === "updated") return new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt);
+      if (playSort === "created") return new Date(b.createdAt) - new Date(a.createdAt);
+      return (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || new Date(b.createdAt) - new Date(a.createdAt);
+    });
 
   const currentFolder = folders.find((f) => f.id === currentFolderId);
 
@@ -2236,6 +2250,17 @@ export default function AdminPlaysPage() {
                 Clear
               </button>
             )}
+            <select
+              value={playSort}
+              onChange={(e) => setPlaySort(e.target.value)}
+              className="shrink-0 rounded-lg border border-white/8 bg-[#1e2228] px-2.5 py-2 text-xs text-BrandGray outline-none focus:border-BrandOrange/50 cursor-pointer"
+            >
+              <option value="custom">Custom Order</option>
+              <option value="updated">Recently Updated</option>
+              <option value="created">Recently Created</option>
+              <option value="az">Name A→Z</option>
+              <option value="za">Name Z→A</option>
+            </select>
           </div>
 
           {/* Error */}

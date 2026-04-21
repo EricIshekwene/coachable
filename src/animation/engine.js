@@ -19,6 +19,7 @@ export class AnimationEngine {
     this.lastFrameTs = null;
     this.lastTickDeltaMs = 0;
     this.listeners = new Set();
+    this.keyframeTimes = [];
     this.tick = this.tick.bind(this);
     logAnimDebug(`init engine duration=${this.durationMs}`);
   }
@@ -64,6 +65,11 @@ export class AnimationEngine {
     const numeric = Number(nextRate);
     if (!Number.isFinite(numeric) || numeric <= 0) return;
     this.playbackRate = numeric;
+  }
+
+  /** @param {number[]} times - Sorted array of keyframe times in ms. */
+  setKeyframeTimes(times) {
+    this.keyframeTimes = Array.isArray(times) ? times : [];
   }
 
   seek(timeMs, { shouldLog = true, source = "engine" } = {}) {
@@ -113,7 +119,17 @@ export class AnimationEngine {
     this.lastTickDeltaMs = deltaMs;
     const scaledDelta = deltaMs * this.playbackRate;
     const limit = this.durationMs;
-    let next = this.timeMs + scaledDelta;
+    const prev = this.timeMs;
+    let next = prev + scaledDelta;
+
+    // Snap to the first keyframe strictly between prev and next (exclusive start, inclusive end).
+    if (this.keyframeTimes.length > 0) {
+      const hit = this.keyframeTimes.find((t) => t > prev && t <= next);
+      if (hit != null) {
+        next = hit;
+      }
+    }
+
     if (next >= limit) {
       if (this.loop) {
         next = next % limit;

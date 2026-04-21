@@ -956,6 +956,10 @@ function Slate({
     engineRef.current.setPlaybackRate(speedToPlaybackRate(speedMultiplier));
   }, [speedMultiplier]);
 
+  useEffect(() => {
+    engineRef.current.setKeyframeTimes(visibleKeyframesMs);
+  }, [visibleKeyframesMs]);
+
   const rotateEntitiesByDelta = useCallback((delta) => {
     if (delta === 0) return;
 
@@ -2160,10 +2164,17 @@ function Slate({
 
   const handleSavePrefab = useCallback(async (name) => {
     const selectedPlayers = (entities.selectedPlayerIds || [])
-      .map((id) => entities.playersById[id])
+      .map((id) => {
+        const player = entities.playersById[id];
+        if (!player) return null;
+        const pose = resolveTrackPose(id);
+        return pose ? { ...player, x: pose.x, y: pose.y } : player;
+      })
       .filter(Boolean);
     const selectedBallId = (entities.selectedItemIds || []).find((id) => entities.ballsById?.[id]);
-    const ball = selectedBallId ? entities.ballsById[selectedBallId] : null;
+    const rawBall = selectedBallId ? entities.ballsById[selectedBallId] : null;
+    const ballPose = rawBall ? resolveTrackPose(selectedBallId) : null;
+    const ball = rawBall && ballPose ? { ...rawBall, x: ballPose.x, y: ballPose.y } : rawBall;
     const ballSelected = Boolean(ball);
     if (selectedPlayers.length < 2 && !ballSelected) return;
     const normalizedName = String(name ?? "").trim().toLowerCase();

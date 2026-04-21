@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { fetchSharedPlay, copySharedPlay } from "../utils/apiPlays";
-import PlayPreviewCard from "../components/PlayPreviewCard";
 import PlayPreviewPlayer from "../components/PlayPreviewPlayer";
 import useThemeColor from "../utils/useThemeColor";
 import { FiLoader, FiClock, FiTag, FiPlus, FiExternalLink, FiCheck, FiUser } from "react-icons/fi";
