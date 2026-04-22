@@ -5,7 +5,11 @@ import { requireAuth } from "../middleware/auth.js";
 
 const router = Router();
 
-// POST /onboarding/create-team
+/**
+ * POST /onboarding/create-team
+ * Creates a new team, generates invite codes, and seeds the sport's demo play
+ * (from page_sections) into the team's playbook if one is assigned.
+ */
 router.post("/create-team", requireAuth, async (req, res, next) => {
   try {
     const { teamName, sport } = req.body;
@@ -47,6 +51,26 @@ router.post("/create-team", requireAuth, async (req, res, next) => {
          VALUES ($1, 'player', $2, $3), ($1, 'coach', $4, $3)`,
         [team.id, playerCode, req.userId, coachCode]
       );
+
+      // Seed the sport's demo play (from page_sections) into the new team's playbook
+      if (team.sport) {
+        const sectionKey = `landing.visualize.${team.sport}`;
+        const { rows: seedRows } = await client.query(
+          `SELECT pp.title, pp.play_data, pp.thumbnail_url
+           FROM page_sections ps
+           JOIN platform_plays pp ON pp.id = ps.play_id
+           WHERE ps.section_key = $1`,
+          [sectionKey]
+        );
+        if (seedRows.length) {
+          const seed = seedRows[0];
+          await client.query(
+            `INSERT INTO plays (team_id, title, play_data, thumbnail_url, created_by_user_id, updated_by_user_id)
+             VALUES ($1, $2, $3, $4, $5, $5)`,
+            [team.id, seed.title, seed.play_data, seed.thumbnail_url || null, req.userId]
+          );
+        }
+      }
 
       // Mark user onboarded
       await client.query(
