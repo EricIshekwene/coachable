@@ -400,12 +400,14 @@ END $$;
 
 -- Seed default sections (idempotent)
 INSERT INTO page_sections (section_key, label, page) VALUES
-  ('landing.visualize',            'Landing — Visualize',            'landing'),
-  ('landing.visualize.rugby',      'Rugby — Visualize',              'rugby'),
-  ('landing.visualize.football',   'Football — Visualize',           'football'),
-  ('landing.visualize.lacrosse',   'Lacrosse — Visualize',           'lacrosse'),
-  ('landing.visualize.basketball', 'Basketball — Visualize',         'basketball'),
-  ('landing.visualize.soccer',     'Soccer — Visualize',             'soccer')
+  ('landing.visualize',                 'Landing — Visualize',                 'landing'),
+  ('landing.visualize.rugby',           'Rugby — Visualize',                   'rugby'),
+  ('landing.visualize.football',        'Football — Visualize',                'football'),
+  ('landing.visualize.lacrosse',        'Lacrosse — Visualize',                'lacrosse'),
+  ('landing.visualize.basketball',      'Basketball — Visualize',              'basketball'),
+  ('landing.visualize.soccer',          'Soccer — Visualize',                  'soccer'),
+  ('landing.visualize.ice_hockey',      'Ice Hockey — Visualize',              'ice_hockey'),
+  ('landing.visualize.field_hockey',    'Field Hockey — Visualize',            'field_hockey')
 ON CONFLICT DO NOTHING;
 
 -- ============================================================
