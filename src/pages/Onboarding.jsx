@@ -10,7 +10,7 @@ import { FaRegHandshake } from "react-icons/fa6";
 import { FiArrowRight, FiArrowLeft, FiChevronDown, FiEdit } from "react-icons/fi";
 
 const SPORTS = [
-  "Rugby", "Soccer", "Football", "Lacrosse", "Womens Lacrosse", "Basketball", "Other",
+  "Rugby", "Soccer", "Football", "Lacrosse", "Womens Lacrosse", "Basketball", "Field Hockey", "Ice Hockey", "Other",
 ];
 
 export default function Onboarding() {
@@ -299,6 +299,8 @@ export default function Onboarding() {
                   { key: "lacrosse", label: "Lacrosse" },
                   { key: "womens lacrosse", label: "Women's Lacrosse" },
                   { key: "basketball", label: "Basketball" },
+                  { key: "field hockey", label: "Field Hockey" },
+                  { key: "ice hockey", label: "Ice Hockey" },
                 ].map((s) => (
                   <button
                     key={s.key || "blank"}

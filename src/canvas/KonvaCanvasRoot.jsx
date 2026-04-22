@@ -20,6 +20,8 @@ import FootballField from "../assets/objects/Field Vectors/Football_Field.png";
 import LacrosseField from "../assets/objects/Field Vectors/Lacrosse_Field.png";
 import WomensLacrosseField from "../assets/objects/Field Vectors/Womans_Lacrosse_Field.png";
 import BasketballField from "../assets/objects/Field Vectors/Basketball_Field.png";
+import FieldHockeyField from "../assets/objects/Field Vectors/Field_Hockey_Field.png";
+import IceHockeyField from "../assets/objects/Field Vectors/Ice_Hockey_Field.png";
 import WhiteBall from "../assets/objects/balls/white_ball.png";
 import SoccerBall from "../assets/objects/balls/Soccer_ball.png";
 import FootballBall from "../assets/objects/balls/Football.png";
@@ -40,9 +42,14 @@ const FIELD_TYPE_TO_IMAGE_SRC = {
   Lacrosse: LacrosseField,
   "Womens Lacrosse": WomensLacrosseField,
   Basketball: BasketballField,
+  "Field Hockey": FieldHockeyField,
+  "Ice Hockey": IceHockeyField,
   Blank: null,
 };
-const ROUND_BALL_FIELD_TYPES = new Set(["soccer", "lacrosse", "womens lacrosse", "basketball", "blank"]);
+const ROUND_BALL_FIELD_TYPES = new Set(["soccer", "lacrosse", "womens lacrosse", "basketball", "field hockey", "ice hockey", "blank"]);
+const FIELD_TYPE_BALL_COLOR = {
+  "Ice Hockey": "#000000",
+};
 
 /** Loads an HTML Image from a URL and tracks loading status. */
 const useImage = (src) => {
@@ -205,6 +212,7 @@ function KonvaCanvasRoot({
   const fieldType = pitch.fieldType ?? "Rugby";
   const resolvedFieldType = (fieldType in FIELD_TYPE_TO_IMAGE_SRC) ? fieldType : "Rugby";
   const useRoundBallSprite = ROUND_BALL_FIELD_TYPES.has(String(resolvedFieldType).toLowerCase());
+  const ballColorOverride = FIELD_TYPE_BALL_COLOR[resolvedFieldType] ?? null;
   const fieldOpacityPercent = clamp(Number(pitch.fieldOpacity ?? 100), 0, 100);
   const fieldOpacity = fieldOpacityPercent / 100;
   const pitchColor = pitch.pitchColor ?? undefined;
@@ -2063,7 +2071,15 @@ function KonvaCanvasRoot({
                         e.cancelBubble = true;
                       }}
                     >
-                      {objectImageElement ? (() => {
+                      {objectType === "ball" && ballColorOverride ? (
+                        <Circle
+                          radius={objectSizePx / 2}
+                          fill={ballColorOverride}
+                          shadowColor="black"
+                          shadowOpacity={0.25}
+                          shadowBlur={2}
+                        />
+                      ) : objectImageElement ? (() => {
                         const shouldForceSquare = objectType === "ball" && useRoundBallSprite;
                         const naturalMax = Math.max(objectImageElement.width || 1, objectImageElement.height || 1);
                         const scale = objectSizePx / naturalMax;

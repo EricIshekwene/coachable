@@ -179,6 +179,24 @@ The `users.onboarded_at` timestamp gates access to the app. Revisiting `/onboard
 
 ---
 
+## Supported Sports
+
+| Sport | Field | Ball |
+|---|---|---|
+| Rugby | Rugby field | Oblong ball (rotates toward movement) |
+| Football | Football field | Oblong ball (rotates toward movement) |
+| Soccer | Soccer field | Round ball |
+| Lacrosse | Lacrosse field | Round ball |
+| Women's Lacrosse | Women's Lacrosse field | Round ball |
+| Basketball | Basketball court | Round ball |
+| Field Hockey | Field Hockey field | Round ball |
+| Ice Hockey | Ice Hockey rink | Black puck (rendered as circle) |
+| Blank | No background | Round ball |
+
+Sport is selected at play creation time and determines the field image, ball sprite, and ball-rotation behavior. Field Hockey and Ice Hockey were added in the latest release.
+
+---
+
 ## Canvas & Animation
 
 - **Canvas**: Konva.js via react-konva. Single `KonvaCanvasRoot` handles all rendering, pan/zoom, marquee selection, and snapping
@@ -186,6 +204,20 @@ The `users.onboarded_at` timestamp gates access to the app. Revisiting `/onboard
 - **Drawing tools**: freehand, arrows, shapes, text, erase; multi-select with group move/resize/rotate
 - **Coordinate system**: `(0,0)` = field center, `+x` right, `+y` down, pixels. Field rotates visually but world coords stay axis-aligned
 - **Snapping**: center-to-center, field center, canvas center; orange guideline dashes
+- **Playback speed**: `play.playback.speedMultiplier` (0–100) scales preview playback rate from 0.25× to 4×
+- **Controlled preview**: `PlayPreviewCard` accepts a `controlledTimeMs` prop to drive animation from an external source (e.g. a scrubber)
+
+---
+
+## Admin Plays Page
+
+The admin plays page (`/admin/plays`) lets admins manage the full play library:
+
+- **New play modal** — sport picker prompt before creating a new play; passes the selected sport as route state so the editor pre-loads the correct field
+- **Sort options** — Custom Order, Recently Updated, Recently Created, Name A→Z / Z→A
+- **Duplicate** — inserts the copy immediately after the original in the list (not at the end)
+- **Sport tag cleanup** — on load, any sport-name tags that were previously auto-applied to plays are stripped automatically
+- **Playbook section panel** — sport badges removed; only user-defined tags are shown
 
 ---
 

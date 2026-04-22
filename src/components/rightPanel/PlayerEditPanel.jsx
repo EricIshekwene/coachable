@@ -71,6 +71,7 @@ export default function PlayerEditPanel({
             onChange={(e) => onChange?.({ number: e.target.value })}
             onKeyDown={(e) => {
               if (e.key === "Escape") onClose?.();
+              if (e.key === "Enter") onClose?.();
             }}
             placeholder={useLabels ? "e.g. QB, CB, LW" : ""}
             className={POPUP_DENSE_INPUT_CLASS}
@@ -115,6 +116,7 @@ export default function PlayerEditPanel({
             onChange={(e) => onChange?.({ name: e.target.value })}
             onKeyDown={(e) => {
               if (e.key === "Escape") onClose?.();
+              if (e.key === "Enter") { e.preventDefault(); onClose?.(); }
             }}
             className="w-full min-h-8 sm:min-h-9 bg-BrandBlack2 border border-BrandGray rounded-md px-2 py-1.5 text-BrandWhite text-xs sm:text-sm font-DmSans focus:outline-none focus:border-BrandOrange transition-colors resize-none overflow-hidden leading-tight"
           />

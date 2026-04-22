@@ -28,6 +28,8 @@ const SPORT_LABELS = {
   lacrosse: "Lacrosse",
   basketball: "Basketball",
   soccer: "Soccer",
+  "field hockey": "Field Hockey",
+  "ice hockey": "Ice Hockey",
 };
 
 /**

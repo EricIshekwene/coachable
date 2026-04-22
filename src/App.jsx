@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { installGlobalErrorHandlers } from "./utils/errorReporter";
 import "./index.css";
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Slate from "./features/slate/Slate";
 import SlateRecord from "./features/slate/SlateRecord";
@@ -49,9 +49,25 @@ import NoTeam from "./pages/NoTeam";
 import Resources from "./pages/Resources";
 import Enterprise from "./pages/Enterprise";
 
+const SPORT_HOME_ROUTES = {
+  rugby: "/rugby",
+  soccer: "/soccer",
+  football: "/football",
+  lacrosse: "/lacrosse",
+  basketball: "/basketball",
+  "field hockey": "/field-hockey",
+  "ice hockey": "/ice-hockey",
+};
+
 export function SlateRoot({ adminMode = false, sport = null }) {
+  const navigate = useNavigate();
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
   useThemeColor("#121212");
+
+  const navigateHome = adminMode
+    ? undefined
+    : () => navigate(SPORT_HOME_ROUTES[String(sport ?? "").toLowerCase()] ?? "/home");
+
   return (
     <div
       className="w-full bg-BrandBlack flex flex-row justify-between relative overflow-hidden"
@@ -70,6 +86,7 @@ export function SlateRoot({ adminMode = false, sport = null }) {
           onShowMessage={showMessage}
           adminMode={adminMode}
           sport={sport}
+          onNavigateHome={navigateHome}
         />
       </MobileViewOnlyGate>
     </div>
@@ -185,6 +202,8 @@ export function AppRoutes() {
       <Route path="/lacrosse" element={<Landing sport="lacrosse" />} />
       <Route path="/basketball" element={<Landing sport="basketball" />} />
       <Route path="/soccer" element={<Landing sport="soccer" />} />
+      <Route path="/field-hockey" element={<Landing sport="field hockey" />} />
+      <Route path="/ice-hockey" element={<Landing sport="ice hockey" />} />
       <Route path="/resources" element={<Resources />} />
       <Route path="/enterprise" element={<Enterprise />} />
       <Route path="/signup" element={<Signup />} />

@@ -8,6 +8,8 @@ import FootballField from "../assets/objects/Field Vectors/Football_Field.png";
 import LacrosseField from "../assets/objects/Field Vectors/Lacrosse_Field.png";
 import WomensLacrosseField from "../assets/objects/Field Vectors/Womans_Lacrosse_Field.png";
 import BasketballField from "../assets/objects/Field Vectors/Basketball_Field.png";
+import FieldHockeyField from "../assets/objects/Field Vectors/Field_Hockey_Field.png";
+import IceHockeyField from "../assets/objects/Field Vectors/Ice_Hockey_Field.png";
 
 const SPORTS = [
   { key: "rugby", label: "Rugby", image: RugbyField, color: "#4FA85D" },
@@ -16,6 +18,8 @@ const SPORTS = [
   { key: "lacrosse", label: "Lacrosse", image: LacrosseField, color: "#4FA85D" },
   { key: "womens lacrosse", label: "Women's Lacrosse", image: WomensLacrosseField, color: "#4FA85D" },
   { key: "basketball", label: "Basketball", image: BasketballField, color: "#D8C3A5" },
+  { key: "field hockey", label: "Field Hockey", image: FieldHockeyField, color: "#3E8E5B" },
+  { key: "ice hockey", label: "Ice Hockey", image: IceHockeyField, color: "#ECF8FE", imageRotation: 90 },
   { key: "blank", label: "Blank Canvas", image: null, color: "#4FA85D" },
 ];
 
@@ -65,6 +69,7 @@ export default function SportPickerPage() {
                     src={sport.image}
                     alt=""
                     className="absolute inset-0 w-full h-full object-contain opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-200"
+                    style={sport.imageRotation ? { transform: `rotate(${sport.imageRotation}deg)` } : undefined}
                     draggable={false}
                   />
                 ) : (

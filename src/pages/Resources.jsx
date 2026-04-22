@@ -98,7 +98,7 @@ const FAQ_SECTIONS = [
       },
       {
         q: "What sports does Coachable support?",
-        a: "Coachable supports rugby, American football, lacrosse, basketball, and soccer out of the box. The play designer works for any sport that uses a field or court — our flexible canvas adapts to your sport's layout.",
+        a: "Coachable supports rugby, American football, lacrosse, women's lacrosse, basketball, soccer, field hockey, and ice hockey out of the box. The play designer works for any sport that uses a field or court — our flexible canvas adapts to your sport's layout.",
       },
       {
         q: "Do I need an account to try the play designer?",

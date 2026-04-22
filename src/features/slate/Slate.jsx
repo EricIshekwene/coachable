@@ -438,8 +438,8 @@ function Slate({
   useEffect(() => { currentFieldTypeRef.current = currentFieldType; }, [currentFieldType]);
 
   // Field types whose balls are oblong (football/rugby) and should rotate toward movement direction.
-  // Round-ball sports (soccer, basketball, lacrosse) are excluded.
-  const ROUND_BALL_FIELD_TYPES_LOWER = new Set(["soccer", "lacrosse", "basketball"]);
+  // Round-ball sports are excluded.
+  const ROUND_BALL_FIELD_TYPES_LOWER = new Set(["soccer", "lacrosse", "womens lacrosse", "basketball", "field hockey", "ice hockey", "blank"]);
   /** Tracks last logged rotation angle per ball to avoid per-frame log spam. */
   const lastLoggedRotationRef = useRef({});
 

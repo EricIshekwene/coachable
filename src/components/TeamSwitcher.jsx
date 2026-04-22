@@ -27,6 +27,8 @@ const SPORT_OPTIONS = [
   { value: "lacrosse", label: "Lacrosse" },
   { value: "womens lacrosse", label: "Women's Lacrosse" },
   { value: "basketball", label: "Basketball" },
+  { value: "field hockey", label: "Field Hockey" },
+  { value: "ice hockey", label: "Ice Hockey" },
   { value: "blank", label: "Blank Canvas" },
 ];
 

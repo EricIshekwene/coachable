@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-const SUPPORTED_FIELD_TYPES = ["Rugby", "Soccer", "Football", "Lacrosse", "Womens Lacrosse", "Basketball", "Blank"];
+const SUPPORTED_FIELD_TYPES = ["Rugby", "Soccer", "Football", "Lacrosse", "Womens Lacrosse", "Basketball", "Field Hockey", "Ice Hockey", "Blank"];
 
 export function resolveFieldTypeFromSport(sport) {
   const normalizedSport = String(sport ?? "").trim().toLowerCase();
@@ -9,6 +9,8 @@ export function resolveFieldTypeFromSport(sport) {
   if (normalizedSport === "womens lacrosse" || normalizedSport === "women's lacrosse") return "Womens Lacrosse";
   if (normalizedSport === "lacrosse") return "Lacrosse";
   if (normalizedSport === "basketball") return "Basketball";
+  if (normalizedSport === "field hockey") return "Field Hockey";
+  if (normalizedSport === "ice hockey") return "Ice Hockey";
   if (normalizedSport === "blank" || normalizedSport === "" || normalizedSport === "other") return "Blank";
   return "Rugby";
 }
@@ -20,6 +22,8 @@ export const SPORT_DEFAULTS = {
   Lacrosse: { sizePercent: 65, defaultFieldRotation: 90, usePositionLabels: true },
   "Womens Lacrosse": { sizePercent: 65, defaultFieldRotation: 90, usePositionLabels: true },
   Soccer: { sizePercent: 65, usePositionLabels: true },
+  "Field Hockey": { baseSizePx: 23, sizePercent: 65, usePositionLabels: true },
+  "Ice Hockey": { baseSizePx: 23, sizePercent: 65, usePositionLabels: true, pitchColor: "#ECF8FE" },
   Basketball: { sizePercent: 80, pitchColor: "#D8C3A5", defaultFieldRotation: 90 },
   Blank: { pitchColor: "#4FA85D", sizePercent: 75 },
 };
@@ -52,6 +56,17 @@ export const SPORT_POSITION_PRESETS = {
     { category: "Attack", positions: ["A", "X", "C", "W"] },
     { category: "Midfield", positions: ["M", "LSM"] },
     { category: "Defense", positions: ["D", "G"] },
+  ],
+  "Field Hockey": [
+    { category: "Goalkeeper", positions: ["GK"] },
+    { category: "Defenders", positions: ["SW", "LB", "CB", "RB"] },
+    { category: "Midfield", positions: ["LH", "CH", "RH"] },
+    { category: "Forwards", positions: ["LW", "IF", "CF", "RW"] },
+  ],
+  "Ice Hockey": [
+    { category: "Goalie", positions: ["G"] },
+    { category: "Defense", positions: ["LD", "RD"] },
+    { category: "Forwards", positions: ["LW", "C", "RW"] },
   ],
 };
 

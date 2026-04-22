@@ -6,6 +6,8 @@ import FootballField from "../assets/objects/Field Vectors/Football_Field.png";
 import LacrosseField from "../assets/objects/Field Vectors/Lacrosse_Field.png";
 import WomensLacrosseField from "../assets/objects/Field Vectors/Womans_Lacrosse_Field.png";
 import BasketballField from "../assets/objects/Field Vectors/Basketball_Field.png";
+import FieldHockeyField from "../assets/objects/Field Vectors/Field_Hockey_Field.png";
+import IceHockeyField from "../assets/objects/Field Vectors/Ice_Hockey_Field.png";
 import WhiteBall from "../assets/objects/balls/white_ball.png";
 import SoccerBall from "../assets/objects/balls/Soccer_ball.png";
 import FootballBall from "../assets/objects/balls/Football.png";
@@ -27,7 +29,10 @@ const DEFAULT_PADDING_PX = 70;
 const MIN_CAMERA_SPAN_PX = 220;
 
 // Round-ball sports: skip directional rotation (only oblong balls like Rugby/Football rotate).
-const ROUND_BALL_FIELD_TYPES = new Set(["soccer", "lacrosse", "womens lacrosse", "basketball", "blank"]);
+const ROUND_BALL_FIELD_TYPES = new Set(["soccer", "lacrosse", "womens lacrosse", "basketball", "field hockey", "ice hockey", "blank"]);
+const FIELD_TYPE_BALL_COLOR = {
+  "Ice Hockey": "#000000",
+};
 
 const FIELD_TYPE_TO_IMAGE_SRC = {
   Rugby: RugbyField,
@@ -36,6 +41,8 @@ const FIELD_TYPE_TO_IMAGE_SRC = {
   Lacrosse: LacrosseField,
   "Womens Lacrosse": WomensLacrosseField,
   Basketball: BasketballField,
+  "Field Hockey": FieldHockeyField,
+  "Ice Hockey": IceHockeyField,
   Blank: null,
 };
 
@@ -737,7 +744,15 @@ export default function PlayPreviewCard({
               const track = animation?.tracks?.[id];
               ballRotation = track ? getDirectionAtTime(track, displayTimeMs) : null;
             }
-            const ballImg = (
+            const ballColorOverride = FIELD_TYPE_BALL_COLOR[fieldType] ?? null;
+            const ballImg = ballColorOverride ? (
+              <circle
+                cx={pose.x}
+                cy={pose.y}
+                r={ballRadius}
+                fill={ballColorOverride}
+              />
+            ) : (
               <image
                 href={FIELD_TYPE_TO_BALL_IMAGE_SRC[fieldType] ?? WhiteBall}
                 x={pose.x - ballRadius}

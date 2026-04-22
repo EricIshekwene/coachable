@@ -1631,7 +1631,7 @@ export default function AdminPlaysPage() {
   useEffect(() => { load(); }, [load]);
 
   // Strip any sport-name tags that were previously auto-applied.
-  const SPORT_TAGS = new Set(["rugby", "soccer", "football", "lacrosse", "womens lacrosse", "basketball", "blank"]);
+  const SPORT_TAGS = new Set(["rugby", "soccer", "football", "lacrosse", "womens lacrosse", "basketball", "field hockey", "ice hockey", "blank"]);
   useEffect(() => {
     if (loading || !plays.length) return;
     plays.forEach(async (play) => {
@@ -1932,7 +1932,7 @@ export default function AdminPlaysPage() {
                 onChange={(e) => setNewPlaySport(e.target.value)}
                 className="w-full rounded-lg border border-white/10 bg-[#13151a] px-3.5 py-2.5 text-sm text-white outline-none focus:border-BrandOrange/50"
               >
-                {["Rugby", "Football", "Soccer", "Lacrosse", "Womens Lacrosse", "Basketball", "Blank"].map((s) => (
+                {["Rugby", "Football", "Soccer", "Lacrosse", "Womens Lacrosse", "Basketball", "Field Hockey", "Ice Hockey", "Blank"].map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
