@@ -135,6 +135,20 @@ describe("createTeam — demo play seeding", () => {
     expect(body.sport).toBe("soccer");
   });
 
+  it("sends sport with spaces as-is (server normalises spaces to underscores for section key lookup)", async () => {
+    // Sport stored as "ice hockey" but page_sections key is "landing.visualize.ice_hockey"
+    const spy = mockFetch({
+      team: { id: "t6", name: "Blades", sport: "ice hockey" },
+      role: "owner",
+      inviteCodes: { player: "I1C2", coach: "E3H4" },
+    });
+
+    await createTeam(AUTH_TOKEN, { teamName: "Blades", sport: "ice hockey" });
+
+    const body = JSON.parse(spy.mock.calls[0][1].body);
+    expect(body.sport).toBe("ice hockey");
+  });
+
   it("throws when teamName is missing", async () => {
     mockFetch({ error: "teamName is required" }, false, 400);
     await expect(createTeam(AUTH_TOKEN, { teamName: "", sport: "rugby" })).rejects.toThrow(

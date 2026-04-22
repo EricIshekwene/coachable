@@ -3,7 +3,7 @@ import crypto from "crypto";
 import pool from "../db/pool.js";
 import { requireAuth, requireTeamRole } from "../middleware/auth.js";
 import { sendTeamInviteEmail, sendMemberRemovedEmail } from "../lib/email.js";
-import { resolveActiveTeam, ensurePersonalWorkspace, getUserTeams } from "../lib/userTeams.js";
+import { resolveActiveTeam, ensurePersonalWorkspace, getUserTeams, seedDemoPlay } from "../lib/userTeams.js";
 
 const router = Router();
 
@@ -106,6 +106,9 @@ router.post("/create", requireAuth, async (req, res, next) => {
         [team.id, playerCode, req.userId, coachCode]
       );
 
+      // Seed the sport's demo play into the new team's playbook
+      await seedDemoPlay(client, team.id, team.sport, req.userId);
+
       // Switch active team
       await client.query(
         "UPDATE users SET active_team_id = $1, updated_at = now() WHERE id = $2",
@@ -170,6 +173,9 @@ router.post("/create-personal", requireAuth, async (req, res, next) => {
         `INSERT INTO team_memberships (team_id, user_id, role) VALUES ($1, $2, 'owner')`,
         [team.id, req.userId]
       );
+
+      // Seed the sport's demo play into the new workspace's playbook
+      await seedDemoPlay(client, team.id, sport, req.userId);
 
       // Switch active team
       await client.query(

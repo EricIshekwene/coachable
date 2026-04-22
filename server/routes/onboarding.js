@@ -2,6 +2,7 @@ import { Router } from "express";
 import crypto from "crypto";
 import pool from "../db/pool.js";
 import { requireAuth } from "../middleware/auth.js";
+import { seedDemoPlay } from "../lib/userTeams.js";
 
 const router = Router();
 
@@ -53,24 +54,7 @@ router.post("/create-team", requireAuth, async (req, res, next) => {
       );
 
       // Seed the sport's demo play (from page_sections) into the new team's playbook
-      if (team.sport) {
-        const sectionKey = `landing.visualize.${team.sport}`;
-        const { rows: seedRows } = await client.query(
-          `SELECT pp.title, pp.play_data, pp.thumbnail_url
-           FROM page_sections ps
-           JOIN platform_plays pp ON pp.id = ps.play_id
-           WHERE ps.section_key = $1`,
-          [sectionKey]
-        );
-        if (seedRows.length) {
-          const seed = seedRows[0];
-          await client.query(
-            `INSERT INTO plays (team_id, title, play_data, thumbnail_url, created_by_user_id, updated_by_user_id)
-             VALUES ($1, $2, $3, $4, $5, $5)`,
-            [team.id, seed.title, seed.play_data, seed.thumbnail_url || null, req.userId]
-          );
-        }
-      }
+      await seedDemoPlay(client, team.id, team.sport, req.userId);
 
       // Mark user onboarded
       await client.query(
