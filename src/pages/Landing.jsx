@@ -46,7 +46,7 @@ export default function Landing({ sport = null }) {
   const [addedPlay, setAddedPlay] = useState(null);
   const [visualizePlay, setVisualizePlay] = useState(null);
 
-  const sectionKey = sport ? `landing.visualize.${sport}` : "landing.visualize";
+  const sectionKey = sport ? `landing.visualize.${sport.replace(/ /g, "_")}` : "landing.visualize";
 
   useEffect(() => {
     fetch(`${API_URL}/platform-plays`)
@@ -55,10 +55,14 @@ export default function Landing({ sport = null }) {
       .catch(() => {});
 
     setVisualizePlay(null);
+    console.log("[Landing] fetching section key:", sectionKey);
     fetch(`${API_URL}/page-sections/${sectionKey}`)
       .then((r) => r.json())
-      .then((data) => setVisualizePlay(data.section?.play || null))
-      .catch(() => {});
+      .then((data) => {
+        console.log("[Landing] page-sections response:", JSON.stringify(data));
+        setVisualizePlay(data.section?.play || null);
+      })
+      .catch((err) => console.error("[Landing] page-sections error:", err));
   }, [sectionKey]);
 
   /**
