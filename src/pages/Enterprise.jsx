@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import logo from "../assets/logos/White_Full_Coachable.png";
 import ericPhoto from "../assets/pictures/faces/IMG_7356 (5).jpg";
+import ericRugbyPhoto from "../assets/pictures/faces/Eric_rugby.JPG";
 import rugbyHeroLong from "../assets/pictures/Rugby_staring_at_ipad_long.png";
 import rugbyCoachLong from "../assets/pictures/Rugby_coach_holding_ipad_long.png";
 import {
@@ -219,11 +220,13 @@ export default function Enterprise() {
             <div className="flex justify-center">
               <div className="relative w-72 md:w-80">
                 <div className="absolute -inset-6 rounded-3xl bg-BrandOrange/5 blur-3xl pointer-events-none" />
-                <img
-                  src={ericPhoto}
-                  alt="Eric Ishekwene"
-                  className="relative rounded-2xl w-full object-cover border border-BrandGray2/20 shadow-2xl"
-                />
+                <div className="overflow-hidden rounded-2xl border border-BrandGray2/20 shadow-2xl">
+                  <img
+                    src={ericRugbyPhoto}
+                    alt="Eric Ishekwene"
+                    className="relative w-full object-cover"
+                  />
+                </div>
               </div>
             </div>
 
