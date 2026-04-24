@@ -15,6 +15,7 @@ import PrefabsSection from "../sidebar/PrefabsSection";
 import HistoryActionsSection from "../sidebar/HistoryActionsSection";
 import { WideSidebarRowButton } from "../subcomponents/Buttons";
 import { Popover } from "../subcomponents/Popovers";
+import FormationsSection from "../sidebar/FormationsSection";
 
 /** Auto-show delay for guest save-progress popup (3 minutes). */
 const GUEST_POPUP_DELAY_MS = 3 * 60 * 1000;
@@ -154,6 +155,7 @@ export default function WideSidebarRoot({
     const objectsButtonRef = useRef(null);
     const playerButtonRef = useRef(null);
     const prefabsButtonRef = useRef(null);
+    const formationsButtonRef = useRef(null);
     const prefabs = useMemo(() => {
         return (customPrefabs || []).map((cp) => ({
             ...cp,
@@ -185,6 +187,14 @@ export default function WideSidebarRoot({
         setTool("prefab");
         onPrefabSelect?.(prefab);
     };
+    const handleFormationSelect = (formation, playerColor) => {
+        const coloredFormation = {
+            ...formation,
+            players: formation.players.map((player) => player.name === "GK" ? player : { ...player, color: playerColor }),
+        }
+        setTool("prefab");
+        onPrefabSelect?.(coloredFormation);
+    }
     const handleAddPlayer = (data) => {
         const next = {
             number: data?.number ?? playerNumber,
@@ -302,118 +312,129 @@ export default function WideSidebarRoot({
 
             {/* Scrollable tools area */}
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-0.5 hide-scroll flex flex-col gap-0.5 sm:gap-1 md:gap-1.5 py-1">
-            <p className="text-BrandGray2 text-[10px] sm:text-xs font-DmSans uppercase tracking-wider px-2 mb-0.5">
-                Tools
-            </p>
-            <SelectToolSection
-                wide
-                selectToolType={selectToolTypeForUi}
-                isSelected={selectedToolForUi === "select" || selectedToolForUi === "hand"}
-                openPopover={openPopover}
-                hoveredTooltip={hoveredTooltip}
-                anchorRef={selectButtonRef}
-                onToolSelect={(t) => setTool(t)}
-                onSelectSubTool={handleSelectSubTool}
-                onPopoverToggle={togglePopover}
-                onPopoverClose={closePopover}
-                onHoverTooltip={setHoveredTooltip}
-            />
-            {hr}
+                <p className="text-BrandGray2 text-[10px] sm:text-xs font-DmSans uppercase tracking-wider px-2 mb-0.5">
+                    Tools
+                </p>
+                <SelectToolSection
+                    wide
+                    selectToolType={selectToolTypeForUi}
+                    isSelected={selectedToolForUi === "select" || selectedToolForUi === "hand"}
+                    openPopover={openPopover}
+                    hoveredTooltip={hoveredTooltip}
+                    anchorRef={selectButtonRef}
+                    onToolSelect={(t) => setTool(t)}
+                    onSelectSubTool={handleSelectSubTool}
+                    onPopoverToggle={togglePopover}
+                    onPopoverClose={closePopover}
+                    onHoverTooltip={setHoveredTooltip}
+                />
+                {hr}
 
-            <PenToolSection
-                wide
-                isSelected={selectedToolForUi === "pen"}
-                hoveredTooltip={hoveredTooltip}
-                anchorRef={penButtonRef}
-                onToolSelect={() => setTool("pen")}
-                onHoverTooltip={setHoveredTooltip}
-            />
-            {hr}
+                <PenToolSection
+                    wide
+                    isSelected={selectedToolForUi === "pen"}
+                    hoveredTooltip={hoveredTooltip}
+                    anchorRef={penButtonRef}
+                    onToolSelect={() => setTool("pen")}
+                    onHoverTooltip={setHoveredTooltip}
+                />
+                {hr}
 
-            <AddPlayerSection
-                wide
-                isSelected={selectedToolForUi === "addPlayer"}
-                openPopover={openPopover}
-                hoveredTooltip={hoveredTooltip}
-                numberValue={playerNumber}
-                nameValue={playerName}
-                anchorRef={addPlayerButtonRef}
-                onToolSelect={() => setTool("addPlayer")}
-                onPopoverToggle={togglePopover}
-                onPopoverClose={closePopover}
-                onNumberChange={setPlayerNumber}
-                onNameChange={setPlayerName}
-                onHoverTooltip={setHoveredTooltip}
-                onAddPlayer={handleAddPlayer}
-                onQuickAdd={handleQuickAddPlayer}
-            />
-            {hr}
+                <AddPlayerSection
+                    wide
+                    isSelected={selectedToolForUi === "addPlayer"}
+                    openPopover={openPopover}
+                    hoveredTooltip={hoveredTooltip}
+                    numberValue={playerNumber}
+                    nameValue={playerName}
+                    anchorRef={addPlayerButtonRef}
+                    onToolSelect={() => setTool("addPlayer")}
+                    onPopoverToggle={togglePopover}
+                    onPopoverClose={closePopover}
+                    onNumberChange={setPlayerNumber}
+                    onNameChange={setPlayerName}
+                    onHoverTooltip={setHoveredTooltip}
+                    onAddPlayer={handleAddPlayer}
+                    onQuickAdd={handleQuickAddPlayer}
+                />
+                {hr}
 
-            <WideSidebarRowButton
-                ref={objectsButtonRef}
-                Icon={objectsRowIcon}
-                label="Add Objects"
-                onHover={() => {}}
-                isSelected={isObjectToolSelected}
-                onRowClick={() => handleObjectToolSelect("addBall")}
-                onChevronClick={() => togglePopover("addObjects")}
-                chevronActive={openPopover === "addObjects"}
-            />
-            <Popover
-                isOpen={openPopover === "addObjects"}
-                onClose={closePopover}
-                anchorRef={objectsButtonRef}
-                topOffset={0}
-            >
-                <div className="ml-2 w-[160px] rounded-lg bg-BrandBlack p-1.5 shadow-[0_16px_30px_-20px_rgba(0,0,0,0.95)]">
-                    <button
-                        type="button"
-                        onClick={() => handleObjectToolSelect("addBall")}
-                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-DmSans transition-colors ${selectedToolForUi === "addBall" ? "bg-BrandOrange text-BrandBlack" : "text-BrandWhite hover:bg-BrandBlack2"}`}
-                    >
-                        <IoFootball className="text-sm" />
-                        <span>Ball</span>
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => handleObjectToolSelect("addCone")}
-                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-DmSans transition-colors ${selectedToolForUi === "addCone" ? "bg-BrandOrange text-BrandBlack" : "text-BrandWhite hover:bg-BrandBlack2"}`}
-                    >
-                        <img src={coneIcon} alt="Cone" className="h-3.5 w-3.5 object-contain" />
-                        <span>Cone</span>
-                    </button>
-                </div>
-            </Popover>
-            {hr}
+                <WideSidebarRowButton
+                    ref={objectsButtonRef}
+                    Icon={objectsRowIcon}
+                    label="Add Objects"
+                    onHover={() => { }}
+                    isSelected={isObjectToolSelected}
+                    onRowClick={() => handleObjectToolSelect("addBall")}
+                    onChevronClick={() => togglePopover("addObjects")}
+                    chevronActive={openPopover === "addObjects"}
+                />
+                <Popover
+                    isOpen={openPopover === "addObjects"}
+                    onClose={closePopover}
+                    anchorRef={objectsButtonRef}
+                    topOffset={0}
+                >
+                    <div className="ml-2 w-[160px] rounded-lg bg-BrandBlack p-1.5 shadow-[0_16px_30px_-20px_rgba(0,0,0,0.95)]">
+                        <button
+                            type="button"
+                            onClick={() => handleObjectToolSelect("addBall")}
+                            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-DmSans transition-colors ${selectedToolForUi === "addBall" ? "bg-BrandOrange text-BrandBlack" : "text-BrandWhite hover:bg-BrandBlack2"}`}
+                        >
+                            <IoFootball className="text-sm" />
+                            <span>Ball</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleObjectToolSelect("addCone")}
+                            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-DmSans transition-colors ${selectedToolForUi === "addCone" ? "bg-BrandOrange text-BrandBlack" : "text-BrandWhite hover:bg-BrandBlack2"}`}
+                        >
+                            <img src={coneIcon} alt="Cone" className="h-3.5 w-3.5 object-contain" />
+                            <span>Cone</span>
+                        </button>
+                    </div>
+                </Popover>
+                {hr}
 
-            <PlayerColorSection
-                wide
-                playerColor={playerColor}
-                isSelected={selectedToolForUi === "color"}
-                openPopover={openPopover}
-                hoveredTooltip={hoveredTooltip}
-                anchorRef={playerButtonRef}
-                onToolSelect={() => setTool("color")}
-                onPlayerColorChange={handlePlayerColorChange}
-                onPopoverToggle={togglePopover}
-                onPopoverClose={closePopover}
-                onHoverTooltip={setHoveredTooltip}
-                onQuickAdd={handleQuickAddPlayer}
-            />
-            {hr}
+                <PlayerColorSection
+                    wide
+                    playerColor={playerColor}
+                    isSelected={selectedToolForUi === "color"}
+                    openPopover={openPopover}
+                    hoveredTooltip={hoveredTooltip}
+                    anchorRef={playerButtonRef}
+                    onToolSelect={() => setTool("color")}
+                    onPlayerColorChange={handlePlayerColorChange}
+                    onPopoverToggle={togglePopover}
+                    onPopoverClose={closePopover}
+                    onHoverTooltip={setHoveredTooltip}
+                    onQuickAdd={handleQuickAddPlayer}
+                />
+                {hr}
 
-            <PrefabsSection
-                wide
-                prefabs={prefabs}
-                openPopover={openPopover}
-                hoveredTooltip={hoveredTooltip}
-                anchorRef={prefabsButtonRef}
-                onPopoverToggle={togglePopover}
-                onPopoverClose={closePopover}
-                onPrefabSelect={handlePrefabSelect}
-                onDeleteCustomPrefab={onDeleteCustomPrefab}
-                onHoverTooltip={setHoveredTooltip}
-            />
+                <PrefabsSection
+                    wide
+                    prefabs={prefabs}
+                    openPopover={openPopover}
+                    hoveredTooltip={hoveredTooltip}
+                    anchorRef={prefabsButtonRef}
+                    onPopoverToggle={togglePopover}
+                    onPopoverClose={closePopover}
+                    onPrefabSelect={handlePrefabSelect}
+                    onDeleteCustomPrefab={onDeleteCustomPrefab}
+                    onHoverTooltip={setHoveredTooltip}
+                />
+
+                <FormationsSection
+                    openPopover={openPopover}
+                    hoveredTooltip={hoveredTooltip}
+                    anchorRef={formationsButtonRef}
+                    onPopoverToggle={togglePopover}
+                    onPopoverClose={closePopover}
+                    onFormationSelect={handleFormationSelect}
+                    onHoverTooltip={setHoveredTooltip}
+                    playerColor={playerColor}
+                />
             </div>
 
             {/* Fixed bottom area */}
