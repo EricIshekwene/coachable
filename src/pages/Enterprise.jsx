@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import logo from "../assets/logos/White_Full_Coachable.png";
 import ericPhoto from "../assets/pictures/faces/IMG_7356 (5).jpg";
-import ericRugbyPhoto from "../assets/pictures/faces/Eric_rugby.JPG";
+import ericRugbyPhoto from "../assets/pictures/faces/Eric_Rugby.JPG";
 import rugbyHeroLong from "../assets/pictures/Rugby_staring_at_ipad_long.png";
 import rugbyCoachLong from "../assets/pictures/Rugby_coach_holding_ipad_long.png";
 import {
