@@ -50,8 +50,8 @@ export default function SelectedPlayersSection({
                 key={option.value}
                 type="button"
                 onClick={() => applyBulkColor(option.value)}
-                className={`flex-1 min-w-0 flex items-center justify-center gap-1 px-1 sm:px-1.5 py-1 sm:py-1.5 rounded-md border transition-colors
-                  ${isActive ? "border-BrandOrange bg-BrandBlack" : "border-BrandGray2 bg-BrandBlack2 hover:bg-BrandBlack2/90"}`}
+                className={`flex-1 min-w-0 flex items-center justify-center gap-1 px-1 sm:px-1.5 py-1 sm:py-1.5 rounded-md transition-colors
+                  ${isActive ? "bg-BrandBlack" : "bg-BrandBlack2 hover:bg-BrandBlack2/90"}`}
               >
                 <span
                   className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shrink-0"

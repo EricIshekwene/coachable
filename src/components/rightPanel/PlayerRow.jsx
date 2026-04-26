@@ -15,7 +15,7 @@ export default function PlayerRow({ player, isSelected = false, onClick, onEdit,
       }}
       className={`w-full flex flex-row rounded-sm items-center justify-between px-1 py-0.5 sm:py-1 transition-colors cursor-pointer
         ${player.hidden ? "opacity-40" : ""}
-        ${isSelected ? "bg-BrandBlack border border-BrandOrange" : "bg-BrandBlack2 border border-transparent"}
+        ${isSelected ? "bg-BrandBlack" : "bg-BrandBlack2"}
         hover:bg-BrandBlack`}
     >
       {/* Color indicator */}

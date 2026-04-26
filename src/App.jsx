@@ -24,6 +24,7 @@ import AdminPlaysPage from "./pages/AdminPlaysPage";
 import AdminUserActivity from "./pages/AdminUserActivity";
 import AdminUserIssues from "./pages/AdminUserIssues";
 import AdminMobileView from "./pages/AdminMobileView";
+import AdminTestSlate from "./pages/AdminTestSlate";
 import AdminDemoVideos from "./pages/AdminDemoVideos";
 import AppLayout from "./layouts/AppLayout";
 import Plays from "./pages/app/Plays";
@@ -232,6 +233,7 @@ export function AppRoutes() {
       <Route path="/admin/users/:userId" element={<RequireAdminSession><AdminUserActivity /></RequireAdminSession>} />
       <Route path="/admin/user-issues" element={<RequireAdminSession><AdminUserIssues /></RequireAdminSession>} />
       <Route path="/admin/mobile-view" element={<RequireAdminSession><AdminMobileView /></RequireAdminSession>} />
+      <Route path="/admin/test" element={<RequireAdminSession><AdminTestSlate /></RequireAdminSession>} />
       <Route path="/admin/demo-videos" element={<RequireAdminSession><AdminDemoVideos /></RequireAdminSession>} />
 
       {/* Full-screen play editor (outside AppLayout — no nav chrome) */}

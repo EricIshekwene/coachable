@@ -12,6 +12,7 @@ const KEYFRAME_MIN_GAP_MS = 500;
 export default function KeyframeDisplay({
   keyframes = [],
   selectedKeyframeMs = null,
+  effectiveSelectedKeyframeMs = null,
   onKeyframeClick,
   onKeyframeDragStart,
   onKeyframeDragMove,
@@ -19,6 +20,7 @@ export default function KeyframeDisplay({
   timeFromClientX,
   durationMs = 30000,
   keyframesMs = [],
+  variant = "default",
 }) {
   const TRACK_VISUAL_START_PERCENT = 3;
   const TRACK_VISUAL_SPAN_PERCENT = 94;
@@ -127,6 +129,8 @@ export default function KeyframeDisplay({
     [timeFromClientX, durationMs, onKeyframeDragEnd, onKeyframeClick, keyframes, clampDragTargetTime]
   );
 
+  const isTest = variant === "test";
+
   return (
     <>
       {keyframes.map((marker, idx) => {
@@ -135,7 +139,50 @@ export default function KeyframeDisplay({
         const visualPos = isDragging
           ? dragPreview.visualPercent
           : timePercentToVisualPosition(marker.timePercent);
-        const isSelected = selectedKeyframeMs === marker.timeMs;
+        const isSelected = isTest
+          ? effectiveSelectedKeyframeMs === marker.timeMs
+          : selectedKeyframeMs === marker.timeMs;
+
+        if (isTest) {
+          return (
+            <div
+              key={`kf-${marker.timeMs}-${idx}`}
+              data-kf-marker="true"
+              draggable={false}
+              onPointerDown={(e) => handlePointerDown(e, marker, idx)}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+              className={`absolute z-30 flex items-center justify-center ${
+                isDragging ? "cursor-grabbing opacity-80" : isStartKeyframe ? "cursor-pointer" : "cursor-grab"
+              }`}
+              style={{
+                left: `${visualPos}%`,
+                top: "50%",
+                transform: "translate(-50%, -50%)",
+                width: "24px",
+                height: "24px",
+                pointerEvents: "auto",
+                transition: isDragging ? "none" : "left 0.15s ease-out",
+              }}
+            >
+              <div
+                className={`w-4.5 h-4.5 rotate-45 transition-colors flex items-center justify-center ${
+                  isDragging
+                    ? "bg-BrandOrange scale-125 border border-BrandBlack"
+                    : isSelected
+                    ? "bg-BrandOrange border border-BrandBlack"
+                    : "bg-white"
+                }`}
+              >
+                {(isSelected || isDragging) && (
+                  <div className="w-2 h-2 bg-BrandBlack" />
+                )}
+              </div>
+            </div>
+          );
+        }
+
         return (
           <img
             key={`kf-${marker.timeMs}-${idx}`}

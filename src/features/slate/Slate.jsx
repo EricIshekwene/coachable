@@ -191,6 +191,7 @@ function Slate({
   adminMode = false,
   sport: sportProp = null,
   mobileLayout = false,
+  testVariant = false,
 }) {
   const [viewOnlyLocal, setViewOnlyLocal] = useState(viewOnlyProp);
   const viewOnly = viewOnlyProp || viewOnlyLocal;
@@ -3413,6 +3414,7 @@ function Slate({
             onMoveKeyframe={handleMoveKeyframe}
             getAuthoritativeTimeMs={getAuthoritativeTimeMs}
             onDragStateChange={handleTimelineDragStateChange}
+            variant={testVariant ? "test" : "default"}
           />
         )}
       </div>

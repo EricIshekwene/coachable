@@ -23,6 +23,7 @@ export default function TimeBar({
   isPlaying = false,
   keyframes = [],
   selectedKeyframeMs = null,
+  effectiveSelectedKeyframeMs = null,
   onSeek,
   onKeyframeClick,
   onKeyframeDragStart,
@@ -31,6 +32,7 @@ export default function TimeBar({
   getAuthoritativeTimeMs,
   onDragStateChange,
   keyframesMs = [],
+  variant = "default",
 }) {
   const trackRef = useRef(null);
   const fillRef = useRef(null);
@@ -247,6 +249,8 @@ export default function TimeBar({
     []
   );
 
+  const isTest = variant === "test";
+
   return (
     <div
       ref={trackRef}
@@ -254,17 +258,27 @@ export default function TimeBar({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      className="h-29/124 mt-[3.125px] sm:mt-[6.25px] md:mt-[6.25px] lg:mt-[6.25px] w-full flex items-center px-[6.25px] bg-BrandBlack2 border-[0.3125px] border-BrandGray rounded-full relative cursor-pointer touch-none"
+      className={`h-29/124 mt-[3.125px] sm:mt-[6.25px] md:mt-[6.25px] lg:mt-[6.25px] w-full flex items-center px-[6.25px] rounded-full relative cursor-pointer touch-none ${
+        isTest
+          ? "bg-transparent border-transparent"
+          : "bg-BrandBlack2 border-[0.3125px] border-BrandGray"
+      }`}
     >
-      <div className="absolute left-[3%] right-[3%] top-1/2 h-[1.25px] -translate-y-1/2 rounded-full bg-BrandOrange2/35 overflow-hidden pointer-events-none">
+      <div
+        className={`absolute left-[3%] right-[3%] top-1/2 -translate-y-1/2 rounded-full overflow-hidden pointer-events-none ${
+          isTest ? "h-2 bg-white/10" : "h-[1.25px] bg-BrandOrange2/35"
+        }`}
+      >
         <div
           ref={fillRef}
-          className="h-full w-full bg-BrandOrange2 origin-left will-change-transform"
+          className={`h-full w-full origin-left will-change-transform ${
+            isTest ? "bg-BrandOrange" : "bg-BrandOrange2"
+          }`}
           style={{ transform: "scaleX(0)" }}
         />
       </div>
 
-      {tickPercents.map((percent) => {
+      {!isTest && tickPercents.map((percent) => {
         const visualPos = timePercentToVisualPercent(percent);
         return (
           <div
@@ -284,6 +298,7 @@ export default function TimeBar({
       <KeyframeDisplay
         keyframes={keyframes}
         selectedKeyframeMs={selectedKeyframeMs}
+        effectiveSelectedKeyframeMs={effectiveSelectedKeyframeMs}
         onKeyframeClick={onKeyframeClick}
         onKeyframeDragStart={onKeyframeDragStart}
         onKeyframeDragMove={onKeyframeDragMove}
@@ -291,13 +306,22 @@ export default function TimeBar({
         timeFromClientX={timeFromClientX}
         durationMs={durationRef.current}
         keyframesMs={keyframesMs}
+        variant={variant}
       />
 
-      <div
-        ref={thumbRef}
-        className="absolute z-20 top-1/2 transform -translate-x-1/2 -translate-y-1/2 h-[3.125px] w-[3.125px] sm:h-[15.625px] sm:w-[15.625px] bg-BrandOrange rounded-full pointer-events-none"
-        style={{ left: `${TRACK_VISUAL_START_PERCENT}%` }}
-      />
+      {isTest ? (
+        <div
+          ref={thumbRef}
+          className="absolute z-20 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[2px] h-5 bg-white/70 pointer-events-none"
+          style={{ left: `${TRACK_VISUAL_START_PERCENT}%` }}
+        />
+      ) : (
+        <div
+          ref={thumbRef}
+          className="absolute z-20 top-1/2 transform -translate-x-1/2 -translate-y-1/2 h-[3.125px] w-[3.125px] sm:h-[15.625px] sm:w-[15.625px] bg-BrandOrange rounded-full pointer-events-none"
+          style={{ left: `${TRACK_VISUAL_START_PERCENT}%` }}
+        />
+      )}
     </div>
   );
 }

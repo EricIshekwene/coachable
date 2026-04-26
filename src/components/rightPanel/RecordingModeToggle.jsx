@@ -36,8 +36,8 @@ export default function RecordingModeToggle({
         className={`
           flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-colors w-full
           ${enabled
-            ? "bg-red-500/20 border border-red-500/40 hover:bg-red-500/30"
-            : "bg-BrandGray2/30 border border-BrandGray2/50 hover:bg-BrandGray2/50"
+            ? "bg-red-500/20 hover:bg-red-500/30"
+            : "bg-BrandGray2/30 hover:bg-BrandGray2/50"
           }
         `}
       >
@@ -68,8 +68,8 @@ export default function RecordingModeToggle({
                   className={`
                     px-1.5 py-0.5 rounded text-[10px] font-DmSans transition-colors
                     ${durationMs === opt.ms
-                      ? "bg-red-500/30 text-red-300 border border-red-500/40"
-                      : "bg-BrandGray2/20 text-BrandGray hover:bg-BrandGray2/40 border border-transparent"
+                      ? "bg-red-500/30 text-red-300"
+                      : "bg-BrandGray2/20 text-BrandGray hover:bg-BrandGray2/40"
                     }
                     ${isBusy ? "opacity-50 cursor-not-allowed" : ""}
                   `}

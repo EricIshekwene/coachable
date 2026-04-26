@@ -338,7 +338,7 @@ function DrawSubToolStyle({
                   p-1 rounded-md transition-all duration-100
                   ${drawArrowHeadType === t.value
                     ? "bg-BrandOrange"
-                    : "hover:bg-BrandBlack2 border border-BrandGray2"
+                    : "hover:bg-BrandBlack2"
                   }
                 `}
               >
@@ -373,7 +373,7 @@ function ArrowSubToolStyle({
               p-1 rounded-md transition-all duration-100
               ${drawArrowHeadType === t.value
                 ? "bg-BrandOrange"
-                : "hover:bg-BrandBlack2 border border-BrandGray2"
+                : "hover:bg-BrandBlack2"
               }
             `}
           >
@@ -408,7 +408,7 @@ function TextSubToolStyle({
               p-1.5 rounded-md transition-all duration-100
               ${drawTextAlign === alignOption.value
                 ? "bg-BrandOrange text-BrandBlack"
-                : "text-BrandOrange hover:bg-BrandBlack2 border border-BrandGray2"
+                : "text-BrandOrange hover:bg-BrandBlack2"
               }
             `}
           >
@@ -595,7 +595,7 @@ function ShapeSubToolStyle({
               p-1 rounded-md transition-all duration-100
               ${drawShapeType === t.value
                 ? "bg-BrandOrange"
-                : "hover:bg-BrandBlack2 border border-BrandGray2"
+                : "hover:bg-BrandBlack2"
               }
             `}
           >
@@ -643,7 +643,7 @@ function SelectedDrawingStyle({ selectedDrawing, onUpdateDrawing }) {
               flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] sm:text-xs font-DmSans transition-all duration-100
               ${d.arrowTip
                 ? "bg-BrandOrange text-BrandBlack"
-                : "text-BrandOrange hover:bg-BrandBlack2 border border-BrandGray2"
+                : "text-BrandOrange hover:bg-BrandBlack2"
               }
             `}
           >
@@ -676,7 +676,7 @@ function SelectedDrawingStyle({ selectedDrawing, onUpdateDrawing }) {
                     p-1 rounded-md transition-all duration-100
                     ${(d.arrowHeadType || "standard") === t.value
                       ? "bg-BrandOrange"
-                      : "hover:bg-BrandBlack2 border border-BrandGray2"
+                      : "hover:bg-BrandBlack2"
                     }
                   `}
                 >
@@ -708,7 +708,7 @@ function SelectedDrawingStyle({ selectedDrawing, onUpdateDrawing }) {
                 p-1 rounded-md transition-all duration-100
                 ${(d.arrowHeadType || "standard") === t.value
                   ? "bg-BrandOrange"
-                  : "hover:bg-BrandBlack2 border border-BrandGray2"
+                  : "hover:bg-BrandBlack2"
                 }
               `}
             >
@@ -742,7 +742,7 @@ function SelectedDrawingStyle({ selectedDrawing, onUpdateDrawing }) {
                 p-1.5 rounded-md transition-all duration-100
                 ${(d.align || "left") === alignOption.value
                   ? "bg-BrandOrange text-BrandBlack"
-                  : "text-BrandOrange hover:bg-BrandBlack2 border border-BrandGray2"
+                  : "text-BrandOrange hover:bg-BrandBlack2"
                 }
               `}
             >

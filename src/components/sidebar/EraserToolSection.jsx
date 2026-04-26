@@ -48,7 +48,7 @@ export default function EraserToolSection({
                         <button
                             onClick={() => onEraserSubTool?.("full")}
                             className={`
-                                rounded-md border border-BrandGray
+                                rounded-md
                                 flex items-center justify-center
                                 p-2 aspect-square w-full
                                 transition-all duration-100
@@ -63,7 +63,7 @@ export default function EraserToolSection({
                         <button
                             onClick={() => onEraserSubTool?.("partial")}
                             className={`
-                                rounded-md border border-BrandGray
+                                rounded-md
                                 flex items-center justify-center
                                 p-2 aspect-square w-full
                                 transition-all duration-100

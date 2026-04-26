@@ -127,7 +127,7 @@ export default function PlayerEditPanel({
         <button
           type="button"
           onClick={onClose}
-          className="w-full h-8 sm:h-9 border border-BrandGray text-BrandWhite rounded-md text-xs sm:text-sm font-DmSans transition-colors hover:bg-BrandBlack2 cursor-pointer"
+          className="w-full h-8 sm:h-9 text-BrandWhite rounded-md text-xs sm:text-sm font-DmSans transition-colors hover:bg-BrandBlack2 cursor-pointer"
         >
           Done
         </button>

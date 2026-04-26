@@ -1,4 +1,6 @@
 import React, { useMemo } from "react";
+
+const PROXIMITY_TOLERANCE_MS = 300;
 import TimeBar from "./TimeBar";
 import SpeedSlider from "./SpeedSlider";
 import PlaybackControls from "./PlaybackControls";
@@ -26,6 +28,7 @@ export default function ControlPill({
   onMoveKeyframe,
   getAuthoritativeTimeMs,
   onDragStateChange,
+  variant = "default",
 }) {
   const timelineDurationMs = Math.max(1, Math.round(Number(durationMs) || 30000));
   const clampedTimeMs = clamp(Math.round(Number(currentTimeMs) || 0), 0, timelineDurationMs);
@@ -43,6 +46,13 @@ export default function ControlPill({
 
   const sortedKeyframes = useMemo(() => [...(keyframesMs || [])].sort((a, b) => a - b), [keyframesMs]);
   const firstKeyframeMs = sortedKeyframes.length ? sortedKeyframes[0] : null;
+
+  // In test variant: if no keyframe is manually selected, auto-select the nearest one within tolerance.
+  const effectiveSelectedKeyframeMs = useMemo(() => {
+    if (selectedKeyframeMs !== null && selectedKeyframeMs !== undefined) return selectedKeyframeMs;
+    if (variant !== "test") return selectedKeyframeMs;
+    return (keyframesMs || []).find((kf) => Math.abs(kf - clampedTimeMs) <= PROXIMITY_TOLERANCE_MS) ?? null;
+  }, [selectedKeyframeMs, keyframesMs, clampedTimeMs, variant]);
 
   const handleSeek = (timeMs, meta) => {
     onPause?.();
@@ -135,8 +145,9 @@ export default function ControlPill({
 
   const handleDeleteKeyframe = (event) => {
     event.stopPropagation();
-    if (selectedKeyframeMs === null || selectedKeyframeMs === undefined) return;
-    onDeleteKeyframe?.(selectedKeyframeMs);
+    const targetMs = effectiveSelectedKeyframeMs;
+    if (targetMs === null || targetMs === undefined) return;
+    onDeleteKeyframe?.(targetMs);
     onSelectKeyframe?.(null);
   };
 
@@ -156,6 +167,7 @@ export default function ControlPill({
         isPlaying={isPlaying}
         keyframes={keyframeMarkers}
         selectedKeyframeMs={selectedKeyframeMs}
+        effectiveSelectedKeyframeMs={effectiveSelectedKeyframeMs}
         onSeek={handleSeek}
         onKeyframeClick={handleKeyframeClick}
         onKeyframeDragStart={handleKeyframeDragStart}
@@ -164,6 +176,7 @@ export default function ControlPill({
         getAuthoritativeTimeMs={getAuthoritativeTimeMs}
         onDragStateChange={onDragStateChange}
         keyframesMs={keyframesMs}
+        variant={variant}
       />
 
       <div className="flex flex-1 w-full items-center justify-between gap-[3.125px] sm:gap-[6.25px]">
@@ -181,9 +194,10 @@ export default function ControlPill({
         />
 
         <KeyframeManager
-          selectedKeyframe={selectedKeyframeMs}
+          selectedKeyframe={effectiveSelectedKeyframeMs}
           onAddKeyframe={handleAddKeyframe}
           onDeleteKeyframe={handleDeleteKeyframe}
+          variant={variant}
         />
       </div>
     </div>

@@ -70,8 +70,8 @@ export default function DrawingObjectsList({
                 transition-all duration-100 group
                 ${d.hidden ? "opacity-40" : ""}
                 ${isSelected
-                  ? "bg-BrandOrange/20 border border-BrandOrange"
-                  : "hover:bg-BrandBlack2 border border-transparent"
+                  ? "bg-BrandOrange/20"
+                  : "hover:bg-BrandBlack2"
                 }
               `}
             >

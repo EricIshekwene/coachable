@@ -155,7 +155,7 @@ export default function PlayerTransformSection({
             type="button"
             title="Align to left of field"
             onClick={() => alignX(leftX)}
-            className="flex-1 flex items-center justify-center py-1 rounded border border-transparent bg-BrandBlack2 hover:border-BrandOrange hover:text-BrandOrange text-BrandGray transition-colors cursor-pointer"
+            className="flex-1 flex items-center justify-center py-1 rounded bg-BrandBlack2 hover:text-BrandOrange text-BrandGray transition-colors cursor-pointer"
           >
             <MdAlignHorizontalLeft className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
           </button>
@@ -163,7 +163,7 @@ export default function PlayerTransformSection({
             type="button"
             title="Align to center of field"
             onClick={() => alignX(centerX)}
-            className="flex-1 flex items-center justify-center py-1 rounded border border-transparent bg-BrandBlack2 hover:border-BrandOrange hover:text-BrandOrange text-BrandGray transition-colors cursor-pointer"
+            className="flex-1 flex items-center justify-center py-1 rounded bg-BrandBlack2 hover:text-BrandOrange text-BrandGray transition-colors cursor-pointer"
           >
             <MdAlignHorizontalCenter className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
           </button>
@@ -171,7 +171,7 @@ export default function PlayerTransformSection({
             type="button"
             title="Align to right of field"
             onClick={() => alignX(rightX)}
-            className="flex-1 flex items-center justify-center py-1 rounded border border-transparent bg-BrandBlack2 hover:border-BrandOrange hover:text-BrandOrange text-BrandGray transition-colors cursor-pointer"
+            className="flex-1 flex items-center justify-center py-1 rounded bg-BrandBlack2 hover:text-BrandOrange text-BrandGray transition-colors cursor-pointer"
           >
             <MdAlignHorizontalRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
           </button>
