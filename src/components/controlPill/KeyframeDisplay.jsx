@@ -167,7 +167,7 @@ export default function KeyframeDisplay({
               }}
             >
               <div
-                className={`w-4.5 h-4.5 rotate-45 transition-colors flex items-center justify-center ${
+                className={`w-3.5 h-3.5 rotate-45 transition-colors flex items-center justify-center ${
                   isDragging
                     ? "bg-BrandOrange scale-125 border border-BrandBlack"
                     : isSelected

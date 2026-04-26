@@ -23,7 +23,7 @@ export const SidebarChevronButton = forwardRef(({
             <button
                 className={`
                     w-full aspect-square
-                    rounded-md border border-BrandGray
+                    rounded-md
                     transition-all duration-200
                     flex items-center justify-center
                     ${isSelected ? "bg-BrandOrange" : "bg-BrandBlack2"}
@@ -101,11 +101,11 @@ export const WideSidebarRowButton = forwardRef(({
         >
             <button
                 className={`
-                    shrink-0 w-9 h-9 rounded-lg border flex items-center justify-center
+                    shrink-0 w-9 h-9 rounded-lg flex items-center justify-center
                     transition-all duration-200
                     ${isSelected
-                        ? "bg-BrandOrange border-BrandOrange text-BrandBlack"
-                        : "border-BrandGray2 bg-BrandBlack2 hover:border-BrandGray hover:bg-BrandBlack2/90 text-BrandOrange"
+                        ? "bg-BrandOrange text-BrandBlack"
+                        : "bg-BrandBlack2 hover:bg-BrandBlack2/90 text-BrandOrange"
                     }
                 `}
                 onMouseEnter={onHover}
@@ -148,10 +148,10 @@ export const Button = ({ Icon, onHover, onClick, isSelected }) => {
             <button
                 className={`
              w-full aspect-square
-             rounded-md border border-BrandGray
+             rounded-md
              transition-all duration-200
              flex items-center justify-center
-             ${isSelected ? "bg-BrandOrange " : "bg-BrandBlack2 "}
+             ${isSelected ? "bg-BrandOrange" : "bg-BrandBlack2"}
            `}
                 onMouseEnter={onHover}
                 onClick={onClick}
@@ -169,12 +169,12 @@ export const PanelButton = ({ Icon, onHover, onClick, isSelected = false }) => {
         <button
             className={`
              w-full aspect-[5/3]
-             rounded-lg border border-BrandGray2
+             rounded-lg
              transition-all duration-200
              flex items-center justify-center p-1
              ${isSelected
-                    ? "bg-BrandOrange border-BrandOrange text-BrandBlack"
-                    : "bg-BrandBlack2 hover:bg-BrandBlack2/90 hover:border-BrandGray text-BrandOrange"}
+                    ? "bg-BrandOrange text-BrandBlack"
+                    : "bg-BrandBlack2 hover:bg-BrandBlack2/90 text-BrandOrange"}
            `}
             onMouseEnter={onHover}
             onClick={onClick}
@@ -201,7 +201,7 @@ export const PlayerButton = ({
             type="button"
             onClick={() => onClick?.(id)}
             className={`w-full flex flex-row rounded sm items-center justify-between px-1 py-0.5 sm:py-1 transition-colors
-                ${isSelected ? "bg-BrandBlack border border-BrandOrange" : "bg-BrandBlack2 border border-transparent"}
+                ${isSelected ? "bg-BrandBlack" : "bg-BrandBlack2"}
                 hover:bg-BrandBlack`}
         >
             {/* Color indicator */}

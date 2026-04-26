@@ -101,7 +101,7 @@ function ProfileStrip({ adminMode }) {
                         </Link>
                         <Link
                             to="/login"
-                            className="flex items-center justify-center rounded-md border border-BrandGray2/40 px-3 py-2 text-xs text-BrandGray transition hover:border-BrandGray hover:text-white"
+                            className="flex items-center justify-center rounded-md px-3 py-2 text-xs text-BrandGray transition hover:text-white"
                         >
                             Log in
                         </Link>

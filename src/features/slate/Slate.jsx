@@ -2987,6 +2987,13 @@ function Slate({
 
       if (isTypingTarget) return;
 
+      // Space bar toggles play/pause
+      if (e.key === " " && !exportModalOpen && !isExporting && !screenshotMode) {
+        e.preventDefault();
+        togglePlayback();
+        return;
+      }
+
       // Ctrl/Cmd+A selects all drawings in pen+select mode
       if ((e.ctrlKey || e.metaKey) && e.key === "a" && canvasTool === "pen" && drawSubTool === "select") {
         e.preventDefault();
@@ -3047,6 +3054,7 @@ function Slate({
     screenshotMode,
     handleNudgeSelectedItems,
     handleDeleteSelectedLogged,
+    togglePlayback,
     recording.recordingModeEnabled,
     recording.globalState,
     recording.stopRecording,

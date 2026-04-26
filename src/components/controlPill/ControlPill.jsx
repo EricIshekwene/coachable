@@ -104,6 +104,7 @@ export default function ControlPill({
   const handleKeyframeClick = (event, marker) => {
     event.stopPropagation();
     if (!marker) return;
+    onPause?.();
     if (selectedKeyframeMs === marker.timeMs) {
       onSelectKeyframe?.(null);
       return;
