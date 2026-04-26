@@ -999,6 +999,52 @@ function Slate({
     });
   }, [entities.setPlayersById, entities.setBallsById, setAnimationDataWithMeta]);
 
+  /**
+   * Reflects all player, ball, and animation keyframe positions across the given axis.
+   * @param {"x"|"y"} axis - "x" negates all y-coordinates; "y" negates all x-coordinates.
+   */
+  const handleReflectAxis = useCallback((axis) => {
+    if (axis !== "x" && axis !== "y") return;
+
+    historyApiRef.current?.pushHistory?.();
+
+    const flip = (px, py) =>
+      axis === "x" ? { x: px, y: -py } : { x: -px, y: py };
+
+    entities.setPlayersById((prev) => {
+      const updated = {};
+      for (const [id, player] of Object.entries(prev)) {
+        const { x, y } = flip(player.x ?? 0, player.y ?? 0);
+        updated[id] = { ...player, x, y };
+      }
+      return updated;
+    });
+
+    entities.setBallsById((prev) => {
+      const next = { ...(prev || {}) };
+      Object.entries(next).forEach(([id, ball]) => {
+        const { x, y } = flip(ball?.x ?? 0, ball?.y ?? 0);
+        next[id] = { ...ball, x, y };
+      });
+      return next;
+    });
+
+    setAnimationDataWithMeta((base) => {
+      const nextTracks = {};
+      let changed = false;
+      for (const [trackId, track] of Object.entries(base.tracks || {})) {
+        const nextKeyframes = (track.keyframes || []).map((kf) => {
+          const { x, y } = flip(kf.x ?? 0, kf.y ?? 0);
+          changed = true;
+          return { ...kf, x, y };
+        });
+        nextTracks[trackId] = { ...track, keyframes: nextKeyframes };
+      }
+      if (!changed) return null;
+      return { ...base, tracks: nextTracks };
+    });
+  }, [entities.setPlayersById, entities.setBallsById, setAnimationDataWithMeta]);
+
   const handleRotateLeft = useCallback(() => {
     rotateEntitiesByDelta(-90);
     fieldViewport.pushFieldHistory();
@@ -3475,6 +3521,8 @@ function Slate({
         }`}
       ><RightPanel
         adminMode={adminMode}
+        onReflectX={() => handleReflectAxis("x")}
+        onReflectY={() => handleReflectAxis("y")}
         canvasTool={canvasTool}
         drawSubTool={drawSubTool}
         drawColor={drawColor}
@@ -3612,6 +3660,8 @@ function Slate({
           autoplayEnabled={autoplayEnabled}
           onAutoplayChange={setAutoplayEnabled}
           onDeleteAllKeyframes={handleDeleteAllKeyframes}
+          onReflectX={() => handleReflectAxis("x")}
+          onReflectY={() => handleReflectAxis("y")}
           onRecordModeComingSoon={() =>
             onShowMessage?.("Coming soon", "Record Mode is currently disabled.", "standard")
           }

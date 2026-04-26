@@ -3,6 +3,7 @@ import { FaTimes } from "react-icons/fa";
 import { FaRegTrashCan } from "react-icons/fa6";
 import { IoMdDownload } from "react-icons/io";
 import { FiUpload } from "react-icons/fi";
+import { TbFlipVertical, TbFlipHorizontal } from "react-icons/tb";
 import PitchSettingsSection from "./advancedSettings/PitchSettingsSection";
 import PlayerSettingsSection from "./advancedSettings/PlayerSettingsSection";
 import BallSettingsSection from "./advancedSettings/BallSettingsSection";
@@ -36,6 +37,8 @@ export default function AdvancedSettings({
     autoplayEnabled,
     onAutoplayChange,
     onDeleteAllKeyframes,
+    onReflectX,
+    onReflectY,
     onRecordModeComingSoon,
     debugPlayData,
     selectedItemIds = [],
@@ -148,6 +151,36 @@ export default function AdvancedSettings({
                 <PlayerSettingsSection value={players} onChange={updatePlayers} />
                 <BallSettingsSection value={ball} onChange={updateBall} />
                 {adminMode && <ExportVideoSettingsSection value={exportVideo} onChange={updateExportVideo} />}
+                {adminMode && (
+                <div className="flex flex-col pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1.5">
+                    <div className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans">
+                        Reflect Play
+                    </div>
+                    <p className="text-BrandGray text-[9px] font-DmSans leading-tight px-0.5">
+                        Flips all positions across an axis on every keyframe.
+                    </p>
+                    <div className="flex flex-row gap-1.5 w-full">
+                        <button
+                            type="button"
+                            onClick={() => onReflectX?.()}
+                            className="flex-1 h-6 sm:h-7 bg-BrandBlack2 border border-BrandGray rounded-md px-1.5 flex items-center justify-center gap-1.5 cursor-pointer transition-colors hover:bg-BrandBlack hover:border-BrandOrange group"
+                            title="Reflect over X-axis (flip vertically)"
+                        >
+                            <TbFlipVertical className="text-BrandOrange text-sm shrink-0" aria-hidden />
+                            <span className="text-BrandWhite text-[10px] sm:text-xs font-DmSans">X Axis</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => onReflectY?.()}
+                            className="flex-1 h-6 sm:h-7 bg-BrandBlack2 border border-BrandGray rounded-md px-1.5 flex items-center justify-center gap-1.5 cursor-pointer transition-colors hover:bg-BrandBlack hover:border-BrandOrange group"
+                            title="Reflect over Y-axis (flip horizontally)"
+                        >
+                            <TbFlipHorizontal className="text-BrandOrange text-sm shrink-0" aria-hidden />
+                            <span className="text-BrandWhite text-[10px] sm:text-xs font-DmSans">Y Axis</span>
+                        </button>
+                    </div>
+                </div>
+                )}
                 {adminMode && (
                 <div className="flex flex-col pb-2 sm:pb-3 md:pb-4 items-start justify-center gap-1 sm:gap-2">
                     <div className="text-BrandWhite text-xs sm:text-sm md:text-base font-DmSans">

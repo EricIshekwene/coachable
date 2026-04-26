@@ -12,6 +12,7 @@ import RecordingPlayerList from "./rightPanel/RecordingPlayerList";
 import RecordingModeToggle from "./rightPanel/RecordingModeToggle";
 import ObjectsSection from "./rightPanel/ObjectsSection";
 import PlayerTransformSection from "./rightPanel/PlayerTransformSection";
+import ReflectPlaySection from "./rightPanel/ReflectPlaySection";
 
 export default function RightPanel({
   playName,
@@ -46,6 +47,8 @@ export default function RightPanel({
   onOpenAdvancedSettings,
 
   adminMode = false,
+  onReflectX,
+  onReflectY,
   onSaveToPlaybook,
   onScreenshot,
   onVideoExport,
@@ -292,6 +295,10 @@ export default function RightPanel({
             </>
           ) : (
             <AllPlayersSection value={allPlayersDisplay} onChange={onAllPlayersDisplayChange} />
+          )}
+
+          {adminMode && (
+            <ReflectPlaySection onReflectX={onReflectX} onReflectY={onReflectY} />
           )}
 
           <AdvancedSettingsButton isOpen={advancedSettingsOpen} onOpen={onOpenAdvancedSettings} />
