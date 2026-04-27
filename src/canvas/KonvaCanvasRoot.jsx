@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import PlayerActionPopup from "./PlayerActionPopup";
 import { Stage, Layer, Group, Circle, Text, Image as KonvaImage, Rect, Line, Arrow, Ellipse } from "react-konva";
 import Konva from "konva";
 import BoardViewport from "./BoardViewport";
@@ -170,6 +171,11 @@ function KonvaCanvasRoot({
   onFieldBoundsChange,
   viewOnly = false,
   mobileLayout = false,
+  onEditPlayer,
+  onTogglePlayerHidden,
+  onToggleBallHidden,
+  onTogglePlayerLocked,
+  adminMode = false,
 }) {
   const viewportRef = useRef(null);
   const stageRef = useRef(null);
@@ -2037,7 +2043,7 @@ function KonvaCanvasRoot({
                   item.type === "player"
                     ? selectedPlayerIds?.includes(item.id)
                     : selectedItemIds?.includes(item.id);
-                const draggable = tool === "select" && item.draggable !== false && !isMarqueeActive && !lockDrag && !viewOnly;
+                const draggable = tool === "select" && item.draggable !== false && !item.locked && !isMarqueeActive && !lockDrag && !viewOnly;
 
                 if (item.type === "ball") {
                   const objectType = renderedItem.objectType === "cone" ? "cone" : "ball";
@@ -2292,6 +2298,26 @@ function KonvaCanvasRoot({
               whiteSpace: "pre-wrap",
               overflow: "hidden",
             }}
+          />
+        );
+      })()}
+      {/* Player / item action popup — shown when exactly one item is selected in admin select mode */}
+      {adminMode && !viewOnly && tool === "select" && selectedItemIds?.length === 1 && (() => {
+        const selectedId = selectedItemIds[0];
+        const selectedItem = items.find((it) => it.id === selectedId);
+        if (!selectedItem || selectedItem.hidden) return null;
+        const renderedPose = getRenderedPose(selectedItem);
+        const isPlayer = selectedItem.type === "player";
+        const radius = isPlayer ? playerRadius : ballRadius;
+        return (
+          <PlayerActionPopup
+            key={selectedId}
+            item={{ ...selectedItem, x: renderedPose.x, y: renderedPose.y }}
+            worldOrigin={worldOrigin}
+            itemRadius={radius}
+            onEdit={isPlayer ? onEditPlayer : undefined}
+            onLock={isPlayer ? onTogglePlayerLocked : undefined}
+            onToggleVisibility={isPlayer ? onTogglePlayerHidden : onToggleBallHidden}
           />
         );
       })()}

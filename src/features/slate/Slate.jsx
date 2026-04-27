@@ -2458,8 +2458,72 @@ function Slate({
     [ensureKeyframeCoverageAtTime, resolveKeyframeWriteTimeMs, resolveTrackPose, setAnimationDataWithMeta]
   );
 
+  /**
+   * Locks a player's position from the current time forward across all keyframes,
+   * or unlocks a previously locked player (leaving keyframes untouched).
+   * When locking: freezes every keyframe at t >= currentTime to the player's current pose,
+   * and inserts a keyframe at the lock point if one doesn't already exist.
+   * @param {string} id - Player ID to lock/unlock.
+   */
+  const handleLockPlayer = useCallback(
+    (id) => {
+      const player = playersByIdRef.current?.[id];
+      if (!player) return;
+
+      if (player.locked) {
+        // Unlock only — keyframes are left as-is
+        entities.setPlayersById((prev) => ({
+          ...prev,
+          [id]: { ...prev[id], locked: false },
+        }));
+        return;
+      }
+
+      const lockTimeMs = currentTimeRef.current ?? 0;
+      const pose = resolveTrackPose(id);
+      if (!pose || !Number.isFinite(pose.x) || !Number.isFinite(pose.y)) return;
+
+      historyApiRef.current?.pushHistory?.();
+
+      setAnimationDataWithMeta((base) => {
+        const nextTracks = { ...base.tracks };
+        const existing = nextTracks[id] || { keyframes: [] };
+        let keyframes = [...(existing.keyframes || [])];
+
+        // Freeze all keyframes at or after the lock time
+        keyframes = keyframes.map((kf) =>
+          kf.t >= lockTimeMs ? { ...kf, x: pose.x, y: pose.y } : kf
+        );
+
+        // Insert a keyframe at the lock point if none exists there
+        const hasLockKf = keyframes.some((kf) => Math.abs(kf.t - lockTimeMs) < 0.5);
+        if (!hasLockKf) {
+          const lockKf = { t: lockTimeMs, x: pose.x, y: pose.y };
+          if (pose.r !== undefined) lockKf.r = pose.r;
+          keyframes = [...keyframes, lockKf].sort((a, b) => a.t - b.t);
+        }
+
+        nextTracks[id] = { ...existing, keyframes };
+        return { ...base, tracks: nextTracks };
+      });
+
+      entities.setPlayersById((prev) => ({
+        ...prev,
+        [id]: { ...prev[id], locked: true },
+      }));
+    },
+    [entities, currentTimeRef, resolveTrackPose, setAnimationDataWithMeta]
+  );
+
   const handleItemDragStart = useCallback(
     (id) => {
+      // If this player is locked, dragging unlocks it (keyframes remain frozen)
+      if (playersByIdRef.current?.[id]?.locked) {
+        entities.setPlayersById((prev) => ({
+          ...prev,
+          [id]: { ...prev[id], locked: false },
+        }));
+      }
       const enginePlayingBefore = Boolean(engineRef.current?.isPlaying?.());
       if (recording.recordingModeEnabled) {
         logRecordingDebug(
@@ -2476,7 +2540,7 @@ function Slate({
       }
       entities.handleItemDragStart(id);
     },
-    [entities, recording.globalState, recording.recordingModeEnabled, recording.recordingPlayerId, recording.resumeRecordingImmediate]
+    [entities, entities.setPlayersById, recording.globalState, recording.recordingModeEnabled, recording.recordingPlayerId, recording.resumeRecordingImmediate]
   );
 
   const handleItemDragEnd = useCallback(
@@ -3209,6 +3273,11 @@ function Slate({
           disableSnapping={recording.recordingModeEnabled}
           onAssetsLoaded={handleAssetsLoaded}
           onFieldBoundsChange={setFieldBounds}
+          adminMode={adminMode}
+          onEditPlayer={entities.handleEditPlayer}
+          onTogglePlayerHidden={entities.handleTogglePlayerHidden}
+          onToggleBallHidden={entities.handleToggleBallHidden}
+          onTogglePlayerLocked={handleLockPlayer}
         />
         {/* Text editing is now handled via right panel textarea */}
         {!viewOnly && recording.countdownValue != null && (

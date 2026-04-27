@@ -17,7 +17,7 @@ export default function ReflectPlaySection({ onReflectX, onReflectY }) {
       <div className="flex flex-row justify-between w-full mt-1 sm:mt-1.5 md:mt-2">
         <div className="flex flex-col items-center gap-0.5">
           <button type="button" className={btnClass} onClick={() => onReflectX?.()}>
-            <TbFlipVertical className={iconClass} />
+            <TbFlipHorizontal className={iconClass} />
           </button>
           <span className="text-[9px] sm:text-[10px] text-BrandGray font-DmSans leading-none">
             X Axis
@@ -25,7 +25,7 @@ export default function ReflectPlaySection({ onReflectX, onReflectY }) {
         </div>
         <div className="flex flex-col items-center gap-0.5">
           <button type="button" className={btnClass} onClick={() => onReflectY?.()}>
-            <TbFlipHorizontal className={iconClass} />
+            <TbFlipVertical className={iconClass} />
           </button>
           <span className="text-[9px] sm:text-[10px] text-BrandGray font-DmSans leading-none">
             Y Axis
