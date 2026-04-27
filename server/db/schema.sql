@@ -407,7 +407,8 @@ INSERT INTO page_sections (section_key, label, page) VALUES
   ('landing.visualize.basketball',      'Basketball — Visualize',              'basketball'),
   ('landing.visualize.soccer',          'Soccer — Visualize',                  'soccer'),
   ('landing.visualize.ice_hockey',      'Ice Hockey — Visualize',              'ice_hockey'),
-  ('landing.visualize.field_hockey',    'Field Hockey — Visualize',            'field_hockey')
+  ('landing.visualize.field_hockey',    'Field Hockey — Visualize',            'field_hockey'),
+  ('landing.visualize.womens_lacrosse', 'Womens Lacrosse — Visualize',         'womens_lacrosse')
 ON CONFLICT DO NOTHING;
 
 -- ============================================================
