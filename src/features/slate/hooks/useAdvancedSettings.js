@@ -22,7 +22,7 @@ export const SPORT_DEFAULTS = {
   Lacrosse: { sizePercent: 65, defaultFieldRotation: 90, usePositionLabels: true },
   "Womens Lacrosse": { sizePercent: 65, defaultFieldRotation: 90, usePositionLabels: true },
   Soccer: { sizePercent: 65, usePositionLabels: true },
-  "Field Hockey": { baseSizePx: 23, sizePercent: 65, usePositionLabels: true },
+  "Field Hockey": { baseSizePx: 17, sizePercent: 50, usePositionLabels: true },
   "Ice Hockey": { baseSizePx: 23, sizePercent: 65, usePositionLabels: true, pitchColor: "#ECF8FE" },
   Basketball: { sizePercent: 80, pitchColor: "#D8C3A5", defaultFieldRotation: 90 },
   Blank: { pitchColor: "#4FA85D", sizePercent: 75 },
