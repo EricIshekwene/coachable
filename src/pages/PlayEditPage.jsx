@@ -163,6 +163,7 @@ export default function PlayEditPage() {
           initialPlayData={initialPlayData}
           onPlayDataChange={handlePlayDataChange}
           flushRef={flushRef}
+          testVariant
           onNavigateHome={handleNavigateHome}
           onReady={() => setReady(true)}
         />

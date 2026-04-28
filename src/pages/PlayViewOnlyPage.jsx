@@ -68,6 +68,7 @@ export default function PlayViewOnlyPage() {
         initialPlayData={existingPlay?.playData || null}
         onNavigateHome={() => navigate("/app/plays")}
         onReady={() => setReady(true)}
+        testVariant
       />
     </div>
   );

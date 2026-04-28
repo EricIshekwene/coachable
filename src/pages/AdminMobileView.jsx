@@ -36,6 +36,7 @@ export default function AdminMobileView() {
         onShowMessage={showMessage}
         adminMode
         mobileLayout
+        testVariant
       />
     </div>
   );

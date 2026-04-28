@@ -247,17 +247,19 @@ export default function PlayNew() {
         <div className="flex flex-col gap-2">
           <label className="text-xs font-semibold">Starting Canvas</label>
 
-          {/* Search */}
-          <div className="relative">
-            <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-BrandGray2" />
-            <input
-              type="text"
-              value={presetSearch}
-              onChange={(e) => setPresetSearch(e.target.value)}
-              placeholder="Search presets..."
-              className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 py-2 pl-8 pr-3 font-DmSans text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2/50 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
-            />
-          </div>
+          {/* Search — only shown when there are more than 6 presets */}
+          {allPresets.length > 6 && (
+            <div className="relative">
+              <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-BrandGray2" />
+              <input
+                type="text"
+                value={presetSearch}
+                onChange={(e) => setPresetSearch(e.target.value)}
+                placeholder="Search presets..."
+                className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 py-2 pl-8 pr-3 font-DmSans text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2/50 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+              />
+            </div>
+          )}
 
           {/* Scrollable grid — fixed height ≈ 3 card rows, scrollbar hidden */}
           <div

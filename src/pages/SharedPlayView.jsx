@@ -66,6 +66,7 @@ export default function SharedPlayView() {
         initialPlayData={play.playData || null}
         onNavigateHome={() => navigate(location.state?.backTo || `/shared/${token}`)}
         onReady={() => setReady(true)}
+        testVariant
       />
     </div>
   );

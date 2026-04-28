@@ -262,6 +262,7 @@ export default function AdminPlayEditPage() {
         initialPlayData={initialPlayData}
         onPlayDataChange={handlePlayDataChange}
         flushRef={flushRef}
+        testVariant
         onThumbnailSave={handleThumbnailSave}
         onNavigateHome={handleNavigateHome}
         onReady={() => setReady(true)}

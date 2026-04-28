@@ -90,6 +90,7 @@ export function SlateRoot({ adminMode = false, sport = null }) {
           adminMode={adminMode}
           sport={sport}
           onNavigateHome={navigateHome}
+          testVariant
         />
       </MobileViewOnlyGate>
     </div>

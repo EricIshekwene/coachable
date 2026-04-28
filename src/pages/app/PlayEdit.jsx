@@ -65,7 +65,7 @@ export default function PlayEdit() {
           type={messagePopup.type}
           onClose={hideMessage}
         />
-        <Slate onShowMessage={showMessage} />
+        <Slate onShowMessage={showMessage} testVariant />
       </div>
 
       {/* Exit confirmation modal */}

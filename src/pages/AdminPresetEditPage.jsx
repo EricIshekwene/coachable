@@ -252,6 +252,7 @@ export default function AdminPresetEditPage() {
         initialPlayData={initialPlayData}
         onPlayDataChange={handlePlayDataChange}
         flushRef={flushRef}
+        testVariant
         onNavigateHome={handleNavigateHome}
         onReady={() => setReady(true)}
         adminMode
