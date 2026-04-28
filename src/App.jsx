@@ -20,6 +20,8 @@ import Admin from "./pages/Admin";
 import AdminTests from "./pages/AdminTests";
 import AdminErrors from "./pages/AdminErrors";
 import AdminPlayEditPage from "./pages/AdminPlayEditPage";
+import AdminPresetEditPage from "./pages/AdminPresetEditPage";
+import AdminSportPresetsPage from "./pages/AdminSportPresetsPage";
 import AdminPlaysPage from "./pages/AdminPlaysPage";
 import AdminUserActivity from "./pages/AdminUserActivity";
 import AdminUserIssues from "./pages/AdminUserIssues";
@@ -230,6 +232,8 @@ export function AppRoutes() {
       <Route path="/admin/record" element={<RequireAdminSession><SlateRecordRoot /></RequireAdminSession>} />
       <Route path="/admin/app" element={<RequireAdminSession><AdminPlaysPage /></RequireAdminSession>} />
       <Route path="/admin/plays/:playId/edit" element={<RequireAdminSession><AdminPlayEditPage /></RequireAdminSession>} />
+      <Route path="/admin/presets/:sport" element={<RequireAdminSession><AdminSportPresetsPage /></RequireAdminSession>} />
+      <Route path="/admin/presets/:sport/:presetId/edit" element={<RequireAdminSession><AdminPresetEditPage /></RequireAdminSession>} />
       <Route path="/admin/users/:userId" element={<RequireAdminSession><AdminUserActivity /></RequireAdminSession>} />
       <Route path="/admin/user-issues" element={<RequireAdminSession><AdminUserIssues /></RequireAdminSession>} />
       <Route path="/admin/mobile-view" element={<RequireAdminSession><AdminMobileView /></RequireAdminSession>} />

@@ -21,6 +21,7 @@ import userIssuesRoutes from "./routes/userIssues.js";
 import playbookSectionsRoutes from "./routes/playbookSections.js";
 import demoVideosRoutes from "./routes/demoVideos.js";
 import prefabsRoutes from "./routes/prefabs.js";
+import sportPresetsRoutes from "./routes/sportPresets.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -76,6 +77,7 @@ app.use("/user-issues", userIssuesRoutes);
 app.use("/playbook-sections", playbookSectionsRoutes);
 app.use("/demo-videos", demoVideosRoutes);
 app.use("/prefabs", prefabsRoutes);
+app.use("/sport-presets", sportPresetsRoutes);
 
 // --------------- Static files ---------------
 

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-const SUPPORTED_FIELD_TYPES = ["Rugby", "Soccer", "Football", "Lacrosse", "Womens Lacrosse", "Basketball", "Field Hockey", "Ice Hockey", "Blank"];
+export const SUPPORTED_FIELD_TYPES = ["Rugby", "Soccer", "Football", "Lacrosse", "Womens Lacrosse", "Basketball", "Field Hockey", "Ice Hockey", "Blank"];
 
 export function resolveFieldTypeFromSport(sport) {
   const normalizedSport = String(sport ?? "").trim().toLowerCase();
@@ -18,10 +18,10 @@ export function resolveFieldTypeFromSport(sport) {
 /** Per-sport default overrides for player/ball/cone sizes, pitch color, and field rotation. */
 export const SPORT_DEFAULTS = {
   Rugby: { baseSizePx: 23, sizePercent: 75 },
-  Football: { baseSizePx: 25, sizePercent: 70, coneSizePercent: 65, usePositionLabels: true },
+  Football: { baseSizePx: 16, sizePercent: 70, coneSizePercent: 65, usePositionLabels: true },
   Lacrosse: { sizePercent: 65, defaultFieldRotation: 90, usePositionLabels: true },
   "Womens Lacrosse": { sizePercent: 65, defaultFieldRotation: 90, usePositionLabels: true },
-  Soccer: { sizePercent: 65, usePositionLabels: true },
+  Soccer: { baseSizePx: 26, sizePercent: 65, usePositionLabels: true },
   "Field Hockey": { baseSizePx: 17, sizePercent: 50, usePositionLabels: true },
   "Ice Hockey": { baseSizePx: 23, sizePercent: 65, usePositionLabels: true, pitchColor: "#ECF8FE" },
   Basketball: { sizePercent: 80, pitchColor: "#D8C3A5", defaultFieldRotation: 90 },

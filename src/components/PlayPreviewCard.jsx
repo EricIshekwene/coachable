@@ -716,6 +716,11 @@ export default function PlayPreviewCard({
             const pose = poses?.[id] || fallbackPoses?.[id] || { x: 0, y: 0 };
             const numberText = player?.number ?? "";
             const color = player?.color || allPlayersDisplay?.color || DEFAULT_PLAYER_COLOR;
+            const isPositionLabel = numberText !== "" && isNaN(Number(numberText));
+            const labelLen = Math.max(1, String(numberText).length);
+            const previewNumberFontSize = isPositionLabel
+              ? Math.max(6, Math.round((playerSizePx * 0.9) / labelLen))
+              : Math.max(10, Math.round(playerSizePx * 0.45));
             return (
               <g key={id} transform={`translate(${pose.x} ${pose.y})`}>
                 <circle r={playerRadius} fill={color} stroke="#111827" strokeWidth={2} />
@@ -725,7 +730,7 @@ export default function PlayPreviewCard({
                     y={playerSizePx * 0.13}
                     textAnchor="middle"
                     fontFamily="DmSans"
-                    fontSize={Math.max(10, Math.round(playerSizePx * 0.45))}
+                    fontSize={previewNumberFontSize}
                     fontWeight="700"
                     fill="#111827"
                   >

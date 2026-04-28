@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import logo from "../assets/logos/full_Coachable_logo.png";
 import {
   FiPlus, FiEdit2, FiTrash2, FiLogOut, FiFolder, FiFolderPlus,
   FiChevronRight, FiLink, FiCheck, FiX, FiEdit3, FiLayout, FiSearch, FiCopy,
-  FiBookOpen, FiEye, FiEyeOff, FiMoreHorizontal, FiMenu, FiClock, FiTag,
+  FiBookOpen, FiEye, FiEyeOff, FiMoreHorizontal, FiMenu, FiClock, FiTag, FiSliders,
 } from "react-icons/fi";
 import PlayPreviewCard from "../components/PlayPreviewCard";
 import ConfirmModal from "../components/subcomponents/ConfirmModal";
@@ -14,6 +14,7 @@ import {
   setAdminElevated,
   clearAdminElevated,
 } from "../utils/adminElevation";
+import { SUPPORTED_FIELD_TYPES } from "../features/slate/hooks/useAdvancedSettings";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -368,6 +369,28 @@ async function reorderSectionPlayApi(session, sectionId, playId, sortOrder) {
     body: JSON.stringify({ sortOrder }),
   });
   if (!res.ok) throw new Error("Failed to reorder play in section");
+}
+
+// ── Sport Presets API helpers ─────────────────────────────────────────────────
+
+/**
+ * Sports that can have admin-configured presets, derived from the canonical
+ * SUPPORTED_FIELD_TYPES list. Adding a new sport to useAdvancedSettings.js
+ * automatically surfaces it here — no manual update needed.
+ */
+const PRESET_SPORTS = SUPPORTED_FIELD_TYPES.filter((s) => s !== "Blank");
+
+/**
+ * Fetch all saved sport presets from the admin API.
+ * @param {string} session - Admin session token
+ * @returns {Promise<Object[]>} Array of preset objects with { sport, playData, updatedAt }
+ */
+async function fetchSportPresets(session) {
+  const res = await fetch(`${API_URL}/admin/sport-presets`, {
+    headers: { "x-admin-session": session },
+  });
+  if (!res.ok) throw new Error("Failed to load sport presets");
+  return (await res.json()).presets || [];
 }
 
 // ── Subcomponents ─────────────────────────────────────────────────────────────
@@ -1555,13 +1578,15 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
  */
 export default function AdminPlaysPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const session = sessionStorage.getItem(SESSION_KEY) || "";
 
-  const [activeTab, setActiveTab] = useState("plays");
+  const [activeTab, setActiveTab] = useState(location.state?.tab || "plays");
   const [plays, setPlays] = useState([]);
   const [folders, setFolders] = useState([]);
   const [sections, setSections] = useState([]);
   const [playbookSections, setPlaybookSections] = useState([]);
+  const [sportPresets, setSportPresets] = useState([]);
   const [loading, setLoading] = useState(true);
   const allTags = [...new Set(plays.flatMap((p) => p.tags || []))].sort();
   const [error, setError] = useState("");
@@ -1606,16 +1631,18 @@ export default function AdminPlaysPage() {
     setLoading(true);
     setError("");
     try {
-      const [playsData, foldersData, sectionsData, playbookSectionsData] = await Promise.all([
+      const [playsData, foldersData, sectionsData, playbookSectionsData, sportPresetsData] = await Promise.all([
         fetchAllPlays(session),
         fetchAllFolders(session),
         fetchPageSections(session),
         fetchPlaybookSections(session),
+        fetchSportPresets(session),
       ]);
       setPlays(playsData);
       setFolders(foldersData);
       setSections(sectionsData);
       setPlaybookSections(playbookSectionsData);
+      setSportPresets(sportPresetsData);
     } catch (err) {
       if (err.message === "UNAUTHORIZED") {
         sessionStorage.removeItem(SESSION_KEY);
@@ -1629,6 +1656,13 @@ export default function AdminPlaysPage() {
   }, [session, navigate]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Re-fetch sport preset counts whenever the presets tab becomes active so badge
+  // counts stay accurate after returning from AdminSportPresetsPage without a full reload.
+  useEffect(() => {
+    if (activeTab !== "presets" || !session) return;
+    fetchSportPresets(session).then(setSportPresets).catch(() => {});
+  }, [activeTab, session]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Strip any sport-name tags that were previously auto-applied.
   const SPORT_TAGS = new Set(["rugby", "soccer", "football", "lacrosse", "womens lacrosse", "basketball", "field hockey", "ice hockey", "blank"]);
@@ -2038,6 +2072,14 @@ export default function AdminPlaysPage() {
             >
               <FiBookOpen className="text-[10px]" /> Playbook Sections
             </button>
+            <button
+              onClick={() => setActiveTab("presets")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                activeTab === "presets" ? "bg-BrandOrange text-white" : "text-BrandGray hover:text-white"
+              }`}
+            >
+              <FiSliders className="text-[10px]" /> Sport Presets
+            </button>
           </div>
           <div className="flex items-center gap-3 text-xs text-BrandGray2">
             <span>{plays.length} total</span>
@@ -2147,6 +2189,45 @@ export default function AdminPlaysPage() {
           error={error}
           setError={setError}
         />
+      )}
+
+      {/* Sport Presets tab */}
+      {activeTab === "presets" && (
+        <div className="mx-auto max-w-4xl px-6 py-8">
+          <div className="mb-6">
+            <h2 className="font-Manrope text-base font-bold text-white">Sport Presets</h2>
+            <p className="mt-1 text-xs text-BrandGray2">
+              Manage starting-canvas presets for each sport. Click a sport to view and create presets for it.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+            {PRESET_SPORTS.map((sport) => {
+              const count = sportPresets.filter((p) => p.sport === sport).length;
+              return (
+                <button
+                  key={sport}
+                  type="button"
+                  onClick={() => navigate(`/admin/presets/${encodeURIComponent(sport)}`)}
+                  className="group flex flex-col gap-3 rounded-xl border border-white/8 bg-[#1a1d22] p-4 text-left transition hover:border-BrandOrange/40 hover:bg-[#1e2228]"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-Manrope text-sm font-semibold text-white">{sport}</span>
+                    {count > 0 ? (
+                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+                        {count} {count === 1 ? "preset" : "presets"}
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-white/6 px-2 py-0.5 text-[10px] font-semibold text-BrandGray2">None</span>
+                    )}
+                  </div>
+                  <div className="mt-auto flex items-center gap-1.5 text-[11px] font-semibold text-BrandOrange opacity-0 transition group-hover:opacity-100">
+                    <FiSliders className="text-xs" /> Manage
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {/* Body: sidebar + content */}

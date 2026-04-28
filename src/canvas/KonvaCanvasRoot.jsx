@@ -2122,6 +2122,12 @@ function KonvaCanvasRoot({
                 const radius = playerRadius;
                 const numberText = item.number ?? "";
                 const nameText = item.name ?? "";
+                // Position labels (non-numeric) need smaller font so multi-char text fits inside the circle
+                const isPositionLabel = numberText !== "" && isNaN(Number(numberText));
+                const labelLen = Math.max(1, String(numberText).length);
+                const numberFontSize = Math.max(10, Math.round(sizePx * 0.45));
+                const labelFontSize = Math.max(6, Math.round((sizePx * 0.9) / labelLen));
+                const numberTextFontSize = isPositionLabel ? labelFontSize : numberFontSize;
                 const color = item.color || playerDisplay.color || "#ef4444";
 
                 return (
@@ -2169,7 +2175,7 @@ function KonvaCanvasRoot({
                         verticalAlign="middle"
                         fontFamily="DmSans"
                         fontStyle="bold"
-                        fontSize={Math.max(10, Math.round(sizePx * 0.45))}
+                        fontSize={numberTextFontSize}
                         fill="#111827"
                         listening={false}
                       />

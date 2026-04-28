@@ -1250,4 +1250,162 @@ router.delete("/prefabs/:id", requireAdmin, async (req, res, next) => {
   }
 });
 
+// ── Sport Presets ─────────────────────────────────────────────────────────────
+
+/** Serialize a sport_presets DB row to the API response shape. */
+function toSportPresetResponse(row) {
+  return {
+    id: row.id,
+    sport: row.sport,
+    name: row.name,
+    playData: row.play_data,
+    sortOrder: row.sort_order,
+    isHidden: row.is_hidden ?? true,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/**
+ * List all sport presets grouped by sport (for the presets tab overview).
+ * @route GET /admin/sport-presets
+ */
+router.get("/sport-presets", requireAdmin, async (_req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT * FROM sport_presets ORDER BY sport, sort_order ASC, created_at ASC"
+    );
+    res.json({ presets: rows.map(toSportPresetResponse) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * List all presets for a specific sport (case-insensitive sport match).
+ * @route GET /admin/sport-presets/:sport
+ */
+router.get("/sport-presets/:sport", requireAdmin, async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT * FROM sport_presets WHERE LOWER(sport) = LOWER($1) ORDER BY sort_order ASC, created_at ASC",
+      [req.params.sport]
+    );
+    res.json({ presets: rows.map(toSportPresetResponse) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Fetch a single sport preset by ID (case-insensitive sport match).
+ * @route GET /admin/sport-presets/:sport/:id
+ */
+router.get("/sport-presets/:sport/:id", requireAdmin, async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT * FROM sport_presets WHERE id = $1 AND LOWER(sport) = LOWER($2)",
+      [req.params.id, req.params.sport]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Preset not found" });
+    res.json({ preset: toSportPresetResponse(rows[0]) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Reorder presets for a sport by assigning sort_order = index of each ID.
+ * Body: { ids: string[] } — full ordered list of preset UUIDs for the sport.
+ * @route POST /admin/sport-presets/:sport/reorder
+ */
+router.post("/sport-presets/:sport/reorder", requireAdmin, async (req, res, next) => {
+  const { sport } = req.params;
+  const { ids } = req.body;
+  if (!Array.isArray(ids)) return res.status(400).json({ error: "ids must be an array" });
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    for (let i = 0; i < ids.length; i++) {
+      await client.query(
+        "UPDATE sport_presets SET sort_order = $1, updated_at = now() WHERE id = $2 AND LOWER(sport) = LOWER($3)",
+        [i, ids[i], sport]
+      );
+    }
+    await client.query("COMMIT");
+    res.json({ ok: true });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    next(err);
+  } finally {
+    client.release();
+  }
+});
+
+/**
+ * Create a new preset for a sport.
+ * @route POST /admin/sport-presets/:sport
+ */
+router.post("/sport-presets/:sport", requireAdmin, async (req, res, next) => {
+  try {
+    const { sport } = req.params;
+    const { name, playData } = req.body;
+    if (!playData) return res.status(400).json({ error: "playData is required" });
+    const { rows } = await pool.query(
+      `INSERT INTO sport_presets (sport, name, play_data, sort_order)
+       VALUES ($1, $2, $3, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM sport_presets WHERE sport = $1))
+       RETURNING *`,
+      [sport, (name || "Preset").trim(), JSON.stringify(playData)]
+    );
+    res.status(201).json({ preset: toSportPresetResponse(rows[0]) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Update an existing preset (play data and/or name).
+ * @route PATCH /admin/sport-presets/:sport/:id
+ */
+router.patch("/sport-presets/:sport/:id", requireAdmin, async (req, res, next) => {
+  try {
+    const { sport, id } = req.params;
+    const { name, playData, isHidden } = req.body;
+    const sets = [];
+    const vals = [];
+    if (name !== undefined) { sets.push(`name = $${vals.length + 1}`); vals.push(name.trim()); }
+    if (playData !== undefined) { sets.push(`play_data = $${vals.length + 1}`); vals.push(JSON.stringify(playData)); }
+    if (isHidden !== undefined) { sets.push(`is_hidden = $${vals.length + 1}`); vals.push(Boolean(isHidden)); }
+    if (!sets.length) return res.status(400).json({ error: "Nothing to update" });
+    sets.push("updated_at = now()");
+    vals.push(id, sport);
+    const { rows } = await pool.query(
+      `UPDATE sport_presets SET ${sets.join(", ")} WHERE id = $${vals.length - 1} AND LOWER(sport) = LOWER($${vals.length}) RETURNING *`,
+      vals
+    );
+    if (!rows.length) return res.status(404).json({ error: "Preset not found" });
+    res.json({ preset: toSportPresetResponse(rows[0]) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Delete a sport preset. Requires elevated (Danger Mode) session.
+ * @route DELETE /admin/sport-presets/:sport/:id
+ */
+router.delete("/sport-presets/:sport/:id", requireElevated, async (req, res, next) => {
+  try {
+    const { sport, id } = req.params;
+    const { rowCount } = await pool.query(
+      "DELETE FROM sport_presets WHERE id = $1 AND LOWER(sport) = LOWER($2)",
+      [id, sport]
+    );
+    if (!rowCount) return res.status(404).json({ error: "Preset not found" });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

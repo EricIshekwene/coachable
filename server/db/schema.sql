@@ -524,3 +524,29 @@ CREATE TABLE IF NOT EXISTS admin_prefabs (
   prefab_data JSONB NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- ============================================================
+-- Sport presets (admin-managed, multiple per sport, shown to all users)
+-- ============================================================
+
+-- Drop old single-preset table (was keyed by sport TEXT PRIMARY KEY)
+DROP TABLE IF EXISTS sport_presets;
+
+CREATE TABLE IF NOT EXISTS sport_presets (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sport      TEXT NOT NULL,
+  name       TEXT NOT NULL DEFAULT 'Preset',
+  play_data  JSONB NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  is_hidden  BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Safe migration: add is_hidden to existing sport_presets rows (defaults to true = hidden)
+DO $$ BEGIN
+  ALTER TABLE sport_presets ADD COLUMN is_hidden BOOLEAN NOT NULL DEFAULT true;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+CREATE INDEX IF NOT EXISTS sport_presets_sport_idx ON sport_presets(sport);

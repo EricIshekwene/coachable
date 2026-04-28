@@ -142,6 +142,21 @@ export async function bulkTagPlays(teamId, playIds, tags) {
   await apiFetch(`/teams/${teamId}/plays/bulk/tags`, { method: "POST", body: { playIds, tags } });
 }
 
+/**
+ * Fetch all admin-configured presets for a sport.
+ * Returns an empty array if none have been configured.
+ * @param {string} sport - Field type name, e.g. "Football"
+ * @returns {Promise<Array<{id: string, name: string, playData: Object}>>}
+ */
+export async function fetchSportPresets(sport) {
+  try {
+    const data = await apiFetch(`/sport-presets/${encodeURIComponent(sport)}`);
+    return data.presets || [];
+  } catch {
+    return [];
+  }
+}
+
 /** Map API play response to the local PlayRecord shape. */
 function mapApiPlayToLocal(p) {
   return {
