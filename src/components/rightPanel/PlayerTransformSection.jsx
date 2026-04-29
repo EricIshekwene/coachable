@@ -54,10 +54,14 @@ export default function PlayerTransformSection({
   }, [timelineDisplayTimeMs]);
 
   // Sync when item position changes externally (drag, undo, alignment buttons applied).
+  // Use getCurrentPose() instead of item.x/y directly so we always show the animated
+  // position at the current timeline time, not the stale React-state base position.
   useEffect(() => {
     if (!item || isFocusedRef.current) return;
-    setDraftX(String(Math.round(item.x ?? 0)));
-    setDraftY(String(Math.round(item.y ?? 0)));
+    const pose = getCurrentPose();
+    if (!pose) return;
+    setDraftX(String(Math.round(pose.x)));
+    setDraftY(String(Math.round(pose.y)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item?.x, item?.y]);
 

@@ -2309,8 +2309,8 @@ function KonvaCanvasRoot({
           />
         );
       })()}
-      {/* Player / item action popup — shown when exactly one item is selected in admin select mode */}
-      {adminMode && !viewOnly && tool === "select" && selectedItemIds?.length === 1 && (() => {
+      {/* Player / item action popup — shown when exactly one item is selected in select mode */}
+      {!viewOnly && tool === "select" && selectedItemIds?.length === 1 && (() => {
         const selectedId = selectedItemIds[0];
         const selectedItem = items.find((it) => it.id === selectedId);
         if (!selectedItem || selectedItem.hidden) return null;
@@ -2330,8 +2330,8 @@ function KonvaCanvasRoot({
           />
         );
       })()}
-      {/* Multi-select action popup — shown when 2+ items are selected in admin select mode */}
-      {adminMode && !viewOnly && tool === "select" && selectedItemIds?.length > 1 && (() => {
+      {/* Multi-select action popup — shown when 2+ items are selected in select mode */}
+      {!viewOnly && tool === "select" && selectedItemIds?.length > 1 && (() => {
         const selectedItems = selectedItemIds
           .map((id) => {
             const item = items.find((it) => it.id === id);
