@@ -1,6 +1,5 @@
 import React from "react";
-import { FiLock, FiUnlock, FiEye } from "react-icons/fi";
-import { PiPencilSimpleLine } from "react-icons/pi";
+import { FiLock, FiUnlock, FiEye, FiEdit } from "react-icons/fi";
 
 const POPUP_GAP_PX = 10;
 
@@ -22,7 +21,7 @@ const popupStyle = `
 
 /**
  * Floating action popup rendered above a selected canvas item.
- * Shows lock + edit + eye buttons for players; only eye for non-players.
+ * Shows lock + edit + eye for players; lock + eye for balls/cones.
  * Positioned in absolute screen-space coordinates within BoardViewport.
  *
  * @param {Object} props
@@ -37,6 +36,7 @@ function PlayerActionPopup({ item, worldOrigin, itemRadius, onEdit, onLock, onTo
   if (!item || !worldOrigin) return null;
 
   const isPlayer = item.type === "player";
+  const showLock = item.type === "player" || item.type === "ball";
   const isLocked = item.locked || false;
 
   const screenX = worldOrigin.x + item.x * worldOrigin.scale;
@@ -50,28 +50,30 @@ function PlayerActionPopup({ item, worldOrigin, itemRadius, onEdit, onLock, onTo
         style={{ left: screenX, top: screenY }}
         onMouseDown={(e) => e.stopPropagation()}
       >
+        {showLock && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onLock?.(item.id); }}
+            title={isLocked ? "Unlock" : "Lock"}
+            className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors duration-100 ${
+              isLocked
+                ? "bg-BrandOrange text-red-900 hover:bg-orange-400"
+                : "text-BrandOrange hover:bg-white/10"
+            }`}
+          >
+            {isLocked ? <FiLock size={13} /> : <FiUnlock size={13} />}
+          </button>
+        )}
         {isPlayer && (
-          <>
-            <button
-              onClick={(e) => { e.stopPropagation(); onLock?.(item.id); }}
-              title={isLocked ? "Unlock player" : "Lock player"}
-              className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors duration-100 ${
-                isLocked
-                  ? "bg-BrandOrange text-red-900 hover:bg-orange-400"
-                  : "text-BrandOrange hover:bg-white/10"
-              }`}
-            >
-              {isLocked ? <FiLock size={13} /> : <FiUnlock size={13} />}
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); onEdit?.(item.id); }}
-              title="Edit player"
-              className="flex h-7 w-7 items-center justify-center rounded-full text-BrandOrange transition-colors duration-100 hover:bg-white/10"
-            >
-              <PiPencilSimpleLine size={13} />
-            </button>
-            <div className="mx-1 h-3.5 w-px shrink-0 bg-white/15" />
-          </>
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit?.(item.id); }}
+            title="Edit player"
+            className="flex h-7 w-7 items-center justify-center rounded-full text-BrandOrange transition-colors duration-100 hover:bg-white/10"
+          >
+            <FiEdit size={13} />
+          </button>
+        )}
+        {(showLock || isPlayer) && (
+          <div className="mx-1 h-3.5 w-px shrink-0 bg-white/15" />
         )}
         <button
           onClick={(e) => { e.stopPropagation(); onToggleVisibility?.(item.id); }}

@@ -475,6 +475,17 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
     });
   };
 
+  /**
+   * Toggles the `locked` flag on a ball/cone, preventing or allowing drag on the canvas.
+   * @param {string} id - Ball ID
+   */
+  const handleToggleBallLocked = (id) => {
+    setBallsById((prev) => {
+      if (!prev?.[id]) return prev;
+      return { ...prev, [id]: { ...prev[id], locked: !prev[id].locked } };
+    });
+  };
+
   const handleDeleteSelected = () => {
     const selectedBallIds = (selectedItemIds || []).filter((itemId) => ballsById?.[itemId]);
     const ballIdsToDelete = selectedBallIds;
@@ -811,6 +822,7 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
     handleTogglePlayerHidden,
     handleToggleBallHidden,
     handleTogglePlayerLocked,
+    handleToggleBallLocked,
     handleSelectPlayer,
     handleSelectItem,
     handleItemDragStart,

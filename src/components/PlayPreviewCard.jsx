@@ -719,7 +719,7 @@ export default function PlayPreviewCard({
             const isPositionLabel = numberText !== "" && isNaN(Number(numberText));
             const labelLen = Math.max(1, String(numberText).length);
             const previewNumberFontSize = isPositionLabel
-              ? Math.max(6, Math.round((playerSizePx * 0.9) / labelLen))
+              ? Math.max(6, Math.round((playerSizePx * (labelLen === 1 ? 0.45 : 0.9)) / labelLen))
               : Math.max(10, Math.round(playerSizePx * 0.45));
             return (
               <g key={id} transform={`translate(${pose.x} ${pose.y})`}>

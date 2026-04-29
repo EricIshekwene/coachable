@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PlayerActionPopup from "./PlayerActionPopup";
+import MultiSelectActionPopup from "./MultiSelectActionPopup";
 import { Stage, Layer, Group, Circle, Text, Image as KonvaImage, Rect, Line, Arrow, Ellipse } from "react-konva";
 import Konva from "konva";
 import BoardViewport from "./BoardViewport";
@@ -175,6 +176,7 @@ function KonvaCanvasRoot({
   onTogglePlayerHidden,
   onToggleBallHidden,
   onTogglePlayerLocked,
+  onToggleBallLocked,
   adminMode = false,
 }) {
   const viewportRef = useRef(null);
@@ -2126,7 +2128,7 @@ function KonvaCanvasRoot({
                 const isPositionLabel = numberText !== "" && isNaN(Number(numberText));
                 const labelLen = Math.max(1, String(numberText).length);
                 const numberFontSize = Math.max(10, Math.round(sizePx * 0.45));
-                const labelFontSize = Math.max(6, Math.round((sizePx * 0.9) / labelLen));
+                const labelFontSize = Math.max(6, Math.round((sizePx * (labelLen === 1 ? 0.45 : 0.9)) / labelLen));
                 const numberTextFontSize = isPositionLabel ? labelFontSize : numberFontSize;
                 const color = item.color || playerDisplay.color || "#ef4444";
 
@@ -2314,7 +2316,8 @@ function KonvaCanvasRoot({
         if (!selectedItem || selectedItem.hidden) return null;
         const renderedPose = getRenderedPose(selectedItem);
         const isPlayer = selectedItem.type === "player";
-        const radius = isPlayer ? playerRadius : ballRadius;
+        const isBall = selectedItem.type === "ball";
+        const radius = isPlayer ? playerRadius : (selectedItem.objectType === "cone" ? coneRadius : ballRadius);
         return (
           <PlayerActionPopup
             key={selectedId}
@@ -2322,8 +2325,54 @@ function KonvaCanvasRoot({
             worldOrigin={worldOrigin}
             itemRadius={radius}
             onEdit={isPlayer ? onEditPlayer : undefined}
-            onLock={isPlayer ? onTogglePlayerLocked : undefined}
+            onLock={isPlayer ? onTogglePlayerLocked : (isBall ? onToggleBallLocked : undefined)}
             onToggleVisibility={isPlayer ? onTogglePlayerHidden : onToggleBallHidden}
+          />
+        );
+      })()}
+      {/* Multi-select action popup — shown when 2+ items are selected in admin select mode */}
+      {adminMode && !viewOnly && tool === "select" && selectedItemIds?.length > 1 && (() => {
+        const selectedItems = selectedItemIds
+          .map((id) => {
+            const item = items.find((it) => it.id === id);
+            if (!item || item.hidden) return null;
+            const rendered = getRenderedPose(item);
+            return { ...item, x: rendered.x, y: rendered.y };
+          })
+          .filter(Boolean);
+        if (!selectedItems.length) return null;
+
+        const handleLockAll = () => {
+          const allLocked = selectedItems.every((item) => item.locked);
+          selectedItems.forEach((item) => {
+            if (item.type === "player") {
+              if (allLocked) onTogglePlayerLocked?.(item.id);
+              else if (!item.locked) onTogglePlayerLocked?.(item.id);
+            } else if (item.type === "ball") {
+              if (allLocked) onToggleBallLocked?.(item.id);
+              else if (!item.locked) onToggleBallLocked?.(item.id);
+            }
+          });
+        };
+
+        const handleHideAll = () => {
+          // If all hidden → show all; otherwise hide all that are still visible
+          const allHidden = selectedItems.every((item) => item.hidden);
+          selectedItems.forEach((item) => {
+            const shouldToggle = allHidden ? item.hidden : !item.hidden;
+            if (!shouldToggle) return;
+            if (item.type === "player") onTogglePlayerHidden?.(item.id);
+            else if (item.type === "ball") onToggleBallHidden?.(item.id);
+          });
+        };
+
+        return (
+          <MultiSelectActionPopup
+            items={selectedItems}
+            worldOrigin={worldOrigin}
+            playerRadius={playerRadius}
+            onLockAll={handleLockAll}
+            onHideAll={handleHideAll}
           />
         );
       })()}

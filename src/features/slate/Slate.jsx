@@ -2459,6 +2459,57 @@ function Slate({
   );
 
   /**
+   * Locks a ball's position from the current time forward across all keyframes,
+   * or unlocks a previously locked ball (leaving keyframes untouched).
+   * @param {string} id - Ball ID to lock/unlock.
+   */
+  const handleLockBall = useCallback(
+    (id) => {
+      const ball = ballsByIdRef.current?.[id];
+      if (!ball) return;
+
+      if (ball.locked) {
+        entities.setBallsById((prev) => ({
+          ...prev,
+          [id]: { ...prev[id], locked: false },
+        }));
+        return;
+      }
+
+      const lockTimeMs = currentTimeRef.current ?? 0;
+      const pose = resolveTrackPose(id);
+      if (!pose || !Number.isFinite(pose.x) || !Number.isFinite(pose.y)) return;
+
+      historyApiRef.current?.pushHistory?.();
+
+      setAnimationDataWithMeta((base) => {
+        const nextTracks = { ...base.tracks };
+        const existing = nextTracks[id] || { keyframes: [] };
+        let keyframes = [...(existing.keyframes || [])];
+
+        keyframes = keyframes.map((kf) =>
+          kf.t >= lockTimeMs ? { ...kf, x: pose.x, y: pose.y } : kf
+        );
+
+        const hasLockKf = keyframes.some((kf) => Math.abs(kf.t - lockTimeMs) < 0.5);
+        if (!hasLockKf) {
+          const lockKf = { t: lockTimeMs, x: pose.x, y: pose.y };
+          keyframes = [...keyframes, lockKf].sort((a, b) => a.t - b.t);
+        }
+
+        nextTracks[id] = { ...existing, keyframes };
+        return { ...base, tracks: nextTracks };
+      });
+
+      entities.setBallsById((prev) => ({
+        ...prev,
+        [id]: { ...prev[id], locked: true },
+      }));
+    },
+    [entities, currentTimeRef, resolveTrackPose, setAnimationDataWithMeta]
+  );
+
+  /**
    * Locks a player's position from the current time forward across all keyframes,
    * or unlocks a previously locked player (leaving keyframes untouched).
    * When locking: freezes every keyframe at t >= currentTime to the player's current pose,
@@ -2677,10 +2728,12 @@ function Slate({
         entities.playersById?.[anchorId] ||
         entities.ballsById?.[anchorId];
       if (anchorPose) {
+        const anchorX = anchorPose.x ?? 0;
+        const anchorY = anchorPose.y ?? 0;
         const zoom = Math.max(0.0001, fieldViewport.camera?.zoom || 1);
         const snapThresholdWorld = KEYBOARD_NUDGE_SNAP_THRESHOLD_PX / zoom;
-        const targetX = (anchorPose.x ?? 0) + dx;
-        const targetY = (anchorPose.y ?? 0) + dy;
+        const targetX = anchorX + dx;
+        const targetY = anchorY + dy;
         const excludedIds = new Set(selectedItemIds);
         let closestX = null;
         let closestY = null;
@@ -2703,13 +2756,20 @@ function Slate({
           }
         });
 
+        // Only snap in the direction of travel — never snap backward, which would freeze movement
         if (closestX) {
-          nextDx += closestX.value - targetX;
-          snappedX = true;
+          const snapValid = dx === 0 || (dx > 0 ? closestX.value >= anchorX : closestX.value <= anchorX);
+          if (snapValid) {
+            nextDx += closestX.value - targetX;
+            snappedX = true;
+          }
         }
         if (closestY) {
-          nextDy += closestY.value - targetY;
-          snappedY = true;
+          const snapValid = dy === 0 || (dy > 0 ? closestY.value >= anchorY : closestY.value <= anchorY);
+          if (snapValid) {
+            nextDy += closestY.value - targetY;
+            snappedY = true;
+          }
         }
       }
 
@@ -3278,6 +3338,7 @@ function Slate({
           onTogglePlayerHidden={entities.handleTogglePlayerHidden}
           onToggleBallHidden={entities.handleToggleBallHidden}
           onTogglePlayerLocked={handleLockPlayer}
+          onToggleBallLocked={handleLockBall}
         />
         {/* Text editing is now handled via right panel textarea */}
         {!viewOnly && recording.countdownValue != null && (
