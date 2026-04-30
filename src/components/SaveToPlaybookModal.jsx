@@ -39,6 +39,8 @@ export default function SaveToPlaybookModal({
   const [saveError, setSaveError] = useState(null);
   const [sourcePlay, setSourcePlay] = useState(null);
   const newFolderRef = useRef(null);
+  /** Tracks in-flight folder creation: { tempId, promise: Promise<realId|null> } */
+  const pendingFolderRef = useRef(null);
 
   useEffect(() => {
     if (!open || !teamId) return;
@@ -83,12 +85,14 @@ export default function SaveToPlaybookModal({
     setSelectedFolderId(tempId);
     setNewFolderName("");
     setNewFolderMode(false);
-    apiCreateFolder(teamId, { name: trimmed, parentId: currentFolderId })
+    const promise = apiCreateFolder(teamId, { name: trimmed, parentId: currentFolderId })
       .then((created) => {
         setFolders((prev) => prev.map((f) => (f.id === tempId ? { ...f, id: created.id } : f)));
         setSelectedFolderId((prev) => (prev === tempId ? created.id : prev));
+        return created.id;
       })
-      .catch(() => {});
+      .catch(() => null);
+    pendingFolderRef.current = { tempId, promise };
   }, [newFolderName, currentFolderId, teamId]);
 
   const handleNavigateFolder = useCallback((folderId) => {
@@ -129,8 +133,12 @@ export default function SaveToPlaybookModal({
         });
       }
 
-      const requestedFolderId = selectedFolderId || currentFolderId || null;
-      if (requestedFolderId) {
+      let requestedFolderId = selectedFolderId || currentFolderId || null;
+      // If the folder was just created and its API call is still in-flight, wait for the real UUID.
+      if (requestedFolderId?.startsWith("f-") && pendingFolderRef.current?.tempId === requestedFolderId) {
+        requestedFolderId = await pendingFolderRef.current.promise;
+      }
+      if (requestedFolderId && !requestedFolderId.startsWith("f-")) {
         await movePlayToFolder(teamId, entry.id, requestedFolderId).catch(() => {});
       }
 

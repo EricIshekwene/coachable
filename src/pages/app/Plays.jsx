@@ -76,6 +76,8 @@ export default function Plays() {
   const menuRef = useRef(null);
   const renameRef = useRef(null);
   const newFolderRef = useRef(null);
+  /** Tracks in-flight folder creation: { tempId, promise: Promise<realId|null> } */
+  const pendingFolderRef = useRef(null);
 
   // Load plays and folders from API
   useEffect(() => {
@@ -193,7 +195,7 @@ export default function Plays() {
     setRenameTarget(null);
   };
 
-  const handleMovePlayToFolder = useCallback((playId, folderId) => {
+  const handleMovePlayToFolder = useCallback(async (playId, folderId) => {
     const play = plays.find((p) => p.id === playId);
     setPlays((prev) => prev.map((p) => (p.id === playId ? { ...p, folderId } : p)));
     setFolders((prev) => prev.map((f) => {
@@ -205,7 +207,15 @@ export default function Plays() {
     showToast(`"${play?.title}" moved to ${folder?.name}`);
     setMoveTarget(null);
     setMenuOpen(null);
-    if (teamId) apiMovePlayToFolder(teamId, playId, folderId).catch(() => {});
+    if (!teamId) return;
+    // Resolve temp folder ID before hitting the server
+    let realFolderId = folderId;
+    if (folderId?.startsWith("f-") && pendingFolderRef.current?.tempId === folderId) {
+      realFolderId = await pendingFolderRef.current.promise;
+    }
+    if (realFolderId && !realFolderId.startsWith("f-")) {
+      apiMovePlayToFolder(teamId, playId, realFolderId).catch(() => {});
+    }
   }, [plays, folders, teamId]);
 
   const removePlayFromFolder = (playId, folderId) => {
@@ -263,9 +273,13 @@ export default function Plays() {
     setNewFolderName("");
     setNewFolderMode(false);
     if (teamId) {
-      apiCreateFolder(teamId, { name: newFolder.name, parentId: currentFolderId })
-        .then((created) => { setFolders((prev) => prev.map((f) => (f.id === tempId ? { ...f, id: created.id } : f))); })
-        .catch(() => {});
+      const promise = apiCreateFolder(teamId, { name: newFolder.name, parentId: currentFolderId })
+        .then((created) => {
+          setFolders((prev) => prev.map((f) => (f.id === tempId ? { ...f, id: created.id } : f)));
+          return created.id;
+        })
+        .catch(() => null);
+      pendingFolderRef.current = { tempId, promise };
     }
   };
 
@@ -320,7 +334,15 @@ export default function Plays() {
     showToast(`Moved ${ids.length} play${ids.length !== 1 ? "s" : ""} to ${folder?.name}`);
     setBulkMoveOpen(false);
     exitBulkMode();
-    if (teamId) bulkMovePlays(teamId, ids, folderId).catch(() => {});
+    if (!teamId) return;
+    // Resolve temp folder ID before hitting the server
+    let realFolderId = folderId;
+    if (folderId?.startsWith("f-") && pendingFolderRef.current?.tempId === folderId) {
+      realFolderId = await pendingFolderRef.current.promise;
+    }
+    if (realFolderId && !realFolderId.startsWith("f-")) {
+      bulkMovePlays(teamId, ids, realFolderId).catch(() => {});
+    }
   };
 
   const handleBulkTag = async () => {
