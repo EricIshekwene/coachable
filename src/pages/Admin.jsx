@@ -198,6 +198,13 @@ export default function Admin() {
   const [expandedError, setExpandedError] = useState(null);
   const [copied, setCopied] = useState(null);
 
+  // ── User Issues ──
+  const [userIssues, setUserIssues] = useState([]);
+  const [userIssueTotal, setUserIssueTotal] = useState(0);
+  const [userIssuesLoading, setUserIssuesLoading] = useState(false);
+  const [userIssuesError, setUserIssuesError] = useState("");
+  const [expandedIssue, setExpandedIssue] = useState(null);
+
   // ── Confirm modal ──
   const [confirmModal, setConfirmModal] = useState({ open: false });
   const confirmResolveRef = useRef(null);
@@ -543,6 +550,63 @@ export default function Admin() {
     }
   };
 
+  // ── User Issues ──
+  const fetchUserIssues = useCallback(async () => {
+    setUserIssuesLoading(true);
+    setUserIssuesError("");
+    try {
+      const res = await fetch(`${API_URL}/admin/user-issues?limit=50`, {
+        headers: { "x-admin-session": session },
+      });
+      if (!res.ok) throw new Error("Failed to fetch user issues");
+      const data = await res.json();
+      setUserIssues(data.issues || []);
+      setUserIssueTotal(data.total || 0);
+    } catch (err) {
+      setUserIssuesError(err.message);
+    } finally {
+      setUserIssuesLoading(false);
+    }
+  }, [session]);
+
+  const handleIssueStatusChange = async (issue, newStatus) => {
+    try {
+      const res = await fetch(`${API_URL}/admin/user-issues/${issue.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-admin-session": session },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) throw new Error("Failed to update status");
+      setUserIssues((prev) => prev.map((i) => (i.id === issue.id ? { ...i, status: newStatus } : i)));
+    } catch (err) {
+      setUserIssuesError(err.message);
+    }
+  };
+
+  const handleDeleteIssue = async (id) => {
+    const ok = await openConfirm({ message: "Delete this issue report?", subtitle: "This cannot be undone.", confirmLabel: "Delete", danger: true });
+    if (!ok) return;
+    try {
+      await fetch(`${API_URL}/admin/user-issues/${id}`, {
+        method: "DELETE",
+        headers: { "x-admin-session": session },
+      });
+      setUserIssues((prev) => prev.filter((i) => i.id !== id));
+      setUserIssueTotal((t) => t - 1);
+    } catch (err) {
+      setUserIssuesError(err.message);
+    }
+  };
+
+  const issueStatusMeta = (status) => {
+    switch (status) {
+      case "open": return { label: "Open", className: "bg-blue-500/20 text-blue-400" };
+      case "in_progress": return { label: "In Progress", className: "bg-yellow-500/20 text-yellow-400" };
+      case "resolved": return { label: "Resolved", className: "bg-green-500/20 text-green-400" };
+      default: return { label: status, className: "bg-white/6 text-BrandGray" };
+    }
+  };
+
   const copyToClipboard = useCallback((text, id) => {
     navigator.clipboard.writeText(text).then(() => {
       setCopied(id);
@@ -576,7 +640,8 @@ export default function Admin() {
     fetchUsers();
     fetchErrors();
     fetchPlatformPlays();
-  }, [fetchUsers, fetchErrors, fetchPlatformPlays]);
+    fetchUserIssues();
+  }, [fetchUsers, fetchErrors, fetchPlatformPlays, fetchUserIssues]);
 
   // ── Initial load ──
   useEffect(() => {
@@ -584,8 +649,9 @@ export default function Admin() {
       fetchUsers();
       fetchErrors();
       fetchPlatformPlays();
+      fetchUserIssues();
     }
-  }, [authed, fetchUsers, fetchErrors, fetchPlatformPlays]);
+  }, [authed, fetchUsers, fetchErrors, fetchPlatformPlays, fetchUserIssues]);
 
   // ── Derived stats ──
   const verifiedCount = users.filter((u) => u.email_verified_at).length;
@@ -756,11 +822,11 @@ export default function Admin() {
           <div className="flex items-center gap-2">
             <button
               onClick={handleRefresh}
-              disabled={usersLoading || errorsLoading || playsLoading}
+              disabled={usersLoading || errorsLoading || playsLoading || userIssuesLoading}
               className="flex items-center gap-1.5 rounded-lg border border-white/8 bg-white/4 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-white/8 disabled:opacity-40"
             >
               <svg
-                className={`h-3.5 w-3.5 ${usersLoading || errorsLoading || playsLoading ? "animate-spin" : ""}`}
+                className={`h-3.5 w-3.5 ${usersLoading || errorsLoading || playsLoading || userIssuesLoading ? "animate-spin" : ""}`}
                 fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -779,12 +845,13 @@ export default function Admin() {
 
       <div className="mx-auto max-w-6xl px-6 py-8 space-y-10">
         {/* ── Stat row ── */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-7">
           <StatCard label="Total Users" value={users.length} />
           <StatCard label="Verified" value={verifiedCount} color="text-green-400" />
           <StatCard label="Not Onboarded" value={notOnboardedCount} color={notOnboardedCount > 0 ? "text-yellow-400" : "text-BrandGray2"} />
           <StatCard label="Beta Testers" value={betaTesterCount} color="text-purple-400" />
           <StatCard label="Error Reports" value={errorTotal} color={errorTotal > 0 ? "text-red-400" : "text-BrandGray2"} />
+          <StatCard label="Reported Issues" value={userIssueTotal} color={userIssueTotal > 0 ? "text-purple-400" : "text-BrandGray2"} />
           <StatCard label="Platform Plays" value={playsLoading ? "..." : platformPlays.length} color="text-BrandOrange" />
         </div>
 
@@ -1441,6 +1508,88 @@ export default function Admin() {
                             </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDeleteError(r.id); }}
+                              className="rounded px-2 py-1 text-xs text-red-400 transition hover:bg-red-600/20"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════════
+            REPORTED ISSUES SECTION
+        ══════════════════════════════════════════════════════════════════ */}
+        <section id="reported-issues" style={{ scrollMarginTop: "4rem" }}>
+          <SectionHeader title="Reported Issues" badge={userIssueTotal > 0 ? `${userIssueTotal}` : "None"} badgeColor={userIssueTotal > 0 ? "bg-purple-500/15 text-purple-400" : "bg-white/6 text-BrandGray2"} />
+
+          {userIssuesError && (
+            <div className="mb-3 rounded-lg bg-red-600/10 px-4 py-2 text-sm text-red-400">{userIssuesError}</div>
+          )}
+
+          {userIssuesLoading && userIssues.length === 0 && (
+            <div className="rounded-xl border border-white/6 px-6 py-10 text-center text-xs text-BrandGray2">Loading...</div>
+          )}
+
+          {!userIssuesLoading && userIssues.length === 0 && (
+            <div className="rounded-xl border border-white/6 bg-[#1e2228] px-6 py-12 text-center">
+              <p className="text-sm font-semibold text-BrandGray">No reported issues</p>
+              <p className="mt-0.5 text-xs text-BrandGray2">Issues submitted by beta testers will appear here</p>
+            </div>
+          )}
+
+          {userIssues.length > 0 && (
+            <div className="hide-scroll max-h-[60vh] overflow-y-auto space-y-2 pr-1 rounded-xl">
+              {userIssues.map((issue) => {
+                const isExpanded = expandedIssue === issue.id;
+                const meta = issueStatusMeta(issue.status);
+                return (
+                  <div key={issue.id} className="overflow-hidden rounded-xl border border-white/6 transition hover:border-white/10">
+                    <button
+                      onClick={() => setExpandedIssue(isExpanded ? null : issue.id)}
+                      className="flex w-full items-start gap-3 px-4 py-3.5 text-left"
+                    >
+                      <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${meta.className}`}>
+                        {meta.label}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold">{issue.title}</p>
+                        <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-BrandGray2">
+                          <span>{issue.user_name || "Unknown"}</span>
+                          {issue.user_email && <span>{issue.user_email}</span>}
+                          <span>{formatTime(issue.created_at)}</span>
+                        </div>
+                      </div>
+                      <svg className={`mt-1 h-3.5 w-3.5 shrink-0 text-BrandGray2 transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    {isExpanded && (
+                      <div className="border-t border-white/5 bg-[#1e2228]/60 px-4 py-4">
+                        <p className="mb-4 whitespace-pre-wrap text-sm leading-relaxed text-BrandGray">{issue.description}</p>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-semibold uppercase text-BrandGray2">Status:</span>
+                            <select
+                              value={issue.status}
+                              onChange={(e) => handleIssueStatusChange(issue, e.target.value)}
+                              className="rounded-lg border border-BrandGray2/30 bg-BrandBlack px-2 py-1 text-xs text-white outline-none focus:border-BrandOrange"
+                            >
+                              <option value="open">Open</option>
+                              <option value="in_progress">In Progress</option>
+                              <option value="resolved">Resolved</option>
+                            </select>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-BrandGray2">{new Date(issue.created_at).toLocaleString()}</span>
+                            <button
+                              onClick={() => handleDeleteIssue(issue.id)}
                               className="rounded px-2 py-1 text-xs text-red-400 transition hover:bg-red-600/20"
                             >
                               Delete
