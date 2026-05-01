@@ -451,6 +451,8 @@ function KonvaCanvasRoot({
   const setItemNodeRef = useCallback((itemId, node) => {
     if (!itemId) return;
     if (!node) {
+      const activeTween = rotationTweensRef.current.get(itemId);
+      if (activeTween) { activeTween.tween.destroy(); rotationTweensRef.current.delete(itemId); }
       itemNodeMapRef.current.delete(itemId);
       return;
     }

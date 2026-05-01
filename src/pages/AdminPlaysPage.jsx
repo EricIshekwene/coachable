@@ -409,6 +409,8 @@ function FolderItem({ folder, isActive, onClick, onRename, onDelete }) {
   const [editValue, setEditValue] = useState(folder.name);
   const inputRef = useRef(null);
 
+  const isSport = folder.isSportFolder;
+
   const startEdit = (e) => {
     e.stopPropagation();
     setEditValue(folder.name);
@@ -429,6 +431,8 @@ function FolderItem({ folder, isActive, onClick, onRename, onDelete }) {
       className={`group flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 transition ${
         isActive
           ? "bg-BrandOrange/15 text-BrandOrange"
+          : isSport
+          ? "text-BrandOrange/70 hover:bg-BrandOrange/10 hover:text-BrandOrange"
           : "text-BrandGray hover:bg-white/5 hover:text-white"
       }`}
     >
@@ -449,22 +453,29 @@ function FolderItem({ folder, isActive, onClick, onRename, onDelete }) {
       ) : (
         <span className="flex-1 truncate text-xs">{folder.name}</span>
       )}
-      {!editing && (
+      {isSport && !editing && (
+        <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-BrandOrange/50">sport</span>
+      )}
+      {!isSport && !editing && (
         <div className="hidden items-center gap-1 group-hover:flex">
-          <button
-            onClick={startEdit}
-            title="Rename"
-            className="rounded p-0.5 text-BrandGray2 hover:text-white"
-          >
-            <FiEdit3 className="text-[10px]" />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(folder); }}
-            title="Delete folder"
-            className="rounded p-0.5 text-BrandGray2 hover:text-red-400"
-          >
-            <FiTrash2 className="text-[10px]" />
-          </button>
+          {onRename && (
+            <button
+              onClick={startEdit}
+              title="Rename"
+              className="rounded p-0.5 text-BrandGray2 hover:text-white"
+            >
+              <FiEdit3 className="text-[10px]" />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(folder); }}
+              title="Delete folder"
+              className="rounded p-0.5 text-BrandGray2 hover:text-red-400"
+            >
+              <FiTrash2 className="text-[10px]" />
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -1592,7 +1603,7 @@ export default function AdminPlaysPage() {
   const [error, setError] = useState("");
   const [deletionWarning, setDeletionWarning] = useState(null);
   const [search, setSearch] = useState("");
-  const [currentFolderId, setCurrentFolderId] = useState(null);
+  const [currentFolderId, setCurrentFolderId] = useState(location.state?.folderId || null);
   const [newFolderMode, setNewFolderMode] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const newFolderRef = useRef(null);
@@ -1602,6 +1613,7 @@ export default function AdminPlaysPage() {
   const [dragSrcId, setDragSrcId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const [playSort, setPlaySort] = useState("custom");
+  const [presetPickerSport, setPresetPickerSport] = useState(null);
 
   // ── Danger Mode (elevated permissions) ──
   const [elevatedUntil, setElevatedUntil] = useState(() => getAdminElevatedUntil());
@@ -1743,7 +1755,32 @@ export default function AdminPlaysPage() {
   }, []);
 
   const handleEdit = (play) => navigate(`/admin/plays/${play.id}/edit`);
-  const handleNew = () => { setNewPlaySport("Rugby"); setNewPlayModal(true); };
+  const handleNew = () => {
+    if (currentFolderSport) {
+      const visiblePresets = sportPresets.filter(
+        (p) => p.sport?.toLowerCase() === currentFolderSport.toLowerCase() && !p.isHidden
+      );
+      if (visiblePresets.length > 0) {
+        setPresetPickerSport(currentFolderSport);
+      } else {
+        navigate("/admin/plays/new/edit", { state: { sport: currentFolderSport, folderId: currentFolderId } });
+      }
+    } else {
+      setNewPlaySport("Rugby");
+      setNewPlayModal(true);
+    }
+  };
+
+  const handlePresetPick = (preset) => {
+    setPresetPickerSport(null);
+    navigate("/admin/plays/new/edit", {
+      state: {
+        sport: currentFolderSport,
+        folderId: currentFolderId,
+        ...(preset ? { presetPlayData: preset.playData } : {}),
+      },
+    });
+  };
   const handleNewPlayConfirm = () => {
     setNewPlayModal(false);
     navigate("/admin/plays/new/edit", { state: { sport: newPlaySport } });
@@ -1943,6 +1980,7 @@ export default function AdminPlaysPage() {
     });
 
   const currentFolder = folders.find((f) => f.id === currentFolderId);
+  const currentFolderSport = currentFolder?.isSportFolder ? currentFolder.sport : null;
 
   // ── Danger Mode countdown display ──
   const dangerSecsLeft = elevatedUntil > 0 ? Math.max(0, Math.ceil((elevatedUntil - Date.now()) / 1000)) : 0;
@@ -1988,6 +2026,53 @@ export default function AdminPlaysPage() {
           </div>
         </div>
       )}
+
+      {/* ── Preset picker modal (shown when sport folder has visible presets) ── */}
+      {presetPickerSport && (() => {
+        const visiblePresets = sportPresets.filter(
+          (p) => p.sport?.toLowerCase() === presetPickerSport.toLowerCase() && !p.isHidden
+        );
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-[#1e2228] p-7 shadow-2xl">
+              <h2 className="mb-1 font-Manrope text-base font-bold text-white">Choose a Starting Preset</h2>
+              <p className="mb-5 text-xs text-BrandGray2">{presetPickerSport} · Select a template or start with a blank canvas.</p>
+              <div className="grid grid-cols-3 gap-3">
+                {/* Blank option */}
+                <button
+                  onClick={() => handlePresetPick(null)}
+                  className="flex flex-col gap-2 rounded-xl border border-white/10 bg-[#13151a] p-3 text-left transition hover:border-BrandOrange/40 hover:bg-BrandOrange/5"
+                >
+                  <div className="flex h-24 w-full items-center justify-center rounded-lg bg-white/5 text-xs text-BrandGray2">Blank</div>
+                  <span className="text-xs font-medium text-white">Blank</span>
+                </button>
+                {visiblePresets.map((preset) => (
+                  <button
+                    key={preset.id}
+                    onClick={() => handlePresetPick(preset)}
+                    className="flex flex-col gap-2 rounded-xl border border-white/10 bg-[#13151a] p-3 text-left transition hover:border-BrandOrange/40 hover:bg-BrandOrange/5"
+                  >
+                    <div className="overflow-hidden rounded-lg" style={{ height: 96 }}>
+                      <PlayPreviewCard
+                        playData={preset.playData}
+                        shape="landscape"
+                        cameraMode="fit-distribution"
+                      />
+                    </div>
+                    <span className="text-xs font-medium text-white">{preset.name}</span>
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setPresetPickerSport(null)}
+                className="mt-5 w-full rounded-lg border border-white/10 py-2 text-xs text-BrandGray transition hover:border-white/20 hover:text-white"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Danger Mode (elevation) modal ── */}
       {elevateModal && (
@@ -2260,8 +2345,8 @@ export default function AdminPlaysPage() {
                 folder={folder}
                 isActive={currentFolderId === folder.id}
                 onClick={() => setCurrentFolderId(folder.id)}
-                onRename={handleRenameFolder}
-                onDelete={handleDeleteFolder}
+                onRename={folder.isSportFolder ? null : handleRenameFolder}
+                onDelete={folder.isSportFolder ? null : handleDeleteFolder}
               />
             ))}
           </div>

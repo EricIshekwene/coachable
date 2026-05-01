@@ -1,31 +1,32 @@
 import pool from "../db/pool.js";
 
 /**
- * Seeds the sport's demo play (from page_sections) into a newly created team's playbook.
- * Looks up `landing.visualize.<sport>` in page_sections; if a play is assigned, copies it.
- * Silently skips if sport is null, no section exists, or no play is assigned.
+ * Seeds all platform plays tagged for a sport into a newly created team's playbook.
+ * Queries platform_plays directly by sport so any play added to the admin plays section
+ * for that sport is automatically seeded — no manual page_sections assignment required.
+ * Silently skips if sport is null or no matching platform plays exist.
  * @param {import('pg').PoolClient} client - Active transaction client
  * @param {string} teamId
  * @param {string|null} sport
- * @param {string} userId - Used as created_by_user_id on the new play
+ * @param {string} userId - Used as created_by_user_id on the new plays
  */
 export async function seedDemoPlay(client, teamId, sport, userId) {
   if (!sport) return;
-  const sectionKey = `landing.visualize.${sport.replace(/ /g, "_")}`;
   const { rows } = await client.query(
-    `SELECT pp.title, pp.play_data, pp.thumbnail_url
-     FROM page_sections ps
-     JOIN platform_plays pp ON pp.id = ps.play_id
-     WHERE ps.section_key = $1`,
-    [sectionKey]
+    `SELECT title, play_data, thumbnail_url
+     FROM platform_plays
+     WHERE LOWER(sport) = LOWER($1)
+     ORDER BY sort_order, created_at`,
+    [sport]
   );
   if (!rows.length) return;
-  const seed = rows[0];
-  await client.query(
-    `INSERT INTO plays (team_id, title, play_data, thumbnail_url, created_by_user_id, updated_by_user_id)
-     VALUES ($1, $2, $3, $4, $5, $5)`,
-    [teamId, seed.title, seed.play_data, seed.thumbnail_url || null, userId]
-  );
+  for (const seed of rows) {
+    await client.query(
+      `INSERT INTO plays (team_id, title, play_data, thumbnail_url, created_by_user_id, updated_by_user_id)
+       VALUES ($1, $2, $3, $4, $5, $5)`,
+      [teamId, seed.title, seed.play_data, seed.thumbnail_url || null, userId]
+    );
+  }
 }
 
 /**

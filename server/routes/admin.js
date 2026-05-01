@@ -502,6 +502,8 @@ function toPlatformFolderResponse(row) {
     id: row.id,
     parentId: row.parent_id || null,
     name: row.name,
+    sport: row.sport || null,
+    isSportFolder: row.is_sport_folder ?? false,
     sortOrder: row.sort_order,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -540,6 +542,16 @@ router.post("/plays", requireAdmin, async (req, res, next) => {
     const { title, description, sport, playData, thumbnail, tags, isFeatured, sortOrder, folderId } = req.body;
     if (!title?.trim()) return res.status(400).json({ error: "title is required" });
 
+    // If the play is being created inside a sport folder, infer sport from the folder
+    let resolvedSport = sport?.trim() || null;
+    if (folderId) {
+      const { rows: [f] } = await pool.query(
+        `SELECT sport, is_sport_folder FROM platform_play_folders WHERE id = $1`,
+        [folderId]
+      );
+      if (f?.is_sport_folder && f.sport) resolvedSport = f.sport;
+    }
+
     const { rows } = await pool.query(
       `INSERT INTO platform_plays
          (title, description, sport, play_data, thumbnail_url, tags, is_featured, sort_order, folder_id)
@@ -548,7 +560,7 @@ router.post("/plays", requireAdmin, async (req, res, next) => {
       [
         title.trim(),
         description?.trim() || "",
-        sport?.trim() || null,
+        resolvedSport,
         playData || null,
         thumbnail || null,
         tags || [],
@@ -731,6 +743,12 @@ router.patch("/platform-folders/:id", requireAdmin, async (req, res, next) => {
 // DELETE /admin/platform-folders/:id — delete a folder (plays become un-foldered) (requires Danger Mode)
 router.delete("/platform-folders/:id", requireElevated, async (req, res, next) => {
   try {
+    const { rows: [folder] } = await pool.query(
+      `SELECT is_sport_folder FROM platform_play_folders WHERE id = $1`,
+      [req.params.id]
+    );
+    if (!folder) return res.status(404).json({ error: "Folder not found." });
+    if (folder.is_sport_folder) return res.status(403).json({ error: "Sport folders cannot be deleted." });
     await pool.query("DELETE FROM platform_play_folders WHERE id = $1", [req.params.id]);
     res.json({ ok: true });
   } catch (err) {

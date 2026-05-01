@@ -102,6 +102,8 @@ export default function AdminPlayEditPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const initialSport = location.state?.sport || null;
+  const initialFolderId = location.state?.folderId || null;
+  const initialPresetPlayData = location.state?.presetPlayData || null;
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
   const [ready, setReady] = useState(false);
   const [loadingPlay, setLoadingPlay] = useState(true);
@@ -154,7 +156,7 @@ export default function AdminPlayEditPage() {
         const title = playName?.trim() || "Untitled";
         if (!persistedId) {
           // First save — create the play
-          const created = await adminCreatePlay(session, { title, playData, ...(initialSport ? { sport: initialSport.toLowerCase() } : {}) });
+          const created = await adminCreatePlay(session, { title, playData, ...(initialSport ? { sport: initialSport } : {}), ...(initialFolderId ? { folderId: initialFolderId } : {}) });
           const newId = created.id;
           // Move any autosaved data from the "new" key to the real UUID key so
           // crash recovery finds it on the next open.
@@ -212,8 +214,8 @@ export default function AdminPlayEditPage() {
 
   const handleNavigateHome = useCallback(async () => {
     await flushRef.current?.();
-    navigate("/admin/app");
-  }, [navigate]);
+    navigate("/admin/app", { state: { folderId: initialFolderId } });
+  }, [navigate, initialFolderId]);
 
   if (loadingPlay) {
     return (
@@ -227,7 +229,7 @@ export default function AdminPlayEditPage() {
   }
 
   const effectivePlayId = persistedId || "new";
-  const initialPlayData = recoveredData?.playData ?? existingPlay?.playData ?? null;
+  const initialPlayData = recoveredData?.playData ?? existingPlay?.playData ?? initialPresetPlayData ?? null;
   const initialPlayName = recoveredData?.playName ?? existingPlay?.title;
 
   return (

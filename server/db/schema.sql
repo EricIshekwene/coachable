@@ -345,6 +345,21 @@ CREATE TABLE IF NOT EXISTS platform_play_folders (
 CREATE INDEX IF NOT EXISTS platform_play_folders_parent_idx
   ON platform_play_folders(parent_id);
 
+-- Safe migration: add sport identity columns to platform_play_folders
+DO $$ BEGIN
+  ALTER TABLE platform_play_folders ADD COLUMN sport TEXT;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE platform_play_folders ADD COLUMN is_sport_folder BOOLEAN NOT NULL DEFAULT false;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Only one sport folder per sport name
+CREATE UNIQUE INDEX IF NOT EXISTS platform_play_folders_sport_unique
+  ON platform_play_folders(sport) WHERE is_sport_folder = true;
+
 CREATE TABLE IF NOT EXISTS platform_plays (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   folder_id UUID REFERENCES platform_play_folders(id) ON DELETE SET NULL,
@@ -528,9 +543,6 @@ CREATE TABLE IF NOT EXISTS admin_prefabs (
 -- ============================================================
 -- Sport presets (admin-managed, multiple per sport, shown to all users)
 -- ============================================================
-
--- Drop old single-preset table (was keyed by sport TEXT PRIMARY KEY)
-DROP TABLE IF EXISTS sport_presets;
 
 CREATE TABLE IF NOT EXISTS sport_presets (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
