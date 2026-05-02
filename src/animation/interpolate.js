@@ -79,39 +79,19 @@ export const getDirectionAtTime = (track, timeMs) => {
     return Math.atan2(dy, dx) * (180 / Math.PI) + 90;
   };
 
-  // Scan outward from segIdx to find the nearest segment with real movement.
-  const nearestDir = (segIdx) => {
-    for (let step = 0; step < keyframes.length; step += 1) {
-      const lo = segIdx - step;
-      const hi = segIdx + step;
-      if (lo >= 0 && lo < keyframes.length - 1) {
-        const d = segDir(keyframes[lo], keyframes[lo + 1]);
-        if (d !== null) return d;
-      }
-      if (hi !== lo && hi >= 0 && hi < keyframes.length - 1) {
-        const d = segDir(keyframes[hi], keyframes[hi + 1]);
-        if (d !== null) return d;
-      }
-    }
-    return null;
-  };
-
   const first = keyframes[0];
   const last = keyframes[keyframes.length - 1];
 
-  if (t <= first.t) return nearestDir(0);
-  if (t >= last.t) return nearestDir(keyframes.length - 2);
+  if (t <= first.t) return segDir(first, keyframes[1]);
+  if (t >= last.t) return segDir(keyframes[keyframes.length - 2], last);
 
-  let leftIdx = 0;
   for (let i = 0; i < keyframes.length - 1; i += 1) {
     if (t >= keyframes[i].t && t < keyframes[i + 1].t) {
-      leftIdx = i;
-      break;
+      return segDir(keyframes[i], keyframes[i + 1]);
     }
   }
 
-  const dir = segDir(keyframes[leftIdx], keyframes[leftIdx + 1]);
-  return dir !== null ? dir : nearestDir(leftIdx);
+  return null;
 };
 
 /**

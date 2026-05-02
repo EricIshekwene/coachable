@@ -2047,7 +2047,7 @@ function KonvaCanvasRoot({
                   item.type === "player"
                     ? selectedPlayerIds?.includes(item.id)
                     : selectedItemIds?.includes(item.id);
-                const draggable = tool === "select" && item.draggable !== false && !item.locked && !isMarqueeActive && !lockDrag && !viewOnly;
+                const draggable = tool === "select" && item.draggable !== false && !isMarqueeActive && !lockDrag && !viewOnly;
 
                 if (item.type === "ball") {
                   const objectType = renderedItem.objectType === "cone" ? "cone" : "ball";

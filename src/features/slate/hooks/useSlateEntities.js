@@ -768,6 +768,7 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
         y: ball.y,
         objectType: normalizeObjectType(ball.objectType),
         hidden: ball.hidden || false,
+        locked: ball.locked || false,
       })),
     ],
     [playersById, allPlayersDisplay.color, ballsById]

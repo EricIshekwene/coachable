@@ -473,11 +473,15 @@ function Slate({
   const compositeSnapshotSlate = useCallback(() => ({
     ...entities.snapshotSlate(),
     drawings: drawingsState.snapshotDrawings(),
-  }), [entities.snapshotSlate, drawingsState.snapshotDrawings]);
+    animationData: animationData,
+  }), [entities.snapshotSlate, drawingsState.snapshotDrawings, animationData]);
 
   const compositeApplySlate = useCallback((snapshot) => {
     entities.applySlate(snapshot);
     drawingsState.applyDrawings(snapshot.drawings);
+    if (snapshot.animationData != null) {
+      setAnimationData(snapshot.animationData);
+    }
   }, [entities.applySlate, drawingsState.applyDrawings]);
 
   const slateHistory = useSlateHistory({
@@ -2277,6 +2281,7 @@ function Slate({
     const targetTrackIds = getKeyframeActionTrackIds();
     if (!targetTrackIds.length) return;
 
+    historyApiRef.current?.pushHistory?.();
     setAnimationDataWithMeta((base) => {
       const nextTracks = { ...base.tracks };
       let changed = false;
@@ -2317,6 +2322,7 @@ function Slate({
       const firstKf = getTrackKeyframeTimes(animationDataRef.current, targetTrackIds)[0];
       if (Number.isFinite(firstKf) && Math.abs(roundedTime - firstKf) <= 0.5) return;
 
+      historyApiRef.current?.pushHistory?.();
       setAnimationDataWithMeta((base) => {
         const nextTracks = { ...base.tracks };
         targetTrackIds.forEach((itemId) => {
@@ -2334,6 +2340,7 @@ function Slate({
     const targetTrackIds = getKeyframeActionTrackIds();
     if (!targetTrackIds.length) return;
 
+    historyApiRef.current?.pushHistory?.();
     setAnimationDataWithMeta((base) => {
       const nextTracks = { ...base.tracks };
       let changed = false;
@@ -2388,6 +2395,7 @@ function Slate({
         `moveKeyframe from=${from}ms to=${clampedToMs}ms (requested=${to}) tracks=[${targetTrackIds.join(",")}]`
       );
 
+      historyApiRef.current?.pushHistory?.();
       setAnimationDataWithMeta((base) => {
         const nextTracks = { ...base.tracks };
         let changed = false;
@@ -2568,9 +2576,14 @@ function Slate({
 
   const handleItemDragStart = useCallback(
     (id) => {
-      // If this player is locked, dragging unlocks it (keyframes remain frozen)
+      // If the item is locked, dragging unlocks it (keyframes remain frozen)
       if (playersByIdRef.current?.[id]?.locked) {
         entities.setPlayersById((prev) => ({
+          ...prev,
+          [id]: { ...prev[id], locked: false },
+        }));
+      } else if (ballsByIdRef.current?.[id]?.locked) {
+        entities.setBallsById((prev) => ({
           ...prev,
           [id]: { ...prev[id], locked: false },
         }));
@@ -2591,7 +2604,7 @@ function Slate({
       }
       entities.handleItemDragStart(id);
     },
-    [entities, entities.setPlayersById, recording.globalState, recording.recordingModeEnabled, recording.recordingPlayerId, recording.resumeRecordingImmediate]
+    [entities, entities.setPlayersById, entities.setBallsById, recording.globalState, recording.recordingModeEnabled, recording.recordingPlayerId, recording.resumeRecordingImmediate]
   );
 
   const handleItemDragEnd = useCallback(
