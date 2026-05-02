@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { FiArrowLeft, FiEdit2, FiPlus, FiTrash2, FiLogOut, FiEye, FiEyeOff } from "react-icons/fi";
+import { FiArrowLeft, FiEdit2, FiPlus, FiTrash2, FiLogOut, FiEye, FiEyeOff, FiCopy } from "react-icons/fi";
 import PlayPreviewCard from "../components/PlayPreviewCard";
 import ConfirmModal from "../components/subcomponents/ConfirmModal";
 import {
@@ -84,6 +84,27 @@ async function togglePresetVisibility(session, sport, id, isHidden) {
 }
 
 /**
+ * Create a duplicate of a preset with "Copy of " prepended to its name.
+ * @param {string} session - Admin session token
+ * @param {string} sport - Sport name
+ * @param {string} name - Original preset name
+ * @param {Object} playData - Play data to duplicate
+ * @returns {Promise<Object>} Newly created preset object
+ */
+async function duplicatePreset(session, sport, name, playData) {
+  const res = await fetch(
+    `${API_URL}/admin/sport-presets/${encodeURIComponent(sport)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-session": session },
+      body: JSON.stringify({ name: `Copy of ${name}`, playData }),
+    }
+  );
+  if (!res.ok) throw new Error("Failed to duplicate preset");
+  return (await res.json()).preset;
+}
+
+/**
  * Per-sport preset list page. Shows all presets for a sport with edit/delete/create actions.
  * Supports drag-and-drop reordering. Accessible at /admin/presets/:sport.
  */
@@ -104,6 +125,7 @@ export default function AdminSportPresetsPage() {
   const [elevating, setElevating] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
+  const [duplicatingId, setDuplicatingId] = useState(null);
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const elevateResolveRef = useRef(null);
@@ -225,6 +247,23 @@ export default function AdminSportPresetsPage() {
       setError("Failed to update preset visibility.");
     } finally {
       setTogglingId(null);
+    }
+  };
+
+  /**
+   * Duplicate a preset and append the copy at the end of the list.
+   * @param {Object} preset - The preset to duplicate
+   */
+  const handleDuplicate = async (preset) => {
+    if (duplicatingId) return;
+    setDuplicatingId(preset.id);
+    try {
+      const copy = await duplicatePreset(session, decodedSport, preset.name, preset.playData);
+      setPresets((prev) => [...prev, copy]);
+    } catch {
+      setError("Failed to duplicate preset.");
+    } finally {
+      setDuplicatingId(null);
     }
   };
 
@@ -450,6 +489,18 @@ export default function AdminSportPresetsPage() {
                       className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-white/8 py-1.5 text-xs text-BrandGray transition hover:border-BrandOrange/40 hover:text-BrandOrange"
                     >
                       <FiEdit2 className="text-[10px]" /> Edit
+                    </button>
+                    <button
+                      onClick={() => handleDuplicate(preset)}
+                      disabled={duplicatingId === preset.id}
+                      className="flex items-center justify-center rounded-lg border border-white/8 px-2 py-1.5 text-xs text-BrandGray transition hover:border-BrandOrange/40 hover:text-BrandOrange disabled:cursor-not-allowed disabled:opacity-40"
+                      title="Duplicate preset"
+                    >
+                      {duplicatingId === preset.id ? (
+                        <div className="h-3 w-3 animate-spin rounded-full border border-BrandGray/40 border-t-BrandGray" />
+                      ) : (
+                        <FiCopy className="text-[10px]" />
+                      )}
                     </button>
                     <button
                       onClick={() => handleToggleVisibility(preset)}
