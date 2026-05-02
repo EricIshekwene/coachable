@@ -164,7 +164,8 @@ export default function AdminSportPresetsPage() {
         body: JSON.stringify({ password: elevatePassword }),
       });
       if (!res.ok) { setElevateError("Incorrect password."); return; }
-      setAdminElevated();
+      const data = await res.json();
+      setAdminElevated(data.elevatedUntil);
       setElevatedUntil(getAdminElevatedUntil());
       setElevateModal(false);
       elevateResolveRef.current?.(true);
@@ -289,6 +290,7 @@ export default function AdminSportPresetsPage() {
       {/* Confirm modal */}
       {confirmModal && (
         <ConfirmModal
+          open
           title={confirmModal.title}
           message={confirmModal.message}
           onConfirm={() => { confirmModal.resolve(true); setConfirmModal(null); }}

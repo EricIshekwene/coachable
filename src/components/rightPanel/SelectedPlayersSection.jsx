@@ -70,7 +70,7 @@ export default function SelectedPlayersSection({
       </div>
 
       <div className="flex flex-row w-full items-center justify-between">
-        <p className="text-BrandOrange text-[10px] sm:text-xs md:text-sm font-DmSans"> Show Number:</p>
+        <p className="text-BrandOrange text-[10px] sm:text-xs md:text-sm font-DmSans"> Show Label:</p>
         <button
           type="button"
           onClick={() => updateAllPlayersDisplay({ showNumber: !showNumber })}

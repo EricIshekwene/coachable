@@ -33,7 +33,7 @@ export default function AllPlayersSection({ value, onChange }) {
       </div>
 
       <div className="flex flex-row w-full items-center justify-between">
-        <p className="text-BrandOrange text-[10px] sm:text-xs md:text-sm font-DmSans"> Show Number:</p>
+        <p className="text-BrandOrange text-[10px] sm:text-xs md:text-sm font-DmSans"> Show Label:</p>
         <button type="button" onClick={() => update({ showNumber: !showNumber })} className="focus:outline-none cursor-pointer">
           {showNumber ? (
             <ImCheckboxChecked className="text-BrandOrange w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4" />

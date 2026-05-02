@@ -663,7 +663,7 @@ export default function PlayPreviewCard({
   const ballSizePx = Math.max(6, Math.round((22 * ballSizePercent) / 100));
   const ballRadius = ballSizePx / 2;
 
-  const hasRenderableContent = play && (entityIds.length > 0 || drawings.length > 0);
+  const hasRenderableContent = !!play;
 
   const containerStyle = background === "field" ? { backgroundColor: pitchColor } : {};
 
