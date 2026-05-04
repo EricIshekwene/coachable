@@ -378,7 +378,7 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
 
   /**
    * Updates the edit draft and immediately persists the change to the player.
-   * @param {Object} patch - Fields to update (number, name).
+   * @param {Object} patch - Fields to update (number, name, color).
    */
   const handleEditDraftChange = (patch) => {
     setPlayerEditor((prev) => {
@@ -394,6 +394,7 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
               ...existing,
               number: normalizeNumber(nextDraft.number),
               name: String(nextDraft.name ?? "").trim(),
+              ...(nextDraft.color ? { color: nextDraft.color } : {}),
             },
           };
         });
@@ -460,6 +461,25 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
       if (!prev?.[id]) return prev;
       const next = { ...prev };
       next[id] = { ...next[id], hidden: !next[id].hidden };
+      return next;
+    });
+  };
+
+  /**
+   * Hides or shows all players matching a given color.
+   * If all matching players are currently hidden, shows them all; otherwise hides them all.
+   * @param {string} color - Hex color string (e.g. "#3b82f6")
+   */
+  const handleToggleColorHidden = (color) => {
+    setPlayersById((prev) => {
+      if (!prev) return prev;
+      const matching = Object.values(prev).filter((p) => p.color === color);
+      if (matching.length === 0) return prev;
+      const allHidden = matching.every((p) => p.hidden);
+      const next = { ...prev };
+      matching.forEach((p) => {
+        next[p.id] = { ...p, hidden: !allHidden };
+      });
       return next;
     });
   };
@@ -821,6 +841,7 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
     handleAddBall,
     handleDeleteBall,
     handleTogglePlayerHidden,
+    handleToggleColorHidden,
     handleToggleBallHidden,
     handleTogglePlayerLocked,
     handleToggleBallLocked,

@@ -165,13 +165,17 @@ export default function Admin() {
   const [createForm, setCreateForm] = useState({ name: "", email: "", password: "", teamName: "", sport: "" });
   const [creating, setCreating] = useState(false);
   const [usersSearch, setUsersSearch] = useState("");
-  const [hideDemoAccounts, setHideDemoAccounts] = useState(true);
+  const [hideOptions, setHideOptions] = useState(() => new Set(["demo", "player"]));
+  const [hideDropdownOpen, setHideDropdownOpen] = useState(false);
+  const hideDropdownRef = useRef(null);
   const [usersPerPage, setUsersPerPage] = useState(10);
   const [filterRole, setFilterRole] = useState(""); // "coach"|"owner"|"assistant_coach"|"player"|""
   const [filterVerified, setFilterVerified] = useState(""); // "verified"|"unverified"|""
   const [filterOnboarded, setFilterOnboarded] = useState(""); // "yes"|"no"|""
-  const [filterMinPlays, setFilterMinPlays] = useState("");
-  const [filterMinFolders, setFilterMinFolders] = useState("");
+  const [filterPlays, setFilterPlays] = useState("");
+  const [filterPlaysOp, setFilterPlaysOp] = useState(">");
+  const [filterFolders, setFilterFolders] = useState("");
+  const [filterFoldersOp, setFilterFoldersOp] = useState(">");
   const [emailCopied, setEmailCopied] = useState(null); // "outlook"|"gmail"|null
 
   // ── Tests ──
@@ -653,16 +657,38 @@ export default function Admin() {
     }
   }, [authed, fetchUsers, fetchErrors, fetchPlatformPlays, fetchUserIssues]);
 
+  // ── Hide dropdown outside-click ──
+  useEffect(() => {
+    if (!hideDropdownOpen) return;
+    function handleClick(e) {
+      if (hideDropdownRef.current && !hideDropdownRef.current.contains(e.target)) {
+        setHideDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [hideDropdownOpen]);
+
   // ── Derived stats ──
   const verifiedCount = users.filter((u) => u.email_verified_at).length;
   const notOnboardedCount = users.filter((u) => !u.onboarded_at).length;
   const betaTesterCount = users.filter((u) => u.is_beta_tester).length;
   const normalizedUsersSearch = usersSearch.trim().toLowerCase();
   const filteredUsers = useMemo(() => {
-    const minPlays = filterMinPlays !== "" ? parseInt(filterMinPlays, 10) : null;
-    const minFolders = filterMinFolders !== "" ? parseInt(filterMinFolders, 10) : null;
+    const playsVal = filterPlays !== "" ? parseInt(filterPlays, 10) : null;
+    const foldersVal = filterFolders !== "" ? parseInt(filterFolders, 10) : null;
+    /** @param {number} actual @param {string} op @param {number} val */
+    function matchesOp(actual, op, val) {
+      if (op === ">") return actual > val;
+      if (op === "<") return actual < val;
+      return actual === val;
+    }
     return users.filter((u) => {
-      if (hideDemoAccounts && u.email?.endsWith("@coachable-seed.invalid")) return false;
+      if (hideOptions.has("demo") && u.email?.endsWith("@coachable-seed.invalid")) return false;
+      if (hideOptions.has("player") && (u.memberships || []).some((m) => m.role === "player")) return false;
+      if (hideOptions.has("assistant_coach") && (u.memberships || []).some((m) => m.role === "assistant_coach")) return false;
+      if (hideOptions.has("coach") && (u.memberships || []).some((m) => m.role === "coach")) return false;
+      if (hideOptions.has("owner") && (u.memberships || []).some((m) => m.role === "owner")) return false;
       if (normalizedUsersSearch) {
         const haystack = [
           u.name,
@@ -682,13 +708,13 @@ export default function Admin() {
       if (filterVerified === "unverified" && u.email_verified_at) return false;
       if (filterOnboarded === "yes" && !u.onboarded_at) return false;
       if (filterOnboarded === "no" && u.onboarded_at) return false;
-      if (minPlays !== null && !isNaN(minPlays) && (u.plays_created ?? 0) < minPlays) return false;
-      if (minFolders !== null && !isNaN(minFolders) && (u.folders_created ?? 0) < minFolders) return false;
+      if (playsVal !== null && !isNaN(playsVal) && !matchesOp(u.plays_created ?? 0, filterPlaysOp, playsVal)) return false;
+      if (foldersVal !== null && !isNaN(foldersVal) && !matchesOp(u.folders_created ?? 0, filterFoldersOp, foldersVal)) return false;
       return true;
     });
-  }, [users, normalizedUsersSearch, hideDemoAccounts, filterRole, filterVerified, filterOnboarded, filterMinPlays, filterMinFolders]);
+  }, [users, normalizedUsersSearch, hideOptions, filterRole, filterVerified, filterOnboarded, filterPlays, filterPlaysOp, filterFolders, filterFoldersOp]);
 
-  const activeFilterCount = [filterRole, filterVerified, filterOnboarded, filterMinPlays, filterMinFolders].filter(Boolean).length;
+  const activeFilterCount = [filterRole, filterVerified, filterOnboarded, filterPlays, filterFolders].filter(Boolean).length;
 
   /** Copy filtered user emails to clipboard in the given separator format. */
   function handleCopyEmails(format) {
@@ -704,8 +730,21 @@ export default function Admin() {
     setFilterRole("");
     setFilterVerified("");
     setFilterOnboarded("");
-    setFilterMinPlays("");
-    setFilterMinFolders("");
+    setFilterPlays("");
+    setFilterPlaysOp(">");
+    setFilterFolders("");
+    setFilterFoldersOp(">");
+    setHideOptions(new Set(["demo", "player"]));
+  }
+
+  /** Toggle a hide option on/off. */
+  function toggleHideOption(key) {
+    setHideOptions((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   }
   const usersTableMaxHeight = usersPerPage * 56 + 56;
 
@@ -906,15 +945,45 @@ export default function Admin() {
                     </button>
                   )}
                 </div>
-                <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-BrandGray select-none">
-                  <input
-                    type="checkbox"
-                    checked={hideDemoAccounts}
-                    onChange={(e) => setHideDemoAccounts(e.target.checked)}
-                    className="accent-BrandOrange"
-                  />
-                  Hide demo
-                </label>
+                <div className="relative shrink-0" ref={hideDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setHideDropdownOpen((o) => !o)}
+                    className="flex items-center gap-1.5 rounded-lg border border-white/8 bg-BrandBlack px-3 py-2 text-xs text-BrandGray transition hover:border-BrandOrange/40 hover:text-white"
+                  >
+                    Hide
+                    {hideOptions.size > 0 && (
+                      <span className="rounded-full bg-BrandOrange px-1.5 py-0.5 text-[10px] font-semibold text-white leading-none">
+                        {hideOptions.size}
+                      </span>
+                    )}
+                    <span className="text-[10px] opacity-50">{hideDropdownOpen ? "▲" : "▼"}</span>
+                  </button>
+                  {hideDropdownOpen && (
+                    <div className="absolute left-0 top-full z-50 mt-1 min-w-[160px] rounded-lg border border-white/10 bg-[#1a1a1a] py-1 shadow-xl">
+                      {[
+                        { key: "demo", label: "Demo accounts" },
+                        { key: "player", label: "Players" },
+                        { key: "assistant_coach", label: "Assistant coaches" },
+                        { key: "coach", label: "Coaches" },
+                        { key: "owner", label: "Owners" },
+                      ].map(({ key, label }) => (
+                        <label
+                          key={key}
+                          className="flex cursor-pointer items-center gap-2.5 px-3 py-2 text-xs text-BrandGray transition hover:bg-white/5 hover:text-white select-none"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={hideOptions.has(key)}
+                            onChange={() => toggleHideOption(key)}
+                            className="accent-BrandOrange"
+                          />
+                          {label}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <div className="ml-auto flex items-center gap-2">
                   <button
                     type="button"
@@ -966,24 +1035,42 @@ export default function Admin() {
                   <option value="no">Not onboarded</option>
                 </select>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-BrandGray2">Min plays</span>
+                  <span className="text-xs text-BrandGray2">Plays</span>
+                  <select
+                    value={filterPlaysOp}
+                    onChange={(e) => setFilterPlaysOp(e.target.value)}
+                    className="rounded-lg border border-white/8 bg-BrandBlack px-2 py-2 text-xs text-white outline-none focus:border-BrandOrange"
+                  >
+                    <option value=">">&gt;</option>
+                    <option value="<">&lt;</option>
+                    <option value="=">=</option>
+                  </select>
                   <input
                     type="number"
                     min="0"
-                    value={filterMinPlays}
-                    onChange={(e) => setFilterMinPlays(e.target.value)}
-                    placeholder="0"
+                    value={filterPlays}
+                    onChange={(e) => setFilterPlays(e.target.value)}
+                    placeholder="—"
                     className="w-16 rounded-lg border border-white/8 bg-BrandBlack px-2 py-2 text-xs text-white outline-none focus:border-BrandOrange"
                   />
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-BrandGray2">Min folders</span>
+                  <span className="text-xs text-BrandGray2">Folders</span>
+                  <select
+                    value={filterFoldersOp}
+                    onChange={(e) => setFilterFoldersOp(e.target.value)}
+                    className="rounded-lg border border-white/8 bg-BrandBlack px-2 py-2 text-xs text-white outline-none focus:border-BrandOrange"
+                  >
+                    <option value=">">&gt;</option>
+                    <option value="<">&lt;</option>
+                    <option value="=">=</option>
+                  </select>
                   <input
                     type="number"
                     min="0"
-                    value={filterMinFolders}
-                    onChange={(e) => setFilterMinFolders(e.target.value)}
-                    placeholder="0"
+                    value={filterFolders}
+                    onChange={(e) => setFilterFolders(e.target.value)}
+                    placeholder="—"
                     className="w-16 rounded-lg border border-white/8 bg-BrandBlack px-2 py-2 text-xs text-white outline-none focus:border-BrandOrange"
                   />
                 </div>
@@ -1002,7 +1089,12 @@ export default function Admin() {
               <table className="min-w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-white/6 bg-[#1e2228]">
-                  <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Name</th>
+                  <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">
+                    <span>Name</span>
+                    <span className="ml-2 rounded-full bg-white/8 px-1.5 py-0.5 text-[10px] font-semibold text-white/70 leading-none">
+                      {filteredUsers.length}{filteredUsers.length !== users.length && <span className="text-white/30"> / {users.length}</span>}
+                    </span>
+                  </th>
                   <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Email</th>
                   <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Team</th>
                   <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Plays</th>

@@ -3315,6 +3315,7 @@ function SlateRecord({
         onDeletePlayer={entities.handleDeletePlayer}
         onDeleteBall={entities.handleDeleteBall}
         onTogglePlayerHidden={entities.handleTogglePlayerHidden}
+        onToggleColorHidden={entities.handleToggleColorHidden}
         onToggleBallHidden={entities.handleToggleBallHidden}
         onToggleDrawingHidden={drawingsState.toggleDrawingHidden}
         hideAllDrawings={hideAllDrawings}

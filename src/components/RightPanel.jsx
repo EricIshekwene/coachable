@@ -98,6 +98,7 @@ export default function RightPanel({
   onSelectItem,
   onDeleteBall,
   onTogglePlayerHidden,
+  onToggleColorHidden,
   onToggleBallHidden,
   onToggleDrawingHidden,
   onSavePrefab,
@@ -239,6 +240,7 @@ export default function RightPanel({
             onEditPlayer={onEditPlayer}
             onDeletePlayer={onDeletePlayer}
             onTogglePlayerHidden={onTogglePlayerHidden}
+            onToggleColorHidden={onToggleColorHidden}
           />
 
           {!(selectedPlayerIds?.length > 0) && (

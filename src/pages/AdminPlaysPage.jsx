@@ -1612,7 +1612,7 @@ export default function AdminPlaysPage() {
   const [newPlaySport, setNewPlaySport] = useState("Rugby");
   const [dragSrcId, setDragSrcId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
-  const [playSort, setPlaySort] = useState("custom");
+  const [playSort, setPlaySort] = useState("updated");
   const [presetPickerSport, setPresetPickerSport] = useState(null);
 
   // ── Danger Mode (elevated permissions) ──

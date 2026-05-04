@@ -3,6 +3,11 @@ import { IoClose } from "react-icons/io5";
 import { POPUP_DENSE_INPUT_CLASS } from "../subcomponents/popupStyles";
 import { SPORT_DEFAULTS, SPORT_POSITION_PRESETS } from "../../features/slate/hooks/useAdvancedSettings";
 
+const PLAYER_COLORS = [
+  { value: "#ef4444", label: "Red" },
+  { value: "#3b82f6", label: "Blue" },
+];
+
 /**
  * Panel for editing a player's label/number and name. Changes auto-save on
  * every keystroke / preset tap. For position-label sports (Football, Soccer,
@@ -38,6 +43,7 @@ export default function PlayerEditPanel({
   if (!isOpen) return null;
 
   const numberValue = draft?.number ?? player?.number ?? "";
+  const colorValue = draft?.color ?? player?.color ?? "#ef4444";
   const sportCfg = SPORT_DEFAULTS[fieldType] || {};
   const useLabels = Boolean(sportCfg.usePositionLabels);
   const presetGroups = SPORT_POSITION_PRESETS[fieldType] || [];
@@ -121,6 +127,27 @@ export default function PlayerEditPanel({
             className="w-full min-h-8 sm:min-h-9 bg-BrandBlack2 border border-BrandGray rounded-md px-2 py-1.5 text-BrandWhite text-xs sm:text-sm font-DmSans focus:outline-none focus:border-BrandOrange transition-colors resize-none overflow-hidden leading-tight"
           />
         </label>
+
+        <div className="flex flex-col gap-1">
+          <span className="text-BrandOrange text-xs sm:text-sm font-DmSans">Color</span>
+          <div className="flex flex-row gap-2">
+            {PLAYER_COLORS.map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => onChange?.({ color: value })}
+                className={`flex flex-col items-center gap-0.5 flex-1 py-1.5 rounded-md transition-colors cursor-pointer ${
+                  colorValue === value ? "bg-BrandOrange/20 ring-1 ring-BrandOrange" : "bg-BrandBlack2 hover:bg-BrandBlack2/70"
+                }`}
+                aria-label={label}
+                aria-pressed={colorValue === value}
+              >
+                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-BrandBlack" style={{ backgroundColor: value }} />
+                <span className="text-BrandGray text-[9px] sm:text-[10px] font-DmSans">{label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="px-3 pb-3 pt-2">
