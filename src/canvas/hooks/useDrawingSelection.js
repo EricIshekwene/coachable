@@ -62,14 +62,24 @@ export function useDrawingSelection({
   const selectionPadding = 4 / (zoom || 1);
   const handleHitPadding = RESIZE_HANDLE_HIT_PADDING_PX / (zoom || 1);
 
-  const handles = useMemo(
-    () => (selectionBounds ? getResizeHandles(selectionBounds, handleSize, selectionPadding) : []),
-    [selectionBounds, handleSize, selectionPadding]
+  // Text-only selections use just left/right handles (width control only; font size via panel)
+  const isTextOnlySelection = useMemo(
+    () => selectedDrawingIds.length > 0 && selectedDrawingIds.every(
+      (id) => drawings.find((d) => d.id === id)?.type === "text"
+    ),
+    [drawings, selectedDrawingIds]
   );
 
+  const handles = useMemo(() => {
+    if (!selectionBounds) return [];
+    const all = getResizeHandles(selectionBounds, handleSize, selectionPadding);
+    if (isTextOnlySelection) return all.filter((h) => h.position === "w" || h.position === "e");
+    return all;
+  }, [selectionBounds, handleSize, selectionPadding, isTextOnlySelection]);
+
   const rotateHandlePos = useMemo(
-    () => getRotateHandlePosition(selectionBounds, zoom),
-    [selectionBounds, zoom]
+    () => isTextOnlySelection ? null : getRotateHandlePosition(selectionBounds, zoom),
+    [selectionBounds, zoom, isTextOnlySelection]
   );
 
   // Arrow endpoint handles (only when exactly 1 arrow is selected)
@@ -262,12 +272,21 @@ export function useDrawingSelection({
         }
         // Compute initial bounds from snapshot for snap
         const moveBounds = getSelectionBounds(Array.from(snap.values()), moveIds);
+
+        // If re-clicking a single already-selected text drawing, mark for edit on release
+        let editOnNoMove = null;
+        if (!shiftKey && selectedDrawingIds.length === 1 && selectedDrawingIds.includes(hitId)) {
+          const hitDrawing = drawings.find((dd) => dd.id === hitId);
+          if (hitDrawing?.type === "text") editOnNoMove = hitDrawing;
+        }
+
         gestureRef.current = {
           type: "move",
           startWorld: { ...world },
           startDrawingsSnapshot: snap,
           ids: moveIds,
           startBoundsForSnap: moveBounds ? { ...moveBounds } : null,
+          editOnNoMove,
         };
         logDrawDebug(`selection move start hitId=${hitId} count=${moveIds.length}`);
         return true;
@@ -284,7 +303,7 @@ export function useDrawingSelection({
     [
       stageRef, toWorldCoords, drawings, selectedDrawingIds, selectionBounds,
       handles, rotateHandlePos, arrowEndpointHandles, zoom, historyApiRef,
-      onSelectedDrawingIdsChange, snapshotSelected, handleHitPadding,
+      onSelectedDrawingIdsChange, snapshotSelected, handleHitPadding, onEditText,
     ]
   );
 
@@ -559,6 +578,10 @@ export function useDrawingSelection({
           if (!moved) {
             // Restore original positions (effectively a no-op undo)
             onUpdateMultipleNoHistory(snap);
+            // Re-click on already-selected text: enter inline edit at end of text
+            if (gesture.editOnNoMove && onEditText) {
+              onEditText(gesture.editOnNoMove);
+            }
           }
         }
 
@@ -568,7 +591,7 @@ export function useDrawingSelection({
 
       return false;
     },
-    [drawings, selectedDrawingIds, onSelectedDrawingIdsChange, onUpdateMultipleNoHistory, drawingMarquee]
+    [drawings, selectedDrawingIds, onSelectedDrawingIdsChange, onUpdateMultipleNoHistory, drawingMarquee, onEditText]
   );
 
   // --- Cancel gesture (on Escape) ---

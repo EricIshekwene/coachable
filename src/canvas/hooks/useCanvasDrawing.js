@@ -50,6 +50,7 @@ export function useCanvasDrawing({
   onTextEditingChange,
   onSelectedDrawingIdsChange,
   onSubToolChange,
+  onStartTextEdit,
   // Snap support
   fieldBounds,
   drawGuides,
@@ -377,7 +378,6 @@ export function useCanvasDrawing({
 
       if (subTool === "text") {
         const snapped = snapDrawingPoint(world.x, world.y, { showGuides: false });
-        // Create text drawing immediately and auto-select it
         const textDrawing = {
           type: "text",
           x: snapped.x,
@@ -392,6 +392,11 @@ export function useCanvasDrawing({
         logDrawDebug(
           `text create id=${newId} worldX=${round2(world.x)} worldY=${round2(world.y)} color=${drawColor} fontSize=${drawFontSize} align=${drawTextAlign}`
         );
+        onSubToolChange?.("select");
+        if (newId) {
+          onSelectedDrawingIdsChange?.([newId]);
+          onStartTextEdit?.(newId, textDrawing.text);
+        }
         return true;
       }
 
@@ -430,6 +435,8 @@ export function useCanvasDrawing({
       drawTextAlign,
       onAddDrawing,
       onSelectedDrawingIdsChange,
+      onSubToolChange,
+      onStartTextEdit,
       commitCustomShape,
       snapDrawingPoint,
     ]

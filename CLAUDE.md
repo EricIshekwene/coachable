@@ -1,5 +1,8 @@
 # Project Instructions
 
+## Clarification
+- If there is any slight ambiguity in a request, always ask clarifying questions before proceeding.
+
 ## Code Documentation
 - All major methods/functions must have JSDoc-style method documentation.
 

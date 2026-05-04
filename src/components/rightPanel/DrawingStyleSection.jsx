@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FiAlignLeft, FiAlignCenter, FiAlignRight, FiCheck } from "react-icons/fi";
 import { PiPenNib } from "react-icons/pi";
 import { HiPlus } from "react-icons/hi";
@@ -260,7 +260,7 @@ function FontSizeDropdown({ value, onChange }) {
             if (e.key === "Escape") setIsCustom(false);
           }}
           autoFocus
-          className="w-16 bg-BrandBlack2 border border-BrandGray text-BrandWhite text-xs font-DmSans rounded px-1.5 py-0.5 outline-none focus:border-BrandOrange transition-colors"
+          className="w-16 bg-BrandBlack2 text-BrandWhite text-xs font-DmSans rounded px-1.5 py-0.5 outline-none"
         />
         <button
           onClick={() => setIsCustom(false)}
@@ -277,7 +277,7 @@ function FontSizeDropdown({ value, onChange }) {
     <select
       value={isPreset ? value : "custom"}
       onChange={handleSelectChange}
-      className="w-full bg-BrandBlack2 border border-BrandGray text-BrandWhite text-xs font-DmSans rounded px-1.5 py-1 outline-none focus:border-BrandOrange transition-colors cursor-pointer"
+      className="w-full bg-BrandBlack2 text-BrandWhite text-xs font-DmSans rounded px-1.5 py-1 outline-none cursor-pointer"
     >
       {FONT_SIZE_OPTIONS.map((s) => (
         <option key={s} value={s}>{s}px</option>
@@ -424,15 +424,26 @@ function TextContentEditor({ text, drawingId, onUpdate }) {
   const textareaRef = useRef(null);
   const prevIdRef = useRef(null);
 
+  const autoResize = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, []);
+
+  useEffect(() => {
+    autoResize();
+  }, [text, autoResize]);
+
   useEffect(() => {
     if (drawingId !== prevIdRef.current) {
       prevIdRef.current = drawingId;
-      // Auto-focus and select all when a new text drawing is selected
       requestAnimationFrame(() => {
         const el = textareaRef.current;
         if (el) {
           el.focus();
-          el.select();
+          const len = el.value.length;
+          el.setSelectionRange(len, len);
         }
       });
     }
@@ -442,10 +453,11 @@ function TextContentEditor({ text, drawingId, onUpdate }) {
     <textarea
       ref={textareaRef}
       value={text}
-      onChange={(e) => onUpdate({ text: e.target.value })}
+      onChange={(e) => { onUpdate({ text: e.target.value }); autoResize(); }}
       onKeyDown={(e) => e.stopPropagation()}
-      rows={3}
-      className="w-full bg-BrandBlack2 border border-BrandGray2 text-BrandWhite text-xs font-DmSans rounded px-1.5 py-1 outline-none focus:border-BrandOrange resize-none"
+      onDoubleClick={() => textareaRef.current?.select()}
+      rows={1}
+      className="w-full bg-BrandBlack2 text-BrandWhite text-xs font-DmSans rounded px-1.5 py-1 outline-none resize-none overflow-hidden"
       placeholder="Enter text..."
     />
   );
@@ -725,11 +737,6 @@ function SelectedDrawingStyle({ selectedDrawing, onUpdateDrawing }) {
       <>
         <SectionLabel>Text Content</SectionLabel>
         <TextContentEditor text={d.text || ""} drawingId={d.id} onUpdate={update} />
-        <SectionLabel>Color</SectionLabel>
-        <ColorSwatches value={d.color} onChange={(c) => update({ color: c })} />
-        <SliderControl label="Opacity" value={d.opacity ?? 1} onChange={(o) => update({ opacity: o })} min={0} max={100} step={10} isPercentage />
-        <SectionLabel>Font Size</SectionLabel>
-        <FontSizeDropdown value={d.fontSize || 18} onChange={(s) => update({ fontSize: s })} />
         <SectionLabel>Alignment</SectionLabel>
         <div className="flex gap-1.5">
           {TEXT_ALIGNS.map((alignOption) => {
@@ -750,6 +757,11 @@ function SelectedDrawingStyle({ selectedDrawing, onUpdateDrawing }) {
             </button>
           )})}
         </div>
+        <SectionLabel>Font Size</SectionLabel>
+        <FontSizeDropdown value={d.fontSize || 18} onChange={(s) => update({ fontSize: s })} />
+        <SectionLabel>Color</SectionLabel>
+        <ColorSwatches value={d.color} onChange={(c) => update({ color: c })} />
+        <SliderControl label="Opacity" value={d.opacity ?? 1} onChange={(o) => update({ opacity: o })} min={0} max={100} step={10} isPercentage />
       </>
     );
   }

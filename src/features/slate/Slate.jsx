@@ -3701,6 +3701,8 @@ function Slate({
         drawings={drawingsState.drawings}
         selectedDrawingIds={selectedDrawingIds}
         onSelectedDrawingIdsChange={setSelectedDrawingIds}
+        onCanvasToolChange={handleToolChange}
+        onDrawSubToolChange={handleDrawSubToolChange}
         onRemoveDrawing={drawingsState.removeDrawing}
         eraserSize={eraserSize}
         onEraserSizeChange={handleEraserSizeChange}

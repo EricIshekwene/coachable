@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { normalizeAnimation, samplePosesAtTime, getDirectionAtTime } from "../animation";
 import RugbyField from "../assets/objects/Field Vectors/Rugby_Field.png";
 import SoccerField from "../assets/objects/Field Vectors/Soccer_Field.png";
@@ -260,6 +260,45 @@ const renderSVGDrawing = (d, key) => {
     const fontSize = d.fontSize || 18;
     const x = d.x || 0;
     const y = d.y || 0;
+    const lineHeight = fontSize * 1.3;
+    const align = d.align || "left";
+    const hasFixedWidth = Number.isFinite(d.width) && d.width > 0;
+
+    if (hasFixedWidth) {
+      // foreignObject lets the browser handle word-wrap, matching Konva wrap="word"
+      const boxHeight = d.height || lineHeight * 20;
+      return (
+        <foreignObject
+          key={key}
+          x={x}
+          y={y}
+          width={d.width}
+          height={boxHeight}
+          opacity={opacity}
+          transform={d.rotation ? `rotate(${d.rotation} ${x} ${y})` : undefined}
+        >
+          <div
+            xmlns="http://www.w3.org/1999/xhtml"
+            style={{
+              color,
+              fontSize: `${fontSize}px`,
+              fontFamily: "DmSans, sans-serif",
+              textAlign: align,
+              wordBreak: "break-word",
+              whiteSpace: "pre-wrap",
+              lineHeight: 1.3,
+              width: "100%",
+              overflow: "hidden",
+            }}
+          >
+            {d.text || ""}
+          </div>
+        </foreignObject>
+      );
+    }
+
+    const lines = (d.text || "").split("\n");
+    const textAnchor = align === "center" ? "middle" : align === "right" ? "end" : "start";
     return (
       <text
         key={key}
@@ -268,11 +307,15 @@ const renderSVGDrawing = (d, key) => {
         fill={color}
         fontSize={fontSize}
         fontFamily="DmSans, sans-serif"
-        textAnchor={d.align === "center" ? "middle" : d.align === "right" ? "end" : "start"}
+        textAnchor={textAnchor}
         transform={d.rotation ? `rotate(${d.rotation} ${x} ${y})` : undefined}
         opacity={opacity}
       >
-        {d.text || ""}
+        {lines.map((line, i) => (
+          <tspan key={i} x={x} dy={i === 0 ? 0 : lineHeight}>
+            {line || " "}
+          </tspan>
+        ))}
       </text>
     );
   }

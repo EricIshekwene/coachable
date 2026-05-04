@@ -74,12 +74,15 @@ export default function RightPanel({
   onDrawArrowTipChange,
   selectedDrawing,
   selectedDrawings,
+  textSelectAllTrigger,
   onUpdateDrawing,
   onUpdateMultipleDrawings,
   // Drawing objects list props
   drawings,
   selectedDrawingIds,
   onSelectedDrawingIdsChange,
+  onCanvasToolChange,
+  onDrawSubToolChange,
   onRemoveDrawing,
   hideAllDrawings,
   onHideAllDrawingsChange,
@@ -173,6 +176,7 @@ export default function RightPanel({
               onArrowTipChange={onDrawArrowTipChange}
               selectedDrawing={selectedDrawing}
               selectedDrawings={selectedDrawings}
+              textSelectAllTrigger={textSelectAllTrigger}
               onUpdateDrawing={onUpdateDrawing}
               onUpdateMultipleDrawings={onUpdateMultipleDrawings}
               eraserSize={eraserSize}
@@ -251,7 +255,11 @@ export default function RightPanel({
             <DrawingObjectsList
               drawings={drawings}
               selectedDrawingIds={selectedDrawingIds}
-              onSelectedDrawingIdsChange={onSelectedDrawingIdsChange}
+              onSelectedDrawingIdsChange={(ids) => {
+                onCanvasToolChange?.("pen");
+                onDrawSubToolChange?.("select");
+                onSelectedDrawingIdsChange?.(ids);
+              }}
               onRemoveDrawing={onRemoveDrawing}
               onToggleDrawingHidden={onToggleDrawingHidden}
               hideAllDrawings={hideAllDrawings}

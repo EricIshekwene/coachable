@@ -436,10 +436,14 @@ export function applyResize(drawingsSnapshot, selectedIds, oldBounds, newBounds)
   for (const d of drawingsSnapshot) {
     if (!idSet.has(d.id)) continue;
     if (d.type === "text") {
-      const newX = newBounds.x + (d.x - oldBounds.x) * scaleX;
-      const newY = newBounds.y + (d.y - oldBounds.y) * scaleY;
-      const newFontSize = Math.max(8, Math.round((d.fontSize || 18) * Math.min(scaleX, scaleY)));
-      result.set(d.id, { x: newX, y: newY, fontSize: newFontSize });
+      // Resize only changes the text box width/x — font size is controlled via the right panel.
+      // newBounds.x is the visual left edge; convert back to the drawing anchor based on alignment.
+      const align = d.align || "left";
+      let anchorX;
+      if (align === "center") anchorX = newBounds.x + newBounds.width / 2;
+      else if (align === "right") anchorX = newBounds.x + newBounds.width;
+      else anchorX = newBounds.x;
+      result.set(d.id, { x: anchorX, y: d.y, width: Math.max(20, newBounds.width) });
     } else if (d.type === "shape") {
       const newX = newBounds.x + ((d.x || 0) - oldBounds.x) * scaleX;
       const newY = newBounds.y + ((d.y || 0) - oldBounds.y) * scaleY;

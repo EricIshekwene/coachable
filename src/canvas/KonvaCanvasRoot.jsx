@@ -364,6 +364,12 @@ function KonvaCanvasRoot({
     layer.batchDraw();
   };
 
+  const [inlineEdit, setInlineEdit] = useState(null);
+
+  const handleEditText = useCallback((drawing) => {
+    setInlineEdit({ id: drawing.id, text: drawing.text || "" });
+  }, []);
+
   const canvasDrawing = useCanvasDrawing({
     tool,
     subTool: drawSubTool,
@@ -390,17 +396,12 @@ function KonvaCanvasRoot({
     onTextEditingChange,
     onSelectedDrawingIdsChange,
     onSubToolChange: onDrawSubToolChange,
+    onStartTextEdit: (id, text) => setInlineEdit({ id, text: text || "" }),
     fieldBounds,
     drawGuides,
     clearGuides,
     guidelineOffsetWorld,
   });
-
-  const [inlineEdit, setInlineEdit] = useState(null);
-
-  const handleEditText = useCallback((drawing) => {
-    setInlineEdit({ id: drawing.id, text: drawing.text || "" });
-  }, []);
 
   const drawingSelection = useDrawingSelection({
     drawings,
@@ -1760,22 +1761,6 @@ function KonvaCanvasRoot({
             opacity={opacity}
             listening={false}
           />}
-          {isTextSelected && !isInlineEditing && (() => {
-            const b = getDrawingWorldBounds(d);
-            const sw = 1 / (camera?.zoom || 1);
-            return (
-              <Rect
-                x={b.x}
-                y={b.y}
-                width={b.width}
-                height={b.height}
-                stroke="#FF7A18"
-                strokeWidth={sw}
-                dash={[3, 2]}
-                listening={false}
-              />
-            );
-          })()}
         </React.Fragment>
       );
     }
@@ -1934,7 +1919,6 @@ function KonvaCanvasRoot({
                       height={sb.height + pad * 2}
                       stroke="#FF7A18"
                       strokeWidth={sw}
-                      dash={[4, 3]}
                       listening={false}
                     />
                     {/* Resize handles */}
@@ -2261,9 +2245,27 @@ function KonvaCanvasRoot({
         const fontSize = (d.fontSize || 18) * zoom;
         return (
           <textarea
-            autoFocus
+            ref={(el) => {
+              if (el) {
+                const len = el.value.length;
+                el.setSelectionRange(len, len);
+                el.focus();
+                // Set initial height imperatively — React never sets 'height' in the
+                // style prop below (only minHeight), so this persists through re-renders.
+                el.style.height = "auto";
+                el.style.height = el.scrollHeight + "px";
+              }
+            }}
             value={inlineEdit.text}
-            onChange={(e) => setInlineEdit((prev) => ({ ...prev, text: e.target.value }))}
+            onChange={(e) => {
+              const el = e.target;
+              // Resize before setState so scrollHeight is read with 'auto' height.
+              // Because React's style prop never touches 'height', the imperative value
+              // set here survives the re-render triggered by setInlineEdit.
+              el.style.height = "auto";
+              el.style.height = el.scrollHeight + "px";
+              setInlineEdit((prev) => ({ ...prev, text: e.target.value }));
+            }}
             onBlur={() => {
               if (inlineEdit.text !== (d.text || "")) {
                 historyApiRef.current?.pushHistory?.();
