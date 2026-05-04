@@ -367,7 +367,7 @@ function KonvaCanvasRoot({
   const [inlineEdit, setInlineEdit] = useState(null);
 
   const handleEditText = useCallback((drawing) => {
-    setInlineEdit({ id: drawing.id, text: drawing.text || "" });
+    setInlineEdit({ id: drawing.id, text: drawing.text || "", height: null });
   }, []);
 
   const canvasDrawing = useCanvasDrawing({
