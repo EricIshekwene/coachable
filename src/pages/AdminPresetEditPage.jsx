@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import Slate from "../features/slate/Slate";
 import MessagePopup from "../components/MessagePopup/MessagePopup";
 import { useMessagePopup } from "../components/messaging/useMessagePopup";
+import { useAdmin } from "../admin/AdminContext";
 import useThemeColor from "../utils/useThemeColor";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -98,16 +99,17 @@ function clearLocalStorageCache(cacheKey) {
 export default function AdminPresetEditPage() {
   const { sport, presetId } = useParams();
   const navigate = useNavigate();
+  const { theme } = useAdmin();
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
   const [ready, setReady] = useState(false);
-  const [loadingPreset, setLoadingPreset] = useState(true);
+  const [loadingPreset, setLoadingPreset] = useState(() => presetId !== "new" && !!sessionStorage.getItem(SESSION_KEY));
   const [existingPreset, setExistingPreset] = useState(null);
   const [loadFailed, setLoadFailed] = useState(false);
   // Tracks the persisted UUID (null until first save for new presets)
   const [persistedId, setPersistedId] = useState(presetId === "new" ? null : presetId);
   const flushRef = useRef(null);
 
-  useThemeColor("#121212");
+  useThemeColor(theme === "light" ? "#f3f6fb" : "#121212");
 
   const session = sessionStorage.getItem(SESSION_KEY);
   const decodedSport = decodeURIComponent(sport);
@@ -116,8 +118,7 @@ export default function AdminPresetEditPage() {
 
   // Load existing preset on mount (skip for new)
   useEffect(() => {
-    if (isNew) { setLoadingPreset(false); return; }
-    if (!session) { setLoadingPreset(false); return; }
+    if (isNew || !session) return;
     setLoadingPreset(true);
     adminFetchPreset(session, decodedSport, presetId)
       .then((preset) => {
@@ -192,10 +193,17 @@ export default function AdminPresetEditPage() {
 
   if (loadingPreset) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-BrandBlack">
+      <div
+        data-admin-theme={theme}
+        className="flex h-screen w-full items-center justify-center"
+        style={{ backgroundColor: "var(--adm-bg)" }}
+      >
         <div className="flex flex-col items-center gap-4">
-          <div className="h-10 w-10 rounded-full border-[3px] border-BrandOrange/30 border-t-BrandOrange animate-spin" />
-          <p className="text-sm font-DmSans text-BrandGray">Loading editor...</p>
+          <div
+            className="h-10 w-10 animate-spin rounded-full border-[3px]"
+            style={{ borderColor: "var(--adm-border2)", borderTopColor: "var(--adm-accent)" }}
+          />
+          <p className="text-sm font-DmSans" style={{ color: "var(--adm-text2)" }}>Loading editor...</p>
         </div>
       </div>
     );
@@ -203,11 +211,20 @@ export default function AdminPresetEditPage() {
 
   if (loadFailed) {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-BrandBlack">
-        <p className="text-sm font-DmSans text-red-400">Could not load preset — it may have been deleted or the ID is invalid.</p>
+      <div
+        data-admin-theme={theme}
+        className="flex h-screen w-full flex-col items-center justify-center gap-4"
+        style={{ backgroundColor: "var(--adm-bg)" }}
+      >
+        <p className="text-sm font-DmSans" style={{ color: "var(--adm-danger)" }}>Could not load preset — it may have been deleted or the ID is invalid.</p>
         <button
           onClick={() => navigate(`/admin/presets/${encodeURIComponent(decodedSport)}`)}
-          className="rounded-lg border border-white/10 px-4 py-2 text-xs text-BrandGray transition hover:border-white/30 hover:text-white"
+          className="rounded-lg border px-4 py-2 text-xs font-semibold transition hover:opacity-85"
+          style={{
+            borderColor: "var(--adm-border2)",
+            backgroundColor: "var(--adm-surface)",
+            color: "var(--adm-text2)",
+          }}
         >
           ← Back to {decodedSport} presets
         </button>
@@ -222,17 +239,21 @@ export default function AdminPresetEditPage() {
 
   return (
     <div
-      className="w-full bg-BrandBlack flex flex-row justify-between relative overflow-hidden"
-      style={{ height: "100dvh" }}
+      data-admin-theme={theme}
+      className="relative flex h-full w-full flex-row justify-between overflow-hidden"
+      style={{ height: "100dvh", backgroundColor: "var(--adm-bg)" }}
     >
       {/* Loading overlay */}
       <div
-        className="absolute inset-0 z-100 flex items-center justify-center bg-BrandBlack transition-opacity duration-500"
-        style={{ opacity: ready ? 0 : 1, pointerEvents: ready ? "none" : "auto" }}
+        className="absolute inset-0 z-100 flex items-center justify-center transition-opacity duration-500"
+        style={{ opacity: ready ? 0 : 1, pointerEvents: ready ? "none" : "auto", backgroundColor: "var(--adm-bg)" }}
       >
         <div className="flex flex-col items-center gap-4">
-          <div className="h-10 w-10 rounded-full border-[3px] border-BrandOrange/30 border-t-BrandOrange animate-spin" />
-          <p className="text-sm font-DmSans text-BrandGray">Loading editor...</p>
+          <div
+            className="h-10 w-10 animate-spin rounded-full border-[3px]"
+            style={{ borderColor: "var(--adm-border2)", borderTopColor: "var(--adm-accent)" }}
+          />
+          <p className="text-sm font-DmSans" style={{ color: "var(--adm-text2)" }}>Loading editor...</p>
         </div>
       </div>
 

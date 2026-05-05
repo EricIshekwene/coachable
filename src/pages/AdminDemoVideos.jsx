@@ -8,8 +8,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { FiPlus, FiEdit2, FiTrash2, FiCheck, FiX, FiChevronUp, FiChevronDown } from "react-icons/fi";
-import logo from "../assets/logos/full_Coachable_logo.png";
 import ConfirmModal from "../components/subcomponents/ConfirmModal";
+import { useAdmin } from "../admin/AdminContext";
+import { adminPath } from "../admin/adminNav";
+import {
+  AdminShell, AdminHeader, AdminPage, AdminCard, AdminSection,
+  AdminBtn, AdminInput, AdminModal, AdminEmptyState, AdminSpinner,
+} from "../admin/components";
 import {
   isAdminElevated,
   setAdminElevated,
@@ -125,6 +130,7 @@ const BLANK_FORM = { title: "", youtubeUrl: "", keywords: "", done: false };
  * Admin page for managing demo tutorial videos.
  */
 export default function AdminDemoVideos() {
+  const { basePath } = useAdmin();
   const [session] = useState(() => sessionStorage.getItem(SESSION_KEY) || "");
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -354,20 +360,17 @@ export default function AdminDemoVideos() {
 
   if (!authed) {
     return (
-      <div className="flex h-screen items-center justify-center bg-BrandBlack font-DmSans">
-        <div className="text-center">
-          <p className="mb-4 text-BrandGray">Admin session required</p>
-          <Link to="/admin" className="text-sm text-BrandOrange hover:underline">
-            Go to Admin Login
-          </Link>
-        </div>
-      </div>
+      <AdminShell className="flex items-center justify-center">
+        <AdminCard>
+          <p className="mb-3 text-sm" style={{ color: "var(--adm-muted)" }}>Admin session required</p>
+          <Link to={adminPath(basePath, "")} className="text-sm transition-opacity hover:opacity-70" style={{ color: "var(--adm-accent)" }}>Go to Admin Login</Link>
+        </AdminCard>
+      </AdminShell>
     );
   }
 
   return (
-    <div className="hide-scroll bg-BrandBlack font-DmSans text-white" style={{ height: "100dvh", overflowY: "auto" }}>
-      {/* Confirm modal */}
+    <AdminShell>
       <ConfirmModal
         open={confirmModal.open}
         message={confirmModal.message}
@@ -379,360 +382,267 @@ export default function AdminDemoVideos() {
       />
 
       {/* Danger Mode modal */}
-      {dangerModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <form
-            onSubmit={handleDangerSubmit}
-            className="w-full max-w-sm rounded-2xl border border-red-500/30 bg-[#1a1a1a] p-6 shadow-2xl"
-          >
-            <h2 className="mb-1 font-Manrope text-base font-bold text-red-400">Danger Mode Required</h2>
-            <p className="mb-4 text-sm text-BrandGray">Re-enter your admin password to unlock destructive actions for 10 minutes.</p>
-            <input
-              type="password"
-              autoFocus
-              value={dangerPassword}
-              onChange={(e) => setDangerPassword(e.target.value)}
-              placeholder="Admin password"
-              className="mb-3 w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack px-3 py-2 text-sm text-white outline-none focus:border-red-400"
-            />
-            {dangerError && <p className="mb-3 text-xs text-red-400">{dangerError}</p>}
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={handleDangerCancel}
-                className="flex-1 rounded-lg border border-BrandGray2/30 py-2 text-sm text-BrandGray transition hover:border-BrandGray"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={dangerLoading || !dangerPassword}
-                className="flex-1 rounded-lg bg-red-600 py-2 text-sm font-semibold text-white transition hover:bg-red-500 disabled:opacity-50"
-              >
-                {dangerLoading ? "Verifying..." : "Unlock Danger Mode"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-BrandGray2/20 px-6 py-4">
-        <div className="flex items-center gap-3">
-          <img src={logo} alt="Coachable" className="h-5 opacity-70" />
-          <span className="rounded bg-BrandOrange/20 px-2 py-0.5 text-xs font-semibold text-BrandOrange">ADMIN</span>
-          <span className="rounded bg-blue-500/20 px-2 py-0.5 text-xs font-semibold text-blue-400">DEMO VIDEOS</span>
-        </div>
-        <Link
-          to="/admin"
-          className="rounded-lg border border-BrandGray2/40 px-3 py-1.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-white"
-        >
-          Back to Admin
-        </Link>
-      </div>
-
-      <div className="mx-auto max-w-3xl px-6 py-8">
-        {/* Title row */}
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="font-Manrope text-xl font-bold">Demo Videos</h2>
-            <p className="text-sm text-BrandGray">{videos.length} video{videos.length !== 1 ? "s" : ""} · drag to reorder</p>
-          </div>
+      <AdminModal open={dangerModal} onClose={handleDangerCancel} title="Danger Mode Required">
+        <p className="mb-4 text-sm" style={{ color: "var(--adm-muted)" }}>Re-enter your admin password to unlock destructive actions for 10 minutes.</p>
+        <form onSubmit={handleDangerSubmit}>
+          <AdminInput
+            type="password"
+            autoFocus
+            value={dangerPassword}
+            onChange={(e) => setDangerPassword(e.target.value)}
+            placeholder="Admin password"
+            className="mb-3"
+          />
+          {dangerError && <p className="mb-3 text-xs" style={{ color: "var(--adm-danger)" }}>{dangerError}</p>}
           <div className="flex gap-2">
-            <button
-              onClick={loadVideos}
-              disabled={loading}
-              className="rounded-lg border border-BrandGray2/40 px-3 py-1.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-white disabled:opacity-50"
-            >
-              {loading ? "Loading…" : "Refresh"}
-            </button>
-            <button
-              onClick={() => { setShowAdd((s) => !s); setAddForm(BLANK_FORM); }}
-              className="flex items-center gap-1.5 rounded-lg bg-BrandOrange px-3 py-1.5 text-xs font-semibold text-white transition hover:brightness-110"
-            >
-              <FiPlus /> Add Video
-            </button>
+            <AdminBtn type="button" variant="secondary" className="flex-1" onClick={handleDangerCancel}>Cancel</AdminBtn>
+            <AdminBtn type="submit" variant="danger" className="flex-1" disabled={dangerLoading || !dangerPassword}>
+              {dangerLoading ? "Verifying..." : "Unlock Danger Mode"}
+            </AdminBtn>
           </div>
-        </div>
+        </form>
+      </AdminModal>
 
-        {error && (
-          <div className="mb-4 rounded-lg bg-red-600/10 px-4 py-2 text-sm text-red-400">{error}</div>
-        )}
-
-        {/* Add form */}
-        {showAdd && (
-          <form
-            onSubmit={handleAdd}
-            className="mb-4 rounded-xl border border-BrandOrange/30 bg-BrandOrange/5 p-4"
-          >
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-BrandOrange">New Video</p>
-            <div className="mb-3">
-              <label className="mb-1 block text-xs text-BrandGray">Title *</label>
-              <input
-                autoFocus
-                value={addForm.title}
-                onChange={(e) => setAddForm((f) => ({ ...f, title: e.target.value }))}
-                placeholder="How to animate movement"
-                className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack px-3 py-2 text-sm text-white outline-none focus:border-BrandOrange"
-              />
-            </div>
-            <div className="mb-3">
-              <label className="mb-1 block text-xs text-BrandGray">YouTube URL</label>
-              <input
-                value={addForm.youtubeUrl}
-                onChange={(e) => setAddForm((f) => ({ ...f, youtubeUrl: e.target.value }))}
-                placeholder="https://youtu.be/... or paste video ID"
-                className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack px-3 py-2 text-sm text-white outline-none focus:border-BrandOrange"
-              />
-              {addForm.youtubeUrl && !extractYouTubeId(addForm.youtubeUrl) && (
-                <p className="mt-1 text-xs text-red-400">Could not parse YouTube ID from this URL</p>
-              )}
-            </div>
-            <div className="mb-3">
-              <label className="mb-1 block text-xs text-BrandGray">Search Keywords <span className="text-BrandGray2">(comma-separated)</span></label>
-              <textarea
-                value={addForm.keywords}
-                onChange={(e) => setAddForm((f) => ({ ...f, keywords: e.target.value }))}
-                placeholder="player tag, name, rename, label, number, jersey, assign, edit player..."
-                rows={3}
-                className="w-full resize-y rounded-lg border border-BrandGray2/30 bg-BrandBlack px-3 py-2 text-sm text-white outline-none focus:border-BrandOrange"
-              />
-              <p className="mt-1 text-[11px] text-BrandGray2">Users searching for any of these words will find this video</p>
-            </div>
-            <div className="mb-4 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setAddForm((f) => ({ ...f, done: !f.done }))}
-                className={`flex h-5 w-5 items-center justify-center rounded border text-xs transition ${
-                  addForm.done
-                    ? "border-green-500 bg-green-500 text-white"
-                    : "border-BrandGray2/50 text-transparent"
-                }`}
-              >
-                <FiCheck />
-              </button>
-              <span className="text-sm text-BrandGray">Video recorded / ready</span>
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setShowAdd(false)}
-                className="rounded-lg border border-BrandGray2/40 px-4 py-1.5 text-sm text-BrandGray transition hover:border-BrandGray"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={addSaving || !addForm.title.trim()}
-                className="rounded-lg bg-BrandOrange px-4 py-1.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
-              >
-                {addSaving ? "Saving…" : "Add Video"}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Preview modal */}
+      {/* Preview modal */}
+      <AdminModal open={Boolean(previewId)} onClose={() => setPreviewId(null)}>
         {previewId && (
-          <div
-            className="fixed inset-0 z-40 flex items-center justify-center bg-black/80 backdrop-blur-sm"
-            onClick={() => setPreviewId(null)}
-          >
-            <div
-              className="w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="relative" style={{ paddingBottom: "56.25%" }}>
-                <iframe
-                  src={buildEmbedUrl(previewId)}
-                  className="absolute inset-0 h-full w-full"
-                  allow="autoplay; encrypted-media"
-                  allowFullScreen
-                  title="Video preview"
-                />
-              </div>
-              <div className="flex justify-end border-t border-BrandGray2/20 bg-[#1a1a1a] px-4 py-2">
-                <button
-                  onClick={() => setPreviewId(null)}
-                  className="text-xs text-BrandGray transition hover:text-white"
-                >
-                  Close
-                </button>
-              </div>
+          <div className="overflow-hidden rounded-[var(--adm-radius)]" style={{ width: "min(640px, 90vw)" }}>
+            <div className="relative" style={{ paddingBottom: "56.25%" }}>
+              <iframe
+                src={buildEmbedUrl(previewId)}
+                className="absolute inset-0 h-full w-full"
+                allow="autoplay; encrypted-media"
+                allowFullScreen
+                title="Video preview"
+              />
             </div>
           </div>
         )}
+      </AdminModal>
 
-        {/* Video list */}
-        {videos.length === 0 && !loading ? (
-          <div className="rounded-xl border border-BrandGray2/20 px-8 py-16 text-center">
-            <p className="text-lg text-BrandGray2">No videos yet</p>
-            <p className="mt-1 text-sm text-BrandGray2/60">Click "Add Video" to create your first entry</p>
+      <AdminHeader
+        title="Demo Videos"
+        backLabel="Dashboard"
+        backTo={adminPath(basePath, "")}
+        actions={
+          <div className="flex gap-2">
+            <AdminBtn variant="secondary" size="sm" onClick={loadVideos} disabled={loading}>
+              {loading ? <AdminSpinner size={12} /> : "Refresh"}
+            </AdminBtn>
+            <AdminBtn variant="primary" size="sm" onClick={() => { setShowAdd((s) => !s); setAddForm(BLANK_FORM); }}>
+              <FiPlus className="mr-1 inline" /> Add Video
+            </AdminBtn>
           </div>
-        ) : (
-          <div className="space-y-2">
-            {videos.map((video, index) => {
-              const isEditing = editingId === video.id;
-              const ytId = extractYouTubeId(video.youtubeUrl);
+        }
+      />
+      <AdminPage>
+        <AdminSection
+          title="Demo Videos"
+          subtitle={`${videos.length} video${videos.length !== 1 ? "s" : ""} · use arrows to reorder`}
+        >
+          {error && (
+            <div className="rounded-[var(--adm-radius-sm)] px-4 py-2 text-sm" style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}>{error}</div>
+          )}
 
-              return (
-                <div
-                  key={video.id}
-                  className="overflow-hidden rounded-xl border border-BrandGray2/20 transition hover:border-BrandGray2/40"
-                >
-                  {isEditing ? (
-                    /* Edit form */
-                    <div className="p-4">
-                      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-BrandOrange">Editing</p>
-                      <div className="mb-3">
-                        <label className="mb-1 block text-xs text-BrandGray">Title *</label>
-                        <input
-                          autoFocus
-                          value={editForm.title}
-                          onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
-                          className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack px-3 py-2 text-sm text-white outline-none focus:border-BrandOrange"
-                        />
+          {/* Add form */}
+          {showAdd && (
+            <AdminCard>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--adm-accent)" }}>New Video</p>
+              <form onSubmit={handleAdd} className="space-y-3">
+                <AdminInput
+                  label="Title *"
+                  autoFocus
+                  value={addForm.title}
+                  onChange={(e) => setAddForm((f) => ({ ...f, title: e.target.value }))}
+                  placeholder="How to animate movement"
+                />
+                <div>
+                  <AdminInput
+                    label="YouTube URL"
+                    value={addForm.youtubeUrl}
+                    onChange={(e) => setAddForm((f) => ({ ...f, youtubeUrl: e.target.value }))}
+                    placeholder="https://youtu.be/... or paste video ID"
+                  />
+                  {addForm.youtubeUrl && !extractYouTubeId(addForm.youtubeUrl) && (
+                    <p className="mt-1 text-xs" style={{ color: "var(--adm-danger)" }}>Could not parse YouTube ID from this URL</p>
+                  )}
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--adm-muted)" }}>
+                    Search Keywords <span style={{ color: "var(--adm-muted)", opacity: 0.6 }}>(comma-separated)</span>
+                  </label>
+                  <textarea
+                    value={addForm.keywords}
+                    onChange={(e) => setAddForm((f) => ({ ...f, keywords: e.target.value }))}
+                    placeholder="player tag, name, rename, label..."
+                    rows={2}
+                    className="w-full resize-y px-3 py-2 text-sm outline-none"
+                    style={{ backgroundColor: "var(--adm-surface2)", border: "1px solid var(--adm-border)", borderRadius: "var(--adm-radius-sm)", color: "var(--adm-text)" }}
+                  />
+                  <p className="mt-1 text-[11px]" style={{ color: "var(--adm-muted)" }}>Users searching for any of these words will find this video</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAddForm((f) => ({ ...f, done: !f.done }))}
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs transition"
+                    style={addForm.done ? { borderColor: "#22c55e", backgroundColor: "#22c55e", color: "#fff" } : { borderColor: "var(--adm-border2)", color: "transparent" }}
+                  >
+                    <FiCheck />
+                  </button>
+                  <span className="text-sm" style={{ color: "var(--adm-text2)" }}>Video recorded / ready</span>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <AdminBtn type="button" variant="secondary" onClick={() => setShowAdd(false)}>Cancel</AdminBtn>
+                  <AdminBtn type="submit" variant="primary" disabled={addSaving || !addForm.title.trim()}>
+                    {addSaving ? "Saving…" : "Add Video"}
+                  </AdminBtn>
+                </div>
+              </form>
+            </AdminCard>
+          )}
+
+          {/* Video list */}
+          {videos.length === 0 && !loading ? (
+            <AdminEmptyState title="No videos yet" subtitle='Click "Add Video" to create your first entry' />
+          ) : (
+            <div className="space-y-2">
+              {videos.map((video, index) => {
+                const isEditing = editingId === video.id;
+                const ytId = extractYouTubeId(video.youtubeUrl);
+
+                return (
+                  <AdminCard key={video.id} padding={false} className="overflow-hidden">
+                    {isEditing ? (
+                      <div className="p-4">
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--adm-accent)" }}>Editing</p>
+                        <div className="space-y-3">
+                          <AdminInput
+                            label="Title *"
+                            autoFocus
+                            value={editForm.title}
+                            onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
+                          />
+                          <div>
+                            <AdminInput
+                              label="YouTube URL"
+                              value={editForm.youtubeUrl}
+                              onChange={(e) => setEditForm((f) => ({ ...f, youtubeUrl: e.target.value }))}
+                              placeholder="https://youtu.be/... or paste video ID"
+                            />
+                            {editForm.youtubeUrl && !extractYouTubeId(editForm.youtubeUrl) && (
+                              <p className="mt-1 text-xs" style={{ color: "var(--adm-danger)" }}>Could not parse YouTube ID from this URL</p>
+                            )}
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-xs font-medium" style={{ color: "var(--adm-muted)" }}>Search Keywords</label>
+                            <textarea
+                              value={editForm.keywords}
+                              onChange={(e) => setEditForm((f) => ({ ...f, keywords: e.target.value }))}
+                              placeholder="player tag, name, rename..."
+                              rows={2}
+                              className="w-full resize-y px-3 py-2 text-sm outline-none"
+                              style={{ backgroundColor: "var(--adm-surface2)", border: "1px solid var(--adm-border)", borderRadius: "var(--adm-radius-sm)", color: "var(--adm-text)" }}
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setEditForm((f) => ({ ...f, done: !f.done }))}
+                              className="flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs transition"
+                              style={editForm.done ? { borderColor: "#22c55e", backgroundColor: "#22c55e", color: "#fff" } : { borderColor: "var(--adm-border2)", color: "transparent" }}
+                            >
+                              <FiCheck />
+                            </button>
+                            <span className="text-sm" style={{ color: "var(--adm-text2)" }}>Video recorded / ready</span>
+                          </div>
+                          <div className="flex gap-2 pt-1">
+                            <AdminBtn variant="secondary" onClick={cancelEdit}>Cancel</AdminBtn>
+                            <AdminBtn variant="primary" onClick={() => handleSaveEdit(video.id)} disabled={editSaving || !editForm.title.trim()}>
+                              <FiCheck className="mr-1 inline text-xs" />
+                              {editSaving ? "Saving…" : "Save"}
+                            </AdminBtn>
+                          </div>
+                        </div>
                       </div>
-                      <div className="mb-3">
-                        <label className="mb-1 block text-xs text-BrandGray">YouTube URL</label>
-                        <input
-                          value={editForm.youtubeUrl}
-                          onChange={(e) => setEditForm((f) => ({ ...f, youtubeUrl: e.target.value }))}
-                          placeholder="https://youtu.be/... or paste video ID"
-                          className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack px-3 py-2 text-sm text-white outline-none focus:border-BrandOrange"
-                        />
-                        {editForm.youtubeUrl && !extractYouTubeId(editForm.youtubeUrl) && (
-                          <p className="mt-1 text-xs text-red-400">Could not parse YouTube ID from this URL</p>
-                        )}
-                      </div>
-                      <div className="mb-3">
-                        <label className="mb-1 block text-xs text-BrandGray">Search Keywords <span className="text-BrandGray2">(comma-separated)</span></label>
-                        <textarea
-                          value={editForm.keywords}
-                          onChange={(e) => setEditForm((f) => ({ ...f, keywords: e.target.value }))}
-                          placeholder="player tag, name, rename, label, number, jersey, assign, edit player..."
-                          rows={3}
-                          className="w-full resize-y rounded-lg border border-BrandGray2/30 bg-BrandBlack px-3 py-2 text-sm text-white outline-none focus:border-BrandOrange"
-                        />
-                        <p className="mt-1 text-[11px] text-BrandGray2">Users searching for any of these words will find this video</p>
-                      </div>
-                      <div className="mb-4 flex items-center gap-2">
+                    ) : (
+                      <div className="flex items-center gap-3 px-4 py-3">
+                        {/* Reorder arrows */}
+                        <div className="flex flex-col gap-0.5">
+                          <button
+                            onClick={() => handleMove(index, -1)}
+                            disabled={index === 0}
+                            className="rounded p-0.5 transition-opacity disabled:opacity-20"
+                            style={{ color: "var(--adm-muted)" }}
+                            title="Move up"
+                          >
+                            <FiChevronUp className="text-xs" />
+                          </button>
+                          <button
+                            onClick={() => handleMove(index, 1)}
+                            disabled={index === videos.length - 1}
+                            className="rounded p-0.5 transition-opacity disabled:opacity-20"
+                            style={{ color: "var(--adm-muted)" }}
+                            title="Move down"
+                          >
+                            <FiChevronDown className="text-xs" />
+                          </button>
+                        </div>
+
+                        {/* Done toggle */}
                         <button
-                          type="button"
-                          onClick={() => setEditForm((f) => ({ ...f, done: !f.done }))}
-                          className={`flex h-5 w-5 items-center justify-center rounded border text-xs transition ${
-                            editForm.done
-                              ? "border-green-500 bg-green-500 text-white"
-                              : "border-BrandGray2/50 text-transparent"
-                          }`}
+                          onClick={() => handleToggleDone(video)}
+                          title={video.done ? "Mark as not done" : "Mark as done"}
+                          className="flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs transition"
+                          style={video.done ? { borderColor: "#22c55e", backgroundColor: "#22c55e", color: "#fff" } : { borderColor: "var(--adm-border2)", color: "transparent" }}
                         >
                           <FiCheck />
                         </button>
-                        <span className="text-sm text-BrandGray">Video recorded / ready</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={cancelEdit}
-                          className="rounded-lg border border-BrandGray2/40 px-3 py-1.5 text-sm text-BrandGray transition hover:border-BrandGray"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => handleSaveEdit(video.id)}
-                          disabled={editSaving || !editForm.title.trim()}
-                          className="flex items-center gap-1.5 rounded-lg bg-BrandOrange px-3 py-1.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
-                        >
-                          <FiCheck className="text-xs" />
-                          {editSaving ? "Saving…" : "Save"}
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    /* Row view */
-                    <div className="flex items-center gap-3 px-4 py-3">
-                      {/* Reorder */}
-                      <div className="flex flex-col gap-0.5">
-                        <button
-                          onClick={() => handleMove(index, -1)}
-                          disabled={index === 0}
-                          className="rounded p-0.5 text-BrandGray2 transition hover:text-white disabled:opacity-20"
-                          title="Move up"
-                        >
-                          <FiChevronUp className="text-xs" />
-                        </button>
-                        <button
-                          onClick={() => handleMove(index, 1)}
-                          disabled={index === videos.length - 1}
-                          className="rounded p-0.5 text-BrandGray2 transition hover:text-white disabled:opacity-20"
-                          title="Move down"
-                        >
-                          <FiChevronDown className="text-xs" />
-                        </button>
-                      </div>
 
-                      {/* Done checkbox */}
-                      <button
-                        onClick={() => handleToggleDone(video)}
-                        title={video.done ? "Mark as not done" : "Mark as done"}
-                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs transition ${
-                          video.done
-                            ? "border-green-500 bg-green-500 text-white"
-                            : "border-BrandGray2/50 text-transparent hover:border-BrandGray2"
-                        }`}
-                      >
-                        <FiCheck />
-                      </button>
+                        {/* Title + URL */}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium" style={{ color: "var(--adm-text)" }}>{video.title}</p>
+                          {video.youtubeUrl ? (
+                            <p className="truncate text-[11px]" style={{ color: "var(--adm-muted)" }}>{video.youtubeUrl}</p>
+                          ) : (
+                            <p className="text-[11px] italic" style={{ color: "var(--adm-muted)", opacity: 0.5 }}>No URL — coming soon</p>
+                          )}
+                        </div>
 
-                      {/* Title + URL */}
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{video.title}</p>
-                        {video.youtubeUrl ? (
-                          <p className="truncate text-[11px] text-BrandGray2">{video.youtubeUrl}</p>
-                        ) : (
-                          <p className="text-[11px] text-BrandGray2/50 italic">No URL — coming soon</p>
+                        {/* Preview thumbnail */}
+                        {ytId && (
+                          <button
+                            onClick={() => setPreviewId(ytId)}
+                            className="shrink-0 overflow-hidden rounded-md transition"
+                            style={{ border: "1px solid var(--adm-border)" }}
+                            title="Preview video"
+                          >
+                            <img
+                              src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`}
+                              alt="thumbnail"
+                              className="h-9 w-16 object-cover"
+                            />
+                          </button>
                         )}
-                      </div>
 
-                      {/* Preview thumbnail */}
-                      {ytId && (
-                        <button
-                          onClick={() => setPreviewId(ytId)}
-                          className="shrink-0 overflow-hidden rounded-md border border-BrandGray2/20 transition hover:border-BrandOrange"
-                          title="Preview video"
-                        >
-                          <img
-                            src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`}
-                            alt="thumbnail"
-                            className="h-9 w-16 object-cover"
-                          />
-                        </button>
-                      )}
-
-                      {/* Actions */}
-                      <div className="flex shrink-0 items-center gap-1">
-                        <button
-                          onClick={() => startEdit(video)}
-                          className="rounded-lg p-2 text-BrandGray2 transition hover:bg-BrandGray2/10 hover:text-white"
-                          title="Edit"
-                        >
-                          <FiEdit2 className="text-sm" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(video)}
-                          className="rounded-lg p-2 text-BrandGray2 transition hover:bg-red-600/20 hover:text-red-400"
-                          title="Delete"
-                        >
-                          <FiTrash2 className="text-sm" />
-                        </button>
+                        {/* Actions */}
+                        <div className="flex shrink-0 items-center gap-1">
+                          <AdminBtn variant="ghost" size="sm" onClick={() => startEdit(video)} title="Edit">
+                            <FiEdit2 className="text-sm" />
+                          </AdminBtn>
+                          <AdminBtn variant="danger" size="sm" onClick={() => handleDelete(video)} title="Delete">
+                            <FiTrash2 className="text-sm" />
+                          </AdminBtn>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
+                    )}
+                  </AdminCard>
+                );
+              })}
+            </div>
+          )}
+        </AdminSection>
+      </AdminPage>
+    </AdminShell>
   );
 }

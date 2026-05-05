@@ -6,8 +6,13 @@
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
-import logo from "../assets/logos/full_Coachable_logo.png";
 import ConfirmModal from "../components/subcomponents/ConfirmModal";
+import { useAdmin } from "../admin/AdminContext";
+import { adminPath } from "../admin/adminNav";
+import {
+  AdminShell, AdminHeader, AdminPage, AdminCard, AdminSection,
+  AdminBtn, AdminSelect, AdminBadge, AdminEmptyState, AdminSpinner,
+} from "../admin/components";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -111,6 +116,7 @@ function formatReportText(r) {
 }
 
 export default function AdminErrors() {
+  const { basePath } = useAdmin();
   const [session] = useState(() => sessionStorage.getItem(SESSION_KEY) || "");
   const [reports, setReports] = useState([]);
   const [total, setTotal] = useState(0);
@@ -203,14 +209,12 @@ export default function AdminErrors() {
 
   if (!authed) {
     return (
-      <div className="flex h-screen items-center justify-center bg-BrandBlack font-DmSans">
-        <div className="text-center">
-          <p className="mb-4 text-BrandGray">Admin session required</p>
-          <Link to="/admin" className="text-sm text-BrandOrange hover:underline">
-            Go to Admin Login
-          </Link>
-        </div>
-      </div>
+      <AdminShell className="flex items-center justify-center">
+        <AdminCard>
+          <p className="mb-3 text-sm" style={{ color: "var(--adm-muted)" }}>Admin session required</p>
+          <Link to={adminPath(basePath, "")} className="text-sm transition-opacity hover:opacity-70" style={{ color: "var(--adm-accent)" }}>Go to Admin Login</Link>
+        </AdminCard>
+      </AdminShell>
     );
   }
 
@@ -236,243 +240,101 @@ export default function AdminErrors() {
   const totalPages = Math.ceil(total / pageSize);
 
   return (
-    <div className="hide-scroll bg-BrandBlack font-DmSans text-white" style={{ height: "100dvh", overflowY: "auto" }}>
-      <ConfirmModal
-        open={confirmModal.open}
-        message={confirmModal.message}
-        subtitle={confirmModal.subtitle}
-        confirmLabel={confirmModal.confirmLabel}
-        danger={confirmModal.danger}
-        onConfirm={handleConfirmOk}
-        onCancel={handleConfirmCancel}
+    <AdminShell>
+      <ConfirmModal open={confirmModal.open} message={confirmModal.message} subtitle={confirmModal.subtitle} confirmLabel={confirmModal.confirmLabel} danger={confirmModal.danger} onConfirm={handleConfirmOk} onCancel={handleConfirmCancel} />
+      <AdminHeader
+        title="Error Reports"
+        backLabel="Dashboard"
+        backTo={adminPath(basePath, "")}
+        actions={
+          <div className="flex gap-2">
+            <AdminBtn variant="secondary" size="sm" onClick={handleCopyAll} disabled={reports.length === 0}>{copied === "all" ? "Copied!" : "Copy All"}</AdminBtn>
+            <AdminBtn variant="danger" size="sm" onClick={handleClearAll}>Clear All</AdminBtn>
+          </div>
+        }
       />
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-BrandGray2/20 px-6 py-4">
-        <div className="flex items-center gap-3">
-          <img src={logo} alt="Coachable" className="h-5 opacity-70" />
-          <span className="rounded bg-BrandOrange/20 px-2 py-0.5 text-xs font-semibold text-BrandOrange">
-            ADMIN
-          </span>
-          <span className="rounded bg-red-500/20 px-2 py-0.5 text-xs font-semibold text-red-400">
-            ERROR REPORTS
-          </span>
-        </div>
-        <Link
-          to="/admin"
-          className="rounded-lg border border-BrandGray2/40 px-3 py-1.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-white"
-        >
-          Back to Admin
-        </Link>
-      </div>
-
-      <div className="mx-auto max-w-5xl px-6 py-8">
-        {/* Controls */}
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div>
-              <h2 className="font-Manrope text-xl font-bold">Error Reports</h2>
-              <p className="text-sm text-BrandGray">{total} total report{total !== 1 ? "s" : ""}</p>
+      <AdminPage>
+        <AdminSection
+          title="Error Reports"
+          subtitle={`${total} total report${total !== 1 ? "s" : ""}`}
+          actions={
+            <div className="flex gap-2">
+              <AdminSelect value={filter} onChange={(e) => { setFilter(e.target.value); setPage(0); }}>
+                <option value="">All components</option>
+                <option value="api">API / Backend</option>
+                <option value="videoExport">Video Export</option>
+                <option value="global">Global (uncaught)</option>
+              </AdminSelect>
+              <AdminBtn variant="secondary" size="sm" onClick={fetchReports} disabled={loading}>{loading ? <AdminSpinner size={12} /> : "Refresh"}</AdminBtn>
             </div>
-            <button
-              onClick={handleCopyAll}
-              disabled={reports.length === 0}
-              className="rounded-lg border border-BrandOrange/40 bg-BrandOrange/10 px-3 py-1.5 text-xs font-semibold text-BrandOrange transition hover:bg-BrandOrange/20 disabled:opacity-30"
-            >
-              {copied === "all" ? "Copied!" : "Copy Reports"}
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <select
-              value={filter}
-              onChange={(e) => { setFilter(e.target.value); setPage(0); }}
-              className="rounded-lg border border-BrandGray2/40 bg-BrandBlack px-3 py-1.5 text-xs text-white outline-none focus:border-BrandOrange"
-            >
-              <option value="">All components</option>
-              <option value="api">API / Backend</option>
-              <option value="videoExport">Video Export</option>
-              <option value="global">Global (uncaught)</option>
-            </select>
-            <button
-              onClick={fetchReports}
-              disabled={loading}
-              className="rounded-lg border border-BrandGray2/40 px-3 py-1.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-white disabled:opacity-50"
-            >
-              {loading ? "Loading..." : "Refresh"}
-            </button>
-            <button
-              onClick={handleClearAll}
-              className="rounded-lg bg-red-600/20 px-3 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-600/30"
-            >
-              Clear All
-            </button>
-          </div>
-        </div>
+          }
+        >
+          {error && <div className="rounded-[var(--adm-radius-sm)] px-4 py-2 text-sm" style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}>{error}</div>}
 
-        {error && (
-          <div className="mb-4 rounded-lg bg-red-600/10 px-4 py-2 text-sm text-red-400">
-            {error}
-          </div>
-        )}
-
-        {/* Reports list */}
-        {reports.length === 0 && !loading ? (
-          <div className="rounded-xl border border-BrandGray2/20 px-8 py-16 text-center">
-            <p className="text-lg text-BrandGray2">No error reports</p>
-            <p className="mt-1 text-sm text-BrandGray2/60">Errors from users will appear here</p>
-          </div>
-        ) : (
-          <div className="max-h-[70vh] space-y-2 overflow-y-auto pr-1">
-            {reports.map((r) => {
-              const isExpanded = expanded === r.id;
-              const device = r.device_info || {};
-              const title = deriveTitle(r);
-              return (
-                <div
-                  key={r.id}
-                  className="overflow-hidden rounded-xl border border-BrandGray2/20 transition hover:border-BrandGray2/40"
-                >
-                  {/* Summary row */}
-                  <button
-                    onClick={() => setExpanded(isExpanded ? null : r.id)}
-                    className="flex w-full items-start gap-3 px-4 py-3 text-left"
-                  >
-                    {/* Component badge */}
-                    <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
-                      r.component === "api"
-                        ? "bg-BrandOrange/20 text-BrandOrange"
-                        : r.component === "videoExport"
-                        ? "bg-purple-500/20 text-purple-400"
-                        : r.component === "global"
-                          ? "bg-red-500/20 text-red-400"
-                          : "bg-BrandGray2/20 text-BrandGray"
-                    }`}>
-                      {r.component || "unknown"}
-                    </span>
-
-                    {/* Title + error message */}
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-BrandOrange">
-                        {title}
-                      </p>
-                      <p className="mt-0.5 truncate text-xs text-BrandGray">
-                        {r.error_message}
-                      </p>
-                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-BrandGray">
-                        <span>{parseDevice(r.user_agent)}</span>
-                        {device.screenWidth && (
-                          <span>{device.screenWidth}x{device.screenHeight} @{device.pixelRatio}x</span>
-                        )}
-                        {r.action && <span className="text-BrandGray2">action: {r.action}</span>}
-                        <span>{formatTime(r.created_at)}</span>
-                      </div>
-                    </div>
-
-                    {/* Expand indicator */}
-                    <span className="mt-1 shrink-0 text-xs text-BrandGray2">
-                      {isExpanded ? "▲" : "▼"}
-                    </span>
-                  </button>
-
-                  {/* Expanded details */}
-                  {isExpanded && (
-                    <div className="border-t border-BrandGray2/10 bg-[#1e2228]/50 px-4 py-3">
-                      <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
-                        <div>
-                          <span className="text-BrandGray2">Page:</span>{" "}
-                          <span className="text-BrandGray">{r.page_url || "—"}</span>
+          {reports.length === 0 && !loading
+            ? <AdminEmptyState title="No error reports" subtitle="Errors from users will appear here" />
+            : loading && reports.length === 0
+            ? <AdminEmptyState title="Loading…" icon={<AdminSpinner />} />
+            : (
+              <div className="max-h-[70vh] space-y-2 overflow-y-auto pr-1">
+                {reports.map((r) => {
+                  const isExpanded = expanded === r.id;
+                  const device = r.device_info || {};
+                  const title = deriveTitle(r);
+                  const compStyle = r.component === "api" ? { bg: "var(--adm-accent-dim)", color: "var(--adm-accent)" }
+                    : r.component === "videoExport" ? { bg: "var(--adm-badge-purple-bg)", color: "var(--adm-badge-purple-text)" }
+                    : r.component === "global" ? { bg: "var(--adm-danger-dim)", color: "var(--adm-danger)" }
+                    : { bg: "var(--adm-surface3)", color: "var(--adm-muted)" };
+                  return (
+                    <AdminCard key={r.id} padding={false} className="overflow-hidden">
+                      <button onClick={() => setExpanded(isExpanded ? null : r.id)} className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition-opacity hover:opacity-90">
+                        <span className="mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase" style={compStyle}>{r.component || "unknown"}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold" style={{ color: "var(--adm-accent)" }}>{title}</p>
+                          <p className="mt-0.5 truncate text-xs" style={{ color: "var(--adm-text2)" }}>{r.error_message}</p>
+                          <div className="mt-1 flex flex-wrap gap-x-3 text-[11px]" style={{ color: "var(--adm-muted)" }}>
+                            <span>{parseDevice(r.user_agent)}</span>
+                            {device.screenWidth && <span>{device.screenWidth}×{device.screenHeight}</span>}
+                            {r.action && <span>action: {r.action}</span>}
+                            <span>{formatTime(r.created_at)}</span>
+                          </div>
                         </div>
-                        <div>
-                          <span className="text-BrandGray2">User ID:</span>{" "}
-                          <span className="font-mono text-BrandGray">{r.user_id || "anonymous"}</span>
-                        </div>
-                        <div>
-                          <span className="text-BrandGray2">Session:</span>{" "}
-                          <span className="font-mono text-BrandGray">{r.session_id?.slice(0, 12) || "—"}...</span>
-                        </div>
-                        <div>
-                          <span className="text-BrandGray2">Device:</span>{" "}
-                          <span className="text-BrandGray">
-                            {device.platform || "—"} {device.isMobile ? "(mobile)" : "(desktop)"}
-                            {device.standalone ? " [PWA]" : ""}
-                          </span>
-                        </div>
-                        <div className="col-span-2">
-                          <span className="text-BrandGray2">User Agent:</span>{" "}
-                          <span className="break-all text-BrandGray2/70">{r.user_agent || "—"}</span>
-                        </div>
-                      </div>
-
-                      {/* Extra data */}
-                      {r.extra && (
-                        <div className="mt-3">
-                          <p className="mb-1 text-[10px] font-semibold uppercase text-BrandGray2">Extra Context</p>
-                          <pre className="overflow-x-auto rounded-lg bg-BrandBlack p-2 text-[11px] text-BrandGray">
-                            {JSON.stringify(r.extra, null, 2)}
-                          </pre>
+                        <svg className={`mt-1 h-3.5 w-3.5 shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`} style={{ color: "var(--adm-muted)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                      </button>
+                      {isExpanded && (
+                        <div className="px-4 py-3" style={{ borderTop: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface2)" }}>
+                          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
+                            {[["Page", r.page_url || "—"], ["User ID", r.user_id || "anonymous"], ["Session", `${r.session_id?.slice(0, 12) || "—"}…`], ["Device", `${device.platform || "—"} ${device.isMobile ? "(mobile)" : "(desktop)"}${device.standalone ? " [PWA]" : ""}`]].map(([k, v]) => (
+                              <div key={k}><span style={{ color: "var(--adm-muted)" }}>{k}:</span> <span style={{ color: "var(--adm-text2)" }}>{v}</span></div>
+                            ))}
+                          </div>
+                          {r.extra && <div className="mt-3"><p className="mb-1 text-[10px] font-semibold uppercase" style={{ color: "var(--adm-muted)" }}>Extra</p><pre className="overflow-x-auto rounded-[var(--adm-radius-sm)] p-2 text-[11px]" style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-text2)" }}>{JSON.stringify(r.extra, null, 2)}</pre></div>}
+                          {r.error_stack && <div className="mt-3"><p className="mb-1 text-[10px] font-semibold uppercase" style={{ color: "var(--adm-muted)" }}>Stack</p><pre className="max-h-48 overflow-auto rounded-[var(--adm-radius-sm)] p-2 text-[11px]" style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-color-red-soft)" }}>{r.error_stack}</pre></div>}
+                          <div className="mt-3 flex items-center justify-between">
+                            <span className="text-[10px]" style={{ color: "var(--adm-muted)" }}>{new Date(r.created_at).toLocaleString()}</span>
+                            <div className="flex gap-2">
+                              <AdminBtn variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleCopyOne(r); }}>{copied === r.id ? "Copied!" : "Copy"}</AdminBtn>
+                              <AdminBtn variant="danger" size="sm" onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }}>Delete</AdminBtn>
+                            </div>
+                          </div>
                         </div>
                       )}
+                    </AdminCard>
+                  );
+                })}
+              </div>
+            )
+          }
 
-                      {/* Stack trace */}
-                      {r.error_stack && (
-                        <div className="mt-3">
-                          <p className="mb-1 text-[10px] font-semibold uppercase text-BrandGray2">Stack Trace</p>
-                          <pre className="max-h-48 overflow-auto rounded-lg bg-BrandBlack p-2 text-[11px] text-red-400/80">
-                            {r.error_stack}
-                          </pre>
-                        </div>
-                      )}
-
-                      {/* Timestamp + actions */}
-                      <div className="mt-3 flex items-center justify-between">
-                        <span className="text-[10px] text-BrandGray2">
-                          {new Date(r.created_at).toLocaleString()}
-                        </span>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleCopyOne(r); }}
-                            className="rounded px-2 py-1 text-xs text-BrandGray transition hover:bg-BrandGray2/20 hover:text-white"
-                          >
-                            {copied === r.id ? "Copied!" : "Copy Error"}
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }}
-                            className="rounded px-2 py-1 text-xs text-red-400 transition hover:bg-red-600/20"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="mt-6 flex items-center justify-center gap-3">
-            <button
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0}
-              className="rounded-lg border border-BrandGray2/40 px-3 py-1.5 text-xs text-BrandGray transition hover:text-white disabled:opacity-30"
-            >
-              Previous
-            </button>
-            <span className="text-xs text-BrandGray">
-              Page {page + 1} of {totalPages}
-            </span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              disabled={page >= totalPages - 1}
-              className="rounded-lg border border-BrandGray2/40 px-3 py-1.5 text-xs text-BrandGray transition hover:text-white disabled:opacity-30"
-            >
-              Next
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <AdminBtn variant="secondary" size="sm" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}>Previous</AdminBtn>
+              <span className="text-xs" style={{ color: "var(--adm-muted)" }}>Page {page + 1} of {totalPages}</span>
+              <AdminBtn variant="secondary" size="sm" onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}>Next</AdminBtn>
+            </div>
+          )}
+        </AdminSection>
+      </AdminPage>
+    </AdminShell>
   );
 }

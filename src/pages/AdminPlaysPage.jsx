@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import logo from "../assets/logos/full_Coachable_logo.png";
+import { useAdmin } from "../admin/AdminContext";
+import { adminPath } from "../admin/adminNav";
+import { AdminShell, AdminModal, AdminBtn, AdminInput, AdminSelect, AdminSpinner } from "../admin/components";
 import {
   FiPlus, FiEdit2, FiTrash2, FiLogOut, FiFolder, FiFolderPlus,
   FiChevronRight, FiLink, FiCheck, FiX, FiEdit3, FiLayout, FiSearch, FiCopy,
@@ -18,6 +20,29 @@ import { SUPPORTED_FIELD_TYPES } from "../features/slate/hooks/useAdvancedSettin
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const PANEL_STYLE = {
+  backgroundColor: "var(--adm-surface)",
+  border: "1px solid var(--adm-border)",
+  boxShadow: "var(--adm-shadow-sm)",
+};
+const INSET_STYLE = {
+  backgroundColor: "var(--adm-surface2)",
+  border: "1px solid var(--adm-border)",
+};
+const MENU_STYLE = {
+  backgroundColor: "var(--adm-surface-elevated)",
+  border: "1px solid var(--adm-border2)",
+  boxShadow: "var(--adm-shadow)",
+};
+const MENU_DIVIDER_STYLE = { borderColor: "var(--adm-border)" };
+const NEUTRAL_BADGE_STYLE = {
+  backgroundColor: "var(--adm-surface3)",
+  color: "var(--adm-text2)",
+};
+const SUCCESS_BADGE_STYLE = {
+  backgroundColor: "var(--adm-badge-green-bg)",
+  color: "var(--adm-badge-green-text)",
+};
 
 /**
  * Format an ISO timestamp as a human-readable relative time string.
@@ -428,13 +453,12 @@ function FolderItem({ folder, isActive, onClick, onRename, onDelete }) {
   return (
     <div
       onClick={editing ? undefined : onClick}
-      className={`group flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 transition ${
-        isActive
-          ? "bg-BrandOrange/15 text-BrandOrange"
-          : isSport
-          ? "text-BrandOrange/70 hover:bg-BrandOrange/10 hover:text-BrandOrange"
-          : "text-BrandGray hover:bg-white/5 hover:text-white"
-      }`}
+      className="group flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 transition hover:opacity-85"
+      style={isActive
+        ? { backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }
+        : isSport
+          ? { color: "var(--adm-accent)" }
+          : { color: "var(--adm-text2)" }}
     >
       <FiFolder className="shrink-0 text-xs" />
       {editing ? (
@@ -448,13 +472,14 @@ function FolderItem({ folder, isActive, onClick, onRename, onDelete }) {
             if (e.key === "Escape") setEditing(false);
           }}
           onClick={(e) => e.stopPropagation()}
-          className="flex-1 rounded border border-BrandOrange/40 bg-[#13151a] px-1 py-0 text-xs text-white outline-none"
+          className="flex-1 rounded px-1 py-0 text-xs outline-none"
+          style={{ border: "1px solid var(--adm-accent)", backgroundColor: "var(--adm-surface)", color: "var(--adm-text)" }}
         />
       ) : (
         <span className="flex-1 truncate text-xs">{folder.name}</span>
       )}
       {isSport && !editing && (
-        <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-BrandOrange/50">sport</span>
+        <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide" style={{ color: "var(--adm-accent)" }}>sport</span>
       )}
       {!isSport && !editing && (
         <div className="hidden items-center gap-1 group-hover:flex">
@@ -462,7 +487,8 @@ function FolderItem({ folder, isActive, onClick, onRename, onDelete }) {
             <button
               onClick={startEdit}
               title="Rename"
-              className="rounded p-0.5 text-BrandGray2 hover:text-white"
+              className="rounded p-0.5 transition hover:opacity-80"
+              style={{ color: "var(--adm-text2)" }}
             >
               <FiEdit3 className="text-[10px]" />
             </button>
@@ -471,7 +497,8 @@ function FolderItem({ folder, isActive, onClick, onRename, onDelete }) {
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(folder); }}
               title="Delete folder"
-              className="rounded p-0.5 text-BrandGray2 hover:text-red-400"
+              className="rounded p-0.5 transition hover:opacity-80"
+              style={{ color: "var(--adm-danger)" }}
             >
               <FiTrash2 className="text-[10px]" />
             </button>
@@ -494,9 +521,10 @@ function CopyLinkButton({ play, onClose }) {
           setTimeout(() => { setCopied(false); onClose(); }, 1200);
         });
       }}
-      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs text-BrandGray transition hover:bg-white/6 hover:text-white"
+      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition hover:opacity-80"
+      style={{ color: "var(--adm-text2)" }}
     >
-      {copied ? <FiCheck className="shrink-0 text-[10px] text-green-400" /> : <FiLink className="shrink-0 text-[10px]" />}
+      {copied ? <FiCheck className="shrink-0 text-[10px]" style={{ color: "var(--adm-success)" }} /> : <FiLink className="shrink-0 text-[10px]" />}
       {copied ? "Copied!" : "Copy shareable link"}
     </button>
   );
@@ -514,10 +542,11 @@ function DuplicateButton({ play, onDuplicate, onClose }) {
         onClose();
       }}
       disabled={duplicating}
-      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs text-BrandGray transition hover:bg-white/6 hover:text-white disabled:opacity-50"
+      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition hover:opacity-80 disabled:opacity-50"
+      style={{ color: "var(--adm-text2)" }}
     >
       {duplicating
-        ? <span className="inline-block h-3 w-3 shrink-0 rounded-full border border-BrandGray2/30 border-t-BrandGray2 animate-spin" />
+        ? <span className="inline-block h-3 w-3 shrink-0 rounded-full animate-spin" style={{ border: "1px solid var(--adm-border2)", borderTopColor: "var(--adm-accent)" }} />
         : <FiCopy className="shrink-0 text-[10px]" />}
       Duplicate
     </button>
@@ -544,7 +573,6 @@ function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, o
   // null → closed  |  "main" → first popup  |  "sections" / "folders" / "tags" → sub-pickers
   const [menuStep, setMenuStep] = useState(null);
   const [tagInput, setTagInput] = useState("");
-  const [showTagSuggestions, setShowTagSuggestions] = useState(false);
   const menuRef = useRef(null);
   const tagInputRef = useRef(null);
 
@@ -560,9 +588,12 @@ function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, o
   const close = () => setMenuStep(null);
 
   return (
-    <div className="group relative flex cursor-grab flex-col rounded-xl border p-5 transition active:cursor-grabbing border-BrandGray2/20 bg-BrandBlack2/30 hover:border-BrandOrange/30 hover:bg-BrandBlack2/60">
+    <div
+      className="group relative flex cursor-grab flex-col rounded-xl border p-5 transition active:cursor-grabbing hover:opacity-95"
+      style={PANEL_STYLE}
+    >
       {/* Preview */}
-      <div className="relative w-full overflow-hidden rounded-xl border border-BrandGray2/60 aspect-[16/10] mb-4">
+      <div className="relative mb-4 aspect-[16/10] w-full overflow-hidden rounded-xl" style={{ border: "1px solid var(--adm-border)" }}>
         <PlayPreviewCard
           playData={play.playData}
           autoplay="hover"
@@ -577,62 +608,67 @@ function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, o
 
       {/* Title + three-dots menu */}
       <div className="flex items-center gap-1.5">
-        <h3 className="min-w-0 flex-1 font-Manrope text-sm font-semibold truncate text-BrandText">{play.title}</h3>
+        <h3 className="min-w-0 flex-1 truncate font-Manrope text-sm font-semibold" style={{ color: "var(--adm-text)" }}>{play.title}</h3>
         <div className="relative shrink-0" ref={menuRef}>
           <button
             onClick={(e) => { e.stopPropagation(); setMenuStep((v) => (v ? null : "main")); }}
-            className="rounded-md p-1 text-BrandGray2 opacity-100 md:opacity-0 transition hover:bg-BrandBlack2 hover:text-BrandText group-hover:opacity-100"
+            className="rounded-md p-1 opacity-100 transition hover:opacity-80 md:opacity-0 group-hover:opacity-100"
+            style={{ color: "var(--adm-text2)" }}
           >
             <FiMoreHorizontal className="text-sm" />
           </button>
 
           {/* ── Step 1: main popup ── */}
           {menuStep === "main" && (
-            <div className="absolute right-0 top-full z-30 mt-1 w-52 overflow-hidden rounded-xl border border-white/10 bg-[#1a1d24] py-1 shadow-xl">
+            <div className="absolute right-0 top-full z-30 mt-1 w-52 overflow-hidden rounded-xl py-1" style={MENU_STYLE}>
               {/* Copy link */}
               <CopyLinkButton play={play} onClose={close} />
 
               {/* Duplicate */}
               <DuplicateButton play={play} onDuplicate={onDuplicate} onClose={close} />
 
-              <div className="my-1 border-t border-white/6" />
+              <div className="my-1 border-t" style={MENU_DIVIDER_STYLE} />
 
               {/* Add to section → sub-popup */}
               <button
                 onClick={() => setMenuStep("sections")}
-                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs text-BrandGray transition hover:bg-white/6 hover:text-white"
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition hover:opacity-80"
+                style={{ color: "var(--adm-text2)" }}
               >
                 <FiBookOpen className="shrink-0 text-[10px]" />
                 Add to Section
-                <FiChevronRight className="ml-auto shrink-0 text-[10px] text-BrandGray2" />
+                <FiChevronRight className="ml-auto shrink-0 text-[10px]" style={{ color: "var(--adm-muted)" }} />
               </button>
 
               {/* Move to folder → sub-popup */}
               <button
                 onClick={() => setMenuStep("folders")}
-                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs text-BrandGray transition hover:bg-white/6 hover:text-white"
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition hover:opacity-80"
+                style={{ color: "var(--adm-text2)" }}
               >
-                <FiFolder className={`shrink-0 text-[10px] ${play.folderId ? "text-blue-400" : ""}`} />
+                <FiFolder className="shrink-0 text-[10px]" style={play.folderId ? { color: "var(--adm-color-blue)" } : undefined} />
                 Move to Folder
-                <FiChevronRight className="ml-auto shrink-0 text-[10px] text-BrandGray2" />
+                <FiChevronRight className="ml-auto shrink-0 text-[10px]" style={{ color: "var(--adm-muted)" }} />
               </button>
 
               {/* Edit tags → sub-popup */}
               <button
                 onClick={() => { setTagInput(""); setMenuStep("tags"); setTimeout(() => tagInputRef.current?.focus(), 50); }}
-                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs text-BrandGray transition hover:bg-white/6 hover:text-white"
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition hover:opacity-80"
+                style={{ color: "var(--adm-text2)" }}
               >
                 <FiTag className="shrink-0 text-[10px]" />
                 Edit Tags
-                <FiChevronRight className="ml-auto shrink-0 text-[10px] text-BrandGray2" />
+                <FiChevronRight className="ml-auto shrink-0 text-[10px]" style={{ color: "var(--adm-muted)" }} />
               </button>
 
-              <div className="my-1 border-t border-white/6" />
+              <div className="my-1 border-t" style={MENU_DIVIDER_STYLE} />
 
               {/* Delete */}
               <button
                 onClick={() => { onDelete(play); close(); }}
-                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs text-red-400 transition hover:bg-red-500/10 hover:text-red-300"
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition hover:opacity-80"
+                style={{ color: "var(--adm-danger)" }}
               >
                 <FiTrash2 className="shrink-0 text-[10px]" /> Delete
               </button>
@@ -641,30 +677,32 @@ function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, o
 
           {/* ── Step 2a: section picker ── */}
           {menuStep === "sections" && (
-            <div className="absolute right-0 top-full z-30 mt-1 w-56 overflow-hidden rounded-xl border border-white/10 bg-[#1a1d24] shadow-xl">
-              <div className="flex items-center gap-2 border-b border-white/6 px-3 py-2.5">
+            <div className="absolute right-0 top-full z-30 mt-1 w-56 overflow-hidden rounded-xl" style={MENU_STYLE}>
+              <div className="flex items-center gap-2 border-b px-3 py-2.5" style={MENU_DIVIDER_STYLE}>
                 <button
                   onClick={() => setMenuStep("main")}
-                  className="flex items-center gap-1 text-[11px] text-BrandGray2 transition hover:text-white"
+                  className="flex items-center gap-1 text-[11px] transition hover:opacity-80"
+                  style={{ color: "var(--adm-text2)" }}
                 >
                   <FiChevronRight className="rotate-180 text-[10px]" /> Back
                 </button>
-                <span className="flex-1 text-center text-[11px] font-semibold text-white">Add to Section</span>
+                <span className="flex-1 text-center text-[11px] font-semibold" style={{ color: "var(--adm-text)" }}>Add to Section</span>
               </div>
               <div className="max-h-60 overflow-y-auto py-1">
                 {(playbookSections || []).length === 0 ? (
-                  <p className="px-3 py-2 text-xs text-BrandGray2">No sections yet</p>
+                  <p className="px-3 py-2 text-xs" style={{ color: "var(--adm-muted)" }}>No sections yet</p>
                 ) : (
                   (playbookSections || []).map((s) => (
                     <button
                       key={s.id}
                       onClick={() => { onAddToSection(play, s.id); close(); }}
-                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs text-BrandGray transition hover:bg-white/6 hover:text-white"
+                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs transition hover:opacity-80"
+                      style={{ color: "var(--adm-text2)" }}
                     >
                       <FiBookOpen className="shrink-0 text-[10px]" />
                       <span className="flex-1 truncate">{s.name}</span>
                       {!s.isPublished && (
-                        <span className="shrink-0 text-[9px] text-BrandGray2">draft</span>
+                        <span className="shrink-0 text-[9px]" style={{ color: "var(--adm-muted)" }}>draft</span>
                       )}
                     </button>
                   ))
@@ -675,36 +713,35 @@ function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, o
 
           {/* ── Step 2b: folder picker ── */}
           {menuStep === "folders" && (
-            <div className="absolute right-0 top-full z-30 mt-1 w-56 overflow-hidden rounded-xl border border-white/10 bg-[#1a1d24] shadow-xl">
-              <div className="flex items-center gap-2 border-b border-white/6 px-3 py-2.5">
+            <div className="absolute right-0 top-full z-30 mt-1 w-56 overflow-hidden rounded-xl" style={MENU_STYLE}>
+              <div className="flex items-center gap-2 border-b px-3 py-2.5" style={MENU_DIVIDER_STYLE}>
                 <button
                   onClick={() => setMenuStep("main")}
-                  className="flex items-center gap-1 text-[11px] text-BrandGray2 transition hover:text-white"
+                  className="flex items-center gap-1 text-[11px] transition hover:opacity-80"
+                  style={{ color: "var(--adm-text2)" }}
                 >
                   <FiChevronRight className="rotate-180 text-[10px]" /> Back
                 </button>
-                <span className="flex-1 text-center text-[11px] font-semibold text-white">Move to Folder</span>
+                <span className="flex-1 text-center text-[11px] font-semibold" style={{ color: "var(--adm-text)" }}>Move to Folder</span>
               </div>
               <div className="max-h-60 overflow-y-auto py-1">
                 <button
                   onClick={() => { onMove(play, null); close(); }}
-                  className={`flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs transition hover:bg-white/6 ${
-                    !play.folderId ? "text-BrandOrange" : "text-BrandGray hover:text-white"
-                  }`}
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs transition hover:opacity-80"
+                  style={!play.folderId ? { color: "var(--adm-accent)" } : { color: "var(--adm-text2)" }}
                 >
                   <FiX className="shrink-0 text-[10px]" /> No folder
                   {!play.folderId && <FiCheck className="ml-auto shrink-0 text-[10px]" />}
                 </button>
                 {folders.length === 0 && (
-                  <p className="px-3 py-2 text-xs text-BrandGray2">No folders yet</p>
+                  <p className="px-3 py-2 text-xs" style={{ color: "var(--adm-muted)" }}>No folders yet</p>
                 )}
                 {folders.map((f) => (
                   <button
                     key={f.id}
                     onClick={() => { onMove(play, f.id); close(); }}
-                    className={`flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs transition hover:bg-white/6 ${
-                      play.folderId === f.id ? "text-BrandOrange" : "text-BrandGray hover:text-white"
-                    }`}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs transition hover:opacity-80"
+                    style={play.folderId === f.id ? { color: "var(--adm-accent)" } : { color: "var(--adm-text2)" }}
                   >
                     <FiFolder className="shrink-0 text-[10px]" />
                     <span className="flex-1 truncate">{f.name}</span>
@@ -722,15 +759,16 @@ function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, o
             const tagSuggestions = (allTags || [])
               .filter((t) => !current.includes(t) && (!query || t.toLowerCase().includes(query)));
             return (
-              <div className="absolute right-0 top-full z-30 mt-1 w-72 rounded-xl border border-white/10 bg-[#1a1d24] shadow-xl">
-                <div className="flex items-center gap-2 border-b border-white/6 px-3 py-2.5">
+              <div className="absolute right-0 top-full z-30 mt-1 w-72 rounded-xl" style={MENU_STYLE}>
+                <div className="flex items-center gap-2 border-b px-3 py-2.5" style={MENU_DIVIDER_STYLE}>
                   <button
                     onClick={() => setMenuStep("main")}
-                    className="flex items-center gap-1 text-[11px] text-BrandGray2 transition hover:text-white"
+                    className="flex items-center gap-1 text-[11px] transition hover:opacity-80"
+                    style={{ color: "var(--adm-text2)" }}
                   >
                     <FiChevronRight className="rotate-180 text-[10px]" /> Back
                   </button>
-                  <span className="flex-1 text-center text-[11px] font-semibold text-white">Edit Tags</span>
+                  <span className="flex-1 text-center text-[11px] font-semibold" style={{ color: "var(--adm-text)" }}>Edit Tags</span>
                 </div>
                 <div className="p-2.5 flex flex-col gap-2.5">
                   {/* Input */}
@@ -749,11 +787,13 @@ function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, o
                       value={tagInput}
                       onChange={(e) => setTagInput(e.target.value)}
                       placeholder="Type a tag…"
-                      className="flex-1 min-w-0 rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-[11px] text-white placeholder-BrandGray2 outline-none focus:border-BrandOrange/50"
+                      className="flex-1 min-w-0 rounded-md px-2 py-1.5 text-[11px] outline-none"
+                      style={{ border: "1px solid var(--adm-border2)", backgroundColor: "var(--adm-surface)", color: "var(--adm-text)" }}
                     />
                     <button
                       type="submit"
-                      className="rounded-md bg-BrandOrange/20 px-2.5 py-1 text-[11px] text-BrandOrange transition hover:bg-BrandOrange/30"
+                      className="rounded-md px-2.5 py-1 text-[11px] font-semibold transition hover:opacity-85"
+                      style={{ backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }}
                     >
                       Add
                     </button>
@@ -762,14 +802,15 @@ function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, o
                   {/* Past tags to click */}
                   {tagSuggestions.length > 0 && (
                     <div>
-                      <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wide text-BrandGray2">Past tags</p>
+                      <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wide" style={{ color: "var(--adm-muted)" }}>Past tags</p>
                       <div className="flex flex-wrap gap-1 max-h-28 overflow-y-auto">
                         {tagSuggestions.map((t) => (
                           <button
                             key={t}
                             type="button"
                             onClick={() => { onTagsUpdate(play, [...current, t]); setTagInput(""); tagInputRef.current?.focus(); }}
-                            className="inline-flex items-center rounded-md bg-white/6 px-2 py-0.5 text-[10px] text-BrandGray transition hover:bg-BrandOrange/20 hover:text-BrandOrange"
+                            className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] transition hover:opacity-85"
+                            style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-text2)" }}
                           >
                             {t}
                           </button>
@@ -781,17 +822,19 @@ function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, o
                   {/* Current tags on this play */}
                   {current.length > 0 && (
                     <div>
-                      <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wide text-BrandGray2">On this play</p>
+                      <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wide" style={{ color: "var(--adm-muted)" }}>On this play</p>
                       <div className="flex flex-wrap gap-1">
                         {current.map((tag) => (
                           <span
                             key={tag}
-                            className="inline-flex items-center gap-1 rounded-md bg-BrandGray2/20 px-2 py-0.5 text-[10px] text-BrandGray"
+                            className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px]"
+                            style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-text2)" }}
                           >
                             {tag}
                             <button
                               onClick={() => onTagsUpdate(play, current.filter((t) => t !== tag))}
-                              className="ml-0.5 transition hover:text-red-400"
+                              className="ml-0.5 transition hover:opacity-80"
+                              style={{ color: "var(--adm-danger)" }}
                             >
                               <FiX className="text-[9px]" />
                             </button>
@@ -801,7 +844,7 @@ function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, o
                     </div>
                   )}
                   {current.length === 0 && tagSuggestions.length === 0 && (
-                    <p className="text-[11px] text-BrandGray2">No tags yet — type one above.</p>
+                    <p className="text-[11px]" style={{ color: "var(--adm-muted)" }}>No tags yet — type one above.</p>
                   )}
                 </div>
               </div>
@@ -816,7 +859,8 @@ function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, o
           {(play.tags || []).map((tag) => (
             <span
               key={tag}
-              className="inline-flex items-center gap-1 rounded-md bg-BrandGray2/20 px-2 py-0.5 text-[10px] text-BrandGray"
+              className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px]"
+              style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-text2)" }}
             >
               <FiTag className="text-[8px]" />
               {tag}
@@ -827,13 +871,14 @@ function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, o
 
       {/* Footer: time + edit */}
       <div className="mt-auto pt-3 flex items-center justify-between">
-        <span className="flex items-center gap-1.5 text-[11px] text-BrandGray2">
+        <span className="flex items-center gap-1.5 text-[11px]" style={{ color: "var(--adm-muted)" }}>
           <FiClock className="text-[10px]" />
           {formatRelativeTime(play.createdAt)}
         </span>
         <button
           onClick={() => onEdit(play)}
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-BrandGray transition hover:bg-BrandGray2/20 hover:text-BrandOrange"
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold transition hover:opacity-80"
+          style={{ color: "var(--adm-text2)" }}
         >
           <FiEdit2 className="text-[10px]" /> Edit
         </button>
@@ -892,12 +937,17 @@ function SectionRow({ section, plays, onAssign, onTogglePriority }) {
   const showPriorityWarning = section.isPriority && !section.playId;
 
   return (
-    <div className={`rounded-xl border bg-[#1e2228] ${showPriorityWarning ? "border-amber-500/40" : "border-white/8"}`}>
+    <div
+      className="rounded-xl border"
+      style={showPriorityWarning
+        ? { ...PANEL_STYLE, border: "1px solid color-mix(in srgb, var(--adm-warning) 32%, transparent)" }
+        : PANEL_STYLE}
+    >
       {/* Priority warning banner */}
       {showPriorityWarning && (
-        <div className="flex items-center gap-2 rounded-t-xl border-b border-amber-500/30 bg-amber-500/10 px-4 py-2">
-          <span className="text-xs font-bold text-amber-400">!</span>
-          <p className="text-xs font-medium text-amber-300">
+        <div className="flex items-center gap-2 rounded-t-xl border-b px-4 py-2" style={{ borderColor: "color-mix(in srgb, var(--adm-warning) 28%, transparent)", backgroundColor: "var(--adm-badge-amber-bg)" }}>
+          <span className="text-xs font-bold" style={{ color: "var(--adm-badge-amber-text)" }}>!</span>
+          <p className="text-xs font-semibold" style={{ color: "var(--adm-badge-amber-text)" }}>
             This section is marked as priority but has no play assigned.
           </p>
         </div>
@@ -906,24 +956,23 @@ function SectionRow({ section, plays, onAssign, onTogglePriority }) {
       {/* Section info */}
       <div className="w-52 shrink-0">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-semibold text-white">{section.label}</p>
+          <p className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>{section.label}</p>
           <button
             onClick={handleTogglePriority}
             disabled={prioritySaving}
             title={section.isPriority ? "Remove priority" : "Mark as priority (warning persists until a play is assigned)"}
-            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded text-[11px] font-bold transition disabled:opacity-50 ${
-              section.isPriority
-                ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
-                : "bg-white/6 text-BrandGray2 hover:bg-white/12 hover:text-white"
-            }`}
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[11px] font-bold transition disabled:opacity-50 hover:opacity-80"
+            style={section.isPriority
+              ? { backgroundColor: "var(--adm-badge-amber-bg)", color: "var(--adm-badge-amber-text)" }
+              : { backgroundColor: "var(--adm-surface3)", color: "var(--adm-text2)" }}
           >
             {prioritySaving ? (
-              <span className="inline-block h-2.5 w-2.5 rounded-full border border-BrandOrange/30 border-t-BrandOrange animate-spin" />
+              <span className="inline-block h-2.5 w-2.5 rounded-full animate-spin" style={{ border: "1px solid var(--adm-border2)", borderTopColor: "var(--adm-accent)" }} />
             ) : "!"}
           </button>
         </div>
-        <p className="mt-0.5 font-mono text-[10px] text-BrandGray2">{section.sectionKey}</p>
-        <span className="mt-1.5 inline-block rounded bg-BrandOrange/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-BrandOrange">
+        <p className="mt-0.5 font-mono text-[10px]" style={{ color: "var(--adm-muted)" }}>{section.sectionKey}</p>
+        <span className="mt-1.5 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider" style={{ backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }}>
           {section.page}
         </span>
       </div>
@@ -937,23 +986,24 @@ function SectionRow({ section, plays, onAssign, onTogglePriority }) {
                 <img
                   src={section.playThumbnail}
                   alt={section.playTitle}
-                  className="w-full rounded-lg object-cover aspect-video border border-white/8"
+                  className="aspect-video w-full rounded-lg object-cover"
+                  style={{ border: "1px solid var(--adm-border)" }}
                 />
               ) : (
-                <div className="flex aspect-video w-full items-center justify-center rounded-lg border border-white/8 bg-[#13151a]">
-                  <FiLayout className="text-BrandGray2" />
+                <div className="flex aspect-video w-full items-center justify-center rounded-lg" style={INSET_STYLE}>
+                  <FiLayout style={{ color: "var(--adm-muted)" }} />
                 </div>
               )}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-white">{section.playTitle}</p>
+              <p className="truncate text-sm font-semibold" style={{ color: "var(--adm-text)" }}>{section.playTitle}</p>
               {section.playSport && (
-                <p className="text-xs text-BrandGray2">{section.playSport}</p>
+                <p className="text-xs" style={{ color: "var(--adm-muted)" }}>{section.playSport}</p>
               )}
             </div>
           </>
         ) : (
-          <p className="text-sm text-BrandGray2 italic">No play assigned</p>
+          <p className="text-sm italic" style={{ color: "var(--adm-muted)" }}>No play assigned</p>
         )}
       </div>
 
@@ -965,7 +1015,8 @@ function SectionRow({ section, plays, onAssign, onTogglePriority }) {
               onClick={() => handlePick(null)}
               disabled={saving}
               title="Remove assignment"
-              className="rounded-lg border border-white/10 bg-white/4 px-2.5 py-2 text-xs text-red-400 transition hover:border-red-500/30 hover:bg-red-500/10 disabled:opacity-50"
+              className="rounded-lg border px-2.5 py-2 text-xs transition hover:opacity-80 disabled:opacity-50"
+              style={{ borderColor: "rgba(220, 38, 38, 0.18)", backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}
             >
               <FiX />
             </button>
@@ -973,10 +1024,11 @@ function SectionRow({ section, plays, onAssign, onTogglePriority }) {
           <button
             onClick={() => setPickerOpen((v) => !v)}
             disabled={saving}
-            className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/4 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/8 disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition hover:opacity-85 disabled:opacity-50"
+            style={{ borderColor: "var(--adm-border2)", backgroundColor: "var(--adm-surface2)", color: "var(--adm-text)" }}
           >
             {saving ? (
-              <span className="inline-block h-3 w-3 rounded-full border-2 border-BrandOrange/30 border-t-BrandOrange animate-spin" />
+              <span className="inline-block h-3 w-3 rounded-full animate-spin" style={{ border: "2px solid var(--adm-border2)", borderTopColor: "var(--adm-accent)" }} />
             ) : (
               <FiEdit2 className="text-xs" />
             )}
@@ -985,30 +1037,30 @@ function SectionRow({ section, plays, onAssign, onTogglePriority }) {
         </div>
 
         {pickerOpen && (
-          <div className="absolute right-0 top-full z-30 mt-2 w-72 overflow-hidden rounded-xl border border-white/10 bg-[#1a1d24] shadow-2xl">
+          <div className="absolute right-0 top-full z-30 mt-2 w-72 overflow-hidden rounded-xl" style={MENU_STYLE}>
             {/* Search */}
-            <div className="flex items-center gap-2 border-b border-white/8 px-3 py-2.5">
-              <FiSearch className="shrink-0 text-xs text-BrandGray2" />
+            <div className="flex items-center gap-2 border-b px-3 py-2.5" style={MENU_DIVIDER_STYLE}>
+              <FiSearch className="shrink-0 text-xs" style={{ color: "var(--adm-muted)" }} />
               <input
                 autoFocus
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search plays..."
-                className="flex-1 bg-transparent text-xs text-white outline-none placeholder:text-BrandGray2"
+                className="flex-1 bg-transparent text-xs outline-none"
+                style={{ color: "var(--adm-text)" }}
               />
             </div>
             {/* Play list */}
             <div className="max-h-64 overflow-y-auto">
               {filteredPlays.length === 0 && (
-                <p className="px-4 py-3 text-xs text-BrandGray2">No plays found</p>
+                <p className="px-4 py-3 text-xs" style={{ color: "var(--adm-muted)" }}>No plays found</p>
               )}
               {filteredPlays.map((p) => (
                 <button
                   key={p.id}
                   onClick={() => handlePick(p.id)}
-                  className={`flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs transition hover:bg-white/6 ${
-                    section.playId === p.id ? "text-BrandOrange" : "text-white"
-                  }`}
+                  className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs transition hover:opacity-85"
+                  style={section.playId === p.id ? { color: "var(--adm-accent)" } : { color: "var(--adm-text)" }}
                 >
                   <div className="w-12 shrink-0">
                     {p.playData ? (
@@ -1021,16 +1073,16 @@ function SectionRow({ section, plays, onAssign, onTogglePriority }) {
                         minSpanPx={60}
                       />
                     ) : (
-                      <div className="flex aspect-video w-full items-center justify-center rounded-md border border-white/8 bg-[#13151a]">
-                        <FiLayout className="text-[8px] text-BrandGray2" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0">
+                        <div className="flex aspect-video w-full items-center justify-center rounded-md" style={INSET_STYLE}>
+                        <FiLayout className="text-[8px]" style={{ color: "var(--adm-muted)" }} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0">
                     <p className="truncate font-semibold">{p.title}</p>
-                    {p.sport && <p className="text-BrandGray2">{p.sport}</p>}
-                  </div>
-                  {section.playId === p.id && <FiCheck className="ml-auto shrink-0 text-BrandOrange" />}
+                    {p.sport && <p style={{ color: "var(--adm-muted)" }}>{p.sport}</p>}
+                    </div>
+                  {section.playId === p.id && <FiCheck className="ml-auto shrink-0" style={{ color: "var(--adm-accent)" }} />}
                 </button>
               ))}
             </div>
@@ -1252,27 +1304,32 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
     <div className="mx-auto max-w-6xl px-6 py-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="font-Manrope text-base font-bold text-white">Playbook Sections</h2>
-          <p className="mt-1 text-xs text-BrandGray2">
+          <h2 className="font-Manrope text-base font-bold" style={{ color: "var(--adm-text)" }}>Playbook Sections</h2>
+          <p className="mt-1 text-xs" style={{ color: "var(--adm-text2)" }}>
             Curate named collections of platform plays for coaches to reference in the app.
           </p>
         </div>
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg bg-red-600/10 px-4 py-2 text-sm text-red-400">{error}</div>
+        <div
+          className="mb-4 rounded-lg px-4 py-2 text-sm"
+          style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}
+        >
+          {error}
+        </div>
       )}
 
       <div className="flex min-h-[520px] gap-5">
         {/* ── Left: Section list ── */}
-        <div className="w-64 shrink-0">
-          <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wider text-BrandGray2">
+        <div className="w-64 shrink-0 rounded-2xl p-3" style={PANEL_STYLE}>
+          <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--adm-muted)" }}>
             Sections
           </p>
 
           {loadingSections ? (
             <div className="flex justify-center py-8">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-BrandOrange/30 border-t-BrandOrange" />
+              <AdminSpinner size={24} />
             </div>
           ) : (
             <div className="space-y-1">
@@ -1280,24 +1337,30 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
                 <button
                   key={section.id}
                   onClick={() => setSelectedId(section.id)}
-                  className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs transition ${
-                    selectedId === section.id
-                      ? "bg-BrandOrange/15 text-BrandOrange"
-                      : "text-BrandGray hover:bg-white/5 hover:text-white"
-                  }`}
+                  className="group flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs transition hover:opacity-90"
+                  style={selectedId === section.id
+                    ? {
+                        backgroundColor: "var(--adm-accent-dim)",
+                        color: "var(--adm-accent)",
+                        boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--adm-accent) 18%, transparent)",
+                      }
+                    : {
+                        backgroundColor: "transparent",
+                        color: "var(--adm-text2)",
+                      }}
                 >
                   <FiBookOpen className="shrink-0 text-xs" />
-                  <span className="flex-1 truncate font-medium">{section.name}</span>
-                  <span className="shrink-0 text-[10px] opacity-60">{section.playCount}</span>
+                  <span className="flex-1 truncate font-semibold">{section.name}</span>
+                  <span className="shrink-0 text-[10px]" style={{ color: selectedId === section.id ? "var(--adm-accent)" : "var(--adm-muted)" }}>{section.playCount}</span>
                   {!section.isPublished && (
-                    <span className="shrink-0 rounded bg-BrandGray2/20 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-BrandGray2">
+                    <span className="shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider" style={NEUTRAL_BADGE_STYLE}>
                       draft
                     </span>
                   )}
                 </button>
               ))}
               {sections.length === 0 && !creatingSection && (
-                <p className="px-1 text-xs text-BrandGray2">No sections yet</p>
+                <p className="px-1 text-xs" style={{ color: "var(--adm-muted)" }}>No sections yet</p>
               )}
             </div>
           )}
@@ -1314,7 +1377,12 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
                   if (e.key === "Escape") { setCreatingSection(false); setNewSectionName(""); }
                 }}
                 placeholder="Section name"
-                className="w-full rounded-lg border border-white/10 bg-[#1e2228] px-2.5 py-1.5 text-xs text-white outline-none placeholder:text-BrandGray2 focus:border-BrandOrange/40"
+                className="w-full rounded-lg border px-2.5 py-1.5 text-xs outline-none placeholder:text-slate-400"
+                style={{
+                  borderColor: "var(--adm-border2)",
+                  backgroundColor: "var(--adm-surface-elevated)",
+                  color: "var(--adm-text)",
+                }}
               />
               <input
                 value={newSectionSport}
@@ -1324,18 +1392,29 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
                   if (e.key === "Escape") { setCreatingSection(false); setNewSectionName(""); }
                 }}
                 placeholder="Sport (optional)"
-                className="w-full rounded-lg border border-white/10 bg-[#1e2228] px-2.5 py-1.5 text-xs text-white outline-none placeholder:text-BrandGray2 focus:border-BrandOrange/40"
+                className="w-full rounded-lg border px-2.5 py-1.5 text-xs outline-none placeholder:text-slate-400"
+                style={{
+                  borderColor: "var(--adm-border2)",
+                  backgroundColor: "var(--adm-surface-elevated)",
+                  color: "var(--adm-text)",
+                }}
               />
               <div className="flex gap-1">
                 <button
                   onClick={handleCreateSection}
-                  className="flex-1 rounded-lg bg-BrandOrange py-1.5 text-[10px] font-semibold text-white transition hover:brightness-110"
+                  className="flex-1 rounded-lg py-1.5 text-[10px] font-semibold text-white transition hover:brightness-110"
+                  style={{ backgroundColor: "var(--adm-accent)" }}
                 >
                   Create
                 </button>
                 <button
                   onClick={() => { setCreatingSection(false); setNewSectionName(""); }}
-                  className="flex-1 rounded-lg border border-white/10 py-1.5 text-[10px] text-BrandGray2 transition hover:text-white"
+                  className="flex-1 rounded-lg border py-1.5 text-[10px] font-semibold transition hover:opacity-85"
+                  style={{
+                    borderColor: "var(--adm-border2)",
+                    backgroundColor: "var(--adm-surface)",
+                    color: "var(--adm-text2)",
+                  }}
                 >
                   Cancel
                 </button>
@@ -1344,7 +1423,8 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
           ) : (
             <button
               onClick={() => setCreatingSection(true)}
-              className="mt-3 flex w-full items-center gap-1.5 rounded-lg border border-dashed border-white/10 px-2.5 py-2 text-xs text-BrandGray2 transition hover:border-white/20 hover:text-white"
+              className="mt-3 flex w-full items-center gap-1.5 rounded-lg border border-dashed px-2.5 py-2 text-xs font-semibold transition hover:opacity-85"
+              style={{ borderColor: "var(--adm-border2)", color: "var(--adm-text2)" }}
             >
               <FiPlus className="text-xs" /> New Section
             </button>
@@ -1352,10 +1432,13 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
         </div>
 
         {/* ── Right: Section detail ── */}
-        <div className="min-w-0 flex-1 rounded-xl border border-white/8 bg-[#1e2228] p-5">
+        <div
+          className="min-w-0 flex-1 rounded-xl p-5"
+          style={{ ...PANEL_STYLE, backgroundColor: "var(--adm-surface-elevated)" }}
+        >
           {!selectedSection ? (
             <div className="flex h-full items-center justify-center">
-              <p className="text-sm text-BrandGray2">Select a section to manage its plays</p>
+              <p className="text-sm" style={{ color: "var(--adm-text2)" }}>Select a section to manage its plays</p>
             </div>
           ) : (
             <>
@@ -1372,15 +1455,20 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
                         if (e.key === "Enter") handleCommitRename();
                         if (e.key === "Escape") setEditingName(false);
                       }}
-                      className="w-full rounded-lg border border-BrandOrange/40 bg-[#13151a] px-2 py-1 text-sm font-bold text-white outline-none"
+                      className="w-full rounded-lg border px-2 py-1 text-sm font-bold outline-none"
+                      style={{
+                        borderColor: "var(--adm-border2)",
+                        backgroundColor: "var(--adm-surface2)",
+                        color: "var(--adm-text)",
+                      }}
                     />
                   ) : (
                     <div className="flex items-center gap-2">
-                      <h3 className="font-Manrope text-sm font-bold text-white">
+                      <h3 className="font-Manrope text-sm font-bold" style={{ color: "var(--adm-text)" }}>
                         {selectedSection.name}
                       </h3>
                       {selectedSection.sport && (
-                        <span className="rounded-full bg-white/8 px-2 py-0.5 text-[10px] text-BrandGray2">
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={NEUTRAL_BADGE_STYLE}>
                           {selectedSection.sport}
                         </span>
                       )}
@@ -1390,13 +1478,14 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
                           setEditingName(true);
                         }}
                         title="Rename section"
-                        className="rounded p-0.5 text-BrandGray2 hover:text-white"
+                        className="rounded p-0.5 transition hover:opacity-80"
+                        style={{ color: "var(--adm-text2)" }}
                       >
                         <FiEdit3 className="text-[10px]" />
                       </button>
                     </div>
                   )}
-                  <p className="mt-0.5 text-xs text-BrandGray2">
+                  <p className="mt-0.5 text-xs" style={{ color: "var(--adm-muted)" }}>
                     {selectedSection.playCount} {selectedSection.playCount === 1 ? "play" : "plays"}
                   </p>
                 </div>
@@ -1406,11 +1495,18 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
                   <button
                     onClick={handleTogglePublish}
                     title={selectedSection.isPublished ? "Unpublish (hide from coaches)" : "Publish (visible to coaches)"}
-                    className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition ${
-                      selectedSection.isPublished
-                        ? "border-green-500/30 bg-green-500/10 text-green-400 hover:bg-green-500/20"
-                        : "border-white/10 bg-white/4 text-BrandGray2 hover:text-white"
-                    }`}
+                    className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition hover:opacity-85"
+                    style={selectedSection.isPublished
+                      ? {
+                          borderColor: "color-mix(in srgb, var(--adm-badge-green-text) 22%, transparent)",
+                          backgroundColor: "var(--adm-badge-green-bg)",
+                          color: "var(--adm-badge-green-text)",
+                        }
+                      : {
+                          borderColor: "var(--adm-border2)",
+                          backgroundColor: "var(--adm-surface2)",
+                          color: "var(--adm-text2)",
+                        }}
                   >
                     {selectedSection.isPublished
                       ? <><FiEye className="text-xs" /> Published</>
@@ -1420,7 +1516,12 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
                   <button
                     onClick={() => setDeleteTarget(selectedSection)}
                     title="Delete section"
-                    className="flex items-center justify-center rounded-lg border border-white/10 bg-white/4 px-2.5 py-2 text-xs text-red-400 transition hover:border-red-500/30 hover:bg-red-500/10"
+                    className="flex items-center justify-center rounded-lg border px-2.5 py-2 text-xs transition hover:opacity-85"
+                    style={{
+                      borderColor: "rgba(220, 38, 38, 0.18)",
+                      backgroundColor: "var(--adm-danger-dim)",
+                      color: "var(--adm-danger)",
+                    }}
                   >
                     <FiTrash2 className="text-xs" />
                   </button>
@@ -1432,27 +1533,29 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
                 <div className="relative" ref={pickerRef}>
                   <button
                     onClick={() => setPickerOpen((v) => !v)}
-                    className="flex items-center gap-1.5 rounded-lg bg-BrandOrange px-3.5 py-2 text-xs font-semibold text-white transition hover:brightness-110"
+                    className="flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold text-white transition hover:brightness-110"
+                    style={{ backgroundColor: "var(--adm-accent)" }}
                   >
                     <FiPlus /> Add Play
                   </button>
 
                   {pickerOpen && (
-                    <div className="absolute left-0 top-full z-30 mt-2 w-80 overflow-hidden rounded-xl border border-white/10 bg-[#1a1d24] shadow-2xl">
+                    <div className="absolute left-0 top-full z-30 mt-2 w-80 overflow-hidden rounded-xl" style={MENU_STYLE}>
                       {/* Search */}
-                      <div className="flex items-center gap-2 border-b border-white/8 px-3 py-2.5">
-                        <FiSearch className="shrink-0 text-xs text-BrandGray2" />
+                      <div className="flex items-center gap-2 border-b px-3 py-2.5" style={MENU_DIVIDER_STYLE}>
+                        <FiSearch className="shrink-0 text-xs" style={{ color: "var(--adm-muted)" }} />
                         <input
                           autoFocus
                           value={pickerSearch}
                           onChange={(e) => setPickerSearch(e.target.value)}
                           placeholder="Search plays..."
-                          className="flex-1 bg-transparent text-xs text-white outline-none placeholder:text-BrandGray2"
+                          className="flex-1 bg-transparent text-xs outline-none placeholder:text-slate-400"
+                          style={{ color: "var(--adm-text)" }}
                         />
                       </div>
                       <div className="max-h-72 overflow-y-auto">
                         {pickerPlays.length === 0 && (
-                          <p className="px-4 py-3 text-xs text-BrandGray2">
+                          <p className="px-4 py-3 text-xs" style={{ color: "var(--adm-muted)" }}>
                             {sectionPlayIds.size === allPlays.length
                               ? "All plays are already in this section"
                               : "No plays found"}
@@ -1462,7 +1565,8 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
                           <button
                             key={p.id}
                             onClick={() => handleAddPlay(p.id)}
-                            className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs transition hover:bg-white/6"
+                            className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs transition hover:opacity-85"
+                            style={{ color: "var(--adm-text)" }}
                           >
                             <div className="w-12 shrink-0">
                               {p.playData ? (
@@ -1474,14 +1578,14 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
                                   minSpanPx={60}
                                 />
                               ) : (
-                                <div className="flex aspect-video w-full items-center justify-center rounded-md border border-white/8 bg-[#13151a]">
-                                  <FiLayout className="text-[8px] text-BrandGray2" />
+                                <div className="flex aspect-video w-full items-center justify-center rounded-md" style={INSET_STYLE}>
+                                  <FiLayout className="text-[8px]" style={{ color: "var(--adm-muted)" }} />
                                 </div>
                               )}
                             </div>
                             <div className="min-w-0">
-                              <p className="truncate font-semibold text-white">{p.title}</p>
-                              {p.sport && <p className="text-BrandGray2">{p.sport}</p>}
+                              <p className="truncate font-semibold" style={{ color: "var(--adm-text)" }}>{p.title}</p>
+                              {p.sport && <p style={{ color: "var(--adm-muted)" }}>{p.sport}</p>}
                             </div>
                           </button>
                         ))}
@@ -1489,7 +1593,7 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
                     </div>
                   )}
                 </div>
-                <p className="text-xs text-BrandGray2">
+                <p className="text-xs" style={{ color: "var(--adm-muted)" }}>
                   {sectionPlays.length} {sectionPlays.length === 1 ? "play" : "plays"} in this section
                 </p>
               </div>
@@ -1497,13 +1601,16 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
               {/* Plays list */}
               {loadingPlays ? (
                 <div className="flex justify-center py-8">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-BrandOrange/30 border-t-BrandOrange" />
+                  <AdminSpinner size={24} />
                 </div>
               ) : sectionPlays.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/10 py-12 text-center">
-                  <FiBookOpen className="mb-3 text-2xl text-BrandGray2" />
-                  <p className="text-sm font-semibold text-white">No plays yet</p>
-                  <p className="mt-1 text-xs text-BrandGray2">Add platform plays to build this collection</p>
+                <div
+                  className="flex flex-col items-center justify-center rounded-xl border border-dashed py-12 text-center"
+                  style={{ borderColor: "var(--adm-border2)", backgroundColor: "var(--adm-surface2)" }}
+                >
+                  <FiBookOpen className="mb-3 text-2xl" style={{ color: "var(--adm-muted)" }} />
+                  <p className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>No plays yet</p>
+                  <p className="mt-1 text-xs" style={{ color: "var(--adm-text2)" }}>Add platform plays to build this collection</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -1515,14 +1622,18 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
                       onDragOver={(e) => { e.preventDefault(); if (sectionDragSrcId !== play.id) setSectionDragOverId(play.id); }}
                       onDrop={(e) => { e.preventDefault(); handleReorderSectionPlay(sectionDragSrcId, play.id); }}
                       onDragEnd={() => { setSectionDragSrcId(null); setSectionDragOverId(null); }}
-                      className={`flex cursor-grab items-center gap-3 rounded-lg border bg-[#13151a] px-3 py-2.5 transition active:cursor-grabbing ${
-                        sectionDragOverId === play.id && sectionDragSrcId !== play.id
-                          ? "border-BrandOrange/50 opacity-60"
-                          : "border-white/6"
-                      }`}
+                      className="flex cursor-grab items-center gap-3 rounded-lg px-3 py-2.5 transition active:cursor-grabbing"
+                      style={sectionDragOverId === play.id && sectionDragSrcId !== play.id
+                        ? {
+                            backgroundColor: "var(--adm-surface2)",
+                            border: "1px solid color-mix(in srgb, var(--adm-accent) 26%, transparent)",
+                            opacity: 0.72,
+                            boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--adm-accent) 14%, transparent)",
+                          }
+                        : INSET_STYLE}
                     >
                       {/* Drag handle */}
-                      <FiMenu className="shrink-0 text-BrandGray2/50 text-sm" />
+                      <FiMenu className="shrink-0 text-sm" style={{ color: "var(--adm-muted)" }} />
 
                       {/* Thumbnail */}
                       <div className="w-16 shrink-0">
@@ -1533,18 +1644,18 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
                             className="aspect-video w-full rounded object-cover"
                           />
                         ) : (
-                          <div className="flex aspect-video w-full items-center justify-center rounded border border-white/8 bg-[#1e2228]">
-                            <FiLayout className="text-[10px] text-BrandGray2" />
+                          <div className="flex aspect-video w-full items-center justify-center rounded" style={INSET_STYLE}>
+                            <FiLayout className="text-[10px]" style={{ color: "var(--adm-muted)" }} />
                           </div>
                         )}
                       </div>
 
                       {/* Info */}
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-white">{play.title}</p>
+                        <p className="truncate text-sm font-semibold" style={{ color: "var(--adm-text)" }}>{play.title}</p>
                         <div className="mt-0.5 flex items-center gap-2">
                           {play.tags?.slice(0, 3).map((tag) => (
-                            <span key={tag} className="text-[10px] text-BrandGray2">#{tag}</span>
+                            <span key={tag} className="rounded-md px-1.5 py-0.5 text-[10px]" style={NEUTRAL_BADGE_STYLE}>#{tag}</span>
                           ))}
                         </div>
                       </div>
@@ -1553,7 +1664,12 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
                       <button
                         onClick={() => handleRemovePlay(play.id)}
                         title="Remove from section"
-                        className="flex shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/4 px-2 py-1.5 text-xs text-red-400 transition hover:border-red-500/30 hover:bg-red-500/10"
+                        className="flex shrink-0 items-center justify-center rounded-lg border px-2 py-1.5 text-xs transition hover:opacity-85"
+                        style={{
+                          borderColor: "rgba(220, 38, 38, 0.18)",
+                          backgroundColor: "var(--adm-danger-dim)",
+                          color: "var(--adm-danger)",
+                        }}
                       >
                         <FiX className="text-xs" />
                       </button>
@@ -1588,6 +1704,7 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
  * and per-play shareable link copying. Redirects to /admin if not authenticated.
  */
 export default function AdminPlaysPage() {
+  const { basePath } = useAdmin();
   const navigate = useNavigate();
   const location = useLocation();
   const session = sessionStorage.getItem(SESSION_KEY) || "";
@@ -1635,8 +1752,8 @@ export default function AdminPlaysPage() {
   }, []);
 
   useEffect(() => {
-    if (!session) navigate("/admin", { replace: true });
-  }, [session, navigate]);
+    if (!session) navigate(adminPath(basePath, ""), { replace: true });
+  }, [session, navigate, basePath]);
 
   const load = useCallback(async () => {
     if (!session) return;
@@ -1674,7 +1791,7 @@ export default function AdminPlaysPage() {
   useEffect(() => {
     if (activeTab !== "presets" || !session) return;
     fetchSportPresets(session).then(setSportPresets).catch(() => {});
-  }, [activeTab, session]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeTab, session]);
 
   // Strip any sport-name tags that were previously auto-applied.
   const SPORT_TAGS = new Set(["rugby", "soccer", "football", "lacrosse", "womens lacrosse", "basketball", "field hockey", "ice hockey", "blank"]);
@@ -1693,17 +1810,6 @@ export default function AdminPlaysPage() {
   useEffect(() => {
     if (newFolderMode) setTimeout(() => newFolderRef.current?.focus(), 0);
   }, [newFolderMode]);
-
-  const handleLogout = () => {
-    fetch(`${API_URL}/admin/logout`, {
-      method: "POST",
-      headers: { "x-admin-session": session },
-    }).catch(() => {});
-    sessionStorage.removeItem(SESSION_KEY);
-    clearAdminElevated();
-    setElevatedUntil(0);
-    navigate("/admin", { replace: true });
-  };
 
   /**
    * Submit the elevation password to enter Danger Mode.
@@ -1989,278 +2095,155 @@ export default function AdminPlaysPage() {
     : null;
 
   return (
-    <div className="hide-scroll bg-[#13151a] font-DmSans text-white" style={{ height: "100dvh", overflowY: "auto" }}>
-
-      {/* ── New Play sport picker modal ── */}
-      {newPlayModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-xs rounded-2xl border border-white/10 bg-[#1e2228] p-7 shadow-2xl">
-            <h2 className="mb-1 font-Manrope text-base font-bold text-white">New Play</h2>
-            <p className="mb-5 text-xs text-BrandGray2">Choose the sport for this play. This sets the field type and defaults.</p>
-            <div className="flex flex-col gap-3">
-              <select
-                autoFocus
-                value={newPlaySport}
-                onChange={(e) => setNewPlaySport(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-[#13151a] px-3.5 py-2.5 text-sm text-white outline-none focus:border-BrandOrange/50"
-              >
-                {["Rugby", "Football", "Soccer", "Lacrosse", "Womens Lacrosse", "Basketball", "Field Hockey", "Ice Hockey", "Blank"].map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-              <div className="flex gap-2 pt-1">
-                <button
-                  onClick={() => setNewPlayModal(false)}
-                  className="flex-1 rounded-lg border border-white/10 py-2 text-xs text-BrandGray transition hover:border-white/20 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleNewPlayConfirm}
-                  className="flex-1 rounded-lg bg-BrandOrange py-2 text-xs font-semibold text-white transition hover:brightness-110"
-                >
-                  Create Play
-                </button>
-              </div>
-            </div>
-          </div>
+    <AdminShell sidebar={false}>
+      {/* New Play sport picker */}
+      <AdminModal open={newPlayModal} onClose={() => setNewPlayModal(false)} title="New Play">
+        <p className="mb-4 text-sm" style={{ color: "var(--adm-muted)" }}>Choose the sport. This sets the field type and defaults.</p>
+        <AdminSelect autoFocus value={newPlaySport} onChange={(e) => setNewPlaySport(e.target.value)} className="mb-4 w-full">
+          {["Rugby", "Football", "Soccer", "Lacrosse", "Womens Lacrosse", "Basketball", "Field Hockey", "Ice Hockey", "Blank"].map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </AdminSelect>
+        <div className="flex gap-2">
+          <AdminBtn variant="secondary" className="flex-1" onClick={() => setNewPlayModal(false)}>Cancel</AdminBtn>
+          <AdminBtn variant="primary" className="flex-1" onClick={handleNewPlayConfirm}>Create Play</AdminBtn>
         </div>
-      )}
+      </AdminModal>
 
-      {/* ── Preset picker modal (shown when sport folder has visible presets) ── */}
+      {/* Preset picker modal */}
       {presetPickerSport && (() => {
         const visiblePresets = sportPresets.filter(
           (p) => p.sport?.toLowerCase() === presetPickerSport.toLowerCase() && !p.isHidden
         );
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-            <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-[#1e2228] p-7 shadow-2xl">
-              <h2 className="mb-1 font-Manrope text-base font-bold text-white">Choose a Starting Preset</h2>
-              <p className="mb-5 text-xs text-BrandGray2">{presetPickerSport} · Select a template or start with a blank canvas.</p>
-              <div className="grid grid-cols-3 gap-3">
-                {/* Blank option */}
-                <button
-                  onClick={() => handlePresetPick(null)}
-                  className="flex flex-col gap-2 rounded-xl border border-white/10 bg-[#13151a] p-3 text-left transition hover:border-BrandOrange/40 hover:bg-BrandOrange/5"
-                >
-                  <div className="flex h-24 w-full items-center justify-center rounded-lg bg-white/5 text-xs text-BrandGray2">Blank</div>
-                  <span className="text-xs font-medium text-white">Blank</span>
-                </button>
-                {visiblePresets.map((preset) => (
-                  <button
-                    key={preset.id}
-                    onClick={() => handlePresetPick(preset)}
-                    className="flex flex-col gap-2 rounded-xl border border-white/10 bg-[#13151a] p-3 text-left transition hover:border-BrandOrange/40 hover:bg-BrandOrange/5"
-                  >
-                    <div className="overflow-hidden rounded-lg" style={{ height: 96 }}>
-                      <PlayPreviewCard
-                        playData={preset.playData}
-                        shape="landscape"
-                        cameraMode="fit-distribution"
-                      />
-                    </div>
-                    <span className="text-xs font-medium text-white">{preset.name}</span>
-                  </button>
-                ))}
-              </div>
+          <AdminModal open onClose={() => setPresetPickerSport(null)} title="Choose a Starting Preset">
+            <p className="mb-4 text-sm" style={{ color: "var(--adm-muted)" }}>{presetPickerSport} · Select a template or start blank.</p>
+            <div className="grid grid-cols-3 gap-3">
               <button
-                onClick={() => setPresetPickerSport(null)}
-                className="mt-5 w-full rounded-lg border border-white/10 py-2 text-xs text-BrandGray transition hover:border-white/20 hover:text-white"
+                onClick={() => handlePresetPick(null)}
+                className="flex flex-col gap-2 rounded-[var(--adm-radius-sm)] p-3 text-left transition"
+                style={{ border: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface2)" }}
               >
-                Cancel
+                <div className="flex h-24 w-full items-center justify-center rounded text-xs" style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-muted)" }}>Blank</div>
+                <span className="text-xs font-medium" style={{ color: "var(--adm-text)" }}>Blank</span>
               </button>
+              {visiblePresets.map((preset) => (
+                <button
+                  key={preset.id}
+                  onClick={() => handlePresetPick(preset)}
+                  className="flex flex-col gap-2 rounded-[var(--adm-radius-sm)] p-3 text-left transition"
+                  style={{ border: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface2)" }}
+                >
+                  <div className="overflow-hidden rounded" style={{ height: 96 }}>
+                    <PlayPreviewCard playData={preset.playData} shape="landscape" cameraMode="fit-distribution" />
+                  </div>
+                  <span className="text-xs font-medium" style={{ color: "var(--adm-text)" }}>{preset.name}</span>
+                </button>
+              ))}
             </div>
-          </div>
+            <AdminBtn variant="secondary" className="mt-4 w-full" onClick={() => setPresetPickerSport(null)}>
+              Cancel
+            </AdminBtn>
+          </AdminModal>
         );
       })()}
 
-      {/* ── Danger Mode (elevation) modal ── */}
-      {elevateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl border border-red-500/30 bg-[#1a0e0e] p-7 shadow-2xl">
-            <div className="mb-1 flex items-center gap-2">
-              <span className="text-lg">⚠</span>
-              <h2 className="font-Manrope text-base font-bold text-red-400">Danger Mode Required</h2>
-            </div>
-            <p className="mb-5 text-xs text-red-300/70">
-              Re-enter your admin password to unlock destructive operations for 10 minutes.
-            </p>
-            <form onSubmit={handleElevate} className="flex flex-col gap-3">
-              <input
-                type="password"
-                value={elevatePassword}
-                onChange={(e) => setElevatePassword(e.target.value)}
-                placeholder="Admin password"
-                autoFocus
-                className="w-full rounded-lg border border-red-500/20 bg-black/40 px-3.5 py-2.5 text-sm text-white outline-none placeholder:text-red-300/30 focus:border-red-500/60"
-              />
-              {elevateError && <p className="text-xs text-red-400">{elevateError}</p>}
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={handleElevateCancel}
-                  className="flex-1 rounded-lg border border-white/8 py-2.5 text-xs text-BrandGray transition hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={elevating || !elevatePassword}
-                  className="flex-1 rounded-lg bg-red-600 py-2.5 text-xs font-semibold text-white transition hover:bg-red-500 disabled:opacity-50"
-                >
-                  {elevating ? "Verifying..." : "Unlock Danger Mode"}
-                </button>
-              </div>
-            </form>
+      {/* Danger Mode modal */}
+      <AdminModal open={elevateModal} onClose={handleElevateCancel} title="Danger Mode Required">
+        <p className="mb-4 text-sm" style={{ color: "var(--adm-danger)" }}>Re-enter your admin password to unlock destructive operations for 10 minutes.</p>
+        <form onSubmit={handleElevate} className="flex flex-col gap-3">
+          <AdminInput type="password" value={elevatePassword} onChange={(e) => setElevatePassword(e.target.value)} placeholder="Admin password" autoFocus />
+          {elevateError && <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{elevateError}</p>}
+          <div className="flex gap-2">
+            <AdminBtn type="button" variant="secondary" className="flex-1" onClick={handleElevateCancel}>Cancel</AdminBtn>
+            <AdminBtn type="submit" variant="danger" className="flex-1" disabled={elevating || !elevatePassword}>
+              {elevating ? "Verifying..." : "Unlock Danger Mode"}
+            </AdminBtn>
           </div>
-        </div>
-      )}
+        </form>
+      </AdminModal>
 
       {/* Header */}
-      <div className="sticky top-0 z-20 border-b border-white/6 bg-[#13151a]/95 backdrop-blur-sm">
+      <div className="sticky top-0 z-20 backdrop-blur-sm" style={{ borderBottom: "1px solid var(--adm-border)", backgroundColor: "var(--adm-bg)" }}>
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-6 py-3.5">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate("/admin")} className="inline-flex opacity-70 transition hover:opacity-100">
-              <img src={logo} alt="Coachable" className="h-5" />
+            <button onClick={() => navigate(adminPath(basePath, ""))} className="inline-flex opacity-70 transition hover:opacity-100">
+              <span className="font-Manrope text-sm font-bold" style={{ color: "var(--adm-accent)" }}>Coachable</span>
             </button>
-            <span className="rounded bg-BrandOrange/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-BrandOrange">
-              Admin
-            </span>
+            <span className="rounded px-2 py-0.5 text-[10px] font-normal uppercase tracking-wider" style={{ backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }}>Admin</span>
             {dangerMinsDisplay && (
-              <span className="animate-pulse rounded bg-red-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-red-400">
-                ⚠ Danger Mode · {dangerMinsDisplay}
+              <span className="animate-pulse rounded px-2 py-0.5 text-[10px] font-normal uppercase tracking-wider" style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}>
+                ⚠ Danger · {dangerMinsDisplay}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1 rounded-lg border border-white/8 bg-[#1e2228] p-0.5">
-            <button
-              onClick={() => setActiveTab("plays")}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                activeTab === "plays" ? "bg-BrandOrange text-white" : "text-BrandGray hover:text-white"
-              }`}
-            >
-              <FiFolder className="text-[10px]" /> Plays
-            </button>
-            <button
-              onClick={() => setActiveTab("sections")}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                activeTab === "sections" ? "bg-BrandOrange text-white" : "text-BrandGray hover:text-white"
-              }`}
-            >
-              <FiLayout className="text-[10px]" /> Page Sections
-            </button>
-            <button
-              onClick={() => setActiveTab("playbooks")}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                activeTab === "playbooks" ? "bg-BrandOrange text-white" : "text-BrandGray hover:text-white"
-              }`}
-            >
-              <FiBookOpen className="text-[10px]" /> Playbook Sections
-            </button>
-            <button
-              onClick={() => setActiveTab("presets")}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                activeTab === "presets" ? "bg-BrandOrange text-white" : "text-BrandGray hover:text-white"
-              }`}
-            >
-              <FiSliders className="text-[10px]" /> Sport Presets
-            </button>
+          <div className="flex items-center gap-0.5 rounded-[var(--adm-radius-sm)] p-0.5" style={{ backgroundColor: "var(--adm-surface2)", border: "1px solid var(--adm-border)" }}>
+            {[
+              { key: "plays", icon: <FiFolder className="text-[10px]" />, label: "Plays" },
+              { key: "sections", icon: <FiLayout className="text-[10px]" />, label: "Page Sections" },
+              { key: "playbooks", icon: <FiBookOpen className="text-[10px]" />, label: "Playbook Sections" },
+              { key: "presets", icon: <FiSliders className="text-[10px]" />, label: "Sport Presets" },
+            ].map(({ key, icon, label }) => (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-normal transition"
+                style={activeTab === key
+                  ? { backgroundColor: "var(--adm-accent)", color: "#fff" }
+                  : { color: "var(--adm-muted)" }}
+              >
+                {icon} {label}
+              </button>
+            ))}
           </div>
-          <div className="flex items-center gap-3 text-xs text-BrandGray2">
-            <span>{plays.length} total</span>
-          </div>
+          <span className="text-xs" style={{ color: "var(--adm-muted)" }}>{plays.length} total</span>
           <div className="ml-auto flex items-center gap-2">
-            <button
-              onClick={handleNew}
-              className="flex items-center gap-1.5 rounded-lg bg-BrandOrange px-3.5 py-2 text-xs font-semibold text-white transition hover:brightness-110 active:scale-[0.97]"
-            >
-              <FiPlus /> New Play
-            </button>
-            <button
-              onClick={() => navigate("/admin")}
-              className="rounded-lg border border-white/8 px-3.5 py-2 text-xs text-BrandGray transition hover:border-white/20 hover:text-white"
-            >
-              Dashboard
-            </button>
-            <button
-              onClick={handleLogout}
-              title="Log out"
-              className="flex items-center gap-1.5 rounded-lg border border-white/6 px-3 py-2 text-xs text-BrandGray transition hover:border-white/20 hover:text-white"
-            >
-              <FiLogOut />
-            </button>
+            <AdminBtn variant="primary" size="sm" onClick={handleNew}><FiPlus className="mr-1 inline" /> New Play</AdminBtn>
+            <AdminBtn variant="secondary" size="sm" onClick={() => navigate(adminPath(basePath, ""))}>Dashboard</AdminBtn>
           </div>
         </div>
       </div>
 
-      {/* Priority sections missing play — persistent, data-driven */}
       {sections.filter((s) => s.isPriority && !s.playId).length > 0 && (
-        <div className="sticky top-13.25 z-10 flex items-center gap-3 border-b border-amber-500/30 bg-amber-500/10 px-6 py-3 backdrop-blur-sm">
-          <svg className="h-4 w-4 shrink-0 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <div className="sticky top-13.25 z-10 flex items-center gap-3 px-6 py-3 backdrop-blur-sm" style={{ borderBottom: "1px solid rgba(251,191,36,0.3)", backgroundColor: "rgba(251,191,36,0.08)" }}>
+          <svg className="h-4 w-4 shrink-0" style={{ color: "var(--adm-warning)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
           </svg>
-          <p className="flex-1 text-xs font-medium text-amber-300">
-            <span className="font-semibold text-amber-200">Priority sections need a play — </span>
+          <p className="flex-1 text-xs font-medium" style={{ color: "var(--adm-warning)" }}>
+            <span className="font-normal">Priority sections need a play — </span>
             {sections.filter((s) => s.isPriority && !s.playId).map((s) => s.label).join(", ")}
           </p>
-          <button
-            onClick={() => setActiveTab("sections")}
-            className="rounded px-2 py-1 text-xs font-semibold text-amber-400 transition hover:bg-amber-500/20 hover:text-amber-200"
-          >
-            Go to Sections
-          </button>
+          <button onClick={() => setActiveTab("sections")} className="rounded px-2 py-1 text-xs font-normal transition" style={{ color: "var(--adm-warning)" }}>Go to Sections</button>
         </div>
       )}
 
-      {/* Deletion warning banner */}
       {deletionWarning && (
-        <div className="sticky top-13.25 z-10 flex items-center gap-3 border-b border-red-500/30 bg-red-600/15 px-6 py-3 backdrop-blur-sm">
-          <svg className="h-4 w-4 shrink-0 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <div className="sticky top-13.25 z-10 flex items-center gap-3 px-6 py-3 backdrop-blur-sm" style={{ borderBottom: "1px solid var(--adm-danger)", backgroundColor: "var(--adm-danger-dim)" }}>
+          <svg className="h-4 w-4 shrink-0" style={{ color: "var(--adm-danger)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
           </svg>
-          <p className="flex-1 text-xs font-medium text-red-300">
-            <span className="font-semibold text-red-200">Page section unlinked — </span>
-            {deletionWarning}
+          <p className="flex-1 text-xs font-medium" style={{ color: "var(--adm-danger)" }}>
+            <span className="font-normal">Page section unlinked — </span>{deletionWarning}
           </p>
-          <button
-            onClick={() => setDeletionWarning(null)}
-            className="rounded p-1 text-red-400 transition hover:bg-red-500/20 hover:text-red-200"
-          >
+          <button onClick={() => setDeletionWarning(null)} className="rounded p-1 transition" style={{ color: "var(--adm-danger)" }}>
             <FiX className="text-sm" />
           </button>
         </div>
       )}
 
-      {/* Page Sections tab */}
       {activeTab === "sections" && (
         <div className="mx-auto max-w-4xl px-6 py-8">
-          <div className="mb-6">
-            <h2 className="font-Manrope text-base font-bold text-white">Page Sections</h2>
-            <p className="mt-1 text-xs text-BrandGray2">
-              Assign a platform play to each section. The play&apos;s animation will be shown as a live preview on that page.
-            </p>
-          </div>
-          {error && (
-            <div className="mb-4 rounded-lg bg-red-600/10 px-4 py-2 text-sm text-red-400">{error}</div>
-          )}
+          <h2 className="mb-1 font-Manrope text-base font-bold" style={{ color: "var(--adm-text)" }}>Page Sections</h2>
+          <p className="mb-6 text-xs" style={{ color: "var(--adm-muted)" }}>Assign a platform play to each section. The play&apos;s animation will be shown as a live preview on that page.</p>
+          {error && <div className="mb-4 rounded-[var(--adm-radius-sm)] px-4 py-2 text-sm" style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}>{error}</div>}
           {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-BrandOrange/30 border-t-BrandOrange" />
-            </div>
+            <div className="flex items-center justify-center py-20"><AdminSpinner size={32} /></div>
           ) : (
             <div className="space-y-3">
               {sections.map((section) => (
-                <SectionRow
-                  key={section.sectionKey}
-                  section={section}
-                  plays={plays}
-                  onAssign={handleAssignSection}
-                  onTogglePriority={handleTogglePriority}
-                />
+                <SectionRow key={section.sectionKey} section={section} plays={plays} onAssign={handleAssignSection} onTogglePriority={handleTogglePriority} />
               ))}
-              {sections.length === 0 && (
-                <p className="text-sm text-BrandGray2">No sections defined yet.</p>
-              )}
+              {sections.length === 0 && <p className="text-sm" style={{ color: "var(--adm-muted)" }}>No sections defined yet.</p>}
             </div>
           )}
         </div>
@@ -2276,15 +2259,10 @@ export default function AdminPlaysPage() {
         />
       )}
 
-      {/* Sport Presets tab */}
       {activeTab === "presets" && (
         <div className="mx-auto max-w-4xl px-6 py-8">
-          <div className="mb-6">
-            <h2 className="font-Manrope text-base font-bold text-white">Sport Presets</h2>
-            <p className="mt-1 text-xs text-BrandGray2">
-              Manage starting-canvas presets for each sport. Click a sport to view and create presets for it.
-            </p>
-          </div>
+          <h2 className="mb-1 font-Manrope text-base font-bold" style={{ color: "var(--adm-text)" }}>Sport Presets</h2>
+          <p className="mb-6 text-xs" style={{ color: "var(--adm-muted)" }}>Manage starting-canvas presets for each sport. Click a sport to view and create presets for it.</p>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
             {PRESET_SPORTS.map((sport) => {
               const count = sportPresets.filter((p) => p.sport === sport).length;
@@ -2292,20 +2270,17 @@ export default function AdminPlaysPage() {
                 <button
                   key={sport}
                   type="button"
-                  onClick={() => navigate(`/admin/presets/${encodeURIComponent(sport)}`)}
-                  className="group flex flex-col gap-3 rounded-xl border border-white/8 bg-[#1a1d22] p-4 text-left transition hover:border-BrandOrange/40 hover:bg-[#1e2228]"
+                  onClick={() => navigate(`${adminPath(basePath, "/presets")}/${encodeURIComponent(sport)}`)}
+                  className="group flex flex-col gap-3 rounded-[var(--adm-radius)] p-4 text-left transition"
+                  style={{ border: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface2)" }}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-Manrope text-sm font-semibold text-white">{sport}</span>
-                    {count > 0 ? (
-                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
-                        {count} {count === 1 ? "preset" : "presets"}
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-white/6 px-2 py-0.5 text-[10px] font-semibold text-BrandGray2">None</span>
-                    )}
+                    <span className="font-Manrope text-sm font-normal" style={{ color: "var(--adm-text)" }}>{sport}</span>
+                    <span className="rounded-full px-2 py-0.5 text-[10px] font-normal" style={count > 0 ? { backgroundColor: "rgba(52,211,153,0.12)", color: "#34d399" } : { backgroundColor: "var(--adm-surface3)", color: "var(--adm-muted)" }}>
+                      {count > 0 ? `${count} ${count === 1 ? "preset" : "presets"}` : "None"}
+                    </span>
                   </div>
-                  <div className="mt-auto flex items-center gap-1.5 text-[11px] font-semibold text-BrandOrange opacity-0 transition group-hover:opacity-100">
+                  <div className="mt-auto flex items-center gap-1.5 text-[11px] font-normal opacity-0 transition group-hover:opacity-100" style={{ color: "var(--adm-accent)" }}>
                     <FiSliders className="text-xs" /> Manage
                   </div>
                 </button>
@@ -2315,208 +2290,120 @@ export default function AdminPlaysPage() {
         </div>
       )}
 
-      {/* Body: sidebar + content */}
-      {activeTab === "plays" && <div className="mx-auto flex max-w-7xl gap-6 px-6 py-8">
-        {/* ── Folder sidebar ── */}
-        <aside className="w-52 shrink-0">
-          <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wider text-BrandGray2">
-            Folders
-          </p>
-
-          {/* All plays */}
-          <button
-            onClick={() => setCurrentFolderId(null)}
-            className={`mb-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition ${
-              currentFolderId === null
-                ? "bg-BrandOrange/15 text-BrandOrange"
-                : "text-BrandGray hover:bg-white/5 hover:text-white"
-            }`}
-          >
-            <FiFolder className="text-xs" />
-            <span className="flex-1">All Plays</span>
-            <span className="text-[10px] opacity-60">{plays.length}</span>
-          </button>
-
-          {/* Folder list */}
-          <div className="space-y-0.5">
-            {folders.map((folder) => (
-              <FolderItem
-                key={folder.id}
-                folder={folder}
-                isActive={currentFolderId === folder.id}
-                onClick={() => setCurrentFolderId(folder.id)}
-                onRename={folder.isSportFolder ? null : handleRenameFolder}
-                onDelete={folder.isSportFolder ? null : handleDeleteFolder}
-              />
-            ))}
-          </div>
-
-          {/* New folder */}
-          {newFolderMode ? (
-            <div className="mt-2">
-              <input
-                ref={newFolderRef}
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleCreateFolder();
-                  if (e.key === "Escape") { setNewFolderMode(false); setNewFolderName(""); }
-                }}
-                onBlur={handleCreateFolder}
-                placeholder="Folder name"
-                className="w-full rounded-lg border border-white/10 bg-[#1e2228] px-2.5 py-1.5 text-xs text-white outline-none placeholder:text-BrandGray2 focus:border-BrandOrange/40"
-              />
-            </div>
-          ) : (
+      {activeTab === "plays" && (
+        <div className="mx-auto flex max-w-7xl gap-6 px-6 py-8">
+          {/* Folder sidebar */}
+          <aside className="w-52 shrink-0">
+            <p className="mb-2 px-1 text-[10px] font-normal uppercase tracking-wider" style={{ color: "var(--adm-muted)" }}>Folders</p>
             <button
-              onClick={() => setNewFolderMode(true)}
-              className="mt-3 flex w-full items-center gap-1.5 rounded-lg border border-dashed border-white/10 px-2.5 py-2 text-xs text-BrandGray2 transition hover:border-white/20 hover:text-white"
+              onClick={() => setCurrentFolderId(null)}
+              className="mb-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition"
+              style={currentFolderId === null ? { backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" } : { color: "var(--adm-muted)" }}
             >
-              <FiFolderPlus className="text-xs" /> New Folder
+              <FiFolder className="text-xs" />
+              <span className="flex-1">All Plays</span>
+              <span className="text-[10px] opacity-60">{plays.length}</span>
             </button>
-          )}
-        </aside>
-
-        {/* ── Main content ── */}
-        <div className="min-w-0 flex-1">
-          {/* Breadcrumb + search */}
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex items-center gap-1 text-xs text-BrandGray2">
-              <button
-                onClick={() => setCurrentFolderId(null)}
-                className={`transition hover:text-white ${!currentFolderId ? "font-semibold text-white" : ""}`}
-              >
-                All
-              </button>
-              {currentFolder && (
-                <>
-                  <FiChevronRight className="text-[10px]" />
-                  <span className="font-semibold text-white">{currentFolder.name}</span>
-                </>
-              )}
-            </div>
-
-            <div className="relative max-w-sm flex-1">
-              <svg
-                className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-BrandGray2"
-                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803a7.5 7.5 0 0010.607 0z" />
-              </svg>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search plays..."
-                className="w-full rounded-lg border border-white/8 bg-[#1e2228] py-2 pl-9 pr-3 text-sm text-white outline-none placeholder:text-BrandGray2 focus:border-BrandOrange/50"
-              />
-            </div>
-            {search && (
-              <button onClick={() => setSearch("")} className="text-xs text-BrandGray2 hover:text-white">
-                Clear
-              </button>
-            )}
-            <select
-              value={playSort}
-              onChange={(e) => setPlaySort(e.target.value)}
-              className="shrink-0 rounded-lg border border-white/8 bg-[#1e2228] px-2.5 py-2 text-xs text-BrandGray outline-none focus:border-BrandOrange/50 cursor-pointer"
-            >
-              <option value="custom">Custom Order</option>
-              <option value="updated">Recently Updated</option>
-              <option value="created">Recently Created</option>
-              <option value="az">Name A→Z</option>
-              <option value="za">Name Z→A</option>
-            </select>
-          </div>
-
-          {/* Error */}
-          {error && (
-            <div className="mb-4 rounded-lg bg-red-600/10 px-4 py-2 text-sm text-red-400">{error}</div>
-          )}
-
-          {/* Loading */}
-          {loading && (
-            <div className="flex items-center justify-center py-20">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-BrandOrange/30 border-t-BrandOrange" />
-            </div>
-          )}
-
-          {/* Empty state */}
-          {!loading && visiblePlays.length === 0 && (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-white/6 bg-[#1e2228] py-20 text-center">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-BrandOrange/10">
-                <FiFolder className="h-6 w-6 text-BrandOrange" />
-              </div>
-              <p className="font-Manrope text-sm font-semibold text-white">
-                {search
-                  ? "No plays match your search"
-                  : currentFolder
-                  ? `No plays in "${currentFolder.name}"`
-                  : "No platform plays yet"}
-              </p>
-              <p className="mt-1 text-xs text-BrandGray2">
-                {search ? "Try a different search term" : "Create your first play to feature on the landing page"}
-              </p>
-              {!search && (
-                <button
-                  onClick={handleNew}
-                  className="mt-5 flex items-center gap-2 rounded-lg bg-BrandOrange px-4 py-2 text-xs font-semibold text-white transition hover:brightness-110"
-                >
-                  <FiPlus /> New Play
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Play grid */}
-          {!loading && visiblePlays.length > 0 && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {visiblePlays.map((play) => (
-                <div
-                  key={play.id}
-                  draggable
-                  onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; setDragSrcId(play.id); }}
-                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (dragSrcId !== play.id) setDragOverId(play.id); }}
-                  onDrop={(e) => { e.preventDefault(); handleReorderPlay(dragSrcId, play.id); }}
-                  onDragEnd={() => { setDragSrcId(null); setDragOverId(null); }}
-                  className={`rounded-xl transition ${dragOverId === play.id && dragSrcId !== play.id ? "ring-2 ring-BrandOrange/50 opacity-60" : ""}`}
-                >
-                  <PlayCard
-                    play={play}
-                    folders={folders}
-                    playbookSections={playbookSections}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    onMove={handleMove}
-                    onDuplicate={handleDuplicate}
-                    onAddToSection={handleAddToSection}
-                    onTagsUpdate={handleUpdateTags}
-                    allTags={allTags}
-                  />
-                </div>
+            <div className="space-y-0.5">
+              {folders.map((folder) => (
+                <FolderItem key={folder.id} folder={folder} isActive={currentFolderId === folder.id} onClick={() => setCurrentFolderId(folder.id)} onRename={folder.isSportFolder ? null : handleRenameFolder} onDelete={folder.isSportFolder ? null : handleDeleteFolder} />
               ))}
             </div>
-          )}
+            {newFolderMode ? (
+              <div className="mt-2">
+                <input
+                  ref={newFolderRef}
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleCreateFolder(); if (e.key === "Escape") { setNewFolderMode(false); setNewFolderName(""); } }}
+                  onBlur={handleCreateFolder}
+                  placeholder="Folder name"
+                  className="w-full rounded-[var(--adm-radius-sm)] px-2.5 py-1.5 text-xs outline-none"
+                  style={{ border: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface2)", color: "var(--adm-text)" }}
+                />
+              </div>
+            ) : (
+              <button
+                onClick={() => setNewFolderMode(true)}
+                className="mt-3 flex w-full items-center gap-1.5 rounded-lg border-dashed px-2.5 py-2 text-xs transition"
+                style={{ border: "1px dashed var(--adm-border)", color: "var(--adm-muted)" }}
+              >
+                <FiFolderPlus className="text-xs" /> New Folder
+              </button>
+            )}
+          </aside>
+
+          {/* Main content */}
+          <div className="min-w-0 flex-1">
+            <div className="mb-6 flex items-center gap-3">
+              <div className="flex items-center gap-1 text-xs" style={{ color: "var(--adm-muted)" }}>
+                <button onClick={() => setCurrentFolderId(null)} className="transition" style={!currentFolderId ? { fontWeight: 600, color: "var(--adm-text)" } : {}}>All</button>
+                {currentFolder && (
+                  <><FiChevronRight className="text-[10px]" /><span className="font-normal" style={{ color: "var(--adm-text)" }}>{currentFolder.name}</span></>
+                )}
+              </div>
+              <div className="relative max-w-sm flex-1">
+                <svg className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2" style={{ color: "var(--adm-muted)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803a7.5 7.5 0 0010.607 0z" />
+                </svg>
+                <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search plays..." className="w-full rounded-[var(--adm-radius-sm)] py-2 pl-9 pr-3 text-sm outline-none" style={{ border: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface2)", color: "var(--adm-text)" }} />
+              </div>
+              {search && <button onClick={() => setSearch("")} className="text-xs" style={{ color: "var(--adm-muted)" }}>Clear</button>}
+              <select value={playSort} onChange={(e) => setPlaySort(e.target.value)} className="shrink-0 cursor-pointer rounded-[var(--adm-radius-sm)] px-2.5 py-2 text-xs outline-none" style={{ border: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface2)", color: "var(--adm-text)" }}>
+                <option value="custom">Custom Order</option>
+                <option value="updated">Recently Updated</option>
+                <option value="created">Recently Created</option>
+                <option value="az">Name A→Z</option>
+                <option value="za">Name Z→A</option>
+              </select>
+            </div>
+
+            {error && <div className="mb-4 rounded-[var(--adm-radius-sm)] px-4 py-2 text-sm" style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}>{error}</div>}
+            {loading && <div className="flex items-center justify-center py-20"><AdminSpinner size={32} /></div>}
+
+            {!loading && visiblePlays.length === 0 && (
+              <div className="flex flex-col items-center justify-center rounded-[var(--adm-radius)] py-20 text-center" style={{ border: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface2)" }}>
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-[var(--adm-radius)]" style={{ backgroundColor: "var(--adm-accent-dim)" }}>
+                  <FiFolder className="h-6 w-6" style={{ color: "var(--adm-accent)" }} />
+                </div>
+                <p className="font-Manrope text-sm font-normal" style={{ color: "var(--adm-text)" }}>
+                  {search ? "No plays match your search" : currentFolder ? `No plays in "${currentFolder.name}"` : "No platform plays yet"}
+                </p>
+                <p className="mt-1 text-xs" style={{ color: "var(--adm-muted)" }}>{search ? "Try a different search term" : "Create your first play to feature on the landing page"}</p>
+                {!search && <AdminBtn variant="primary" className="mt-5" onClick={handleNew}><FiPlus className="mr-1 inline" /> New Play</AdminBtn>}
+              </div>
+            )}
+
+            {!loading && visiblePlays.length > 0 && (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {visiblePlays.map((play) => (
+                  <div
+                    key={play.id}
+                    draggable
+                    onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; setDragSrcId(play.id); }}
+                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (dragSrcId !== play.id) setDragOverId(play.id); }}
+                    onDrop={(e) => { e.preventDefault(); handleReorderPlay(dragSrcId, play.id); }}
+                    onDragEnd={() => { setDragSrcId(null); setDragOverId(null); }}
+                    className={`rounded-[var(--adm-radius)] transition ${dragOverId === play.id && dragSrcId !== play.id ? "opacity-60 ring-2 ring-[var(--adm-accent)]" : ""}`}
+                  >
+                    <PlayCard play={play} folders={folders} playbookSections={playbookSections} onEdit={handleEdit} onDelete={handleDelete} onMove={handleMove} onDuplicate={handleDuplicate} onAddToSection={handleAddToSection} onTagsUpdate={handleUpdateTags} allTags={allTags} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      </div>}
+      )}
 
       <ConfirmModal
         open={!!confirmModal}
-        message={
-          confirmModal?.type === "play"
-            ? `Delete "${confirmModal.item.title}"?`
-            : `Delete folder "${confirmModal?.item.name}"?`
-        }
-        subtitle={
-          confirmModal?.type === "play"
-            ? "This cannot be undone."
-            : "Plays inside will become un-foldered."
-        }
+        message={confirmModal?.type === "play" ? `Delete "${confirmModal.item.title}"?` : `Delete folder "${confirmModal?.item.name}"?`}
+        subtitle={confirmModal?.type === "play" ? "This cannot be undone." : "Plays inside will become un-foldered."}
         confirmLabel="Delete"
         danger
         onConfirm={handleDeleteConfirmed}
         onCancel={() => setConfirmModal(null)}
       />
-    </div>
+    </AdminShell>
   );
 }

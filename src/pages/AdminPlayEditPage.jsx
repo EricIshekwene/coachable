@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Slate from "../features/slate/Slate";
 import MessagePopup from "../components/MessagePopup/MessagePopup";
 import { useMessagePopup } from "../components/messaging/useMessagePopup";
+import { useAdmin } from "../admin/AdminContext";
 import useThemeColor from "../utils/useThemeColor";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -101,12 +102,13 @@ export default function AdminPlayEditPage() {
   const { playId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { theme } = useAdmin();
   const initialSport = location.state?.sport || null;
   const initialFolderId = location.state?.folderId || null;
   const initialPresetPlayData = location.state?.presetPlayData || null;
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
   const [ready, setReady] = useState(false);
-  const [loadingPlay, setLoadingPlay] = useState(true);
+  const [loadingPlay, setLoadingPlay] = useState(() => playId !== "new" && !!sessionStorage.getItem(SESSION_KEY));
   const [existingPlay, setExistingPlay] = useState(null);
   const [recoveredData, setRecoveredData] = useState(undefined);
   // Reactive persisted ID — starts as null for "new" plays, updates to UUID after first DB save.
@@ -115,17 +117,13 @@ export default function AdminPlayEditPage() {
   const flushRef = useRef(null);
   const isNew = playId === "new";
 
-  useThemeColor("#121212");
+  useThemeColor(theme === "light" ? "#f3f6fb" : "#121212");
 
   const session = sessionStorage.getItem(SESSION_KEY);
 
   // Load play data if editing an existing play
   useEffect(() => {
-    if (isNew) {
-      setLoadingPlay(false);
-      return;
-    }
-    if (!session) { setLoadingPlay(false); return; }
+    if (isNew || !session) return;
     setLoadingPlay(true);
     adminFetchPlay(session, playId)
       .then((p) => {
@@ -180,7 +178,7 @@ export default function AdminPlayEditPage() {
         showMessage("Failed to save play", "", "error");
       }
     },
-    [session, persistedId, showMessage]
+    [session, persistedId, showMessage, initialSport, initialFolderId]
   );
 
   /** Handle thumbnail saves separately (called by Slate export/screenshot). */
@@ -219,10 +217,17 @@ export default function AdminPlayEditPage() {
 
   if (loadingPlay) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-BrandBlack">
+      <div
+        data-admin-theme={theme}
+        className="flex h-screen w-full items-center justify-center"
+        style={{ backgroundColor: "var(--adm-bg)" }}
+      >
         <div className="flex flex-col items-center gap-4">
-          <div className="h-10 w-10 rounded-full border-[3px] border-BrandOrange/30 border-t-BrandOrange animate-spin" />
-          <p className="text-sm font-DmSans text-BrandGray">Loading editor...</p>
+          <div
+            className="h-10 w-10 animate-spin rounded-full border-[3px]"
+            style={{ borderColor: "var(--adm-border2)", borderTopColor: "var(--adm-accent)" }}
+          />
+          <p className="text-sm font-DmSans" style={{ color: "var(--adm-text2)" }}>Loading editor...</p>
         </div>
       </div>
     );
@@ -234,17 +239,21 @@ export default function AdminPlayEditPage() {
 
   return (
     <div
-      className="w-full bg-BrandBlack flex flex-row justify-between relative overflow-hidden"
-      style={{ height: "100dvh" }}
+      data-admin-theme={theme}
+      className="relative flex h-full w-full flex-row justify-between overflow-hidden"
+      style={{ height: "100dvh", backgroundColor: "var(--adm-bg)" }}
     >
       {/* Loading overlay */}
       <div
-        className="absolute inset-0 z-100 flex items-center justify-center bg-BrandBlack transition-opacity duration-500"
-        style={{ opacity: ready ? 0 : 1, pointerEvents: ready ? "none" : "auto" }}
+        className="absolute inset-0 z-100 flex items-center justify-center transition-opacity duration-500"
+        style={{ opacity: ready ? 0 : 1, pointerEvents: ready ? "none" : "auto", backgroundColor: "var(--adm-bg)" }}
       >
         <div className="flex flex-col items-center gap-4">
-          <div className="h-10 w-10 rounded-full border-[3px] border-BrandOrange/30 border-t-BrandOrange animate-spin" />
-          <p className="text-sm font-DmSans text-BrandGray">Loading editor...</p>
+          <div
+            className="h-10 w-10 animate-spin rounded-full border-[3px]"
+            style={{ borderColor: "var(--adm-border2)", borderTopColor: "var(--adm-accent)" }}
+          />
+          <p className="text-sm font-DmSans" style={{ color: "var(--adm-text2)" }}>Loading editor...</p>
         </div>
       </div>
 

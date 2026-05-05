@@ -38,7 +38,7 @@ html, body {
 /* Light theme — only applies inside the app shell (.app-themed) */
 [data-theme="light"] .app-themed {
     --color-BrandBlack: #ffffff;
-    --color-BrandBlack2: #f0f2f5;
+    --color-BrandBlack2: #fafbfc;
     --color-BrandGray: #6b7280;
     --color-BrandGray2: #9ca3af;
     --color-BrandText: #1a1a1a;

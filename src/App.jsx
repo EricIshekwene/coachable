@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { installGlobalErrorHandlers } from "./utils/errorReporter";
 import "./index.css";
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
+import { AdminProvider } from "./admin/AdminContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Slate from "./features/slate/Slate";
 import SlateRecord from "./features/slate/SlateRecord";
@@ -133,11 +134,23 @@ export function SlateWithSportParam({ adminMode = false }) {
   return <SlateRoot adminMode={adminMode} sport={sport} />;
 }
 
-/** Guards admin sub-routes that lack their own session check (e.g. /admin/slate). */
-export function RequireAdminSession({ children }) {
+/**
+ * Guards admin sub-routes. Redirects to loginPath when no session exists.
+ * @param {{ children: React.ReactNode, loginPath?: string }} props
+ */
+export function RequireAdminSession({ children, loginPath = "/admin" }) {
   const session = sessionStorage.getItem("coachable_admin_session");
-  if (!session) return <Navigate to="/admin" replace />;
+  if (!session) return <Navigate to={loginPath} replace />;
   return children;
+}
+
+/** Layout wrapper that provides admin context (theme persisted in localStorage) to all /admin/* pages. */
+function AdminLayout() {
+  return (
+    <AdminProvider>
+      <Outlet />
+    </AdminProvider>
+  );
 }
 
 export function RequireAuth({ children }) {
@@ -214,9 +227,24 @@ export function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/admin" element={<Admin />} />
-      <Route path="/admin/tests" element={<RequireAdminSession><AdminTests /></RequireAdminSession>} />
-      <Route path="/admin/errors" element={<RequireAdminSession><AdminErrors /></RequireAdminSession>} />
+      {/* Admin — theme toggled via header switch, persisted in localStorage */}
+      <Route element={<AdminLayout />}>
+        <Route path="/admin" element={<Admin />} />
+        <Route path="/admin/tests" element={<RequireAdminSession><AdminTests /></RequireAdminSession>} />
+        <Route path="/admin/errors" element={<RequireAdminSession><AdminErrors /></RequireAdminSession>} />
+        <Route path="/admin/slate" element={<RequireAdminSession><SlateRoot adminMode /></RequireAdminSession>} />
+        <Route path="/admin/record" element={<RequireAdminSession><SlateRecordRoot /></RequireAdminSession>} />
+        <Route path="/admin/app" element={<RequireAdminSession><AdminPlaysPage /></RequireAdminSession>} />
+        <Route path="/admin/plays/:playId/edit" element={<RequireAdminSession><AdminPlayEditPage /></RequireAdminSession>} />
+        <Route path="/admin/presets/:sport" element={<RequireAdminSession><AdminSportPresetsPage /></RequireAdminSession>} />
+        <Route path="/admin/presets/:sport/:presetId/edit" element={<RequireAdminSession><AdminPresetEditPage /></RequireAdminSession>} />
+        <Route path="/admin/users/:userId" element={<RequireAdminSession><AdminUserActivity /></RequireAdminSession>} />
+        <Route path="/admin/user-issues" element={<RequireAdminSession><AdminUserIssues /></RequireAdminSession>} />
+        <Route path="/admin/mobile-view" element={<RequireAdminSession><AdminMobileView /></RequireAdminSession>} />
+        <Route path="/admin/test" element={<RequireAdminSession><AdminTestSlate /></RequireAdminSession>} />
+        <Route path="/admin/demo-videos" element={<RequireAdminSession><AdminDemoVideos /></RequireAdminSession>} />
+      </Route>
+
       <Route path="/platform-play/:playId" element={<PlatformPlayView />} />
       <Route path="/shared/:token" element={<SharedPlay />} />
       <Route path="/shared/:token/view" element={<SharedPlayView />} />
@@ -229,17 +257,6 @@ export function AppRoutes() {
       {/* Standalone slate editor (no auth required) */}
       <Route path="/slate" element={<SportPickerPage />} />
       <Route path="/slate/:sport" element={<SlateWithSportParam />} />
-      <Route path="/admin/slate" element={<RequireAdminSession><SlateRoot adminMode /></RequireAdminSession>} />
-      <Route path="/admin/record" element={<RequireAdminSession><SlateRecordRoot /></RequireAdminSession>} />
-      <Route path="/admin/app" element={<RequireAdminSession><AdminPlaysPage /></RequireAdminSession>} />
-      <Route path="/admin/plays/:playId/edit" element={<RequireAdminSession><AdminPlayEditPage /></RequireAdminSession>} />
-      <Route path="/admin/presets/:sport" element={<RequireAdminSession><AdminSportPresetsPage /></RequireAdminSession>} />
-      <Route path="/admin/presets/:sport/:presetId/edit" element={<RequireAdminSession><AdminPresetEditPage /></RequireAdminSession>} />
-      <Route path="/admin/users/:userId" element={<RequireAdminSession><AdminUserActivity /></RequireAdminSession>} />
-      <Route path="/admin/user-issues" element={<RequireAdminSession><AdminUserIssues /></RequireAdminSession>} />
-      <Route path="/admin/mobile-view" element={<RequireAdminSession><AdminMobileView /></RequireAdminSession>} />
-      <Route path="/admin/test" element={<RequireAdminSession><AdminTestSlate /></RequireAdminSession>} />
-      <Route path="/admin/demo-videos" element={<RequireAdminSession><AdminDemoVideos /></RequireAdminSession>} />
 
       {/* Full-screen play editor (outside AppLayout — no nav chrome) */}
       <Route path="/app/plays/:playId/edit" element={<RequireAuth><RequireOnboarded><PlayEditPage /></RequireOnboarded></RequireAuth>} />

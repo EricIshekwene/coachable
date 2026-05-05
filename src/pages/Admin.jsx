@@ -936,10 +936,10 @@ export default function Admin() {
           <AnalyticsDashboard session={session} />
         </section>
 
-        {/* USERS */}
+        {/* USERS TABLE */}
         <section id="users" style={{ scrollMarginTop: "4rem" }}>
           <AdminSection
-            title="Users"
+            title="Users Table"
             actions={
               <div className="flex gap-2">
                 <AdminBtn variant="primary" size="sm" onClick={() => setShowCreate(true)}>Create Account</AdminBtn>
@@ -952,46 +952,14 @@ export default function Admin() {
           )}
 
           {/* Users table */}
-          <AdminCard padding={false} className="overflow-hidden">
+          <AdminCard padding={false} className="overflow-hidden" style={{ border: "none" }}>
             <div
               className="px-4 py-4 sm:px-5"
               style={{
-                borderBottom: "1px solid var(--adm-border)",
                 background: "linear-gradient(180deg, var(--adm-surface2) 0%, var(--adm-surface) 100%)",
               }}
             >
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-[var(--adm-radius)] border px-3.5 py-3" style={{ backgroundColor: "var(--adm-surface)", borderColor: "var(--adm-border)" }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--adm-muted)" }}>Visible Users</p>
-                  <div className="mt-2 flex items-end gap-2">
-                    <span className="font-Manrope text-2xl font-semibold" style={{ color: "var(--adm-text)" }}>{filteredUsers.length}</span>
-                    <span className="pb-0.5 text-xs" style={{ color: "var(--adm-muted)" }}>of {users.length}</span>
-                  </div>
-                </div>
-                <div className="rounded-[var(--adm-radius)] border px-3.5 py-3" style={{ backgroundColor: "var(--adm-surface)", borderColor: "var(--adm-border)" }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--adm-muted)" }}>Verified</p>
-                  <div className="mt-2 flex items-end gap-2">
-                    <span className="font-Manrope text-2xl font-semibold" style={{ color: "var(--adm-success)" }}>{filteredUserStats.verified}</span>
-                    <span className="pb-0.5 text-xs" style={{ color: "var(--adm-muted)" }}>ready accounts</span>
-                  </div>
-                </div>
-                <div className="rounded-[var(--adm-radius)] border px-3.5 py-3" style={{ backgroundColor: "var(--adm-surface)", borderColor: "var(--adm-border)" }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--adm-muted)" }}>Beta Testers</p>
-                  <div className="mt-2 flex items-end gap-2">
-                    <span className="font-Manrope text-2xl font-semibold" style={{ color: "var(--adm-badge-purple-text)" }}>{filteredUserStats.beta}</span>
-                    <span className="pb-0.5 text-xs" style={{ color: "var(--adm-muted)" }}>flagged users</span>
-                  </div>
-                </div>
-                <div className="rounded-[var(--adm-radius)] border px-3.5 py-3" style={{ backgroundColor: "var(--adm-surface)", borderColor: "var(--adm-border)" }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--adm-muted)" }}>Needs Onboarding</p>
-                  <div className="mt-2 flex items-end gap-2">
-                    <span className="font-Manrope text-2xl font-semibold" style={{ color: filteredUserStats.pending > 0 ? "var(--adm-warning)" : "var(--adm-text2)" }}>{filteredUserStats.pending}</span>
-                    <span className="pb-0.5 text-xs" style={{ color: "var(--adm-muted)" }}>{filteredUserStats.coaching} with activity access</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 flex flex-col gap-3">
+              <div className="flex flex-col gap-3">
               {/* Row 1: search + hide + copy */}
               <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
                 <div className="relative min-w-[240px] flex-1">
@@ -1053,51 +1021,19 @@ export default function Admin() {
                   </AdminBtn>
                 </div>
               </div>
-              {/* Row 2: advanced filters */}
-              <div className="flex flex-wrap items-center gap-2 rounded-[var(--adm-radius)] p-3" style={{ backgroundColor: "var(--adm-surface)", border: "1px solid var(--adm-border)" }}>
-                <AdminSelect value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
-                  <option value="">All roles</option>
-                  <option value="owner">Owner</option>
-                  <option value="coach">Coach</option>
-                  <option value="assistant_coach">Assistant Coach</option>
-                  <option value="player">Player</option>
-                </AdminSelect>
-                <AdminSelect value={filterVerified} onChange={(e) => setFilterVerified(e.target.value)}>
-                  <option value="">Any verification</option>
-                  <option value="verified">Verified</option>
-                  <option value="unverified">Unverified</option>
-                </AdminSelect>
-                <AdminSelect value={filterOnboarded} onChange={(e) => setFilterOnboarded(e.target.value)}>
-                  <option value="">Any onboard status</option>
-                  <option value="yes">Onboarded</option>
-                  <option value="no">Not onboarded</option>
-                </AdminSelect>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs" style={{ color: "var(--adm-muted)" }}>Plays</span>
-                  <AdminSelect value={filterPlaysOp} onChange={(e) => setFilterPlaysOp(e.target.value)} className="w-16">
-                    <option value=">">&gt;</option>
-                    <option value="<">&lt;</option>
-                    <option value="=">=</option>
-                  </AdminSelect>
-                  <input type="number" min="0" value={filterPlays} onChange={(e) => setFilterPlays(e.target.value)} placeholder="—" className="w-14 rounded-[var(--adm-radius-sm)] px-2 py-2 text-xs outline-none" style={{ backgroundColor: "var(--adm-surface)", border: "1px solid var(--adm-border)", color: "var(--adm-text)" }} />
-                </div>
-                {activeFilterCount > 0 && (
-                  <AdminBtn variant="ghost" size="sm" onClick={resetFilters}>Reset ({activeFilterCount})</AdminBtn>
-                )}
-              </div>
               </div>
             </div>
-            <div className="hide-scroll overflow-auto px-3 py-3 sm:px-4" style={{ maxHeight: `${usersTableMaxHeight}px`, backgroundColor: "var(--adm-bg)" }}>
-              <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
+            <div className="hide-scroll overflow-y-auto" style={{ maxHeight: `${usersTableMaxHeight}px`, backgroundColor: "var(--adm-bg)" }}>
+              <table className="w-full h-full table-fixed border-separate border-spacing-0 text-left text-sm">
               <thead>
                 <tr>
-                  <th className="sticky top-0 z-10 min-w-[260px] px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>User</th>
-                  <th className="sticky top-0 z-10 min-w-[220px] px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Email</th>
-                  <th className="sticky top-0 z-10 min-w-[240px] px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Teams</th>
-                  <th className="sticky top-0 z-10 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Plays</th>
-                  <th className="sticky top-0 z-10 min-w-[210px] px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Status</th>
-                  <th className="sticky top-0 z-10 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Joined</th>
-                  <th className="sticky top-0 z-10 px-4 py-3 text-right text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Actions</th>
+                  <th className="sticky top-0 z-10 w-1/4 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>User</th>
+                  <th className="sticky top-0 z-10 w-1/4 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Email</th>
+                  <th className="sticky top-0 z-10 w-1/4 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Teams</th>
+                  <th className="sticky top-0 z-10 w-16 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Plays</th>
+                  <th className="sticky top-0 z-10 w-24 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Status</th>
+                  <th className="sticky top-0 z-10 w-20 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Joined</th>
+                  <th className="sticky top-0 z-10 w-20 px-4 py-3 text-right text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -1132,8 +1068,8 @@ export default function Admin() {
                         });
                       }}
                     >
-                      <td className="px-4 py-4 align-top" style={rowBaseStyle}>
-                        <div className="flex flex-wrap items-start gap-3">
+                      <td className="px-4 py-4 align-top overflow-hidden" style={rowBaseStyle}>
+                        <div className="flex items-start gap-3">
                           <div
                             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
                             style={hasCoachingRole
@@ -1142,49 +1078,49 @@ export default function Admin() {
                           >
                             {getUserInitials(u.name, u.email)}
                           </div>
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <button
                               type="button"
                               onClick={() => handleOpenUserActivity(u.id)}
-                              className="truncate text-sm font-semibold transition-colors"
+                              className="block truncate text-sm font-semibold transition-colors w-full"
                               style={{ color: "var(--adm-text)" }}
                               onMouseEnter={(e) => { e.currentTarget.style.color = "var(--adm-accent)"; }}
                               onMouseLeave={(e) => { e.currentTarget.style.color = "var(--adm-text)"; }}
                             >
                               {u.name}
                             </button>
-                            <p className="mt-1 text-xs" style={{ color: "var(--adm-muted)" }}>
+                            <p className="mt-1 text-xs truncate" style={{ color: "var(--adm-muted)" }}>
                               {memberships.length > 0 ? `${memberships.length} ${memberships.length === 1 ? "team role" : "team roles"}` : "No team memberships"}
                             </p>
-                            <div className="mt-2 flex flex-wrap gap-1.5">
+                            <div className="mt-2 flex gap-1 overflow-hidden">
                               {!u.onboarded_at && <AdminBadge status="warning">Needs onboarding</AdminBadge>}
                               {hasCoachingRole && <AdminBadge status="info">Activity access</AdminBadge>}
                             </div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-4 align-top text-xs" style={{ ...rowBaseStyle, color: "var(--adm-text2)" }}>
-                        <div className="max-w-[220px] break-words leading-relaxed">{u.email}</div>
+                      <td className="px-4 py-4 align-top text-xs overflow-hidden" style={{ ...rowBaseStyle, color: "var(--adm-text2)" }}>
+                        <div className="truncate leading-relaxed">{u.email}</div>
                       </td>
-                      <td className="px-4 py-4 align-top" style={rowBaseStyle}>
+                      <td className="px-4 py-4 align-top overflow-hidden" style={rowBaseStyle}>
                         {memberships.length > 0 ? (
-                          <div className="flex flex-wrap gap-1.5">
-                            {memberships.slice(0, 2).map((m) => (
-                              <span key={`${u.id}-${m.teamId}-${m.role}`} className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold" style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-text2)" }}>
-                                {m.teamName} <span className="ml-1" style={{ color: "var(--adm-muted)" }}>{formatRole(m.role)}</span>
+                          <div className="flex gap-1 overflow-hidden">
+                            {memberships.slice(0, 1).map((m) => (
+                              <span key={`${u.id}-${m.teamId}-${m.role}`} className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold truncate" style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-text2)" }}>
+                                {m.teamName} <span className="ml-1 shrink-0" style={{ color: "var(--adm-muted)" }}>{formatRole(m.role)}</span>
                               </span>
                             ))}
-                            {memberships.length > 2 && <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold" style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-muted)" }}>+{memberships.length - 2} more</span>}
+                            {memberships.length > 1 && <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap" style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-muted)" }}>+{memberships.length - 1}</span>}
                           </div>
                         ) : <span style={{ color: "var(--adm-muted)" }}>—</span>}
                       </td>
-                      <td className="px-4 py-4 align-top" style={rowBaseStyle}>
-                        <span className="inline-flex min-w-[52px] items-center justify-center rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }}>
+                      <td className="px-4 py-4 align-top text-center" style={rowBaseStyle}>
+                        <span className="inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }}>
                           {u.plays_created ?? 0}
                         </span>
                       </td>
-                      <td className="px-4 py-4 align-top" style={rowBaseStyle}>
-                        <div className="flex flex-wrap gap-1.5">
+                      <td className="px-4 py-4 align-top overflow-hidden" style={rowBaseStyle}>
+                        <div className="flex gap-1 overflow-hidden">
                           <AdminBadge status={u.email_verified_at ? "resolved" : undefined}>{u.email_verified_at ? "Verified" : "Unverified"}</AdminBadge>
                           <button
                             onClick={(e) => { e.stopPropagation(); handleToggleBetaTester(u); }}
@@ -1208,7 +1144,7 @@ export default function Admin() {
               </tbody>
               </table>
             </div>
-            <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5" style={{ borderTop: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface)" }}>
+            <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5" style={{ backgroundColor: "var(--adm-surface)" }}>
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <span style={{ color: "var(--adm-text2)" }}>
                   {filteredUsers.length === users.length ? `${users.length} users in view` : `${filteredUsers.length} of ${users.length} users shown`}

@@ -1,6 +1,7 @@
 import Slate from "../features/slate/Slate";
 import MessagePopup from "../components/MessagePopup/MessagePopup";
 import { useMessagePopup } from "../components/messaging/useMessagePopup";
+import { useAdmin } from "../admin/AdminContext";
 import useThemeColor from "../utils/useThemeColor";
 import MobileViewOnlyGate from "../components/MobileViewOnlyGate";
 
@@ -16,13 +17,15 @@ import MobileViewOnlyGate from "../components/MobileViewOnlyGate";
  * Protected by RequireAdminSession in App.jsx — no admin session, no access.
  */
 export default function AdminTestSlate() {
+  const { theme } = useAdmin();
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
-  useThemeColor("#121212");
+  useThemeColor(theme === "light" ? "#f3f6fb" : "#121212");
 
   return (
     <div
-      className="w-full bg-BrandBlack flex flex-row justify-between relative overflow-hidden"
-      style={{ height: "100dvh" }}
+      data-admin-theme={theme}
+      className="relative flex h-full w-full flex-row justify-between overflow-hidden"
+      style={{ height: "100dvh", backgroundColor: "var(--adm-bg)" }}
     >
       <MessagePopup
         message={messagePopup.message}

@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { FiArrowLeft, FiEdit2, FiPlus, FiTrash2, FiLogOut, FiEye, FiEyeOff, FiCopy } from "react-icons/fi";
+import { FiEdit2, FiPlus, FiTrash2, FiEye, FiEyeOff, FiCopy } from "react-icons/fi";
 import PlayPreviewCard from "../components/PlayPreviewCard";
 import ConfirmModal from "../components/subcomponents/ConfirmModal";
+import { useAdmin } from "../admin/AdminContext";
+import { adminPath } from "../admin/adminNav";
+import { AdminShell, AdminHeader, AdminPage, AdminBtn, AdminInput, AdminModal, AdminEmptyState, AdminSpinner } from "../admin/components";
 import {
   isAdminElevated,
   getAdminElevatedUntil,
@@ -109,6 +112,7 @@ async function duplicatePreset(session, sport, name, playData) {
  * Supports drag-and-drop reordering. Accessible at /admin/presets/:sport.
  */
 export default function AdminSportPresetsPage() {
+  const { basePath } = useAdmin();
   const { sport } = useParams();
   const navigate = useNavigate();
   const decodedSport = decodeURIComponent(sport);
@@ -143,8 +147,8 @@ export default function AdminSportPresetsPage() {
   }, []);
 
   useEffect(() => {
-    if (!session) navigate("/admin", { replace: true });
-  }, [session, navigate]);
+    if (!session) navigate(adminPath(basePath, ""), { replace: true });
+  }, [session, navigate, basePath]);
 
   const load = useCallback(async () => {
     if (!session) return;
@@ -313,7 +317,7 @@ export default function AdminSportPresetsPage() {
 
   const handleLogout = () => {
     sessionStorage.removeItem(SESSION_KEY);
-    navigate("/admin", { replace: true });
+    navigate(adminPath(basePath, ""), { replace: true });
   };
 
   const dangerMinsDisplay = (() => {
@@ -325,8 +329,7 @@ export default function AdminSportPresetsPage() {
   })();
 
   return (
-    <div className="min-h-screen overflow-y-auto bg-[#111318] text-white">
-      {/* Confirm modal */}
+    <AdminShell>
       {confirmModal && (
         <ConfirmModal
           open
@@ -337,101 +340,65 @@ export default function AdminSportPresetsPage() {
         />
       )}
 
-      {/* Elevate modal */}
-      {elevateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-          <div className="w-80 rounded-xl border border-white/10 bg-[#1a1d22] p-6">
-            <p className="mb-1 font-Manrope text-sm font-bold text-white">Danger Mode</p>
-            <p className="mb-4 text-xs text-BrandGray2">Enter admin password to enable destructive actions for 10 minutes.</p>
-            <input
-              type="password"
-              value={elevatePassword}
-              onChange={(e) => setElevatePassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleElevate()}
-              placeholder="Password"
-              className="mb-3 w-full rounded-lg border border-white/10 bg-BrandBlack px-3 py-2 text-sm text-white outline-none focus:border-BrandOrange"
-              autoFocus
-            />
-            {elevateError && <p className="mb-3 text-xs text-red-400">{elevateError}</p>}
-            <div className="flex gap-2">
-              <button
-                onClick={handleElevate}
-                disabled={elevating}
-                className="flex-1 rounded-lg bg-red-600 py-2 text-xs font-semibold text-white transition hover:bg-red-500 disabled:opacity-50"
-              >
-                {elevating ? "Verifying..." : "Enable Danger Mode"}
-              </button>
-              <button
-                onClick={() => { setElevateModal(false); elevateResolveRef.current?.(false); }}
-                className="rounded-lg border border-white/10 px-3 py-2 text-xs text-BrandGray transition hover:text-white"
-              >
-                Cancel
-              </button>
-            </div>
+      <AdminModal open={elevateModal} onClose={() => { setElevateModal(false); elevateResolveRef.current?.(false); }} title="Danger Mode">
+        <p className="mb-4 text-sm" style={{ color: "var(--adm-muted)" }}>Enter admin password to enable destructive actions for 10 minutes.</p>
+        <AdminInput
+          type="password"
+          value={elevatePassword}
+          onChange={(e) => setElevatePassword(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleElevate()}
+          placeholder="Password"
+          autoFocus
+          className="mb-3"
+        />
+        {elevateError && <p className="mb-3 text-xs" style={{ color: "var(--adm-danger)" }}>{elevateError}</p>}
+        <div className="flex gap-2">
+          <AdminBtn variant="danger" className="flex-1" onClick={handleElevate} disabled={elevating}>
+            {elevating ? "Verifying..." : "Enable Danger Mode"}
+          </AdminBtn>
+          <AdminBtn variant="secondary" onClick={() => { setElevateModal(false); elevateResolveRef.current?.(false); }}>Cancel</AdminBtn>
+        </div>
+      </AdminModal>
+
+      <AdminHeader
+        title={`${decodedSport} Presets`}
+        backLabel="Sport Presets"
+        backTo={adminPath(basePath, "/app")}
+        actions={
+          <div className="flex items-center gap-2">
+            {dangerMinsDisplay && (
+              <span className="animate-pulse rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider" style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}>
+                ⚠ Danger · {dangerMinsDisplay}
+              </span>
+            )}
+            <AdminBtn variant="primary" size="sm" onClick={() => navigate(`${adminPath(basePath, "/presets")}/${encodeURIComponent(decodedSport)}/new/edit`)}>
+              <FiPlus className="mr-1 inline" /> New Preset
+            </AdminBtn>
           </div>
-        </div>
-      )}
+        }
+      />
 
-      {/* Header */}
-      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-white/6 bg-[#111318]/95 px-6 py-3.5 backdrop-blur-sm">
-        <button
-          onClick={() => navigate("/admin/app", { state: { tab: "presets" } })}
-          className="flex items-center gap-1.5 text-xs text-BrandGray transition hover:text-white"
-        >
-          <FiArrowLeft /> Sport Presets
-        </button>
-        <span className="text-BrandGray2">/</span>
-        <span className="font-Manrope text-sm font-bold text-white">{decodedSport}</span>
-        {dangerMinsDisplay && (
-          <span className="animate-pulse rounded bg-red-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-red-400">
-            ⚠ Danger Mode · {dangerMinsDisplay}
-          </span>
-        )}
-        <div className="ml-auto flex items-center gap-2">
-          <button
-            onClick={() => navigate(`/admin/presets/${encodeURIComponent(decodedSport)}/new/edit`)}
-            className="flex items-center gap-1.5 rounded-lg bg-BrandOrange px-3.5 py-2 text-xs font-semibold text-white transition hover:brightness-110 active:scale-[0.97]"
-          >
-            <FiPlus /> New Preset
-          </button>
-          <button
-            onClick={handleLogout}
-            title="Log out"
-            className="flex items-center gap-1.5 rounded-lg border border-white/6 px-3 py-2 text-xs text-BrandGray transition hover:border-white/20 hover:text-white"
-          >
-            <FiLogOut />
-          </button>
-        </div>
-      </div>
-
-      {/* Body */}
-      <div className="mx-auto max-w-4xl px-6 py-8">
-        <div className="mb-6">
-          <h1 className="font-Manrope text-lg font-bold text-white">{decodedSport} Presets</h1>
-          <p className="mt-1 text-xs text-BrandGray2">
-            These presets appear as starting-canvas options for {decodedSport} users when they create a new play.
-            Drag cards to reorder.
-          </p>
-        </div>
+      <AdminPage>
+        <p className="mb-6 text-xs" style={{ color: "var(--adm-muted)" }}>
+          These presets appear as starting-canvas options for {decodedSport} users. Drag cards to reorder.
+        </p>
 
         {error && (
-          <div className="mb-6 rounded-lg bg-red-600/10 px-4 py-3 text-sm text-red-400">{error}</div>
+          <div className="mb-6 rounded-[var(--adm-radius-sm)] px-4 py-3 text-sm" style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}>{error}</div>
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-24">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-BrandOrange/30 border-t-BrandOrange" />
-          </div>
+          <div className="flex items-center justify-center py-24"><AdminSpinner size={32} /></div>
         ) : presets.length === 0 ? (
-          <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-white/10 py-20 text-center">
-            <p className="text-sm text-BrandGray2">No presets yet for {decodedSport}.</p>
-            <button
-              onClick={() => navigate(`/admin/presets/${encodeURIComponent(decodedSport)}/new/edit`)}
-              className="flex items-center gap-1.5 rounded-lg bg-BrandOrange px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
-            >
-              <FiPlus /> Create First Preset
-            </button>
-          </div>
+          <AdminEmptyState
+            title={`No presets for ${decodedSport}`}
+            subtitle="Create the first preset to give users a starting canvas"
+            action={
+              <AdminBtn variant="primary" onClick={() => navigate(`${adminPath(basePath, "/presets")}/${encodeURIComponent(decodedSport)}/new/edit`)}>
+                <FiPlus className="mr-1 inline" /> Create First Preset
+              </AdminBtn>
+            }
+          />
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
             {presets.map((preset) => {
@@ -445,17 +412,17 @@ export default function AdminSportPresetsPage() {
                   onDragOver={(e) => handleDragOver(e, preset.id)}
                   onDrop={(e) => handleDrop(e, preset.id)}
                   onDragEnd={handleDragEnd}
-                  className={[
-                    "group flex flex-col gap-2 rounded-xl border bg-[#1a1d22] p-3 transition-all duration-150",
-                    "cursor-grab active:cursor-grabbing select-none",
-                    isDragging ? "opacity-40 border-white/8" : "",
-                    isOver
-                      ? "border-BrandOrange/60 scale-[1.02] shadow-lg shadow-BrandOrange/10"
-                      : "border-white/8 hover:border-white/16",
-                  ].filter(Boolean).join(" ")}
+                  className="group flex cursor-grab select-none flex-col gap-2 rounded-[var(--adm-radius)] p-3 transition-all duration-150 active:cursor-grabbing"
+                  style={{
+                    backgroundColor: "var(--adm-surface2)",
+                    border: isOver
+                      ? "1px solid var(--adm-accent)"
+                      : "1px solid var(--adm-border)",
+                    opacity: isDragging ? 0.4 : 1,
+                    transform: isOver ? "scale(1.02)" : "scale(1)",
+                  }}
                 >
-                  {/* Preview */}
-                  <div className="overflow-hidden rounded-lg" style={{ height: 110 }}>
+                  <div className="overflow-hidden rounded-[var(--adm-radius-sm)]" style={{ height: 110 }}>
                     <PlayPreviewCard
                       playData={preset.playData}
                       autoplay="hover"
@@ -468,70 +435,49 @@ export default function AdminSportPresetsPage() {
                     />
                   </div>
 
-                  {/* Name + status badge */}
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <p className="truncate font-DmSans text-sm font-semibold text-white">{preset.name}</p>
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <p className="truncate text-sm font-semibold" style={{ color: "var(--adm-text)" }}>{preset.name}</p>
                     {preset.isHidden ? (
-                      <span className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider bg-white/8 text-BrandGray2">
-                        Hidden
-                      </span>
+                      <span className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider" style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-muted)" }}>Hidden</span>
                     ) : (
-                      <span className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider bg-green-500/15 text-green-400">
-                        Published
-                      </span>
+                      <span className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider" style={{ backgroundColor: "var(--adm-badge-green-bg)", color: "var(--adm-success)" }}>Published</span>
                     )}
                   </div>
 
-                  {/* Actions */}
                   <div className="flex gap-1.5">
                     <button
-                      onClick={() => navigate(`/admin/presets/${encodeURIComponent(decodedSport)}/${preset.id}/edit`)}
-                      className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-white/8 py-1.5 text-xs text-BrandGray transition hover:border-BrandOrange/40 hover:text-BrandOrange"
+                      onClick={() => navigate(`${adminPath(basePath, "/presets")}/${encodeURIComponent(decodedSport)}/${preset.id}/edit`)}
+                      className="flex flex-1 items-center justify-center gap-1 rounded py-1.5 text-xs transition"
+                      style={{ border: "1px solid var(--adm-border)", color: "var(--adm-muted)" }}
                     >
                       <FiEdit2 className="text-[10px]" /> Edit
                     </button>
                     <button
                       onClick={() => handleDuplicate(preset)}
                       disabled={duplicatingId === preset.id}
-                      className="flex items-center justify-center rounded-lg border border-white/8 px-2 py-1.5 text-xs text-BrandGray transition hover:border-BrandOrange/40 hover:text-BrandOrange disabled:cursor-not-allowed disabled:opacity-40"
-                      title="Duplicate preset"
+                      className="flex items-center justify-center rounded px-2 py-1.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-40"
+                      style={{ border: "1px solid var(--adm-border)", color: "var(--adm-muted)" }}
+                      title="Duplicate"
                     >
-                      {duplicatingId === preset.id ? (
-                        <div className="h-3 w-3 animate-spin rounded-full border border-BrandGray/40 border-t-BrandGray" />
-                      ) : (
-                        <FiCopy className="text-[10px]" />
-                      )}
+                      {duplicatingId === preset.id ? <AdminSpinner size={12} /> : <FiCopy className="text-[10px]" />}
                     </button>
                     <button
                       onClick={() => handleToggleVisibility(preset)}
                       disabled={togglingId === preset.id}
-                      className={[
-                        "flex items-center justify-center rounded-lg border px-2 py-1.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-40",
-                        preset.isHidden
-                          ? "border-white/8 text-BrandGray hover:border-green-500/40 hover:text-green-400"
-                          : "border-white/8 text-BrandGray hover:border-yellow-500/40 hover:text-yellow-400",
-                      ].join(" ")}
-                      title={preset.isHidden ? "Publish preset" : "Hide preset"}
+                      className="flex items-center justify-center rounded px-2 py-1.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-40"
+                      style={{ border: "1px solid var(--adm-border)", color: "var(--adm-muted)" }}
+                      title={preset.isHidden ? "Publish" : "Hide"}
                     >
-                      {togglingId === preset.id ? (
-                        <div className="h-3 w-3 animate-spin rounded-full border border-BrandGray/40 border-t-BrandGray" />
-                      ) : preset.isHidden ? (
-                        <FiEye className="text-[10px]" />
-                      ) : (
-                        <FiEyeOff className="text-[10px]" />
-                      )}
+                      {togglingId === preset.id ? <AdminSpinner size={12} /> : preset.isHidden ? <FiEye className="text-[10px]" /> : <FiEyeOff className="text-[10px]" />}
                     </button>
                     <button
                       onClick={() => handleDelete(preset)}
                       disabled={deletingId === preset.id}
-                      className="flex items-center justify-center rounded-lg border border-white/8 px-2 py-1.5 text-xs text-BrandGray transition hover:border-red-500/40 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
-                      title="Delete preset"
+                      className="flex items-center justify-center rounded px-2 py-1.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-40"
+                      style={{ border: "1px solid var(--adm-border)", color: "var(--adm-danger)" }}
+                      title="Delete"
                     >
-                      {deletingId === preset.id ? (
-                        <div className="h-3 w-3 animate-spin rounded-full border border-red-400/40 border-t-red-400" />
-                      ) : (
-                        <FiTrash2 className="text-[10px]" />
-                      )}
+                      {deletingId === preset.id ? <AdminSpinner size={12} /> : <FiTrash2 className="text-[10px]" />}
                     </button>
                   </div>
                 </div>
@@ -539,7 +485,7 @@ export default function AdminSportPresetsPage() {
             })}
           </div>
         )}
-      </div>
-    </div>
+      </AdminPage>
+    </AdminShell>
   );
 }
