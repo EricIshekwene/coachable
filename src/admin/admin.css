@@ -1,0 +1,90 @@
+/* Admin-scoped design tokens — only active inside [data-admin-theme] wrappers.
+   These cannot affect the Slate editor or app shell. */
+
+[data-admin-theme="dark"] {
+  --adm-bg:         #0f1117;
+  --adm-surface:    #181c23;
+  --adm-surface2:   #1e2330;
+  --adm-surface3:   #242935;
+  --adm-surface-elevated: #141922;
+  --adm-border:     rgba(255, 255, 255, 0.07);
+  --adm-border2:    rgba(255, 255, 255, 0.12);
+  --adm-border-strong: rgba(255, 255, 255, 0.18);
+  --adm-text:       #f0f2f6;
+  --adm-text2:      #c4c8d4;
+  --adm-muted:      #C0C8D0;
+  --adm-accent:     #FF7A18;
+  --adm-accent-dim: rgba(255, 122, 24, 0.12);
+  --adm-danger:     #ef4444;
+  --adm-danger-dim: rgba(239, 68, 68, 0.1);
+  --adm-success:    #4ade80;
+  --adm-warning:    #fbbf24;
+  --adm-shadow:     0 1px 3px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.25);
+  --adm-shadow-sm:  0 1px 2px rgba(0,0,0,0.3);
+  --adm-radius:     10px;
+  --adm-radius-sm:  6px;
+  --adm-radius-lg:  14px;
+
+  /* Badge status colors — tuned for dark surfaces */
+  --adm-badge-blue-bg:    rgba(59,130,246,0.15);
+  --adm-badge-blue-text:  #60a5fa;
+  --adm-badge-green-bg:   rgba(74,222,128,0.15);
+  --adm-badge-green-text: #4ade80;
+  --adm-badge-amber-bg:   rgba(251,191,36,0.15);
+  --adm-badge-amber-text: #fbbf24;
+  --adm-badge-red-bg:     rgba(248,113,113,0.15);
+  --adm-badge-red-text:   #f87171;
+  --adm-badge-purple-bg:  rgba(139,92,246,0.15);
+  --adm-badge-purple-text:#a78bfa;
+
+  /* Semantic inline colors (for stat values, icons, inline text) */
+  --adm-color-purple: #a78bfa;
+  --adm-color-blue:   #60a5fa;
+  --adm-color-cyan:   #67e8f9;
+  --adm-color-pink:   #fb7185;
+  --adm-color-red-soft: #fca5a5;
+}
+
+[data-admin-theme="light"] {
+  --adm-bg:         #f3f6fb;
+  --adm-surface:    #ffffff;
+  --adm-surface2:   #eef3f8;
+  --adm-surface3:   #e3eaf3;
+  --adm-surface-elevated: #ffffff;
+  --adm-border:     rgba(15, 23, 42, 0.10);
+  --adm-border2:    rgba(15, 23, 42, 0.18);
+  --adm-border-strong: rgba(15, 23, 42, 0.24);
+  --adm-text:       #0f172a;
+  --adm-text2:      #334155;
+  --adm-muted:      #5b667a;
+  --adm-accent:     #FF7A18;
+  --adm-accent-dim: rgba(255, 122, 24, 0.14);
+  --adm-danger:     #dc2626;
+  --adm-danger-dim: rgba(220, 38, 38, 0.10);
+  --adm-success:    #16a34a;
+  --adm-warning:    #b45309;
+  --adm-shadow:     0 12px 30px rgba(15,23,42,0.08), 0 2px 8px rgba(15,23,42,0.06);
+  --adm-shadow-sm:  0 4px 14px rgba(15,23,42,0.05);
+  --adm-radius:     10px;
+  --adm-radius-sm:  6px;
+  --adm-radius-lg:  14px;
+
+  /* Badge status colors — darker, more saturated for light surfaces */
+  --adm-badge-blue-bg:    rgba(29,78,216,0.12);
+  --adm-badge-blue-text:  #1d4ed8;
+  --adm-badge-green-bg:   rgba(22,163,74,0.12);
+  --adm-badge-green-text: #166534;
+  --adm-badge-amber-bg:   rgba(180,83,9,0.12);
+  --adm-badge-amber-text: #92400e;
+  --adm-badge-red-bg:     rgba(220,38,38,0.12);
+  --adm-badge-red-text:   #991b1b;
+  --adm-badge-purple-bg:  rgba(109,40,217,0.12);
+  --adm-badge-purple-text:#5b21b6;
+
+  /* Semantic inline colors (for stat values, icons, inline text) */
+  --adm-color-purple:   #5b21b6;
+  --adm-color-blue:     #1d4ed8;
+  --adm-color-cyan:     #0891b2;
+  --adm-color-pink:     #be185d;
+  --adm-color-red-soft: #b91c1c;
+}
