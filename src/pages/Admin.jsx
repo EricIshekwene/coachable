@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../utils/api";
-import logo from "../assets/logos/full_Coachable_logo.png";
 import ConfirmModal from "../components/subcomponents/ConfirmModal";
 import { formatFailedTestsReport } from "../testing/formatFailedTestsReport";
 import {
@@ -10,6 +9,26 @@ import {
   setAdminElevated,
   clearAdminElevated,
 } from "../utils/adminElevation";
+import { useAdmin } from "../admin/AdminContext";
+import { adminPath } from "../admin/adminNav";
+import AnalyticsDashboard from "../admin/analytics/AnalyticsDashboard";
+import ActivityFeed from "../admin/analytics/ActivityFeed";
+import { useDashboardAnalytics } from "../admin/analytics/useDashboardAnalytics";
+import {
+  AdminShell,
+  AdminHeader,
+  AdminPage,
+  AdminCard,
+  AdminSection,
+  AdminBtn,
+  AdminInput,
+  AdminSelect,
+  AdminCheckbox,
+  AdminModal,
+  AdminBadge,
+  AdminEmptyState,
+  AdminSpinner,
+} from "../admin/components";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -107,6 +126,22 @@ function formatRole(role) {
     .join(" ");
 }
 
+function getUserInitials(name, email) {
+  const source = (name || email || "?").trim();
+  const parts = source.split(/\s+/).filter(Boolean).slice(0, 2);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return parts.map((part) => part[0]).join("").toUpperCase();
+}
+
+function formatAdminDate(value) {
+  return new Date(value).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 function getSortedMemberships(memberships = []) {
   const rolePriority = {
     owner: 0,
@@ -121,41 +156,81 @@ function getSortedMemberships(memberships = []) {
   });
 }
 
-// ── Shared UI helpers ──────────────────────────────────────────────────────
-function SectionHeader({ title, badge, badgeColor = "bg-BrandOrange/20 text-BrandOrange", children }) {
-  return (
-    <div className="mb-5 flex items-center justify-between">
-      <div className="flex items-center gap-2.5">
-        <h2 className="font-Manrope text-base font-bold text-white">{title}</h2>
-        {badge && (
-          <span className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${badgeColor}`}>
-            {badge}
-          </span>
-        )}
-      </div>
-      {children}
-    </div>
-  );
-}
+/**
+ * Recent Activity section — displayed at the bottom of the admin dashboard.
+ * @param {{ session: string }} props
+ */
+function RecentActivitySection({ session }) {
+  const { data, loading, error } = useDashboardAnalytics({ session, period: "30d" });
 
-function StatCard({ label, value, color = "text-white" }) {
+  if (loading && !data) {
+    return (
+      <section id="recent-activity" style={{ scrollMarginTop: "4rem" }}>
+        <AdminSection title="Recent Activity">
+          <div style={{ display: "flex", justifyContent: "center", padding: "40px 20px" }}>
+            <AdminSpinner />
+          </div>
+        </AdminSection>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section id="recent-activity" style={{ scrollMarginTop: "4rem" }}>
+        <AdminSection title="Recent Activity">
+          <div style={{ color: "var(--adm-danger)", fontSize: 13 }}>
+            Failed to load recent activity: {error}
+          </div>
+        </AdminSection>
+      </section>
+    );
+  }
+
   return (
-    <div className="flex flex-col rounded-xl border border-white/6 bg-[#1e2228] px-5 py-4">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-BrandGray">{label}</span>
-      <span className={`mt-1.5 font-Manrope text-2xl font-bold ${color}`}>{value}</span>
-    </div>
+    <section id="recent-activity" style={{ scrollMarginTop: "4rem" }}>
+      <AdminSection title="Recent Activity">
+        {data && (
+          <AdminCard>
+            <ActivityFeed
+              users={data.recentUsers}
+              errors={data.recentErrors}
+              issues={data.recentIssues}
+            />
+          </AdminCard>
+        )}
+      </AdminSection>
+    </section>
   );
 }
 
 // ── Main component ─────────────────────────────────────────────────────────
 export default function Admin() {
   const navigate = useNavigate();
+  const { basePath } = useAdmin();
   // ── Auth ──
   const [session, setSession] = useState(() => sessionStorage.getItem(SESSION_KEY) || "");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [logging, setLogging] = useState(false);
+  const [cookieChecking, setCookieChecking] = useState(!sessionStorage.getItem(SESSION_KEY));
   const authed = Boolean(session);
+
+  // Auto-login via admin_sid cookie if no session in sessionStorage
+  useEffect(() => {
+    if (session) { setCookieChecking(false); return; }
+    fetch(`${API_URL}/admin/session`, { credentials: "include" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.session) {
+          sessionStorage.setItem(SESSION_KEY, data.session);
+          setSession(data.session);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setCookieChecking(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Users ──
   const [users, setUsers] = useState([]);
@@ -174,8 +249,6 @@ export default function Admin() {
   const [filterOnboarded, setFilterOnboarded] = useState(""); // "yes"|"no"|""
   const [filterPlays, setFilterPlays] = useState("");
   const [filterPlaysOp, setFilterPlaysOp] = useState(">");
-  const [filterFolders, setFilterFolders] = useState("");
-  const [filterFoldersOp, setFilterFoldersOp] = useState(">");
   const [emailCopied, setEmailCopied] = useState(null); // "outlook"|"gmail"|null
 
   // ── Tests ──
@@ -190,9 +263,9 @@ export default function Admin() {
   const [testTotalMs, setTestTotalMs] = useState(0);
 
   // ── Platform Plays ──
-  const [platformPlays, setPlatformPlays] = useState([]);
+  const [, setPlatformPlays] = useState([]);
   const [playsLoading, setPlaysLoading] = useState(false);
-  const [playsError, setPlaysError] = useState("");
+  const [, setPlaysError] = useState("");
 
   // ── Errors ──
   const [errors, setErrors] = useState([]);
@@ -292,7 +365,14 @@ export default function Admin() {
     setLoginError("");
     setLogging(true);
     try {
-      const data = await apiFetch("/admin/login", { method: "POST", body: { password } });
+      const res = await fetch(`${API_URL}/admin/login`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Invalid password");
       sessionStorage.setItem(SESSION_KEY, data.session);
       setSession(data.session);
       setPassword("");
@@ -304,7 +384,7 @@ export default function Admin() {
   };
 
   const handleLogout = () => {
-    adminFetch("/admin/logout", { method: "POST" }).catch(() => {});
+    fetch(`${API_URL}/admin/logout`, { method: "POST", credentials: "include", headers: { "x-admin-session": session } }).catch(() => {});
     sessionStorage.removeItem(SESSION_KEY);
     clearAdminElevated();
     setElevatedUntil(0);
@@ -432,8 +512,8 @@ export default function Admin() {
 
   // ── Platform Plays ──
   const handleOpenUserActivity = useCallback((userId) => {
-    navigate(`/admin/users/${userId}`);
-  }, [navigate]);
+    navigate(adminPath(basePath, `/users/${userId}`));
+  }, [navigate, basePath]);
 
   const fetchPlatformPlays = useCallback(async () => {
     setPlaysLoading(true);
@@ -604,10 +684,10 @@ export default function Admin() {
 
   const issueStatusMeta = (status) => {
     switch (status) {
-      case "open": return { label: "Open", className: "bg-blue-500/20 text-blue-400" };
-      case "in_progress": return { label: "In Progress", className: "bg-yellow-500/20 text-yellow-400" };
-      case "resolved": return { label: "Resolved", className: "bg-green-500/20 text-green-400" };
-      default: return { label: status, className: "bg-white/6 text-BrandGray" };
+      case "open": return { label: "Open", status: "open" };
+      case "in_progress": return { label: "In Progress", status: "in_progress" };
+      case "resolved": return { label: "Resolved", status: "resolved" };
+      default: return { label: status, status: undefined };
     }
   };
 
@@ -670,13 +750,9 @@ export default function Admin() {
   }, [hideDropdownOpen]);
 
   // ── Derived stats ──
-  const verifiedCount = users.filter((u) => u.email_verified_at).length;
-  const notOnboardedCount = users.filter((u) => !u.onboarded_at).length;
-  const betaTesterCount = users.filter((u) => u.is_beta_tester).length;
   const normalizedUsersSearch = usersSearch.trim().toLowerCase();
   const filteredUsers = useMemo(() => {
     const playsVal = filterPlays !== "" ? parseInt(filterPlays, 10) : null;
-    const foldersVal = filterFolders !== "" ? parseInt(filterFolders, 10) : null;
     /** @param {number} actual @param {string} op @param {number} val */
     function matchesOp(actual, op, val) {
       if (op === ">") return actual > val;
@@ -709,12 +785,17 @@ export default function Admin() {
       if (filterOnboarded === "yes" && !u.onboarded_at) return false;
       if (filterOnboarded === "no" && u.onboarded_at) return false;
       if (playsVal !== null && !isNaN(playsVal) && !matchesOp(u.plays_created ?? 0, filterPlaysOp, playsVal)) return false;
-      if (foldersVal !== null && !isNaN(foldersVal) && !matchesOp(u.folders_created ?? 0, filterFoldersOp, foldersVal)) return false;
       return true;
     });
-  }, [users, normalizedUsersSearch, hideOptions, filterRole, filterVerified, filterOnboarded, filterPlays, filterPlaysOp, filterFolders, filterFoldersOp]);
+  }, [users, normalizedUsersSearch, hideOptions, filterRole, filterVerified, filterOnboarded, filterPlays, filterPlaysOp]);
 
-  const activeFilterCount = [filterRole, filterVerified, filterOnboarded, filterPlays, filterFolders].filter(Boolean).length;
+  const activeFilterCount = [filterRole, filterVerified, filterOnboarded, filterPlays].filter(Boolean).length;
+  const filteredUserStats = useMemo(() => ({
+    verified: filteredUsers.filter((u) => u.email_verified_at).length,
+    beta: filteredUsers.filter((u) => u.is_beta_tester).length,
+    pending: filteredUsers.filter((u) => !u.onboarded_at).length,
+    coaching: filteredUsers.filter((u) => u.can_view_activity).length,
+  }), [filteredUsers]);
 
   /** Copy filtered user emails to clipboard in the given separator format. */
   function handleCopyEmails(format) {
@@ -732,8 +813,6 @@ export default function Admin() {
     setFilterOnboarded("");
     setFilterPlays("");
     setFilterPlaysOp(">");
-    setFilterFolders("");
-    setFilterFoldersOp(">");
     setHideOptions(new Set(["demo", "player"]));
   }
 
@@ -746,37 +825,41 @@ export default function Admin() {
       return next;
     });
   }
-  const usersTableMaxHeight = usersPerPage * 56 + 56;
+  const usersTableMaxHeight = usersPerPage * 74 + 64;
 
   // ──────────────────────────────────────────────────────────────────────────
   // LOGIN SCREEN
   // ──────────────────────────────────────────────────────────────────────────
   if (!authed) {
+    if (cookieChecking) {
+      return (
+        <AdminShell sidebar={false} className="flex items-center justify-center">
+          <AdminSpinner size={24} />
+        </AdminShell>
+      );
+    }
     return (
-      <div className="flex h-screen items-center justify-center bg-BrandBlack font-DmSans">
-        <div className="w-full max-w-sm rounded-2xl bg-[#1e2228] p-8 shadow-xl border border-white/6">
-          <img src={logo} alt="Coachable" className="mx-auto mb-6 h-6 opacity-70" />
-          <h1 className="mb-1 text-center font-Manrope text-lg font-bold text-white">Admin Panel</h1>
-          <p className="mb-6 text-center text-xs text-BrandGray">Restricted access</p>
+      <AdminShell sidebar={false} className="flex items-center justify-center">
+        <AdminCard className="w-full max-w-sm" style={{ boxShadow: "var(--adm-shadow)" }}>
+          <div className="mb-6 text-center">
+            <p className="font-Manrope text-sm font-normal" style={{ color: "var(--adm-text)" }}>Admin Panel</p>
+            <p className="mt-0.5 text-xs" style={{ color: "var(--adm-muted)" }}>Restricted access</p>
+          </div>
           <form onSubmit={handleLogin} className="flex flex-col gap-3">
-            <input
+            <AdminInput
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Admin password"
-              className="w-full rounded-lg border border-white/8 bg-BrandBlack px-3.5 py-2.5 text-sm text-white outline-none placeholder:text-BrandGray focus:border-BrandOrange"
+              autoFocus
             />
-            {loginError && <p className="text-xs text-red-400">{loginError}</p>}
-            <button
-              type="submit"
-              disabled={logging || !password}
-              className="w-full rounded-lg bg-BrandOrange py-2.5 text-sm font-semibold text-white transition hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
-            >
-              {logging ? "Authenticating..." : "Sign in"}
-            </button>
+            {loginError && <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{loginError}</p>}
+            <AdminBtn variant="primary" type="submit" disabled={logging || !password} className="w-full justify-center py-2.5">
+              {logging ? "Authenticating…" : "Sign in"}
+            </AdminBtn>
           </form>
-        </div>
-      </div>
+        </AdminCard>
+      </AdminShell>
     );
   }
 
@@ -784,14 +867,14 @@ export default function Admin() {
   // DASHBOARD
   // ──────────────────────────────────────────────────────────────────────────
 
-  // ── Danger Mode countdown display ──
   const dangerSecsLeft = elevatedUntil > 0 ? Math.max(0, Math.ceil((elevatedUntil - Date.now()) / 1000)) : 0;
   const dangerMinsDisplay = dangerSecsLeft > 0
     ? `${Math.floor(dangerSecsLeft / 60)}:${String(dangerSecsLeft % 60).padStart(2, "0")}`
     : null;
+  const anyLoading = usersLoading || errorsLoading || playsLoading || userIssuesLoading;
 
   return (
-    <div className="h-screen overflow-y-auto bg-[#13151a] font-DmSans text-white">
+    <AdminShell>
       <ConfirmModal
         open={confirmModal.open}
         message={confirmModal.message}
@@ -802,130 +885,117 @@ export default function Admin() {
         onCancel={handleConfirmCancel}
       />
 
-      {/* ── Danger Mode (elevation) modal ── */}
-      {elevateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl border border-red-500/30 bg-[#1a0e0e] p-7 shadow-2xl">
-            <div className="mb-1 flex items-center gap-2">
-              <span className="text-lg">⚠</span>
-              <h2 className="font-Manrope text-base font-bold text-red-400">Danger Mode Required</h2>
-            </div>
-            <p className="mb-5 text-xs text-red-300/70">
-              Re-enter your admin password to unlock destructive operations for 10 minutes.
-            </p>
-            <form onSubmit={handleElevate} className="flex flex-col gap-3">
-              <input
-                type="password"
-                value={elevatePassword}
-                onChange={(e) => setElevatePassword(e.target.value)}
-                placeholder="Admin password"
-                autoFocus
-                className="w-full rounded-lg border border-red-500/20 bg-black/40 px-3.5 py-2.5 text-sm text-white outline-none placeholder:text-red-300/30 focus:border-red-500/60"
-              />
-              {elevateError && <p className="text-xs text-red-400">{elevateError}</p>}
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={handleElevateCancel}
-                  className="flex-1 rounded-lg border border-white/8 py-2.5 text-xs text-BrandGray transition hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={elevating || !elevatePassword}
-                  className="flex-1 rounded-lg bg-red-600 py-2.5 text-xs font-semibold text-white transition hover:bg-red-500 disabled:opacity-50"
-                >
-                  {elevating ? "Verifying..." : "Unlock Danger Mode"}
-                </button>
-              </div>
-            </form>
+      {/* Danger Mode elevation modal */}
+      <AdminModal open={elevateModal} onClose={handleElevateCancel} title="Danger Mode Required" width="max-w-sm" hideClose>
+        <p className="mb-4 text-xs" style={{ color: "var(--adm-danger)" }}>
+          Re-enter your admin password to unlock destructive operations for 10 minutes.
+        </p>
+        <form onSubmit={handleElevate} className="flex flex-col gap-3">
+          <AdminInput
+            type="password"
+            value={elevatePassword}
+            onChange={(e) => setElevatePassword(e.target.value)}
+            placeholder="Admin password"
+            autoFocus
+          />
+          {elevateError && <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{elevateError}</p>}
+          <div className="flex gap-2">
+            <AdminBtn variant="secondary" type="button" onClick={handleElevateCancel} className="flex-1 justify-center">Cancel</AdminBtn>
+            <AdminBtn variant="danger" type="submit" disabled={elevating || !elevatePassword} className="flex-1 justify-center">
+              {elevating ? "Verifying…" : "Unlock"}
+            </AdminBtn>
           </div>
-        </div>
-      )}
+        </form>
+      </AdminModal>
 
-      {/* ── Sticky Header ── */}
-      <div className="sticky top-0 z-20 border-b border-white/6 bg-[#13151a]/95 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
-          <div className="flex items-center gap-3">
-            <img src={logo} alt="Coachable" className="h-5 opacity-70" />
-            <span className="rounded bg-BrandOrange/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-BrandOrange">
-              Admin
-            </span>
+      <AdminHeader
+        title="Dashboard"
+        actions={
+          <>
             {dangerMinsDisplay && (
-              <span className="animate-pulse rounded bg-red-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-red-400">
-                ⚠ Danger Mode · {dangerMinsDisplay}
+              <span className="animate-pulse rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}>
+                Danger · {dangerMinsDisplay}
               </span>
             )}
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleRefresh}
-              disabled={usersLoading || errorsLoading || playsLoading || userIssuesLoading}
-              className="flex items-center gap-1.5 rounded-lg border border-white/8 bg-white/4 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-white/8 disabled:opacity-40"
-            >
-              <svg
-                className={`h-3.5 w-3.5 ${usersLoading || errorsLoading || playsLoading || userIssuesLoading ? "animate-spin" : ""}`}
-                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+            <AdminBtn variant="secondary" size="sm" onClick={handleRefresh} disabled={anyLoading}>
+              {anyLoading ? <AdminSpinner size={12} /> : (
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              )}
               Refresh
-            </button>
-            <button
-              onClick={handleLogout}
-              className="rounded-lg border border-white/6 px-3.5 py-2 text-xs text-BrandGray transition hover:border-white/20 hover:text-white"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </div>
+            </AdminBtn>
+            <AdminBtn variant="ghost" size="sm" onClick={handleLogout}>Logout</AdminBtn>
+          </>
+        }
+      />
+      <AdminPage className="space-y-10">
+        {/* Analytics dashboard */}
+        <section>
+          <AdminSection title="Analytics" />
+          <AnalyticsDashboard session={session} />
+        </section>
 
-      <div className="mx-auto max-w-6xl px-6 py-8 space-y-10">
-        {/* ── Stat row ── */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-7">
-          <StatCard label="Total Users" value={users.length} />
-          <StatCard label="Verified" value={verifiedCount} color="text-green-400" />
-          <StatCard label="Not Onboarded" value={notOnboardedCount} color={notOnboardedCount > 0 ? "text-yellow-400" : "text-BrandGray2"} />
-          <StatCard label="Beta Testers" value={betaTesterCount} color="text-purple-400" />
-          <StatCard label="Error Reports" value={errorTotal} color={errorTotal > 0 ? "text-red-400" : "text-BrandGray2"} />
-          <StatCard label="Reported Issues" value={userIssueTotal} color={userIssueTotal > 0 ? "text-purple-400" : "text-BrandGray2"} />
-          <StatCard label="Platform Plays" value={playsLoading ? "..." : platformPlays.length} color="text-BrandOrange" />
-        </div>
-
-        {/* ── Quick Nav ── */}
-        {/* ══════════════════════════════════════════════════════════════════
-            USERS SECTION
-        ══════════════════════════════════════════════════════════════════ */}
+        {/* USERS */}
         <section id="users" style={{ scrollMarginTop: "4rem" }}>
-          <SectionHeader title="Users" badge={`${users.length}`} badgeColor="bg-white/6 text-BrandGray">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowCreate(true)}
-                className="rounded-lg bg-BrandOrange/15 px-3 py-1.5 text-xs font-semibold text-BrandOrange transition hover:bg-BrandOrange/25"
-              >
-                Create Account
-              </button>
-              <button
-                onClick={handleDeleteAll}
-                className="rounded-lg bg-red-600/10 px-3 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-600/20"
-              >
-                Delete All Users
-              </button>
-            </div>
-          </SectionHeader>
+          <AdminSection
+            title="Users"
+            actions={
+              <div className="flex gap-2">
+                <AdminBtn variant="primary" size="sm" onClick={() => setShowCreate(true)}>Create Account</AdminBtn>
+                <AdminBtn variant="danger" size="sm" onClick={handleDeleteAll}>Delete All</AdminBtn>
+              </div>
+            }
+          >
           {usersError && (
-            <div className="mb-3 rounded-lg bg-red-600/10 px-4 py-2 text-sm text-red-400">{usersError}</div>
+            <div className="mb-3 rounded-[var(--adm-radius-sm)] px-4 py-2 text-sm" style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}>{usersError}</div>
           )}
 
           {/* Users table */}
-          <div className="overflow-hidden rounded-xl border border-white/6">
-            <div className="border-b border-white/6 bg-[#1a1d23] px-4 py-3 flex flex-col gap-3">
-              {/* Row 1: search + demo toggle + copy buttons */}
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="relative min-w-[220px] flex-1 max-w-xl">
-                  <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-BrandGray2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <AdminCard padding={false} className="overflow-hidden">
+            <div
+              className="px-4 py-4 sm:px-5"
+              style={{
+                borderBottom: "1px solid var(--adm-border)",
+                background: "linear-gradient(180deg, var(--adm-surface2) 0%, var(--adm-surface) 100%)",
+              }}
+            >
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-[var(--adm-radius)] border px-3.5 py-3" style={{ backgroundColor: "var(--adm-surface)", borderColor: "var(--adm-border)" }}>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--adm-muted)" }}>Visible Users</p>
+                  <div className="mt-2 flex items-end gap-2">
+                    <span className="font-Manrope text-2xl font-semibold" style={{ color: "var(--adm-text)" }}>{filteredUsers.length}</span>
+                    <span className="pb-0.5 text-xs" style={{ color: "var(--adm-muted)" }}>of {users.length}</span>
+                  </div>
+                </div>
+                <div className="rounded-[var(--adm-radius)] border px-3.5 py-3" style={{ backgroundColor: "var(--adm-surface)", borderColor: "var(--adm-border)" }}>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--adm-muted)" }}>Verified</p>
+                  <div className="mt-2 flex items-end gap-2">
+                    <span className="font-Manrope text-2xl font-semibold" style={{ color: "var(--adm-success)" }}>{filteredUserStats.verified}</span>
+                    <span className="pb-0.5 text-xs" style={{ color: "var(--adm-muted)" }}>ready accounts</span>
+                  </div>
+                </div>
+                <div className="rounded-[var(--adm-radius)] border px-3.5 py-3" style={{ backgroundColor: "var(--adm-surface)", borderColor: "var(--adm-border)" }}>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--adm-muted)" }}>Beta Testers</p>
+                  <div className="mt-2 flex items-end gap-2">
+                    <span className="font-Manrope text-2xl font-semibold" style={{ color: "var(--adm-badge-purple-text)" }}>{filteredUserStats.beta}</span>
+                    <span className="pb-0.5 text-xs" style={{ color: "var(--adm-muted)" }}>flagged users</span>
+                  </div>
+                </div>
+                <div className="rounded-[var(--adm-radius)] border px-3.5 py-3" style={{ backgroundColor: "var(--adm-surface)", borderColor: "var(--adm-border)" }}>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--adm-muted)" }}>Needs Onboarding</p>
+                  <div className="mt-2 flex items-end gap-2">
+                    <span className="font-Manrope text-2xl font-semibold" style={{ color: filteredUserStats.pending > 0 ? "var(--adm-warning)" : "var(--adm-text2)" }}>{filteredUserStats.pending}</span>
+                    <span className="pb-0.5 text-xs" style={{ color: "var(--adm-muted)" }}>{filteredUserStats.coaching} with activity access</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-col gap-3">
+              {/* Row 1: search + hide + copy */}
+              <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+                <div className="relative min-w-[240px] flex-1">
+                  <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--adm-muted)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35m1.85-5.15a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" />
                   </svg>
                   <input
@@ -933,34 +1003,33 @@ export default function Admin() {
                     value={usersSearch}
                     onChange={(e) => setUsersSearch(e.target.value)}
                     placeholder="Search by name, email, or team"
-                    className="w-full rounded-lg border border-white/8 bg-BrandBlack px-10 py-2.5 text-sm text-white outline-none placeholder:text-BrandGray2 focus:border-BrandOrange"
+                    className="w-full rounded-[var(--adm-radius)] py-3 pl-10 pr-16 text-sm outline-none transition-colors"
+                    style={{ backgroundColor: "var(--adm-bg)", border: "1px solid var(--adm-border2)", color: "var(--adm-text)" }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = "var(--adm-accent)";
+                      e.currentTarget.style.boxShadow = "0 0 0 3px var(--adm-accent-dim)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "var(--adm-border2)";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
                   />
                   {usersSearch && (
-                    <button
-                      type="button"
-                      onClick={() => setUsersSearch("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-BrandGray2 transition hover:text-white"
-                    >
+                    <button type="button" onClick={() => setUsersSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs transition-opacity hover:opacity-70" style={{ color: "var(--adm-muted)" }}>
                       Clear
                     </button>
                   )}
                 </div>
+                <span className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-[11px] font-semibold" style={{ backgroundColor: filteredUsers.length === users.length ? "var(--adm-surface3)" : "var(--adm-accent-dim)", color: filteredUsers.length === users.length ? "var(--adm-muted)" : "var(--adm-accent)" }}>
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: filteredUsers.length === users.length ? "var(--adm-muted)" : "var(--adm-accent)" }} />
+                  {filteredUsers.length === users.length ? "Full directory" : "Filtered view"}
+                </span>
                 <div className="relative shrink-0" ref={hideDropdownRef}>
-                  <button
-                    type="button"
-                    onClick={() => setHideDropdownOpen((o) => !o)}
-                    className="flex items-center gap-1.5 rounded-lg border border-white/8 bg-BrandBlack px-3 py-2 text-xs text-BrandGray transition hover:border-BrandOrange/40 hover:text-white"
-                  >
-                    Hide
-                    {hideOptions.size > 0 && (
-                      <span className="rounded-full bg-BrandOrange px-1.5 py-0.5 text-[10px] font-semibold text-white leading-none">
-                        {hideOptions.size}
-                      </span>
-                    )}
-                    <span className="text-[10px] opacity-50">{hideDropdownOpen ? "▲" : "▼"}</span>
-                  </button>
+                  <AdminBtn variant="secondary" size="sm" onClick={() => setHideDropdownOpen((o) => !o)}>
+                    Hide {hideOptions.size > 0 && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-white leading-none" style={{ backgroundColor: "var(--adm-accent)" }}>{hideOptions.size}</span>}
+                  </AdminBtn>
                   {hideDropdownOpen && (
-                    <div className="absolute left-0 top-full z-50 mt-1 min-w-[160px] rounded-lg border border-white/10 bg-[#1a1a1a] py-1 shadow-xl">
+                    <div className="absolute left-0 top-full z-50 mt-1 min-w-[180px] rounded-[var(--adm-radius)] py-1 shadow-xl" style={{ backgroundColor: "var(--adm-surface)", border: "1px solid var(--adm-border2)" }}>
                       {[
                         { key: "demo", label: "Demo accounts" },
                         { key: "player", label: "Players" },
@@ -968,263 +1037,169 @@ export default function Admin() {
                         { key: "coach", label: "Coaches" },
                         { key: "owner", label: "Owners" },
                       ].map(({ key, label }) => (
-                        <label
-                          key={key}
-                          className="flex cursor-pointer items-center gap-2.5 px-3 py-2 text-xs text-BrandGray transition hover:bg-white/5 hover:text-white select-none"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={hideOptions.has(key)}
-                            onChange={() => toggleHideOption(key)}
-                            className="accent-BrandOrange"
-                          />
-                          {label}
-                        </label>
+                        <div key={key} className="px-3 py-1.5">
+                          <AdminCheckbox checked={hideOptions.has(key)} onChange={() => toggleHideOption(key)} label={label} />
+                        </div>
                       ))}
                     </div>
                   )}
                 </div>
-                <div className="ml-auto flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleCopyEmails("outlook")}
-                    title="Copy emails separated by semicolons (Outlook format)"
-                    className="rounded-lg border border-white/8 bg-BrandBlack px-3 py-2 text-xs text-BrandGray transition hover:border-BrandOrange/40 hover:text-white"
-                  >
-                    {emailCopied === "outlook" ? "Copied!" : "Copy for Outlook"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleCopyEmails("gmail")}
-                    title="Copy emails separated by commas (Gmail format)"
-                    className="rounded-lg border border-white/8 bg-BrandBlack px-3 py-2 text-xs text-BrandGray transition hover:border-BrandOrange/40 hover:text-white"
-                  >
-                    {emailCopied === "gmail" ? "Copied!" : "Copy for Gmail"}
-                  </button>
+                <div className="flex flex-wrap items-center gap-2 xl:ml-auto xl:justify-end">
+                  <AdminBtn variant="secondary" size="sm" onClick={() => handleCopyEmails("outlook")} title="Semicolon-separated emails">
+                    {emailCopied === "outlook" ? "Copied!" : "Copy · Outlook"}
+                  </AdminBtn>
+                  <AdminBtn variant="secondary" size="sm" onClick={() => handleCopyEmails("gmail")} title="Comma-separated emails">
+                    {emailCopied === "gmail" ? "Copied!" : "Copy · Gmail"}
+                  </AdminBtn>
                 </div>
               </div>
               {/* Row 2: advanced filters */}
-              <div className="flex flex-wrap items-center gap-2">
-                <select
-                  value={filterRole}
-                  onChange={(e) => setFilterRole(e.target.value)}
-                  className="rounded-lg border border-white/8 bg-BrandBlack px-3 py-2 text-xs text-white outline-none focus:border-BrandOrange"
-                >
+              <div className="flex flex-wrap items-center gap-2 rounded-[var(--adm-radius)] p-3" style={{ backgroundColor: "var(--adm-surface)", border: "1px solid var(--adm-border)" }}>
+                <AdminSelect value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
                   <option value="">All roles</option>
                   <option value="owner">Owner</option>
                   <option value="coach">Coach</option>
                   <option value="assistant_coach">Assistant Coach</option>
                   <option value="player">Player</option>
-                </select>
-                <select
-                  value={filterVerified}
-                  onChange={(e) => setFilterVerified(e.target.value)}
-                  className="rounded-lg border border-white/8 bg-BrandBlack px-3 py-2 text-xs text-white outline-none focus:border-BrandOrange"
-                >
+                </AdminSelect>
+                <AdminSelect value={filterVerified} onChange={(e) => setFilterVerified(e.target.value)}>
                   <option value="">Any verification</option>
                   <option value="verified">Verified</option>
                   <option value="unverified">Unverified</option>
-                </select>
-                <select
-                  value={filterOnboarded}
-                  onChange={(e) => setFilterOnboarded(e.target.value)}
-                  className="rounded-lg border border-white/8 bg-BrandBlack px-3 py-2 text-xs text-white outline-none focus:border-BrandOrange"
-                >
+                </AdminSelect>
+                <AdminSelect value={filterOnboarded} onChange={(e) => setFilterOnboarded(e.target.value)}>
                   <option value="">Any onboard status</option>
                   <option value="yes">Onboarded</option>
                   <option value="no">Not onboarded</option>
-                </select>
+                </AdminSelect>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-BrandGray2">Plays</span>
-                  <select
-                    value={filterPlaysOp}
-                    onChange={(e) => setFilterPlaysOp(e.target.value)}
-                    className="rounded-lg border border-white/8 bg-BrandBlack px-2 py-2 text-xs text-white outline-none focus:border-BrandOrange"
-                  >
+                  <span className="text-xs" style={{ color: "var(--adm-muted)" }}>Plays</span>
+                  <AdminSelect value={filterPlaysOp} onChange={(e) => setFilterPlaysOp(e.target.value)} className="w-16">
                     <option value=">">&gt;</option>
                     <option value="<">&lt;</option>
                     <option value="=">=</option>
-                  </select>
-                  <input
-                    type="number"
-                    min="0"
-                    value={filterPlays}
-                    onChange={(e) => setFilterPlays(e.target.value)}
-                    placeholder="—"
-                    className="w-16 rounded-lg border border-white/8 bg-BrandBlack px-2 py-2 text-xs text-white outline-none focus:border-BrandOrange"
-                  />
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-BrandGray2">Folders</span>
-                  <select
-                    value={filterFoldersOp}
-                    onChange={(e) => setFilterFoldersOp(e.target.value)}
-                    className="rounded-lg border border-white/8 bg-BrandBlack px-2 py-2 text-xs text-white outline-none focus:border-BrandOrange"
-                  >
-                    <option value=">">&gt;</option>
-                    <option value="<">&lt;</option>
-                    <option value="=">=</option>
-                  </select>
-                  <input
-                    type="number"
-                    min="0"
-                    value={filterFolders}
-                    onChange={(e) => setFilterFolders(e.target.value)}
-                    placeholder="—"
-                    className="w-16 rounded-lg border border-white/8 bg-BrandBlack px-2 py-2 text-xs text-white outline-none focus:border-BrandOrange"
-                  />
+                  </AdminSelect>
+                  <input type="number" min="0" value={filterPlays} onChange={(e) => setFilterPlays(e.target.value)} placeholder="—" className="w-14 rounded-[var(--adm-radius-sm)] px-2 py-2 text-xs outline-none" style={{ backgroundColor: "var(--adm-surface)", border: "1px solid var(--adm-border)", color: "var(--adm-text)" }} />
                 </div>
                 {activeFilterCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={resetFilters}
-                    className="rounded-lg bg-white/6 px-3 py-2 text-xs text-BrandGray transition hover:bg-white/10 hover:text-white"
-                  >
-                    Reset filters ({activeFilterCount})
-                  </button>
+                  <AdminBtn variant="ghost" size="sm" onClick={resetFilters}>Reset ({activeFilterCount})</AdminBtn>
                 )}
               </div>
+              </div>
             </div>
-            <div className="hide-scroll overflow-auto" style={{ maxHeight: `${usersTableMaxHeight}px` }}>
-              <table className="min-w-full text-left text-sm">
+            <div className="hide-scroll overflow-auto px-3 py-3 sm:px-4" style={{ maxHeight: `${usersTableMaxHeight}px`, backgroundColor: "var(--adm-bg)" }}>
+              <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
               <thead>
-                <tr className="border-b border-white/6 bg-[#1e2228]">
-                  <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">
-                    <span>Name</span>
-                    <span className="ml-2 rounded-full bg-white/8 px-1.5 py-0.5 text-[10px] font-semibold text-white/70 leading-none">
-                      {filteredUsers.length}{filteredUsers.length !== users.length && <span className="text-white/30"> / {users.length}</span>}
-                    </span>
-                  </th>
-                  <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Email</th>
-                  <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Team</th>
-                  <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Plays</th>
-                  <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Folders</th>
-                  <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Status</th>
-                  <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-BrandGray">Joined</th>
-                  <th className="px-4 py-3"></th>
+                <tr>
+                  <th className="sticky top-0 z-10 min-w-[260px] px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>User</th>
+                  <th className="sticky top-0 z-10 min-w-[220px] px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Email</th>
+                  <th className="sticky top-0 z-10 min-w-[240px] px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Teams</th>
+                  <th className="sticky top-0 z-10 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Plays</th>
+                  <th className="sticky top-0 z-10 min-w-[210px] px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Status</th>
+                  <th className="sticky top-0 z-10 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Joined</th>
+                  <th className="sticky top-0 z-10 px-4 py-3 text-right text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {usersLoading && users.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-xs text-BrandGray2">Loading...</td>
-                  </tr>
+                  <tr><td colSpan={7} className="px-4 py-8 text-center text-xs" style={{ color: "var(--adm-muted)" }}><AdminSpinner className="mx-auto" /></td></tr>
                 )}
                 {!usersLoading && users.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-xs text-BrandGray2">No users found</td>
-                  </tr>
+                  <tr><td colSpan={7} className="px-4 py-8 text-center text-xs" style={{ color: "var(--adm-muted)" }}>No users found</td></tr>
                 )}
                 {!usersLoading && users.length > 0 && filteredUsers.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-xs text-BrandGray2">No users match your search</td>
-                  </tr>
+                  <tr><td colSpan={7} className="px-4 py-8 text-center text-xs" style={{ color: "var(--adm-muted)" }}>No users match your search</td></tr>
                 )}
                 {filteredUsers.map((u) => {
                   const memberships = getSortedMemberships(u.memberships);
                   const hasCoachingRole = Boolean(u.can_view_activity);
-
+                  const rowBaseStyle = {
+                    backgroundColor: "var(--adm-surface)",
+                    borderBottom: "1px solid var(--adm-border)",
+                  };
                   return (
                     <tr
                       key={u.id}
-                      className={`border-b border-white/4 transition hover:bg-white/2 ${!u.onboarded_at ? "opacity-60" : ""}`}
+                      className={!u.onboarded_at ? "opacity-80" : ""}
+                      onMouseEnter={(e) => {
+                        Array.from(e.currentTarget.children).forEach((cell) => {
+                          cell.style.backgroundColor = "var(--adm-surface2)";
+                        });
+                      }}
+                      onMouseLeave={(e) => {
+                        Array.from(e.currentTarget.children).forEach((cell) => {
+                          cell.style.backgroundColor = "var(--adm-surface)";
+                        });
+                      }}
                     >
-                      <td className="px-4 py-3 font-medium">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenUserActivity(u.id)}
-                            className="cursor-pointer text-left text-white transition hover:text-BrandOrange hover:underline"
+                      <td className="px-4 py-4 align-top" style={rowBaseStyle}>
+                        <div className="flex flex-wrap items-start gap-3">
+                          <div
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+                            style={hasCoachingRole
+                              ? { backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }
+                              : { backgroundColor: "var(--adm-surface3)", color: "var(--adm-text2)" }}
                           >
-                            {u.name}
-                          </button>
-                          {hasCoachingRole && (
-                            <span className="rounded bg-BrandOrange/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-BrandOrange">
-                              Activity
-                            </span>
-                          )}
-                          {!u.onboarded_at && (
-                            <span className="rounded bg-yellow-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-yellow-400">
-                              Not onboarded
-                            </span>
-                          )}
+                            {getUserInitials(u.name, u.email)}
+                          </div>
+                          <div className="min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenUserActivity(u.id)}
+                              className="truncate text-sm font-semibold transition-colors"
+                              style={{ color: "var(--adm-text)" }}
+                              onMouseEnter={(e) => { e.currentTarget.style.color = "var(--adm-accent)"; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.color = "var(--adm-text)"; }}
+                            >
+                              {u.name}
+                            </button>
+                            <p className="mt-1 text-xs" style={{ color: "var(--adm-muted)" }}>
+                              {memberships.length > 0 ? `${memberships.length} ${memberships.length === 1 ? "team role" : "team roles"}` : "No team memberships"}
+                            </p>
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {!u.onboarded_at && <AdminBadge status="warning">Needs onboarding</AdminBadge>}
+                              {hasCoachingRole && <AdminBadge status="info">Activity access</AdminBadge>}
+                            </div>
+                          </div>
                         </div>
-                        <p className="mt-1 text-xs text-BrandGray2">
-                          {hasCoachingRole ? "Click name to open activity" : "Click name to open details"}
-                        </p>
                       </td>
-                      <td className="px-4 py-3 text-BrandGray">{u.email}</td>
-                      <td className="px-4 py-3 text-BrandGray">
+                      <td className="px-4 py-4 align-top text-xs" style={{ ...rowBaseStyle, color: "var(--adm-text2)" }}>
+                        <div className="max-w-[220px] break-words leading-relaxed">{u.email}</div>
+                      </td>
+                      <td className="px-4 py-4 align-top" style={rowBaseStyle}>
                         {memberships.length > 0 ? (
                           <div className="flex flex-wrap gap-1.5">
-                            {memberships.slice(0, 2).map((membership) => (
-                              <span
-                                key={`${u.id}-${membership.teamId}-${membership.role}`}
-                                className="rounded-full bg-white/6 px-2 py-1 text-[10px] font-semibold text-BrandGray"
-                              >
-                                {membership.teamName} <span className="text-BrandGray2">({formatRole(membership.role)})</span>
+                            {memberships.slice(0, 2).map((m) => (
+                              <span key={`${u.id}-${m.teamId}-${m.role}`} className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold" style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-text2)" }}>
+                                {m.teamName} <span className="ml-1" style={{ color: "var(--adm-muted)" }}>{formatRole(m.role)}</span>
                               </span>
                             ))}
-                            {memberships.length > 2 && (
-                              <span className="rounded-full bg-white/6 px-2 py-1 text-[10px] font-semibold text-BrandGray2">
-                                +{memberships.length - 2} more
-                              </span>
-                            )}
+                            {memberships.length > 2 && <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold" style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-muted)" }}>+{memberships.length - 2} more</span>}
                           </div>
-                        ) : (
-                          <span className="text-BrandGray2">-</span>
-                        )}
+                        ) : <span style={{ color: "var(--adm-muted)" }}>—</span>}
                       </td>
-                      <td className="px-4 py-3 text-center text-sm font-semibold text-white">
-                        {u.plays_created ?? 0}
+                      <td className="px-4 py-4 align-top" style={rowBaseStyle}>
+                        <span className="inline-flex min-w-[52px] items-center justify-center rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }}>
+                          {u.plays_created ?? 0}
+                        </span>
                       </td>
-                      <td className="px-4 py-3 text-center text-sm font-semibold text-white">
-                        {u.folders_created ?? 0}
-                      </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-4 align-top" style={rowBaseStyle}>
                         <div className="flex flex-wrap gap-1.5">
-                          <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${
-                            u.email_verified_at
-                              ? "bg-green-500/15 text-green-400"
-                              : "bg-white/6 text-BrandGray2"
-                          }`}>
-                            {u.email_verified_at ? "Verified" : "Unverified"}
-                          </span>
+                          <AdminBadge status={u.email_verified_at ? "resolved" : undefined}>{u.email_verified_at ? "Verified" : "Unverified"}</AdminBadge>
                           <button
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleToggleBetaTester(u);
-                            }}
+                            onClick={(e) => { e.stopPropagation(); handleToggleBetaTester(u); }}
                             title={u.is_beta_tester ? "Remove beta tester" : "Make beta tester"}
-                            className={`rounded-full px-2 py-1 text-[10px] font-semibold transition ${
-                              u.is_beta_tester
-                                ? "bg-purple-500/20 text-purple-400 hover:bg-purple-500/30"
-                                : "bg-white/6 text-BrandGray2 hover:bg-white/10 hover:text-white"
-                            }`}
+                            className="inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold transition-opacity hover:opacity-80"
+                            style={u.is_beta_tester ? { backgroundColor: "var(--adm-badge-purple-bg)", borderColor: "transparent", color: "var(--adm-badge-purple-text)" } : { backgroundColor: "var(--adm-surface3)", borderColor: "var(--adm-border)", color: "var(--adm-muted)" }}
                           >
-                            {u.is_beta_tester ? "Beta Tester" : "Standard"}
+                            {u.is_beta_tester ? "Beta tester" : "Standard"}
                           </button>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-xs text-BrandGray2">
-                        {new Date(u.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleOpenUserActivity(u.id)}
-                            className="rounded px-2 py-1 text-xs text-BrandOrange transition hover:bg-BrandOrange/10"
-                          >
-                            {hasCoachingRole ? "Activity" : "Details"}
-                          </button>
-                          <button
-                            onClick={() => {
-                              handleDeleteUser(u.id, u.name);
-                            }}
-                            className="rounded px-2 py-1 text-xs text-red-400/70 transition hover:bg-red-600/15 hover:text-red-400"
-                          >
-                            Delete
-                          </button>
+                      <td className="px-4 py-4 align-top text-xs" style={{ ...rowBaseStyle, color: "var(--adm-text2)" }}>{formatAdminDate(u.created_at)}</td>
+                      <td className="px-4 py-4 align-top text-right" style={rowBaseStyle}>
+                        <div className="flex justify-end">
+                          <AdminBtn variant="danger" size="sm" onClick={() => handleDeleteUser(u.id, u.name)} className="whitespace-nowrap">Delete</AdminBtn>
                         </div>
                       </td>
                     </tr>
@@ -1233,587 +1208,309 @@ export default function Admin() {
               </tbody>
               </table>
             </div>
-            <div className="flex flex-col gap-3 border-t border-white/6 bg-[#161a1f] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-BrandGray2">
-                {filteredUsers.length === users.length
-                  ? `${users.length} users`
-                  : `${filteredUsers.length} matching users`}
-              </p>
-              <label className="flex items-center gap-2 text-xs text-BrandGray">
-                <span className="uppercase tracking-wider text-BrandGray2">Visible Rows</span>
-                <select
-                  value={usersPerPage}
-                  onChange={(e) => setUsersPerPage(Number(e.target.value))}
-                  className="rounded-lg border border-white/8 bg-BrandBlack px-3 py-2 text-sm text-white outline-none focus:border-BrandOrange"
-                >
-                  {USER_PAGE_SIZE_OPTIONS.map((size) => (
-                    <option key={size} value={size}>
-                      {size}
-                    </option>
-                  ))}
-                </select>
+            <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5" style={{ borderTop: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface)" }}>
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span style={{ color: "var(--adm-text2)" }}>
+                  {filteredUsers.length === users.length ? `${users.length} users in view` : `${filteredUsers.length} of ${users.length} users shown`}
+                </span>
+                {activeFilterCount > 0 && (
+                  <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }}>
+                    {activeFilterCount} filters active
+                  </span>
+                )}
+              </div>
+              <label className="flex items-center gap-2 text-xs" style={{ color: "var(--adm-muted)" }}>
+                <span>Visible rows</span>
+                <AdminSelect value={usersPerPage} onChange={(e) => setUsersPerPage(Number(e.target.value))} className="w-24">
+                  {USER_PAGE_SIZE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                </AdminSelect>
               </label>
             </div>
-          </div>
+          </AdminCard>
+          </AdminSection>
         </section>
 
-        {/* ══════════════════════════════════════════════════════════════════
-            PLATFORM PLAYS SECTION
-        ══════════════════════════════════════════════════════════════════ */}
-        <section id="plays" style={{ scrollMarginTop: "4rem" }}>
-          <SectionHeader title="Platform Plays" badge={`${platformPlays.length}`} badgeColor="bg-BrandOrange/15 text-BrandOrange">
-            <button
-              onClick={() => window.open("/admin/app", "_self")}
-              className="flex items-center gap-1.5 rounded-lg bg-BrandOrange/20 px-3 py-1.5 text-xs font-semibold text-BrandOrange transition hover:bg-BrandOrange/30"
-            >
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-              Open Admin App
-            </button>
-          </SectionHeader>
-
-          {playsError && (
-            <div className="mb-3 rounded-lg bg-red-600/10 px-4 py-2 text-sm text-red-400">{playsError}</div>
-          )}
-
-          <div className="rounded-2xl border border-white/6 bg-[#1e2228] p-6">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-              <div className="max-w-2xl">
-                <p className="font-Manrope text-lg font-bold text-white">Manage landing-page plays in Admin App</p>
-                <p className="mt-2 text-sm leading-relaxed text-BrandGray">
-                  Create platform plays and assign landing-page sections in Admin App.
-                  The main admin dashboard no longer mirrors every play here, so this page stays focused on accounts and support operations.
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="rounded-full bg-white/6 px-3 py-1 text-[11px] font-semibold text-BrandGray">
-                    {playsLoading ? "Loading plays..." : `${platformPlays.length} platform plays`}
-                  </span>
-                  <span className="rounded-full bg-BrandOrange/15 px-3 py-1 text-[11px] font-semibold text-BrandOrange">
-                    Section assignments live in /admin/app
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={() => window.open("/admin/app", "_self")}
-                className="flex items-center justify-center gap-2 rounded-xl bg-BrandOrange px-5 py-3 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.98]"
-              >
-                Open Admin App
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5H19.5M19.5 4.5V10.5M19.5 4.5L10.5 13.5M19.5 13.5V18.75C19.5 19.9926 18.4926 21 17.25 21H5.25C4.00736 21 3 19.9926 3 18.75V6.75C3 5.50736 4.00736 4.5 5.25 4.5H10.5" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {/* ══════════════════════════════════════════════════════════════════
-            TESTS SECTION
-        ══════════════════════════════════════════════════════════════════ */}
+        {/* TESTS */}
         <section id="tests" style={{ scrollMarginTop: "4rem" }}>
-          <SectionHeader title="Tests" badge={allSuites ? `${totalTestCount} tests` : "Loading..."} badgeColor="bg-purple-500/15 text-purple-400">
-            <button
-              onClick={runTests}
-              disabled={testRunning || enabledSuites.size === 0}
-              className="flex items-center gap-2 rounded-lg bg-purple-500/20 px-4 py-2 text-xs font-semibold text-purple-300 transition hover:bg-purple-500/30 active:scale-[0.97] disabled:opacity-40"
-            >
-              {testRunning ? (
-                <>
-                  <span className="inline-block h-3 w-3 rounded-full border-2 border-purple-400/30 border-t-purple-400 animate-spin" />
-                  Running...
-                </>
-              ) : (
-                <>
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
-                  </svg>
-                  {enabledSuites.size === SUITE_NAMES.length ? "Run All Tests" : `Run ${selectedTestCount} Tests`}
-                </>
-              )}
-            </button>
-          </SectionHeader>
-
-          {/* Test result summary bar */}
-          {testResults && (
-            <div className="mb-4 flex items-center gap-4 rounded-xl border border-white/6 bg-[#1e2228] px-5 py-3">
-              <div className={`flex items-center gap-2 font-Manrope text-sm font-bold ${testStats.failed === 0 ? "text-green-400" : "text-red-400"}`}>
-                {testStats.failed === 0 ? (
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                ) : (
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                )}
-                {testStats.failed === 0 ? "All Passing" : `${testStats.failed} Failing`}
-              </div>
-              <span className="text-xs text-BrandGray">{testStats.passed}/{testStats.total} passed</span>
-              {testStats.failed > 0 && failedTestsReport && (
-                <button
-                  onClick={() => copyToClipboard(failedTestsReport, "all-failed-tests")}
-                  className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-[11px] font-semibold text-red-300 transition hover:bg-red-500/20"
-                >
-                  {copied === "all-failed-tests" ? "Copied!" : "Copy Failed Tests"}
-                </button>
-              )}
-              <span className="ml-auto font-mono text-xs text-BrandGray2">{testTotalMs.toFixed(0)}ms</span>
-            </div>
-          )}
-
-          {/* Suite cards */}
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-            {SUITE_NAMES.map((name) => {
-              const checked = enabledSuites.has(name);
-              const suiteResult = testResults?.find((s) => s.name === name);
-              const suiteFailed = suiteResult?.results.filter((r) => r.status === "fail").length ?? 0;
-              const suitePassed = suiteResult?.results.filter((r) => r.status === "pass").length ?? 0;
-              return (
-                <div
-                  key={name}
-                  onClick={() => toggleSuiteEnabled(name, !checked)}
-                  className={`cursor-pointer rounded-xl border p-3.5 transition ${
-                    checked
-                      ? "border-purple-500/30 bg-purple-500/5"
-                      : "border-white/6 bg-[#1e2228] opacity-50 hover:opacity-70"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-1">
-                    <span className="font-Manrope text-xs font-bold leading-tight">{name}</span>
-                    <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition ${
-                      checked ? "border-purple-400 bg-purple-500/30" : "border-white/20"
-                    }`}>
-                      {checked && (
-                        <svg className="h-2.5 w-2.5 text-purple-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </div>
-                  </div>
-                  <p className="mt-1 text-[10px] leading-snug text-BrandGray2">{SUITE_DESCRIPTIONS[name]}</p>
-                  {suiteResult ? (
-                    <div className="mt-2 flex items-center gap-1.5">
-                      <span className={`text-[10px] font-semibold ${suiteFailed === 0 ? "text-green-400" : "text-red-400"}`}>
-                        {suiteFailed === 0 ? `${suitePassed} pass` : `${suiteFailed} fail`}
-                      </span>
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-[10px] text-BrandGray2">{allSuites?.[name]?.length ?? "…"} tests</p>
-                  )}
+          <AdminSection
+            title="Tests"
+            subtitle={allSuites ? `${totalTestCount} tests across ${SUITE_NAMES.length} suites` : "Loading suites…"}
+            actions={
+              <AdminBtn variant="secondary" size="sm" onClick={runTests} disabled={testRunning || enabledSuites.size === 0}>
+                {testRunning ? <><AdminSpinner size={12} />Running…</> : <>
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" /></svg>
+                  {enabledSuites.size === SUITE_NAMES.length ? "Run All" : `Run ${selectedTestCount}`}
+                </>}
+              </AdminBtn>
+            }
+          >
+            {/* Result summary */}
+            {testResults && (
+              <AdminCard padding={false} className="flex items-center gap-4 px-5 py-3">
+                <div className="flex items-center gap-2 font-Manrope text-sm font-normal" style={{ color: testStats.failed === 0 ? "var(--adm-success)" : "var(--adm-danger)" }}>
+                  {testStats.failed === 0
+                    ? <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    : <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                  }
+                  {testStats.failed === 0 ? "All Passing" : `${testStats.failed} Failing`}
                 </div>
-              );
-            })}
-          </div>
-
-          {/* Test results list */}
-          {testResults && (
-            <div className="mt-4 space-y-2">
-              {testResults.map((suite) => {
-                const isCollapsed = collapsedSuites.has(suite.name);
-                const suiteFail = suite.results.filter((r) => r.status === "fail").length;
-                return (
-                  <div key={suite.name} className="overflow-hidden rounded-xl border border-white/6">
-                    <button
-                      onClick={() => setCollapsedSuites((prev) => {
-                        const next = new Set(prev);
-                        next.has(suite.name) ? next.delete(suite.name) : next.add(suite.name);
-                        return next;
-                      })}
-                      className="flex w-full items-center justify-between bg-[#1e2228] px-4 py-3 transition hover:bg-[#252a31]"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className={`h-2 w-2 rounded-full ${suiteFail === 0 ? "bg-green-400" : "bg-red-400"}`} />
-                        <span className="font-Manrope text-sm font-bold">{suite.name}</span>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs">
-                        <span className="text-green-400">{suite.results.filter((r) => r.status === "pass").length} pass</span>
-                        {suiteFail > 0 && <span className="text-red-400">{suiteFail} fail</span>}
-                        <span className="font-mono text-BrandGray2">{suite.totalMs.toFixed(1)}ms</span>
-                        <svg className={`h-3.5 w-3.5 text-BrandGray2 transition-transform ${isCollapsed ? "-rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
-                    </button>
-                    {!isCollapsed && (
-                      <div className="divide-y divide-white/4">
-                        {suite.results.map((r, i) => {
-                          const key = `${suite.name}-${i}`;
-                          const isExpanded = expandedTests.has(key);
-                          return (
-                            <div key={key} className={r.status === "fail" ? "bg-red-600/5" : ""}>
-                              <div
-                                className="flex items-center gap-3 px-4 py-2.5 text-sm cursor-pointer hover:bg-white/2"
-                                onClick={() => setExpandedTests((prev) => {
-                                  const next = new Set(prev);
-                                  next.has(key) ? next.delete(key) : next.add(key);
-                                  return next;
-                                })}
-                              >
-                                {r.status === "pass" ? (
-                                  <svg className="h-3.5 w-3.5 shrink-0 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                  </svg>
-                                ) : (
-                                  <svg className="h-3.5 w-3.5 shrink-0 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                  </svg>
-                                )}
-                                <span className="flex-1 text-xs text-white">{r.testName}</span>
-                                <span className="font-mono text-[10px] text-BrandGray2">
-                                  {r.durationMs < 1 ? `${(r.durationMs * 1000).toFixed(0)}μs` : `${r.durationMs.toFixed(1)}ms`}
-                                </span>
-                              </div>
-                              {isExpanded && r.error && (
-                                <div className="mx-4 mb-2">
-                                  <pre className="rounded-lg border border-red-500/20 bg-red-600/10 px-4 py-3 font-mono text-[11px] leading-relaxed text-red-300 whitespace-pre-wrap">
-                                    {r.error}
-                                  </pre>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        {/* ══════════════════════════════════════════════════════════════════
-            ERROR REPORTS SECTION
-        ══════════════════════════════════════════════════════════════════ */}
-        <section id="errors" style={{ scrollMarginTop: "4rem" }}>
-          <SectionHeader title="Error Reports" badge={errorTotal > 0 ? `${errorTotal}` : "None"} badgeColor={errorTotal > 0 ? "bg-red-500/15 text-red-400" : "bg-white/6 text-BrandGray2"}>
-            {errors.length > 0 && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    const text = errors.map((r) => formatReportText(r)).join("\n\n---\n\n");
-                    copyToClipboard(text, "all-errors");
-                  }}
-                  className="rounded-lg border border-BrandOrange/40 bg-BrandOrange/10 px-3 py-1.5 text-xs font-semibold text-BrandOrange transition hover:bg-BrandOrange/20"
-                >
-                  {copied === "all-errors" ? "Copied!" : "Copy Reports"}
-                </button>
-                <button
-                  onClick={handleClearErrors}
-                  className="rounded-lg bg-red-600/10 px-3 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-600/20"
-                >
-                  Clear All
-                </button>
-              </div>
+                <span className="text-xs" style={{ color: "var(--adm-muted)" }}>{testStats.passed}/{testStats.total} passed</span>
+                {testStats.failed > 0 && failedTestsReport && (
+                  <AdminBtn variant="danger" size="sm" onClick={() => copyToClipboard(failedTestsReport, "all-failed-tests")}>
+                    {copied === "all-failed-tests" ? "Copied!" : "Copy Failed"}
+                  </AdminBtn>
+                )}
+                <span className="ml-auto font-mono text-xs" style={{ color: "var(--adm-muted)" }}>{testTotalMs.toFixed(0)}ms</span>
+              </AdminCard>
             )}
-          </SectionHeader>
 
-          {errorsError && (
-            <div className="mb-3 rounded-lg bg-red-600/10 px-4 py-2 text-sm text-red-400">{errorsError}</div>
-          )}
-
-          {errorsLoading && errors.length === 0 && (
-            <div className="rounded-xl border border-white/6 px-6 py-10 text-center text-xs text-BrandGray2">
-              Loading...
-            </div>
-          )}
-
-          {!errorsLoading && errors.length === 0 && (
-            <div className="rounded-xl border border-white/6 bg-[#1e2228] px-6 py-12 text-center">
-              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white/4">
-                <svg className="h-5 w-5 text-BrandGray2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <p className="text-sm font-semibold text-BrandGray">No error reports</p>
-              <p className="mt-0.5 text-xs text-BrandGray2">Errors from users will appear here</p>
-            </div>
-          )}
-
-          {errors.length > 0 && (
-            <div className="hide-scroll max-h-[60vh] overflow-y-auto space-y-2 pr-1 rounded-xl">
-              {errors.map((r) => {
-                const isExpanded = expandedError === r.id;
-                const device = r.device_info || {};
-                const title = deriveTitle(r);
+            {/* Suite cards */}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+              {SUITE_NAMES.map((name) => {
+                const checked = enabledSuites.has(name);
+                const suiteResult = testResults?.find((s) => s.name === name);
+                const suiteFailed = suiteResult?.results.filter((r) => r.status === "fail").length ?? 0;
+                const suitePassed = suiteResult?.results.filter((r) => r.status === "pass").length ?? 0;
                 return (
                   <div
-                    key={r.id}
-                    className="overflow-hidden rounded-xl border border-white/6 transition hover:border-white/10"
+                    key={name}
+                    onClick={() => toggleSuiteEnabled(name, !checked)}
+                    className="cursor-pointer rounded-[var(--adm-radius)] p-3.5 transition"
+                    style={{
+                      backgroundColor: checked ? "rgba(139,92,246,0.06)" : "var(--adm-surface)",
+                      border: checked ? "1px solid rgba(139,92,246,0.3)" : "1px solid var(--adm-border)",
+                      opacity: checked ? 1 : 0.55,
+                    }}
+                    onMouseEnter={(e) => { if (!checked) e.currentTarget.style.opacity = "0.75"; }}
+                    onMouseLeave={(e) => { if (!checked) e.currentTarget.style.opacity = "0.55"; }}
                   >
-                    <button
-                      onClick={() => setExpandedError(isExpanded ? null : r.id)}
-                      className="flex w-full items-start gap-3 px-4 py-3.5 text-left"
-                    >
-                      <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
-                        r.component === "api"
-                          ? "bg-BrandOrange/20 text-BrandOrange"
-                          : r.component === "videoExport"
-                          ? "bg-purple-500/20 text-purple-400"
-                          : r.component === "global"
-                            ? "bg-red-500/20 text-red-400"
-                            : "bg-white/6 text-BrandGray"
-                      }`}>
-                        {r.component || "unknown"}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-BrandOrange">{title}</p>
-                        <p className="mt-0.5 truncate text-xs text-BrandGray">{r.error_message}</p>
-                        <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-BrandGray2">
-                          <span>{parseDevice(r.user_agent)}</span>
-                          {device.screenWidth && <span>{device.screenWidth}×{device.screenHeight}</span>}
-                          <span>{formatTime(r.created_at)}</span>
-                        </div>
+                    <div className="flex items-start justify-between gap-1">
+                      <span className="font-Manrope text-xs font-normal leading-tight" style={{ color: "var(--adm-text)" }}>{name}</span>
+                      <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded transition" style={{ backgroundColor: checked ? "rgba(139,92,246,0.3)" : "transparent", border: checked ? "1px solid var(--adm-badge-purple-text)" : "1px solid var(--adm-border2)" }}>
+                        {checked && <svg className="h-2.5 w-2.5" style={{ color: "var(--adm-badge-purple-text)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                       </div>
-                      <svg className={`mt-1 h-3.5 w-3.5 shrink-0 text-BrandGray2 transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                    {isExpanded && (
-                      <div className="border-t border-white/5 bg-[#1e2228]/60 px-4 py-3">
-                        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
-                          <div><span className="text-BrandGray2">Page:</span> <span className="text-BrandGray">{r.page_url || "—"}</span></div>
-                          <div><span className="text-BrandGray2">User ID:</span> <span className="font-mono text-BrandGray">{r.user_id || "anonymous"}</span></div>
-                          <div><span className="text-BrandGray2">Device:</span> <span className="text-BrandGray">{device.platform || "—"}{device.isMobile ? " (mobile)" : " (desktop)"}{device.standalone ? " [PWA]" : ""}</span></div>
-                          <div><span className="text-BrandGray2">Session:</span> <span className="font-mono text-BrandGray">{r.session_id?.slice(0, 12) || "—"}...</span></div>
-                        </div>
-                        {r.extra && (
-                          <div className="mt-3">
-                            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-BrandGray2">Extra</p>
-                            <pre className="overflow-x-auto rounded-lg bg-BrandBlack/50 p-2 text-[11px] text-BrandGray">{JSON.stringify(r.extra, null, 2)}</pre>
-                          </div>
-                        )}
-                        {r.error_stack && (
-                          <div className="mt-3">
-                            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-BrandGray2">Stack Trace</p>
-                            <pre className="hide-scroll max-h-40 overflow-auto rounded-lg bg-BrandBlack/50 p-2 text-[11px] leading-relaxed text-red-400/80">{r.error_stack}</pre>
-                          </div>
-                        )}
-                        <div className="mt-3 flex items-center justify-between">
-                          <span className="text-[10px] text-BrandGray2">{new Date(r.created_at).toLocaleString()}</span>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); copyToClipboard(r.error_message + "\n" + (r.error_stack || ""), r.id); }}
-                              className="rounded px-2 py-1 text-xs text-BrandGray transition hover:bg-white/6 hover:text-white"
-                            >
-                              {copied === r.id ? "Copied!" : "Copy"}
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleDeleteError(r.id); }}
-                              className="rounded px-2 py-1 text-xs text-red-400 transition hover:bg-red-600/20"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                    </div>
+                    <p className="mt-1 text-[10px] leading-snug" style={{ color: "var(--adm-muted)" }}>{SUITE_DESCRIPTIONS[name]}</p>
+                    <p className="mt-2 text-[10px] font-semibold" style={{ color: suiteResult ? (suiteFailed === 0 ? "var(--adm-success)" : "var(--adm-danger)") : "var(--adm-muted)" }}>
+                      {suiteResult ? (suiteFailed === 0 ? `${suitePassed} pass` : `${suiteFailed} fail`) : `${allSuites?.[name]?.length ?? "…"} tests`}
+                    </p>
                   </div>
                 );
               })}
             </div>
-          )}
+
+            {/* Test results list */}
+            {testResults && (
+              <div className="space-y-2">
+                {testResults.map((suite) => {
+                  const isCollapsed = collapsedSuites.has(suite.name);
+                  const suiteFail = suite.results.filter((r) => r.status === "fail").length;
+                  return (
+                    <AdminCard key={suite.name} padding={false} className="overflow-hidden">
+                      <button
+                        onClick={() => setCollapsedSuites((prev) => { const n = new Set(prev); n.has(suite.name) ? n.delete(suite.name) : n.add(suite.name); return n; })}
+                        className="flex w-full items-center justify-between px-4 py-3 transition-opacity hover:opacity-80"
+                        style={{ backgroundColor: "var(--adm-surface2)" }}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: suiteFail === 0 ? "var(--adm-success)" : "var(--adm-danger)" }} />
+                          <span className="font-Manrope text-sm font-normal" style={{ color: "var(--adm-text)" }}>{suite.name}</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs">
+                          <span style={{ color: "var(--adm-success)" }}>{suite.results.filter((r) => r.status === "pass").length} pass</span>
+                          {suiteFail > 0 && <span style={{ color: "var(--adm-danger)" }}>{suiteFail} fail</span>}
+                          <span className="font-mono" style={{ color: "var(--adm-muted)" }}>{suite.totalMs.toFixed(1)}ms</span>
+                          <svg className={`h-3.5 w-3.5 transition-transform ${isCollapsed ? "-rotate-90" : ""}`} style={{ color: "var(--adm-muted)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                        </div>
+                      </button>
+                      {!isCollapsed && (
+                        <div style={{ borderTop: "1px solid var(--adm-border)" }}>
+                          {suite.results.map((r, i) => {
+                            const key = `${suite.name}-${i}`;
+                            const isExpanded = expandedTests.has(key);
+                            return (
+                              <div key={key} style={{ backgroundColor: r.status === "fail" ? "var(--adm-danger-dim)" : "", borderBottom: "1px solid var(--adm-border)" }}>
+                                <div className="flex cursor-pointer items-center gap-3 px-4 py-2.5 transition-opacity hover:opacity-80"
+                                  onClick={() => setExpandedTests((prev) => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; })}
+                                >
+                                  {r.status === "pass"
+                                    ? <svg className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--adm-success)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                    : <svg className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--adm-danger)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                  }
+                                  <span className="flex-1 text-xs" style={{ color: "var(--adm-text)" }}>{r.testName}</span>
+                                  <span className="font-mono text-[10px]" style={{ color: "var(--adm-muted)" }}>{r.durationMs < 1 ? `${(r.durationMs * 1000).toFixed(0)}μs` : `${r.durationMs.toFixed(1)}ms`}</span>
+                                </div>
+                                {isExpanded && r.error && (
+                                  <div className="mx-4 mb-2">
+                                    <pre className="rounded-[var(--adm-radius-sm)] px-4 py-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap" style={{ backgroundColor: "var(--adm-danger-dim)", border: "1px solid rgba(239,68,68,0.2)", color: "var(--adm-color-red-soft)" }}>{r.error}</pre>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </AdminCard>
+                  );
+                })}
+              </div>
+            )}
+          </AdminSection>
         </section>
 
-        {/* ══════════════════════════════════════════════════════════════════
-            REPORTED ISSUES SECTION
-        ══════════════════════════════════════════════════════════════════ */}
+        {/* ERROR REPORTS */}
+        <section id="errors" style={{ scrollMarginTop: "4rem" }}>
+          <AdminSection
+            title="Error Reports"
+            subtitle={errorTotal > 0 ? `${errorTotal} reports` : "No reports"}
+            actions={errors.length > 0 && (
+              <div className="flex gap-2">
+                <AdminBtn variant="secondary" size="sm" onClick={() => copyToClipboard(errors.map(formatReportText).join("\n\n---\n\n"), "all-errors")}>
+                  {copied === "all-errors" ? "Copied!" : "Copy All"}
+                </AdminBtn>
+                <AdminBtn variant="danger" size="sm" onClick={handleClearErrors}>Clear All</AdminBtn>
+              </div>
+            )}
+          >
+            {errorsError && <div className="rounded-[var(--adm-radius-sm)] px-4 py-2 text-sm" style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}>{errorsError}</div>}
+            {errorsLoading && errors.length === 0 && <AdminEmptyState title="Loading…" icon={<AdminSpinner />} />}
+            {!errorsLoading && errors.length === 0 && (
+              <AdminEmptyState
+                title="No error reports"
+                subtitle="Errors from users will appear here"
+                icon={<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+              />
+            )}
+            {errors.length > 0 && (
+              <div className="hide-scroll max-h-[60vh] space-y-2 overflow-y-auto pr-1">
+                {errors.map((r) => {
+                  const isExpanded = expandedError === r.id;
+                  const device = r.device_info || {};
+                  const title = deriveTitle(r);
+                  const compColor = r.component === "api" ? { bg: "var(--adm-accent-dim)", color: "var(--adm-accent)" }
+                    : r.component === "videoExport" ? { bg: "var(--adm-badge-purple-bg)", color: "var(--adm-badge-purple-text)" }
+                    : r.component === "global" ? { bg: "var(--adm-danger-dim)", color: "var(--adm-danger)" }
+                    : { bg: "var(--adm-surface3)", color: "var(--adm-muted)" };
+                  return (
+                    <AdminCard key={r.id} padding={false} className="overflow-hidden">
+                      <button onClick={() => setExpandedError(isExpanded ? null : r.id)} className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition-opacity hover:opacity-90">
+                        <span className="mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase" style={compColor}>{r.component || "unknown"}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-normal" style={{ color: "var(--adm-accent)" }}>{title}</p>
+                          <p className="mt-0.5 truncate text-xs" style={{ color: "var(--adm-text2)" }}>{r.error_message}</p>
+                          <div className="mt-1 flex flex-wrap gap-x-3 text-[11px]" style={{ color: "var(--adm-muted)" }}>
+                            <span>{parseDevice(r.user_agent)}</span>
+                            {device.screenWidth && <span>{device.screenWidth}×{device.screenHeight}</span>}
+                            <span>{formatTime(r.created_at)}</span>
+                          </div>
+                        </div>
+                        <svg className={`mt-1 h-3.5 w-3.5 shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`} style={{ color: "var(--adm-muted)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                      </button>
+                      {isExpanded && (
+                        <div className="px-4 py-3" style={{ borderTop: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface2)" }}>
+                          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
+                            {[["Page", r.page_url || "—"], ["User ID", r.user_id || "anonymous"], ["Device", `${device.platform || "—"}${device.isMobile ? " (mobile)" : " (desktop)"}${device.standalone ? " [PWA]" : ""}`], ["Session", `${r.session_id?.slice(0, 12) || "—"}…`]].map(([k, v]) => (
+                              <div key={k}><span style={{ color: "var(--adm-muted)" }}>{k}:</span> <span style={{ color: "var(--adm-text2)" }}>{v}</span></div>
+                            ))}
+                          </div>
+                          {r.extra && <div className="mt-3"><p className="mb-1 text-[10px] font-normal uppercase tracking-wider" style={{ color: "var(--adm-muted)" }}>Extra</p><pre className="overflow-x-auto rounded-[var(--adm-radius-sm)] p-2 text-[11px]" style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-text2)" }}>{JSON.stringify(r.extra, null, 2)}</pre></div>}
+                          {r.error_stack && <div className="mt-3"><p className="mb-1 text-[10px] font-normal uppercase tracking-wider" style={{ color: "var(--adm-muted)" }}>Stack</p><pre className="hide-scroll max-h-40 overflow-auto rounded-[var(--adm-radius-sm)] p-2 text-[11px] leading-relaxed" style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-color-red-soft)" }}>{r.error_stack}</pre></div>}
+                          <div className="mt-3 flex items-center justify-between">
+                            <span className="text-[10px]" style={{ color: "var(--adm-muted)" }}>{new Date(r.created_at).toLocaleString()}</span>
+                            <div className="flex gap-2">
+                              <AdminBtn variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); copyToClipboard(r.error_message + "\n" + (r.error_stack || ""), r.id); }}>{copied === r.id ? "Copied!" : "Copy"}</AdminBtn>
+                              <AdminBtn variant="danger" size="sm" onClick={(e) => { e.stopPropagation(); handleDeleteError(r.id); }}>Delete</AdminBtn>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </AdminCard>
+                  );
+                })}
+              </div>
+            )}
+          </AdminSection>
+        </section>
+
+        {/* REPORTED ISSUES */}
         <section id="reported-issues" style={{ scrollMarginTop: "4rem" }}>
-          <SectionHeader title="Reported Issues" badge={userIssueTotal > 0 ? `${userIssueTotal}` : "None"} badgeColor={userIssueTotal > 0 ? "bg-purple-500/15 text-purple-400" : "bg-white/6 text-BrandGray2"} />
-
-          {userIssuesError && (
-            <div className="mb-3 rounded-lg bg-red-600/10 px-4 py-2 text-sm text-red-400">{userIssuesError}</div>
-          )}
-
-          {userIssuesLoading && userIssues.length === 0 && (
-            <div className="rounded-xl border border-white/6 px-6 py-10 text-center text-xs text-BrandGray2">Loading...</div>
-          )}
-
-          {!userIssuesLoading && userIssues.length === 0 && (
-            <div className="rounded-xl border border-white/6 bg-[#1e2228] px-6 py-12 text-center">
-              <p className="text-sm font-semibold text-BrandGray">No reported issues</p>
-              <p className="mt-0.5 text-xs text-BrandGray2">Issues submitted by beta testers will appear here</p>
-            </div>
-          )}
-
-          {userIssues.length > 0 && (
-            <div className="hide-scroll max-h-[60vh] overflow-y-auto space-y-2 pr-1 rounded-xl">
-              {userIssues.map((issue) => {
-                const isExpanded = expandedIssue === issue.id;
-                const meta = issueStatusMeta(issue.status);
-                return (
-                  <div key={issue.id} className="overflow-hidden rounded-xl border border-white/6 transition hover:border-white/10">
-                    <button
-                      onClick={() => setExpandedIssue(isExpanded ? null : issue.id)}
-                      className="flex w-full items-start gap-3 px-4 py-3.5 text-left"
-                    >
-                      <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${meta.className}`}>
-                        {meta.label}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold">{issue.title}</p>
-                        <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-BrandGray2">
-                          <span>{issue.user_name || "Unknown"}</span>
-                          {issue.user_email && <span>{issue.user_email}</span>}
-                          <span>{formatTime(issue.created_at)}</span>
-                        </div>
-                      </div>
-                      <svg className={`mt-1 h-3.5 w-3.5 shrink-0 text-BrandGray2 transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                    {isExpanded && (
-                      <div className="border-t border-white/5 bg-[#1e2228]/60 px-4 py-4">
-                        <p className="mb-4 whitespace-pre-wrap text-sm leading-relaxed text-BrandGray">{issue.description}</p>
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-semibold uppercase text-BrandGray2">Status:</span>
-                            <select
-                              value={issue.status}
-                              onChange={(e) => handleIssueStatusChange(issue, e.target.value)}
-                              className="rounded-lg border border-BrandGray2/30 bg-BrandBlack px-2 py-1 text-xs text-white outline-none focus:border-BrandOrange"
-                            >
-                              <option value="open">Open</option>
-                              <option value="in_progress">In Progress</option>
-                              <option value="resolved">Resolved</option>
-                            </select>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-BrandGray2">{new Date(issue.created_at).toLocaleString()}</span>
-                            <button
-                              onClick={() => handleDeleteIssue(issue.id)}
-                              className="rounded px-2 py-1 text-xs text-red-400 transition hover:bg-red-600/20"
-                            >
-                              Delete
-                            </button>
+          <AdminSection title="Reported Issues" subtitle={userIssueTotal > 0 ? `${userIssueTotal} open` : "None"}>
+            {userIssuesError && <div className="rounded-[var(--adm-radius-sm)] px-4 py-2 text-sm" style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}>{userIssuesError}</div>}
+            {userIssuesLoading && userIssues.length === 0 && <AdminEmptyState title="Loading…" icon={<AdminSpinner />} />}
+            {!userIssuesLoading && userIssues.length === 0 && <AdminEmptyState title="No reported issues" subtitle="Issues submitted by beta testers will appear here" />}
+            {userIssues.length > 0 && (
+              <div className="hide-scroll max-h-[60vh] space-y-2 overflow-y-auto pr-1">
+                {userIssues.map((issue) => {
+                  const isExpanded = expandedIssue === issue.id;
+                  const meta = issueStatusMeta(issue.status);
+                  return (
+                    <AdminCard key={issue.id} padding={false} className="overflow-hidden">
+                      <button onClick={() => setExpandedIssue(isExpanded ? null : issue.id)} className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition-opacity hover:opacity-90">
+                        <AdminBadge status={meta.status} className="mt-0.5 shrink-0 uppercase">{meta.label}</AdminBadge>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-normal" style={{ color: "var(--adm-text)" }}>{issue.title}</p>
+                          <div className="mt-1 flex flex-wrap gap-x-3 text-[11px]" style={{ color: "var(--adm-muted)" }}>
+                            <span>{issue.user_name || "Unknown"}</span>
+                            {issue.user_email && <span>{issue.user_email}</span>}
+                            <span>{formatTime(issue.created_at)}</span>
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                        <svg className={`mt-1 h-3.5 w-3.5 shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`} style={{ color: "var(--adm-muted)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                      </button>
+                      {isExpanded && (
+                        <div className="px-4 py-4" style={{ borderTop: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface2)" }}>
+                          <p className="mb-4 whitespace-pre-wrap text-sm leading-relaxed" style={{ color: "var(--adm-text2)" }}>{issue.description}</p>
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-normal uppercase" style={{ color: "var(--adm-muted)" }}>Status:</span>
+                              <AdminSelect value={issue.status} onChange={(e) => handleIssueStatusChange(issue, e.target.value)}>
+                                <option value="open">Open</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="resolved">Resolved</option>
+                              </AdminSelect>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px]" style={{ color: "var(--adm-muted)" }}>{new Date(issue.created_at).toLocaleString()}</span>
+                              <AdminBtn variant="danger" size="sm" onClick={() => handleDeleteIssue(issue.id)}>Delete</AdminBtn>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </AdminCard>
+                  );
+                })}
+              </div>
+            )}
+          </AdminSection>
         </section>
 
-        {/* ══════════════════════════════════════════════════════════════════
-            DEMO VIDEOS SECTION
-        ══════════════════════════════════════════════════════════════════ */}
-        <section id="demo-videos" style={{ scrollMarginTop: "4rem" }}>
-          <SectionHeader title="Demo Videos" badge="Tutorial videos" badgeColor="bg-blue-500/15 text-blue-400">
-            <button
-              onClick={() => window.open("/admin/demo-videos", "_self")}
-              className="flex items-center gap-1.5 rounded-lg bg-blue-500/15 px-3 py-1.5 text-xs font-semibold text-blue-400 transition hover:bg-blue-500/25"
-            >
-              Manage Videos
-            </button>
-          </SectionHeader>
-          <div className="flex items-center justify-between rounded-xl border border-white/6 bg-[#1e2228] px-5 py-4">
-            <div>
-              <p className="text-sm font-semibold">Tutorial video library</p>
-              <p className="mt-0.5 text-xs text-BrandGray2">Manage which how-to videos appear on the Videos page for coaches</p>
-            </div>
-            <button
-              onClick={() => window.open("/admin/demo-videos", "_self")}
-              className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white transition hover:brightness-110 active:scale-[0.98]"
-            >
-              Open Video Manager
-            </button>
-          </div>
-        </section>
+        {/* RECENT ACTIVITY */}
+        <RecentActivitySection session={session} />
 
         <div className="h-6" />
-      </div>
+      </AdminPage>
 
-      {/* ── Create Account Modal ── */}
-      {showCreate && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
-          onClick={() => setShowCreate(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl border border-white/8 bg-[#1a1d23] p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-5 flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-BrandOrange/20">
-                <svg className="h-5 w-5 text-BrandOrange" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                </svg>
-              </div>
-              <div>
-                <h2 className="font-Manrope text-base font-bold">Create Account</h2>
-                <p className="text-xs text-BrandGray">No email verification required</p>
-              </div>
+      {/* Create Account Modal */}
+      <AdminModal open={showCreate} onClose={() => setShowCreate(false)} title="Create Account">
+        <p className="mb-4 text-xs" style={{ color: "var(--adm-muted)" }}>No email verification required</p>
+        <form onSubmit={handleCreateAccount} className="flex flex-col gap-3">
+          <AdminInput type="text" value={createForm.name} onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} placeholder="Full name *" required />
+          <AdminInput type="email" value={createForm.email} onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))} placeholder="Email address *" required />
+          <AdminInput type="text" value={createForm.password} onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))} placeholder="Password * (min 6 chars)" required minLength={6} />
+          <div className="pt-3" style={{ borderTop: "1px solid var(--adm-border)" }}>
+            <p className="mb-2.5 text-xs" style={{ color: "var(--adm-muted)" }}>Optional — create a team (auto-onboards user)</p>
+            <div className="flex gap-2">
+              <AdminInput className="flex-1" type="text" value={createForm.teamName} onChange={(e) => setCreateForm((f) => ({ ...f, teamName: e.target.value }))} placeholder="Team name" />
+              <AdminInput className="w-28" type="text" value={createForm.sport} onChange={(e) => setCreateForm((f) => ({ ...f, sport: e.target.value }))} placeholder="Sport" />
             </div>
-            <form onSubmit={handleCreateAccount} className="flex flex-col gap-3">
-              <input
-                type="text"
-                value={createForm.name}
-                onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="Full name *"
-                required
-                className="w-full rounded-lg border border-white/8 bg-BrandBlack px-3.5 py-2.5 text-sm text-white outline-none placeholder:text-BrandGray2 focus:border-BrandOrange"
-              />
-              <input
-                type="email"
-                value={createForm.email}
-                onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
-                placeholder="Email address *"
-                required
-                className="w-full rounded-lg border border-white/8 bg-BrandBlack px-3.5 py-2.5 text-sm text-white outline-none placeholder:text-BrandGray2 focus:border-BrandOrange"
-              />
-              <input
-                type="text"
-                value={createForm.password}
-                onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}
-                placeholder="Password * (min 6 chars)"
-                required
-                minLength={6}
-                className="w-full rounded-lg border border-white/8 bg-BrandBlack px-3.5 py-2.5 text-sm text-white outline-none placeholder:text-BrandGray2 focus:border-BrandOrange"
-              />
-              <div className="mt-1 border-t border-white/6 pt-3">
-                <p className="mb-2.5 text-xs text-BrandGray2">Optional — create a team (auto-onboards user)</p>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={createForm.teamName}
-                    onChange={(e) => setCreateForm((f) => ({ ...f, teamName: e.target.value }))}
-                    placeholder="Team name"
-                    className="flex-1 rounded-lg border border-white/8 bg-BrandBlack px-3.5 py-2.5 text-sm text-white outline-none placeholder:text-BrandGray2 focus:border-BrandOrange"
-                  />
-                  <input
-                    type="text"
-                    value={createForm.sport}
-                    onChange={(e) => setCreateForm((f) => ({ ...f, sport: e.target.value }))}
-                    placeholder="Sport"
-                    className="w-28 rounded-lg border border-white/8 bg-BrandBlack px-3.5 py-2.5 text-sm text-white outline-none placeholder:text-BrandGray2 focus:border-BrandOrange"
-                  />
-                </div>
-              </div>
-              {usersError && <p className="text-xs text-red-400">{usersError}</p>}
-              <div className="mt-1 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCreate(false)}
-                  className="rounded-lg border border-white/8 px-4 py-2 text-sm text-BrandGray transition hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={creating}
-                  className="rounded-lg bg-BrandOrange px-5 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
-                >
-                  {creating ? "Creating..." : "Create Account"}
-                </button>
-              </div>
-            </form>
           </div>
-        </div>
-      )}
-    </div>
+          {usersError && <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{usersError}</p>}
+          <div className="flex justify-end gap-2 pt-1">
+            <AdminBtn variant="secondary" type="button" onClick={() => setShowCreate(false)}>Cancel</AdminBtn>
+            <AdminBtn variant="primary" type="submit" disabled={creating}>{creating ? "Creating…" : "Create Account"}</AdminBtn>
+          </div>
+        </form>
+      </AdminModal>
+    </AdminShell>
   );
 }
-

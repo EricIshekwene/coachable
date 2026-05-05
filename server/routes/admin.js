@@ -12,11 +12,25 @@ if (!ADMIN_HASH) {
 
 // In-memory session store (resets on server restart — fine for admin)
 const sessions = new Map();
-const SESSION_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours (matches cookie lifetime)
 const ELEVATED_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
+const COOKIE_NAME = "admin_sid";
+const COOKIE_OPTS = {
+  httpOnly: true,
+  sameSite: "strict",
+  maxAge: SESSION_TTL_MS,
+  path: "/",
+  secure: process.env.NODE_ENV === "production",
+};
+
+/** Resolve session ID from header (preferred) or cookie fallback. */
+function resolveSessionId(req) {
+  return req.headers["x-admin-session"] || req.cookies?.[COOKIE_NAME];
+}
+
 export function requireAdmin(req, res, next) {
-  const sid = req.headers["x-admin-session"];
+  const sid = resolveSessionId(req);
   if (!sid || !sessions.has(sid)) {
     return res.status(401).json({ error: "Unauthorized" });
   }
@@ -33,7 +47,7 @@ export function requireAdmin(req, res, next) {
  * Elevation is granted via POST /admin/elevate and expires after ELEVATED_TTL_MS.
  */
 export function requireElevated(req, res, next) {
-  const sid = req.headers["x-admin-session"];
+  const sid = resolveSessionId(req);
   if (!sid || !sessions.has(sid)) {
     return res.status(401).json({ error: "Unauthorized" });
   }
@@ -48,6 +62,21 @@ export function requireElevated(req, res, next) {
   next();
 }
 
+// GET /admin/session — verify cookie-based session for auto-login
+router.get("/session", (req, res) => {
+  const sid = req.cookies?.[COOKIE_NAME];
+  if (!sid || !sessions.has(sid)) {
+    return res.status(401).json({ error: "No session" });
+  }
+  const session = sessions.get(sid);
+  if (Date.now() > session.expiresAt) {
+    sessions.delete(sid);
+    res.clearCookie(COOKIE_NAME, { path: "/" });
+    return res.status(401).json({ error: "Session expired" });
+  }
+  res.json({ session: sid });
+});
+
 // POST /admin/login
 router.post("/login", async (req, res) => {
   const { password } = req.body;
@@ -58,6 +87,7 @@ router.post("/login", async (req, res) => {
 
   const sid = crypto.randomBytes(32).toString("hex");
   sessions.set(sid, { expiresAt: Date.now() + SESSION_TTL_MS, elevatedAt: null });
+  res.cookie(COOKIE_NAME, sid, COOKIE_OPTS);
   res.json({ session: sid });
 });
 
@@ -78,8 +108,9 @@ router.post("/elevate", requireAdmin, async (req, res) => {
 
 // POST /admin/logout
 router.post("/logout", (req, res) => {
-  const sid = req.headers["x-admin-session"];
+  const sid = resolveSessionId(req);
   if (sid) sessions.delete(sid);
+  res.clearCookie(COOKIE_NAME, { path: "/" });
   res.json({ ok: true });
 });
 
@@ -1421,6 +1452,158 @@ router.delete("/sport-presets/:sport/:id", requireElevated, async (req, res, nex
     );
     if (!rowCount) return res.status(404).json({ error: "Preset not found" });
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Analytics Dashboard ────────────────────────────────────────────────────────
+
+const PERIOD_MAP = {
+  "7d":  "7 days",
+  "30d": "30 days",
+  "90d": "90 days",
+  "all": null,
+};
+
+/**
+ * GET /admin/analytics?period=30d
+ * Returns all dashboard analytics in one request.
+ * period: "7d" | "30d" | "90d" | "all"
+ */
+router.get("/analytics", requireAdmin, async (req, res, next) => {
+  try {
+    const periodKey = PERIOD_MAP.hasOwnProperty(req.query.period) ? req.query.period : "30d";
+    const interval = PERIOD_MAP[periodKey];
+    const whereClause = interval ? `WHERE created_at >= now() - INTERVAL '${interval}'` : "";
+
+    const [
+      summaryResult,
+      userGrowthResult,
+      playActivityResult,
+      sportMixResult,
+      funnelResult,
+      recentUsersResult,
+      recentErrorsResult,
+      recentIssuesResult,
+    ] = await Promise.all([
+      // ── Summary KPIs ──
+      pool.query(`
+        SELECT
+          (SELECT COUNT(*)::int FROM users) AS total_users,
+          (SELECT COUNT(*)::int FROM users ${whereClause}) AS new_users,
+          (SELECT COUNT(*)::int FROM teams WHERE deleted_at IS NULL) AS total_teams,
+          (SELECT COUNT(*)::int FROM teams WHERE deleted_at IS NULL ${interval ? `AND created_at >= now() - INTERVAL '${interval}'` : ""}) AS new_teams,
+          (SELECT COUNT(*)::int FROM plays) AS total_plays,
+          (SELECT COUNT(*)::int FROM plays ${whereClause}) AS new_plays,
+          (SELECT COUNT(*)::int FROM error_reports ${whereClause}) AS open_errors,
+          (SELECT COUNT(*)::int FROM user_issues WHERE status = 'open') AS open_issues
+      `),
+      // ── New users per day ──
+      pool.query(`
+        SELECT DATE(created_at)::text AS date, COUNT(*)::int AS count
+        FROM users
+        ${whereClause}
+        GROUP BY 1 ORDER BY 1
+      `),
+      // ── Play activity per day ──
+      pool.query(`
+        WITH created_by_day AS (
+          SELECT DATE(created_at) AS day, COUNT(*)::int AS created
+          FROM plays
+          ${whereClause}
+          GROUP BY 1
+        ),
+        updated_by_day AS (
+          SELECT DATE(updated_at) AS day, COUNT(*)::int AS updated
+          FROM plays
+          WHERE updated_at - created_at >= INTERVAL '1 minute'
+            ${interval ? `AND updated_at >= now() - INTERVAL '${interval}'` : ""}
+          GROUP BY 1
+        )
+        SELECT
+          COALESCE(c.day, u.day)::text AS date,
+          COALESCE(c.created, 0) AS created,
+          COALESCE(u.updated, 0) AS updated
+        FROM created_by_day c
+        FULL OUTER JOIN updated_by_day u ON c.day = u.day
+        ORDER BY 1
+      `),
+      // ── Sport distribution ──
+      pool.query(`
+        SELECT COALESCE(sport, 'unknown') AS sport, COUNT(*)::int AS teams
+        FROM teams WHERE deleted_at IS NULL
+        GROUP BY 1 ORDER BY 2 DESC
+        LIMIT 8
+      `),
+      // ── Onboarding funnel ──
+      pool.query(`
+        SELECT
+          COUNT(*)::int                                              AS registered,
+          COUNT(*) FILTER (WHERE email_verified_at IS NOT NULL)::int AS email_verified,
+          COUNT(*) FILTER (WHERE onboarded_at IS NOT NULL)::int      AS onboarded,
+          (SELECT COUNT(DISTINCT user_id)::int FROM team_memberships WHERE role = 'owner') AS has_team,
+          (SELECT COUNT(DISTINCT created_by_user_id)::int FROM plays)                     AS has_plays
+        FROM users
+      `),
+      // ── Recent users ──
+      pool.query(`
+        SELECT u.id, u.name, u.email, u.created_at,
+               (SELECT t.sport FROM teams t JOIN team_memberships tm ON tm.team_id = t.id
+                WHERE tm.user_id = u.id ORDER BY tm.joined_at LIMIT 1) AS sport
+        FROM users u ORDER BY u.created_at DESC LIMIT 8
+      `),
+      // ── Recent errors (grouped by message) ──
+      pool.query(`
+        SELECT (array_agg(id ORDER BY created_at DESC))[1]::text AS id,
+               error_message, component, action,
+               COUNT(*)::int AS count, MAX(created_at) AS last_seen,
+               (SELECT extra FROM error_reports e2 WHERE e2.error_message = e.error_message LIMIT 1) AS extra
+        FROM error_reports e
+        ${whereClause}
+        GROUP BY error_message, component, action
+        ORDER BY last_seen DESC LIMIT 6
+      `),
+      // ── Recent open issues ──
+      pool.query(`
+        SELECT id, title, status, created_at, user_name
+        FROM user_issues
+        ORDER BY created_at DESC LIMIT 6
+      `),
+    ]);
+
+    const s = summaryResult.rows[0];
+
+    // Derive active-teams % from teams that have at least one play
+    const activeTeamsResult = await pool.query(`
+      SELECT COUNT(DISTINCT team_id)::int AS active FROM plays
+    `);
+    const activeTeams = activeTeamsResult.rows[0].active;
+    const activeTeamsPct = s.total_teams > 0
+      ? Math.round((activeTeams / s.total_teams) * 100)
+      : 0;
+
+    res.json({
+      period: periodKey,
+      summary: {
+        totalUsers:     s.total_users,
+        newUsers:       s.new_users,
+        totalTeams:     s.total_teams,
+        newTeams:       s.new_teams,
+        totalPlays:     s.total_plays,
+        newPlays:       s.new_plays,
+        activeTeamsPct,
+        openErrors:     s.open_errors,
+        openIssues:     s.open_issues,
+      },
+      userGrowth:       userGrowthResult.rows,
+      playActivity:     playActivityResult.rows,
+      sportMix:         sportMixResult.rows,
+      onboardingFunnel: funnelResult.rows[0],
+      recentUsers:      recentUsersResult.rows,
+      recentErrors:     recentErrorsResult.rows,
+      recentIssues:     recentIssuesResult.rows,
+    });
   } catch (err) {
     next(err);
   }
