@@ -932,7 +932,7 @@ export default function Admin() {
       <AdminPage className="space-y-10">
         {/* Analytics dashboard */}
         <section>
-          <AdminSection title="Analytics" />
+          <AdminSection title="Analytics" className="mb-4" />
           <AnalyticsDashboard session={session} />
         </section>
 
@@ -1082,7 +1082,7 @@ export default function Admin() {
                             <button
                               type="button"
                               onClick={() => handleOpenUserActivity(u.id)}
-                              className="block truncate text-sm font-semibold transition-colors w-full"
+                              className="block truncate text-sm font-semibold transition-colors w-full p-0 text-left"
                               style={{ color: "var(--adm-text)" }}
                               onMouseEnter={(e) => { e.currentTarget.style.color = "var(--adm-accent)"; }}
                               onMouseLeave={(e) => { e.currentTarget.style.color = "var(--adm-text)"; }}
@@ -1092,10 +1092,11 @@ export default function Admin() {
                             <p className="mt-1 text-xs truncate" style={{ color: "var(--adm-muted)" }}>
                               {memberships.length > 0 ? `${memberships.length} ${memberships.length === 1 ? "team role" : "team roles"}` : "No team memberships"}
                             </p>
-                            <div className="mt-2 flex gap-1 overflow-hidden">
-                              {!u.onboarded_at && <AdminBadge status="warning">Needs onboarding</AdminBadge>}
-                              {hasCoachingRole && <AdminBadge status="info">Activity access</AdminBadge>}
-                            </div>
+                            {!u.onboarded_at && (
+                              <div className="mt-2 flex gap-1 overflow-hidden">
+                                <AdminBadge status="warning">Needs onboarding</AdminBadge>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -1119,8 +1120,8 @@ export default function Admin() {
                           {u.plays_created ?? 0}
                         </span>
                       </td>
-                      <td className="px-4 py-4 align-top overflow-hidden" style={rowBaseStyle}>
-                        <div className="flex gap-1 overflow-hidden">
+                      <td className="px-3 py-3 align-top overflow-hidden" style={rowBaseStyle}>
+                        <div className="flex flex-col gap-1">
                           <AdminBadge status={u.email_verified_at ? "resolved" : undefined}>{u.email_verified_at ? "Verified" : "Unverified"}</AdminBadge>
                           <button
                             onClick={(e) => { e.stopPropagation(); handleToggleBetaTester(u); }}
@@ -1128,7 +1129,7 @@ export default function Admin() {
                             className="inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold transition-opacity hover:opacity-80"
                             style={u.is_beta_tester ? { backgroundColor: "var(--adm-badge-purple-bg)", borderColor: "transparent", color: "var(--adm-badge-purple-text)" } : { backgroundColor: "var(--adm-surface3)", borderColor: "var(--adm-border)", color: "var(--adm-muted)" }}
                           >
-                            {u.is_beta_tester ? "Beta tester" : "Standard"}
+                            {u.is_beta_tester ? "Beta" : "Standard"}
                           </button>
                         </div>
                       </td>
