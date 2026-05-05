@@ -110,6 +110,23 @@ async function duplicatePlay(session, id) {
 }
 
 /**
+ * Rename a platform play by updating its title via the admin API.
+ * @param {string} session - Admin session token
+ * @param {string} id - Platform play ID
+ * @param {string} title - New title for the play
+ * @returns {Promise<Object>} Updated play object
+ */
+async function renamePlay(session, id, title) {
+  const res = await fetch(`${API_URL}/admin/plays/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-admin-session": session },
+    body: JSON.stringify({ title }),
+  });
+  if (!res.ok) throw new Error("Failed to rename play");
+  return (await res.json()).play;
+}
+
+/**
  * Delete a platform play via the admin API.
  * @param {string} session - Admin session token
  * @param {string} id - Platform play ID
@@ -569,12 +586,14 @@ function DuplicateButton({ play, onDuplicate, onClose }) {
  * @param {Function} props.onAddToSection - Called with (play, sectionId) to add play to a section
  * @param {Function} props.onTagsUpdate - Called with (play, newTags[]) to update play tags
  */
-function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, onDuplicate, onAddToSection, onTagsUpdate, allTags }) {
-  // null → closed  |  "main" → first popup  |  "sections" / "folders" / "tags" → sub-pickers
+function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, onDuplicate, onAddToSection, onTagsUpdate, onRename, allTags }) {
+  // null → closed  |  "main" → first popup  |  "sections" / "folders" / "tags" / "rename" → sub-pickers
   const [menuStep, setMenuStep] = useState(null);
   const [tagInput, setTagInput] = useState("");
+  const [renameValue, setRenameValue] = useState("");
   const menuRef = useRef(null);
   const tagInputRef = useRef(null);
+  const renameInputRef = useRef(null);
 
   useEffect(() => {
     if (!menuStep) return;
@@ -590,7 +609,7 @@ function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, o
   return (
     <div
       className="group relative flex cursor-grab flex-col rounded-xl border p-5 transition active:cursor-grabbing hover:opacity-95"
-      style={PANEL_STYLE}
+      style={{ ...PANEL_STYLE, zIndex: menuStep ? 50 : "auto" }}
     >
       {/* Preview */}
       <div className="relative mb-4 aspect-[16/10] w-full overflow-hidden rounded-xl" style={{ border: "1px solid var(--adm-border)" }}>
@@ -626,6 +645,16 @@ function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, o
 
               {/* Duplicate */}
               <DuplicateButton play={play} onDuplicate={onDuplicate} onClose={close} />
+
+              {/* Rename */}
+              <button
+                onClick={() => { setRenameValue(play.title || ""); setMenuStep("rename"); setTimeout(() => renameInputRef.current?.focus(), 50); }}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition hover:opacity-80"
+                style={{ color: "var(--adm-text2)" }}
+              >
+                <FiEdit2 className="shrink-0 text-[10px]" />
+                Rename
+              </button>
 
               <div className="my-1 border-t" style={MENU_DIVIDER_STYLE} />
 
@@ -850,6 +879,60 @@ function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, o
               </div>
             );
           })()}
+
+          {/* ── Step 2d: rename ── */}
+          {menuStep === "rename" && (
+            <div className="absolute right-0 top-full z-30 mt-1 w-64 rounded-xl" style={MENU_STYLE}>
+              <div className="flex items-center gap-2 border-b px-3 py-2.5" style={MENU_DIVIDER_STYLE}>
+                <button
+                  onClick={() => setMenuStep("main")}
+                  className="flex items-center gap-1 text-[11px] transition hover:opacity-80"
+                  style={{ color: "var(--adm-text2)" }}
+                >
+                  <FiChevronRight className="rotate-180 text-[10px]" /> Back
+                </button>
+                <span className="flex-1 text-center text-[11px] font-semibold" style={{ color: "var(--adm-text)" }}>Rename Play</span>
+              </div>
+              <form
+                className="p-3"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const trimmed = renameValue.trim();
+                  if (trimmed && trimmed !== play.title) onRename(play, trimmed);
+                  close();
+                }}
+              >
+                <input
+                  ref={renameInputRef}
+                  type="text"
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Escape") { setMenuStep("main"); } }}
+                  className="w-full rounded-md px-2.5 py-1.5 text-xs outline-none"
+                  style={{ border: "1px solid var(--adm-border2)", backgroundColor: "var(--adm-surface)", color: "var(--adm-text)" }}
+                  placeholder="Play name…"
+                />
+                <div className="mt-2.5 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMenuStep("main")}
+                    className="flex-1 rounded-md py-1 text-[11px] transition hover:opacity-80"
+                    style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-text2)" }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!renameValue.trim() || renameValue.trim() === play.title}
+                    className="flex-1 rounded-md py-1 text-[11px] font-semibold transition hover:opacity-85 disabled:opacity-40"
+                    style={{ backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }}
+                  >
+                    Rename
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1962,6 +2045,14 @@ export default function AdminPlaysPage() {
     } catch (err) { setError(err.message); }
   };
 
+  /** Rename a play to a new title. */
+  const handleRenamePlay = async (play, title) => {
+    try {
+      const updated = await renamePlay(session, play.id, title);
+      setPlays((prev) => prev.map((p) => (p.id === play.id ? updated : p)));
+    } catch (err) { setError(err.message); }
+  };
+
   /** Create a new folder at root level. */
   const handleCreateFolder = async () => {
     const name = newFolderName.trim();
@@ -2386,7 +2477,7 @@ export default function AdminPlaysPage() {
                     onDragEnd={() => { setDragSrcId(null); setDragOverId(null); }}
                     className={`rounded-[var(--adm-radius)] transition ${dragOverId === play.id && dragSrcId !== play.id ? "opacity-60 ring-2 ring-[var(--adm-accent)]" : ""}`}
                   >
-                    <PlayCard play={play} folders={folders} playbookSections={playbookSections} onEdit={handleEdit} onDelete={handleDelete} onMove={handleMove} onDuplicate={handleDuplicate} onAddToSection={handleAddToSection} onTagsUpdate={handleUpdateTags} allTags={allTags} />
+                    <PlayCard play={play} folders={folders} playbookSections={playbookSections} onEdit={handleEdit} onDelete={handleDelete} onMove={handleMove} onDuplicate={handleDuplicate} onAddToSection={handleAddToSection} onTagsUpdate={handleUpdateTags} onRename={handleRenamePlay} allTags={allTags} />
                   </div>
                 ))}
               </div>

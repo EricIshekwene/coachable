@@ -18,6 +18,23 @@ function mockFetch(responseData, ok = true) {
 
 // ── Inline copies of the admin helper functions (mirrors AdminPlayEditPage) ──
 
+/**
+ * Rename a platform play by updating its title via the admin API.
+ * @param {string} session - Admin session token
+ * @param {string} id - Platform play ID
+ * @param {string} title - New title for the play
+ * @returns {Promise<Object>} Updated play object
+ */
+async function renamePlay(session, id, title) {
+  const res = await fetch(`${API_URL}/admin/plays/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-admin-session": session },
+    body: JSON.stringify({ title }),
+  });
+  if (!res.ok) throw new Error("Failed to rename play");
+  return (await res.json()).play;
+}
+
 async function adminFetchPlay(session, id) {
   const res = await fetch(`${API_URL}/admin/plays/${id}`, {
     headers: { "x-admin-session": session },
@@ -123,6 +140,41 @@ describe("adminCreatePlay", () => {
   it("throws when creation fails", async () => {
     fetchSpy = mockFetch({ error: "title is required" }, false);
     await expect(adminCreatePlay(SESSION, { title: "" })).rejects.toThrow("Failed to create play");
+  });
+});
+
+describe("renamePlay", () => {
+  let fetchSpy;
+  afterEach(() => fetchSpy.mockRestore());
+
+  it("sends PATCH with only title in body", async () => {
+    const play = { id: "play-1", title: "New Name" };
+    fetchSpy = mockFetch({ play });
+
+    const result = await renamePlay(SESSION, "play-1", "New Name");
+
+    expect(fetchSpy).toHaveBeenCalledOnce();
+    const [url, opts] = fetchSpy.mock.calls[0];
+    expect(url).toBe(`${API_URL}/admin/plays/play-1`);
+    expect(opts.method).toBe("PATCH");
+    expect(JSON.parse(opts.body)).toEqual({ title: "New Name" });
+    expect(opts.headers["x-admin-session"]).toBe(SESSION);
+    expect(result).toEqual(play);
+  });
+
+  it("throws when rename fails", async () => {
+    fetchSpy = mockFetch({ error: "title is required" }, false);
+    await expect(renamePlay(SESSION, "play-1", "")).rejects.toThrow("Failed to rename play");
+  });
+
+  it("returns the updated play with the new title", async () => {
+    const play = { id: "play-42", title: "Renamed Play", sport: "rugby" };
+    fetchSpy = mockFetch({ play });
+
+    const result = await renamePlay(SESSION, "play-42", "Renamed Play");
+
+    expect(result.title).toBe("Renamed Play");
+    expect(result.id).toBe("play-42");
   });
 });
 
