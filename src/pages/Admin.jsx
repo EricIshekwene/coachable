@@ -289,10 +289,22 @@ export default function Admin() {
   // ── Danger Mode (elevated permissions) ──
   const [elevatedUntil, setElevatedUntil] = useState(() => getAdminElevatedUntil());
   const [elevateModal, setElevateModal] = useState(false);
+  const [elevateStep, setElevateStep] = useState("password"); // "password" | "code"
   const [elevatePassword, setElevatePassword] = useState("");
+  const [elevateCode, setElevateCode] = useState("");
+  const [elevateMaskedEmail, setElevateMaskedEmail] = useState("");
   const [elevateError, setElevateError] = useState("");
   const [elevating, setElevating] = useState(false);
   const elevateResolveRef = useRef(null);
+
+  // ── Admin Settings ──
+  const [securityEmail, setSecurityEmail] = useState(""); // masked display value
+  const [securityEmailInput, setSecurityEmailInput] = useState(""); // raw input for editing
+  const [securityEmailConfigured, setSecurityEmailConfigured] = useState(false);
+  const [securityEmailEditing, setSecurityEmailEditing] = useState(false);
+  const [securityEmailSaving, setSecurityEmailSaving] = useState(false);
+  const [securityEmailError, setSecurityEmailError] = useState("");
+  const [securityEmailSuccess, setSecurityEmailSuccess] = useState("");
   // Tick every second so the countdown display stays live
   useEffect(() => {
     const id = setInterval(() => {
@@ -330,7 +342,10 @@ export default function Admin() {
 
   const handleElevateCancel = () => {
     setElevateModal(false);
+    setElevateStep("password");
     setElevatePassword("");
+    setElevateCode("");
+    setElevateMaskedEmail("");
     setElevateError("");
     elevateResolveRef.current?.(false);
   };
@@ -393,29 +408,68 @@ export default function Admin() {
   };
 
   /**
-   * Submit the elevation password to enter Danger Mode.
-   * Resolves the pending ensureElevated promise on success.
+   * Step 1: Validate admin password. If a security email is configured the
+   * server sends an OTP and we advance to the code entry step. If no email is
+   * configured the server elevates immediately.
    * @param {React.FormEvent} e
    */
-  const handleElevate = async (e) => {
+  const handleElevateRequestCode = async (e) => {
     e.preventDefault();
     setElevateError("");
     setElevating(true);
     try {
-      const res = await fetch(`${API_URL}/admin/elevate`, {
+      const res = await fetch(`${API_URL}/admin/elevate/request`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-session": session },
         body: JSON.stringify({ password: elevatePassword }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Elevation failed");
+
+      if (data.elevated) {
+        // No security email configured — elevated immediately
+        setAdminElevated(data.elevatedUntil);
+        setElevatedUntil(data.elevatedUntil);
+        setElevatePassword("");
+        setElevateModal(false);
+        elevateResolveRef.current?.(true);
+      } else {
+        // OTP sent — advance to code step
+        setElevateMaskedEmail(data.maskedEmail || "");
+        setElevateStep("code");
+        setElevatePassword("");
+      }
+    } catch (err) {
+      setElevateError(err.message || "Invalid password");
+    } finally {
+      setElevating(false);
+    }
+  };
+
+  /**
+   * Step 2: Submit the OTP received by email to complete Danger Mode elevation.
+   * @param {React.FormEvent} e
+   */
+  const handleElevateConfirmCode = async (e) => {
+    e.preventDefault();
+    setElevateError("");
+    setElevating(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/elevate/confirm`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-session": session },
+        body: JSON.stringify({ code: elevateCode }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Verification failed");
       setAdminElevated(data.elevatedUntil);
       setElevatedUntil(data.elevatedUntil);
-      setElevatePassword("");
+      setElevateCode("");
+      setElevateStep("password");
       setElevateModal(false);
       elevateResolveRef.current?.(true);
     } catch (err) {
-      setElevateError(err.message || "Invalid password");
+      setElevateError(err.message || "Invalid code");
     } finally {
       setElevating(false);
     }
@@ -430,7 +484,10 @@ export default function Admin() {
     if (isAdminElevated()) return Promise.resolve(true);
     return new Promise((resolve) => {
       elevateResolveRef.current = resolve;
+      setElevateStep("password");
       setElevatePassword("");
+      setElevateCode("");
+      setElevateMaskedEmail("");
       setElevateError("");
       setElevateModal(true);
     });
@@ -479,20 +536,6 @@ export default function Admin() {
     }
   };
 
-  const handleDeleteAll = async () => {
-    const elevated = await ensureElevated();
-    if (!elevated) return;
-    const ok1 = await openConfirm({ message: "Delete ALL users?", subtitle: "This cannot be undone!", confirmLabel: "Delete All", danger: true });
-    if (!ok1) return;
-    const ok2 = await openConfirm({ message: "Are you absolutely sure?", subtitle: "ALL accounts will be permanently deleted.", confirmLabel: "Yes, Delete All", danger: true });
-    if (!ok2) return;
-    try {
-      await adminFetch("/admin/users", { method: "DELETE" });
-      setUsers([]);
-    } catch (err) {
-      setUsersError(err.message);
-    }
-  };
 
   const handleToggleBetaTester = async (u) => {
     try {
@@ -727,6 +770,33 @@ export default function Admin() {
     fetchUserIssues();
   }, [fetchUsers, fetchErrors, fetchPlatformPlays, fetchUserIssues]);
 
+  /**
+   * Save the admin security email for Danger Mode verification.
+   * @param {React.FormEvent} e
+   */
+  const handleSaveSecurityEmail = async (e) => {
+    e.preventDefault();
+    setSecurityEmailError("");
+    setSecurityEmailSuccess("");
+    setSecurityEmailSaving(true);
+    try {
+      const data = await adminFetch("/admin/settings/security-email", {
+        method: "PUT",
+        body: { email: securityEmailInput },
+      });
+      setSecurityEmail(data.maskedEmail || "");
+      setSecurityEmailConfigured(!!data.configured);
+      setSecurityEmailInput("");
+      setSecurityEmailEditing(false);
+      setSecurityEmailSuccess(data.configured ? "Security email saved." : "Security email cleared.");
+      setTimeout(() => setSecurityEmailSuccess(""), 3000);
+    } catch (err) {
+      setSecurityEmailError(err.message || "Failed to save");
+    } finally {
+      setSecurityEmailSaving(false);
+    }
+  };
+
   // ── Initial load ──
   useEffect(() => {
     if (authed) {
@@ -734,8 +804,15 @@ export default function Admin() {
       fetchErrors();
       fetchPlatformPlays();
       fetchUserIssues();
+      // Load configured security email (server returns masked value)
+      adminFetch("/admin/settings/security-email")
+        .then((data) => {
+          setSecurityEmail(data.email || "");
+          setSecurityEmailConfigured(!!data.configured);
+        })
+        .catch(() => {});
     }
-  }, [authed, fetchUsers, fetchErrors, fetchPlatformPlays, fetchUserIssues]);
+  }, [authed, fetchUsers, fetchErrors, fetchPlatformPlays, fetchUserIssues, adminFetch]);
 
   // ── Hide dropdown outside-click ──
   useEffect(() => {
@@ -885,12 +962,12 @@ export default function Admin() {
         onCancel={handleConfirmCancel}
       />
 
-      {/* Danger Mode elevation modal */}
-      <AdminModal open={elevateModal} onClose={handleElevateCancel} title="Danger Mode Required" width="max-w-sm" hideClose>
+      {/* Danger Mode elevation modal — Step 1: password */}
+      <AdminModal open={elevateModal && elevateStep === "password"} onClose={handleElevateCancel} title="Danger Mode Required" width="max-w-sm" hideClose>
         <p className="mb-4 text-xs" style={{ color: "var(--adm-danger)" }}>
-          Re-enter your admin password to unlock destructive operations for 10 minutes.
+          Re-enter your admin password. A verification code will be sent to your security email.
         </p>
-        <form onSubmit={handleElevate} className="flex flex-col gap-3">
+        <form onSubmit={handleElevateRequestCode} className="flex flex-col gap-3">
           <AdminInput
             type="password"
             value={elevatePassword}
@@ -902,6 +979,32 @@ export default function Admin() {
           <div className="flex gap-2">
             <AdminBtn variant="secondary" type="button" onClick={handleElevateCancel} className="flex-1 justify-center">Cancel</AdminBtn>
             <AdminBtn variant="danger" type="submit" disabled={elevating || !elevatePassword} className="flex-1 justify-center">
+              {elevating ? "Sending…" : "Send Code"}
+            </AdminBtn>
+          </div>
+        </form>
+      </AdminModal>
+
+      {/* Danger Mode elevation modal — Step 2: OTP code */}
+      <AdminModal open={elevateModal && elevateStep === "code"} onClose={handleElevateCancel} title="Check Your Email" width="max-w-sm" hideClose>
+        <p className="mb-1 text-xs" style={{ color: "var(--adm-text2)" }}>
+          A 6-digit verification code was sent to:
+        </p>
+        <p className="mb-4 text-sm font-semibold" style={{ color: "var(--adm-text)" }}>{elevateMaskedEmail}</p>
+        <form onSubmit={handleElevateConfirmCode} className="flex flex-col gap-3">
+          <AdminInput
+            type="text"
+            inputMode="numeric"
+            maxLength={6}
+            value={elevateCode}
+            onChange={(e) => setElevateCode(e.target.value.replace(/\D/g, ""))}
+            placeholder="6-digit code"
+            autoFocus
+          />
+          {elevateError && <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{elevateError}</p>}
+          <div className="flex gap-2">
+            <AdminBtn variant="secondary" type="button" onClick={() => { setElevateStep("password"); setElevateCode(""); setElevateError(""); }} className="flex-1 justify-center">Back</AdminBtn>
+            <AdminBtn variant="danger" type="submit" disabled={elevating || elevateCode.length !== 6} className="flex-1 justify-center">
               {elevating ? "Verifying…" : "Unlock"}
             </AdminBtn>
           </div>
@@ -941,10 +1044,7 @@ export default function Admin() {
           <AdminSection
             title="Users Table"
             actions={
-              <div className="flex gap-2">
-                <AdminBtn variant="primary" size="sm" onClick={() => setShowCreate(true)}>Create Account</AdminBtn>
-                <AdminBtn variant="danger" size="sm" onClick={handleDeleteAll}>Delete All</AdminBtn>
-              </div>
+              <AdminBtn variant="primary" size="sm" onClick={() => setShowCreate(true)}>Create Account</AdminBtn>
             }
           >
           {usersError && (
@@ -1418,6 +1518,76 @@ export default function Admin() {
                 })}
               </div>
             )}
+          </AdminSection>
+        </section>
+
+        {/* ADMIN SETTINGS */}
+        <section id="admin-settings" style={{ scrollMarginTop: "4rem" }}>
+          <AdminSection title="Admin Settings" subtitle="Security configuration">
+            <AdminCard>
+              <div className="flex flex-col gap-1">
+                <p className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>Danger Mode security email</p>
+                <p className="text-xs" style={{ color: "var(--adm-muted)" }}>
+                  When set, activating Danger Mode requires a verification code sent to this email in addition to the admin password.
+                </p>
+              </div>
+              <div className="mt-4">
+                {!securityEmailEditing ? (
+                  <div className="flex items-center gap-3">
+                    {securityEmailConfigured ? (
+                      <>
+                        <AdminBadge status="resolved">Configured</AdminBadge>
+                        <span className="text-sm font-mono" style={{ color: "var(--adm-text2)" }}>{securityEmail}</span>
+                      </>
+                    ) : (
+                      <AdminBadge status={undefined}>Not set</AdminBadge>
+                    )}
+                    <AdminBtn variant="secondary" size="sm" onClick={() => { setSecurityEmailEditing(true); setSecurityEmailInput(""); setSecurityEmailError(""); setSecurityEmailSuccess(""); }}>
+                      {securityEmailConfigured ? "Change" : "Set Email"}
+                    </AdminBtn>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSaveSecurityEmail} className="flex flex-col gap-3 max-w-sm">
+                    <AdminInput
+                      type="email"
+                      value={securityEmailInput}
+                      onChange={(e) => setSecurityEmailInput(e.target.value)}
+                      placeholder="security@example.com"
+                      autoFocus
+                    />
+                    {securityEmailError && <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{securityEmailError}</p>}
+                    <div className="flex gap-2">
+                      <AdminBtn variant="secondary" type="button" size="sm" onClick={() => { setSecurityEmailEditing(false); setSecurityEmailError(""); }}>Cancel</AdminBtn>
+                      <AdminBtn variant="primary" type="submit" size="sm" disabled={securityEmailSaving || !securityEmailInput}>
+                        {securityEmailSaving ? "Saving…" : "Save"}
+                      </AdminBtn>
+                      {securityEmailConfigured && (
+                        <AdminBtn variant="danger" type="button" size="sm" disabled={securityEmailSaving} onClick={async () => {
+                          setSecurityEmailError("");
+                          setSecurityEmailSuccess("");
+                          setSecurityEmailSaving(true);
+                          try {
+                            await adminFetch("/admin/settings/security-email", { method: "PUT", body: { email: "" } });
+                            setSecurityEmail("");
+                            setSecurityEmailConfigured(false);
+                            setSecurityEmailEditing(false);
+                            setSecurityEmailSuccess("Security email cleared.");
+                            setTimeout(() => setSecurityEmailSuccess(""), 3000);
+                          } catch (err) {
+                            setSecurityEmailError(err.message || "Failed to clear");
+                          } finally {
+                            setSecurityEmailSaving(false);
+                          }
+                        }}>
+                          Clear
+                        </AdminBtn>
+                      )}
+                    </div>
+                  </form>
+                )}
+                {securityEmailSuccess && <p className="mt-2 text-xs" style={{ color: "var(--adm-success, #22c55e)" }}>{securityEmailSuccess}</p>}
+              </div>
+            </AdminCard>
           </AdminSection>
         </section>
 

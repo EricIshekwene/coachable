@@ -22,8 +22,8 @@ export async function seedDemoPlay(client, teamId, sport, userId) {
   if (!rows.length) return;
   for (const seed of rows) {
     await client.query(
-      `INSERT INTO plays (team_id, title, play_data, thumbnail_url, created_by_user_id, updated_by_user_id)
-       VALUES ($1, $2, $3, $4, $5, $5)`,
+      `INSERT INTO plays (team_id, title, play_data, thumbnail_url, created_by_user_id, updated_by_user_id, is_seeded)
+       VALUES ($1, $2, $3, $4, $5, $5, true)`,
       [teamId, seed.title, seed.play_data, seed.thumbnail_url || null, userId]
     );
   }

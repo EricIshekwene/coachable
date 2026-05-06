@@ -243,6 +243,12 @@ CREATE INDEX IF NOT EXISTS plays_team_idx ON plays(team_id);
 CREATE INDEX IF NOT EXISTS plays_folder_idx ON plays(folder_id);
 CREATE INDEX IF NOT EXISTS plays_updated_at_idx ON plays(updated_at DESC);
 
+-- Safe migration: mark plays seeded during onboarding so analytics can exclude them
+DO $$ BEGIN
+  ALTER TABLE plays ADD COLUMN is_seeded BOOLEAN NOT NULL DEFAULT false;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS play_tags (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,

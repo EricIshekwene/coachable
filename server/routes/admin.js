@@ -2,6 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import pool from "../db/pool.js";
+import { generateCode, sendDangerModeEmail } from "../lib/email.js";
 
 const router = Router();
 const COACHING_ROLES = ["owner", "coach", "assistant_coach"];
@@ -14,6 +15,13 @@ if (!ADMIN_HASH) {
 const sessions = new Map();
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours (matches cookie lifetime)
 const ELEVATED_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+// Danger Mode OTP store: sessionId -> { code, expiresAt }
+const dangerModeCodes = new Map();
+const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+// Admin security email for Danger Mode verification (persists in memory; set via admin UI)
+let adminSecurityEmail = process.env.ADMIN_SECURITY_EMAIL || "";
 
 const COOKIE_NAME = "admin_sid";
 const COOKIE_OPTS = {
@@ -91,19 +99,119 @@ router.post("/login", async (req, res) => {
   res.json({ session: sid });
 });
 
-// POST /admin/elevate — re-authenticate to enter Danger Mode (elevated permissions)
-router.post("/elevate", requireAdmin, async (req, res) => {
+/**
+ * Step 1: Validate admin password and send a 6-digit OTP to the configured
+ * security email. If no security email is configured, elevates immediately
+ * (backwards-compatible fallback).
+ * @route POST /admin/elevate/request
+ */
+router.post("/elevate/request", requireAdmin, async (req, res) => {
   const { password } = req.body;
   if (!password) return res.status(400).json({ error: "Password required" });
 
   const valid = await bcrypt.compare(password, ADMIN_HASH);
   if (!valid) return res.status(401).json({ error: "Invalid password" });
 
-  const sid = req.headers["x-admin-session"];
+  const sid = resolveSessionId(req);
+
+  // No security email configured — elevate immediately (legacy fallback)
+  if (!adminSecurityEmail) {
+    const session = sessions.get(sid);
+    session.elevatedAt = Date.now();
+    const elevatedUntil = session.elevatedAt + ELEVATED_TTL_MS;
+    return res.json({ ok: true, elevated: true, elevatedUntil });
+  }
+
+  // Generate and store OTP
+  const code = generateCode();
+  dangerModeCodes.set(sid, { code, expiresAt: Date.now() + OTP_TTL_MS });
+
+  try {
+    await sendDangerModeEmail(adminSecurityEmail, code);
+  } catch (err) {
+    dangerModeCodes.delete(sid);
+    return res.status(500).json({ error: "Failed to send verification email. Check server email config." });
+  }
+
+  // Mask email for display: a*****@example.com
+  const [localPart, domain] = adminSecurityEmail.split("@");
+  const maskedEmail = `${localPart[0]}*****@${domain}`;
+
+  res.json({ ok: true, codeSent: true, maskedEmail });
+});
+
+/**
+ * Step 2: Verify the OTP sent to the security email and elevate the session.
+ * @route POST /admin/elevate/confirm
+ */
+router.post("/elevate/confirm", requireAdmin, async (req, res) => {
+  const { code } = req.body;
+  if (!code) return res.status(400).json({ error: "Verification code required" });
+
+  const sid = resolveSessionId(req);
+  const pending = dangerModeCodes.get(sid);
+
+  if (!pending) return res.status(400).json({ error: "No pending verification. Request a new code." });
+  if (Date.now() > pending.expiresAt) {
+    dangerModeCodes.delete(sid);
+    return res.status(400).json({ error: "Code expired. Request a new one." });
+  }
+  if (pending.code !== String(code).trim()) {
+    return res.status(401).json({ error: "Invalid code" });
+  }
+
+  dangerModeCodes.delete(sid);
   const session = sessions.get(sid);
   session.elevatedAt = Date.now();
   const elevatedUntil = session.elevatedAt + ELEVATED_TTL_MS;
   res.json({ ok: true, elevatedUntil });
+});
+
+/**
+ * Get the currently configured admin security email (masked).
+ * @route GET /admin/settings/security-email
+ */
+router.get("/settings/security-email", requireAdmin, (req, res) => {
+  if (!adminSecurityEmail) return res.json({ email: "" });
+  const [localPart, domain] = adminSecurityEmail.split("@");
+  const maskedEmail = `${localPart[0]}*****@${domain}`;
+  res.json({ email: maskedEmail, configured: true });
+});
+
+/**
+ * Update the admin security email used for Danger Mode verification.
+ * @route PUT /admin/settings/security-email
+ */
+router.put("/settings/security-email", requireAdmin, (req, res) => {
+  const { email } = req.body;
+  if (email !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: "Invalid email address" });
+  }
+  adminSecurityEmail = email.trim();
+  if (!adminSecurityEmail) return res.json({ ok: true, configured: false });
+  const [localPart, domain] = adminSecurityEmail.split("@");
+  const maskedEmail = `${localPart[0]}*****@${domain}`;
+  res.json({ ok: true, configured: true, maskedEmail });
+});
+
+/**
+ * Backfill is_seeded for plays that were seeded before the column existed.
+ * Matches existing plays whose title exactly matches a platform play title.
+ * Safe to run multiple times.
+ * @route POST /admin/backfill-seeded-plays
+ */
+router.post("/backfill-seeded-plays", requireAdmin, async (_req, res, next) => {
+  try {
+    const { rowCount } = await pool.query(`
+      UPDATE plays
+      SET is_seeded = true
+      WHERE is_seeded = false
+        AND title IN (SELECT title FROM platform_plays)
+    `);
+    res.json({ ok: true, updated: rowCount });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /admin/logout
@@ -120,7 +228,7 @@ router.get("/users", requireAdmin, async (_req, res, next) => {
     const { rows } = await pool.query(
       `SELECT u.id, u.name, u.email, u.email_verified_at, u.onboarded_at, u.created_at,
               u.is_beta_tester,
-              (SELECT COUNT(*)::int FROM plays WHERE created_by_user_id = u.id) AS plays_created,
+              (SELECT COUNT(*)::int FROM plays WHERE created_by_user_id = u.id AND NOT is_seeded) AS plays_created,
               (SELECT COUNT(*)::int FROM play_folders WHERE created_by_user_id = u.id) AS folders_created,
               COALESCE(
                 json_agg(
@@ -184,8 +292,8 @@ router.get("/users/:id/activity", requireAdmin, async (req, res, next) => {
       ),
       pool.query(
         `SELECT
-           (SELECT COUNT(*)::int FROM plays WHERE created_by_user_id = $1) AS plays_created,
-           (SELECT COUNT(*)::int FROM plays WHERE updated_by_user_id = $1 AND created_by_user_id <> $1) AS plays_updated,
+           (SELECT COUNT(*)::int FROM plays WHERE created_by_user_id = $1 AND NOT is_seeded) AS plays_created,
+           (SELECT COUNT(*)::int FROM plays WHERE updated_by_user_id = $1 AND created_by_user_id <> $1 AND NOT is_seeded) AS plays_updated,
            (SELECT COUNT(*)::int FROM play_folders WHERE created_by_user_id = $1) AS folders_created,
            (SELECT COUNT(*)::int FROM play_share_links WHERE created_by_user_id = $1) AS play_shares_created,
            (SELECT COUNT(*)::int FROM folder_share_links WHERE created_by_user_id = $1) AS folder_shares_created,
@@ -1507,8 +1615,8 @@ router.get("/analytics", requireAdmin, async (req, res, next) => {
           (SELECT COUNT(*)::int FROM users ${whereClause}) AS new_users,
           (SELECT COUNT(*)::int FROM teams WHERE deleted_at IS NULL) AS total_teams,
           (SELECT COUNT(*)::int FROM teams WHERE deleted_at IS NULL ${interval ? `AND created_at >= now() - INTERVAL '${interval}'` : ""}) AS new_teams,
-          (SELECT COUNT(*)::int FROM plays) AS total_plays,
-          (SELECT COUNT(*)::int FROM plays ${whereClause}) AS new_plays,
+          (SELECT COUNT(*)::int FROM plays WHERE NOT is_seeded) AS total_plays,
+          (SELECT COUNT(*)::int FROM plays WHERE NOT is_seeded ${whereClause ? `AND created_at >= now() - INTERVAL '${interval}'` : ""}) AS new_plays,
           (SELECT COUNT(*)::int FROM error_reports ${whereClause}) AS open_errors,
           (SELECT COUNT(*)::int FROM user_issues WHERE status = 'open') AS open_issues
       `),
@@ -1524,13 +1632,15 @@ router.get("/analytics", requireAdmin, async (req, res, next) => {
         WITH created_by_day AS (
           SELECT DATE(created_at) AS day, COUNT(*)::int AS created
           FROM plays
-          ${whereClause}
+          WHERE NOT is_seeded
+            ${interval ? `AND created_at >= now() - INTERVAL '${interval}'` : ""}
           GROUP BY 1
         ),
         updated_by_day AS (
           SELECT DATE(updated_at) AS day, COUNT(*)::int AS updated
           FROM plays
-          WHERE updated_at - created_at >= INTERVAL '1 minute'
+          WHERE NOT is_seeded
+            AND updated_at - created_at >= INTERVAL '1 minute'
             ${interval ? `AND updated_at >= now() - INTERVAL '${interval}'` : ""}
           GROUP BY 1
         )
@@ -1556,7 +1666,7 @@ router.get("/analytics", requireAdmin, async (req, res, next) => {
           COUNT(*) FILTER (WHERE email_verified_at IS NOT NULL)::int AS email_verified,
           COUNT(*) FILTER (WHERE onboarded_at IS NOT NULL)::int      AS onboarded,
           (SELECT COUNT(DISTINCT user_id)::int FROM team_memberships WHERE role = 'owner') AS has_team,
-          (SELECT COUNT(DISTINCT created_by_user_id)::int FROM plays)                     AS has_plays
+          (SELECT COUNT(DISTINCT created_by_user_id)::int FROM plays WHERE NOT is_seeded) AS has_plays
         FROM users
       `),
       // ── Recent users ──
