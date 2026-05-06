@@ -108,12 +108,10 @@ function PlayGrid({ plays, isCoach, copiedIds, onCopyPlay, onPreview }) {
       {plays.map((play) => (
         <div
           key={play.id}
-          className="group flex flex-col overflow-hidden rounded-3xl border border-BrandGray2/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0)),rgba(24,26,31,0.96)] transition hover:border-BrandOrange/25 hover:shadow-[0_18px_50px_rgba(0,0,0,0.24)]"
+          onClick={() => onPreview(play)}
+          className="group flex cursor-pointer flex-col overflow-hidden rounded-3xl border border-BrandGray2/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0)),rgba(24,26,31,0.96)] transition hover:border-BrandOrange/25 hover:shadow-[0_18px_50px_rgba(0,0,0,0.24)]"
         >
-          <button
-            onClick={() => onPreview(play)}
-            className="relative block w-full text-left"
-          >
+          <div className="relative block w-full text-left">
             <div className="border-b border-white/6 bg-BrandBlack/40 p-3">
               {play.playData ? (
                 <PlayPreviewCard
@@ -138,7 +136,7 @@ function PlayGrid({ plays, isCoach, copiedIds, onCopyPlay, onPreview }) {
                 </div>
               )}
             </div>
-          </button>
+          </div>
 
           <div className="flex flex-1 flex-col p-4">
             <div className="flex items-start justify-between gap-3">
@@ -173,7 +171,7 @@ function PlayGrid({ plays, isCoach, copiedIds, onCopyPlay, onPreview }) {
 
             {isCoach && (
               <button
-                onClick={() => onCopyPlay(play)}
+                onClick={(e) => { e.stopPropagation(); onCopyPlay(play); }}
                 disabled={copiedIds.has(play.id)}
                 className={`mt-4 flex w-full items-center justify-center gap-1.5 rounded-full py-2.5 text-xs font-semibold transition disabled:opacity-70 ${
                   copiedIds.has(play.id)
@@ -212,7 +210,7 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
   const [copiedIds, setCopiedIds] = useState(new Set());
   const [copyingAll, setCopyingAll] = useState(false);
   const [allCopied, setAllCopied] = useState(false);
-  const [previewPlay, setPreviewPlay] = useState(null);
+
   const [search, setSearch] = useState("");
   const [activeTags, setActiveTags] = useState([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -454,42 +452,20 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
             isCoach={isCoach}
             copiedIds={copiedIds}
             onCopyPlay={handleCopyPlay}
-            onPreview={setPreviewPlay}
+            onPreview={(play) =>
+              navigate(`/app/plays/${play.id}`, {
+                state: {
+                  play,
+                  backTo: `/app/playbooks/${sectionId}`,
+                  backLabel: "Back to Playbook",
+                },
+              })
+            }
           />
         )}
       </div>
 
-      {/* Full-screen preview modal */}
-      {previewPlay && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
-          onClick={() => setPreviewPlay(null)}
-        >
-          <div
-            className="w-full max-w-2xl overflow-hidden rounded-2xl border border-white/10 bg-[#1a1d24] shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-white/8 px-5 py-3.5">
-              <h3 className="font-Manrope text-sm font-bold text-white">{previewPlay.title}</h3>
-              <button
-                onClick={() => setPreviewPlay(null)}
-                className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-BrandGray2 transition hover:text-white"
-              >
-                Close
-              </button>
-            </div>
-            <PlayPreviewCard
-              playData={previewPlay.playData}
-              autoplay="always"
-              shape="landscape"
-              cameraMode="fit-distribution"
-              background="field"
-              paddingPx={30}
-              minSpanPx={120}
-            />
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }

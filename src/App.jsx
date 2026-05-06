@@ -61,6 +61,7 @@ const SPORT_HOME_ROUTES = {
   basketball: "/basketball",
   "field hockey": "/field-hockey",
   "ice hockey": "/ice-hockey",
+  "womens lacrosse": "/womens-lacrosse",
 };
 
 export function SlateRoot({ adminMode = false, sport = null }) {
@@ -221,6 +222,7 @@ export function AppRoutes() {
       <Route path="/soccer" element={<Landing sport="soccer" />} />
       <Route path="/field-hockey" element={<Landing sport="field hockey" />} />
       <Route path="/ice-hockey" element={<Landing sport="ice hockey" />} />
+      <Route path="/womens-lacrosse" element={<Landing sport="womens lacrosse" />} />
       <Route path="/resources" element={<Resources />} />
       <Route path="/enterprise" element={<Enterprise />} />
       <Route path="/signup" element={<Signup />} />

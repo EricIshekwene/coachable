@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { FiArrowLeft, FiEdit2, FiClock, FiTag, FiExternalLink, FiLoader } from "react-icons/fi";
 import { fetchPlay, updatePlay } from "../../utils/apiPlays";
@@ -36,6 +36,10 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
   const { playId } = useParams();
   const { user, playerViewMode } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const navPlay = location.state?.play ?? null;
+  const backTo = location.state?.backTo ?? "/app/plays";
+  const backLabel = location.state?.backLabel ?? "Back to Playbook";
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth < MOBILE_BREAKPOINT : false
   );
@@ -53,14 +57,15 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
   const noteInputRef = useRef(null);
   const teamId = user?.teamId;
 
-  const [play, setPlay] = useState(null);
-  const [loadingPlay, setLoadingPlay] = useState(true);
+  const [play, setPlay] = useState(navPlay);
+  const [loadingPlay, setLoadingPlay] = useState(!navPlay);
   const [editingNotes, setEditingNotes] = useState(false);
-  const [noteDraft, setNoteDraft] = useState("");
+  const [noteDraft, setNoteDraft] = useState(String(navPlay?.notes || ""));
   const [savingNote, setSavingNote] = useState(false);
   const [noteError, setNoteError] = useState("");
 
   useEffect(() => {
+    if (navPlay) return;
     if (!teamId || !playId) { setLoadingPlay(false); return; }
     setLoadingPlay(true);
     fetchPlay(teamId, playId)
@@ -70,7 +75,7 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
       })
       .catch(() => setPlay(null))
       .finally(() => setLoadingPlay(false));
-  }, [teamId, playId]);
+  }, [teamId, playId, navPlay]);
 
   useEffect(() => {
     if (editingNotes) noteInputRef.current?.focus();
@@ -128,11 +133,11 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
       <div className="mx-auto max-w-3xl px-6 py-8 md:px-10 md:py-12">
         {showBackButton && (
           <button
-            onClick={() => navigate("/app/plays")}
+            onClick={() => navigate(backTo)}
             className="mb-8 flex items-center gap-2 text-sm text-BrandGray transition hover:text-BrandText"
           >
             <FiArrowLeft />
-            Back to Playbook
+            {backLabel}
           </button>
         )}
         <h1 className="font-Manrope text-xl font-bold tracking-tight">Play not found</h1>
@@ -145,11 +150,11 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
     <div className="mx-auto max-w-4xl px-6 py-8 md:px-10 md:py-12">
       {showBackButton && (
         <button
-          onClick={() => navigate("/app/plays")}
+          onClick={() => navigate(backTo)}
           className="mb-8 flex items-center gap-2 text-sm text-BrandGray transition hover:text-BrandText"
         >
           <FiArrowLeft />
-          Back to Playbook
+          {backLabel}
         </button>
       )}
 
@@ -163,7 +168,7 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
             </span>
           </div>
         </div>
-        {!effectiveViewOnly && (
+        {!effectiveViewOnly && play.teamId && (
           <div className="flex items-center gap-2">
             <Link
               to={`/app/plays/${playId}/view`}

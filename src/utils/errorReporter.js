@@ -31,6 +31,9 @@ const _globalReportTimestamps = [];
 const GLOBAL_IGNORED_MESSAGES = [
   "ResizeObserver loop limit exceeded",
   "ResizeObserver loop completed with undelivered notifications",
+  // Cross-origin scripts sanitize all error details to "Script error." with no stack.
+  // There is nothing actionable here — filtering it reduces noise in the error log.
+  "Script error.",
 ];
 
 function normalizeErrorMessage(value) {
