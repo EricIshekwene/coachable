@@ -20,7 +20,7 @@ export default function AdminNav() {
 
   return (
     <nav
-      className="flex items-center gap-1 px-6 py-2 overflow-x-auto"
+      className="flex items-center gap-1 overflow-x-auto px-4 py-2 sm:px-6"
       style={{ borderBottom: "1px solid var(--adm-border)" }}
     >
       {NAV_ITEMS.map(({ label, path }) => (

@@ -303,16 +303,16 @@ export default function AdminErrors() {
                       </button>
                       {isExpanded && (
                         <div className="px-4 py-3" style={{ borderTop: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface2)" }}>
-                          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
+                          <div className="grid grid-cols-1 gap-x-6 gap-y-2 text-xs sm:grid-cols-2">
                             {[["Page", r.page_url || "—"], ["User ID", r.user_id || "anonymous"], ["Session", `${r.session_id?.slice(0, 12) || "—"}…`], ["Device", `${device.platform || "—"} ${device.isMobile ? "(mobile)" : "(desktop)"}${device.standalone ? " [PWA]" : ""}`]].map(([k, v]) => (
                               <div key={k}><span style={{ color: "var(--adm-muted)" }}>{k}:</span> <span style={{ color: "var(--adm-text2)" }}>{v}</span></div>
                             ))}
                           </div>
                           {r.extra && <div className="mt-3"><p className="mb-1 text-[10px] font-semibold uppercase" style={{ color: "var(--adm-muted)" }}>Extra</p><pre className="overflow-x-auto rounded-[var(--adm-radius-sm)] p-2 text-[11px]" style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-text2)" }}>{JSON.stringify(r.extra, null, 2)}</pre></div>}
                           {r.error_stack && <div className="mt-3"><p className="mb-1 text-[10px] font-semibold uppercase" style={{ color: "var(--adm-muted)" }}>Stack</p><pre className="max-h-48 overflow-auto rounded-[var(--adm-radius-sm)] p-2 text-[11px]" style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-color-red-soft)" }}>{r.error_stack}</pre></div>}
-                          <div className="mt-3 flex items-center justify-between">
+                          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <span className="text-[10px]" style={{ color: "var(--adm-muted)" }}>{new Date(r.created_at).toLocaleString()}</span>
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap gap-2">
                               <AdminBtn variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleCopyOne(r); }}>{copied === r.id ? "Copied!" : "Copy"}</AdminBtn>
                               <AdminBtn variant="danger" size="sm" onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }}>Delete</AdminBtn>
                             </div>
@@ -327,7 +327,7 @@ export default function AdminErrors() {
           }
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-3 pt-2">
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <AdminBtn variant="secondary" size="sm" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}>Previous</AdminBtn>
               <span className="text-xs" style={{ color: "var(--adm-muted)" }}>Page {page + 1} of {totalPages}</span>
               <AdminBtn variant="secondary" size="sm" onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}>Next</AdminBtn>

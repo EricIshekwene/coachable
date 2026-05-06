@@ -83,71 +83,90 @@ const NAV_ITEMS = [
 
 /**
  * Persistent vertical sidebar for the admin panel.
- * Shows the logo, nav items, and a theme toggle at the bottom.
+ * Collapses into an off-canvas drawer on smaller screens.
  */
-export default function AdminSidebar() {
+export default function AdminSidebar({ mobileOpen = false, onClose }) {
   const { basePath, theme, setTheme } = useAdmin();
 
   return (
-    <aside
-      className="flex h-full w-52 shrink-0 flex-col"
-      style={{
-        backgroundColor: "var(--adm-surface)",
-        borderRight: "1px solid var(--adm-border)",
-      }}
-    >
-      {/* Logo */}
+    <>
       <div
-        className="flex h-14 shrink-0 items-center px-5"
-        style={{ borderBottom: "1px solid var(--adm-border)" }}
+        className={`fixed inset-0 z-30 bg-black/45 transition-opacity duration-200 lg:hidden ${mobileOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 flex h-full w-[min(18rem,85vw)] shrink-0 flex-col transition-transform duration-200 lg:static lg:z-auto lg:w-52 ${mobileOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
+        style={{
+          backgroundColor: "var(--adm-surface)",
+          borderRight: "1px solid var(--adm-border)",
+        }}
       >
-        <img src={theme === "dark" ? whiteLogo : darkLogo} alt="Coachable" className="h-6 w-auto" />
-      </div>
-
-      {/* Nav items */}
-      <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-3">
-        {NAV_ITEMS.map(({ label, path, icon }) => (
-          <NavLink
-            key={path}
-            to={adminPath(basePath, path)}
-            end={path === ""}
-            className={({ isActive }) =>
-              [
-                "font-Manrope flex items-center gap-3 rounded-[var(--adm-radius-sm)] px-3 py-2.5 text-sm font-semibold transition-colors",
-                isActive ? "" : "hover:opacity-80",
-              ].join(" ")
-            }
-            style={({ isActive }) =>
-              isActive
-                ? {
-                    backgroundColor: "color-mix(in srgb, var(--adm-accent-dim) 85%, var(--adm-surface2))",
-                    color: "var(--adm-accent)",
-                    boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--adm-accent) 22%, transparent)",
-                  }
-                : { color: "var(--adm-text2)", backgroundColor: "transparent" }
-            }
-          >
-            {icon}
-            {label}
-          </NavLink>
-        ))}
-      </nav>
-
-      {/* Theme toggle */}
-      <div
-        className="shrink-0 p-3"
-        style={{ borderTop: "1px solid var(--adm-border)" }}
-      >
-        <button
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          className="font-Manrope flex w-full items-center gap-2.5 rounded-[var(--adm-radius-sm)] px-3 py-2 text-sm font-semibold transition-colors hover:opacity-80"
-          style={{ color: "var(--adm-text2)" }}
+        {/* Logo */}
+        <div
+          className="flex h-14 shrink-0 items-center gap-3 px-5"
+          style={{ borderBottom: "1px solid var(--adm-border)" }}
         >
-          {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-          {theme === "dark" ? "Light mode" : "Dark mode"}
-        </button>
-      </div>
-    </aside>
+          <img src={theme === "dark" ? whiteLogo : darkLogo} alt="Coachable" className="h-6 w-auto" />
+          <button
+            type="button"
+            onClick={onClose}
+            className="ml-auto inline-flex h-9 w-9 items-center justify-center rounded-[var(--adm-radius-sm)] lg:hidden"
+            style={{ color: "var(--adm-text2)" }}
+            aria-label="Close admin navigation"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Nav items */}
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+          {NAV_ITEMS.map(({ label, path, icon }) => (
+            <NavLink
+              key={path}
+              to={adminPath(basePath, path)}
+              end={path === ""}
+              onClick={onClose}
+              className={({ isActive }) =>
+                [
+                  "font-Manrope flex items-center gap-3 rounded-[var(--adm-radius-sm)] px-3 py-3 text-sm font-semibold transition-colors",
+                  isActive ? "" : "hover:opacity-80",
+                ].join(" ")
+              }
+              style={({ isActive }) =>
+                isActive
+                  ? {
+                      backgroundColor: "color-mix(in srgb, var(--adm-accent-dim) 85%, var(--adm-surface2))",
+                      color: "var(--adm-accent)",
+                      boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--adm-accent) 22%, transparent)",
+                    }
+                  : { color: "var(--adm-text2)", backgroundColor: "transparent" }
+              }
+            >
+              {icon}
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+
+        {/* Theme toggle */}
+        <div
+          className="shrink-0 p-3"
+          style={{ borderTop: "1px solid var(--adm-border)" }}
+        >
+          <button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            className="font-Manrope flex w-full items-center gap-2.5 rounded-[var(--adm-radius-sm)] px-3 py-2.5 text-sm font-semibold transition-colors hover:opacity-80"
+            style={{ color: "var(--adm-text2)" }}
+          >
+            {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+            {theme === "dark" ? "Light mode" : "Dark mode"}
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }

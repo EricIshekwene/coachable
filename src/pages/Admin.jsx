@@ -1202,7 +1202,7 @@ export default function Admin() {
             )}
 
             {/* Suite cards */}
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
               {SUITE_NAMES.map((name) => {
                 const checked = enabledSuites.has(name);
                 const suiteResult = testResults?.find((s) => s.name === name);
@@ -1345,16 +1345,16 @@ export default function Admin() {
                       </button>
                       {isExpanded && (
                         <div className="px-4 py-3" style={{ borderTop: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface2)" }}>
-                          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
+                          <div className="grid grid-cols-1 gap-x-6 gap-y-2 text-xs sm:grid-cols-2">
                             {[["Page", r.page_url || "—"], ["User ID", r.user_id || "anonymous"], ["Device", `${device.platform || "—"}${device.isMobile ? " (mobile)" : " (desktop)"}${device.standalone ? " [PWA]" : ""}`], ["Session", `${r.session_id?.slice(0, 12) || "—"}…`]].map(([k, v]) => (
                               <div key={k}><span style={{ color: "var(--adm-muted)" }}>{k}:</span> <span style={{ color: "var(--adm-text2)" }}>{v}</span></div>
                             ))}
                           </div>
                           {r.extra && <div className="mt-3"><p className="mb-1 text-[10px] font-normal uppercase tracking-wider" style={{ color: "var(--adm-muted)" }}>Extra</p><pre className="overflow-x-auto rounded-[var(--adm-radius-sm)] p-2 text-[11px]" style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-text2)" }}>{JSON.stringify(r.extra, null, 2)}</pre></div>}
                           {r.error_stack && <div className="mt-3"><p className="mb-1 text-[10px] font-normal uppercase tracking-wider" style={{ color: "var(--adm-muted)" }}>Stack</p><pre className="hide-scroll max-h-40 overflow-auto rounded-[var(--adm-radius-sm)] p-2 text-[11px] leading-relaxed" style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-color-red-soft)" }}>{r.error_stack}</pre></div>}
-                          <div className="mt-3 flex items-center justify-between">
+                          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <span className="text-[10px]" style={{ color: "var(--adm-muted)" }}>{new Date(r.created_at).toLocaleString()}</span>
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap gap-2">
                               <AdminBtn variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); copyToClipboard(r.error_message + "\n" + (r.error_stack || ""), r.id); }}>{copied === r.id ? "Copied!" : "Copy"}</AdminBtn>
                               <AdminBtn variant="danger" size="sm" onClick={(e) => { e.stopPropagation(); handleDeleteError(r.id); }}>Delete</AdminBtn>
                             </div>

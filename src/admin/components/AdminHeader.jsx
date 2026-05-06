@@ -10,42 +10,47 @@ import { Link } from "react-router-dom";
  *   backLabel?: string,
  *   backTo?: string,
  *   actions?: React.ReactNode,
+ *   sticky?: boolean,
  * }} props
  */
-export default function AdminHeader({ title, backLabel, backTo, actions }) {
+export default function AdminHeader({ title, backLabel, backTo, actions, sticky = false }) {
   return (
     <header
-      className="sticky top-0 z-20 flex items-center gap-4 px-6 h-14 shrink-0"
+      className={`${sticky ? "sticky top-14 z-20 lg:top-0" : ""} shrink-0 px-4 py-3 sm:px-6`}
       style={{
         backgroundColor: "color-mix(in srgb, var(--adm-surface-elevated) 92%, transparent)",
         borderBottom: "1px solid var(--adm-border)",
         backdropFilter: "blur(12px)",
       }}
     >
-      {backTo ? (
-        <Link
-          to={backTo}
-          className="flex items-center gap-1.5 text-sm transition-opacity hover:opacity-70"
-          style={{ color: "var(--adm-text2)" }}
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-          {backLabel ?? "Back"}
-        </Link>
-      ) : null}
+      <div className="flex min-h-8 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
+          {backTo ? (
+            <Link
+              to={backTo}
+              className="flex items-center gap-1.5 text-sm transition-opacity hover:opacity-70"
+              style={{ color: "var(--adm-text2)" }}
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+              {backLabel ?? "Back"}
+            </Link>
+          ) : null}
 
-      {title && (
-        <span
-          className="font-Manrope text-sm font-semibold"
-          style={{ color: "var(--adm-text)" }}
-        >
-          {title}
-        </span>
-      )}
+          {title && (
+            <span
+              className="min-w-0 font-Manrope text-sm font-semibold sm:text-base"
+              style={{ color: "var(--adm-text)" }}
+            >
+              {title}
+            </span>
+          )}
+        </div>
 
-      <div className="ml-auto flex items-center gap-3">
-        {actions}
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          {actions}
+        </div>
       </div>
     </header>
   );

@@ -211,8 +211,8 @@ export default function AdminUserIssues() {
                         <p className="mb-4 whitespace-pre-wrap text-sm leading-relaxed" style={{ color: "var(--adm-text2)" }}>
                           {issue.description}
                         </p>
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div className="flex items-center gap-2">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                          <div className="flex flex-wrap items-center gap-2">
                             <span className="text-[10px] font-semibold uppercase" style={{ color: "var(--adm-muted)" }}>Status:</span>
                             <AdminSelect
                               value={issue.status}
@@ -223,7 +223,7 @@ export default function AdminUserIssues() {
                               <option value="resolved">Resolved</option>
                             </AdminSelect>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <span className="text-[10px]" style={{ color: "var(--adm-muted)" }}>
                               {new Date(issue.created_at).toLocaleString()}
                             </span>
@@ -239,7 +239,7 @@ export default function AdminUserIssues() {
           )}
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-3 pt-2">
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <AdminBtn variant="secondary" size="sm" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}>Previous</AdminBtn>
               <span className="text-xs" style={{ color: "var(--adm-muted)" }}>Page {page + 1} of {totalPages}</span>
               <AdminBtn variant="secondary" size="sm" onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}>Next</AdminBtn>

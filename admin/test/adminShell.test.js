@@ -23,7 +23,7 @@ function resolveThemeAttr(theme) {
  * @returns {string}
  */
 function resolveShellClasses(extra = "") {
-  return `font-DmSans h-screen overflow-y-auto ${extra}`.trim();
+  return `font-Manrope h-screen overflow-y-auto ${extra}`.trim();
 }
 
 describe("AdminShell theme attribute", () => {
@@ -47,9 +47,9 @@ describe("AdminShell className", () => {
     expect(classes).toContain("h-screen");
   });
 
-  it("always includes font-DmSans", () => {
+  it("always includes font-Manrope", () => {
     const classes = resolveShellClasses();
-    expect(classes).toContain("font-DmSans");
+    expect(classes).toContain("font-Manrope");
   });
 
   it("appends extra className when provided", () => {

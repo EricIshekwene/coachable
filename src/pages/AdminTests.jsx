@@ -270,7 +270,7 @@ export default function AdminTests() {
         }
       />
 
-      <div className="mx-auto max-w-6xl px-6 py-6">
+      <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-6">
         {/* Dashboard stats */}
         {results ? (
           <>
@@ -318,7 +318,7 @@ export default function AdminTests() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
                 <div className="relative flex-1">
                   <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--adm-muted)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -339,7 +339,7 @@ export default function AdminTests() {
                     </button>
                   )}
                 </div>
-                <div className="flex gap-1 rounded-[var(--adm-radius-sm)] p-1" style={{ backgroundColor: "var(--adm-surface2)", border: "1px solid var(--adm-border)" }}>
+                <div className="flex w-full gap-1 overflow-x-auto rounded-[var(--adm-radius-sm)] p-1 lg:w-auto" style={{ backgroundColor: "var(--adm-surface2)", border: "1px solid var(--adm-border)" }}>
                   {[
                     { key: "all", label: "All", count: stats.total },
                     { key: "pass", label: "Passed", count: stats.passed },

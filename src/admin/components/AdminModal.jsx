@@ -33,7 +33,7 @@ export default function AdminModal({ open, onClose, title, children, width = "ma
       onMouseDown={(e) => { if (e.target === overlayRef.current) onClose?.(); }}
     >
       <div
-        className={`relative w-full ${width} rounded-[var(--adm-radius-lg)] p-6`}
+        className={`relative max-h-[calc(100dvh-2rem)] w-full overflow-y-auto rounded-[var(--adm-radius-lg)] p-4 sm:p-6 ${width}`}
         style={{
           backgroundColor: "var(--adm-surface-elevated)",
           border: "1px solid var(--adm-border-strong)",

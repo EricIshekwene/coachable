@@ -12,7 +12,7 @@
 export default function AdminSection({ title, subtitle, actions, children, className = "" }) {
   return (
     <section className={`flex flex-col gap-4 ${className}`}>
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2
             className="font-Manrope text-sm font-normal"
@@ -26,7 +26,7 @@ export default function AdminSection({ title, subtitle, actions, children, class
             </p>
           )}
         </div>
-        {actions && <div className="flex items-center gap-2 flex-shrink-0">{actions}</div>}
+        {actions && <div className="flex flex-wrap items-center gap-2 sm:flex-shrink-0 sm:justify-end">{actions}</div>}
       </div>
       {children}
     </section>

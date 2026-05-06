@@ -2459,7 +2459,7 @@ export default function AdminPlaysPage() {
         return (
           <AdminModal open onClose={() => setPresetPickerSport(null)} title="Choose a Starting Preset">
             <p className="mb-4 text-sm" style={{ color: "var(--adm-muted)" }}>{presetPickerSport} · Select a template or start blank.</p>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <button
                 onClick={() => handlePresetPick(null)}
                 className="flex flex-col gap-2 rounded-[var(--adm-radius-sm)] p-3 text-left transition"
@@ -2506,8 +2506,8 @@ export default function AdminPlaysPage() {
 
       {/* Header */}
       <div className="sticky top-0 z-20 backdrop-blur-sm" style={{ borderBottom: "1px solid var(--adm-border)", backgroundColor: "var(--adm-bg)" }}>
-        <div className="mx-auto flex max-w-7xl items-center gap-4 px-6 py-3.5">
-          <div className="flex items-center gap-3">
+        <div className="mx-auto flex max-w-7xl flex-col items-stretch gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:gap-4 lg:py-3.5">
+          <div className="flex flex-wrap items-center gap-3">
             <button onClick={() => navigate(adminPath(basePath, ""))} className="inline-flex opacity-70 transition hover:opacity-100">
               <span className="font-Manrope text-sm font-bold" style={{ color: "var(--adm-accent)" }}>Coachable</span>
             </button>
@@ -2518,7 +2518,7 @@ export default function AdminPlaysPage() {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-0.5 rounded-[var(--adm-radius-sm)] p-0.5" style={{ backgroundColor: "var(--adm-surface2)", border: "1px solid var(--adm-border)" }}>
+          <div className="flex w-full items-center gap-0.5 overflow-x-auto rounded-[var(--adm-radius-sm)] p-0.5 lg:w-auto" style={{ backgroundColor: "var(--adm-surface2)", border: "1px solid var(--adm-border)" }}>
             {[
               { key: "plays", icon: <FiFolder className="text-[10px]" />, label: "Plays" },
               { key: "sections", icon: <FiLayout className="text-[10px]" />, label: "Page Sections" },
@@ -2538,7 +2538,7 @@ export default function AdminPlaysPage() {
             ))}
           </div>
           <span className="text-xs" style={{ color: "var(--adm-muted)" }}>{plays.length} total</span>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 lg:ml-auto lg:w-auto lg:justify-end">
             <AdminBtn variant="primary" size="sm" onClick={handleNew}><FiPlus className="mr-1 inline" /> New Play</AdminBtn>
             <AdminBtn variant="secondary" size="sm" onClick={() => navigate(adminPath(basePath, ""))}>Dashboard</AdminBtn>
           </div>
@@ -2546,7 +2546,7 @@ export default function AdminPlaysPage() {
       </div>
 
       {sections.filter((s) => s.isPriority && !s.playId).length > 0 && (
-        <div className="sticky top-13.25 z-10 flex items-center gap-3 px-6 py-3 backdrop-blur-sm" style={{ borderBottom: "1px solid rgba(251,191,36,0.3)", backgroundColor: "rgba(251,191,36,0.08)" }}>
+        <div className="z-10 flex flex-wrap items-start gap-3 px-4 py-3 backdrop-blur-sm sm:px-6 lg:sticky lg:top-[59px]" style={{ borderBottom: "1px solid rgba(251,191,36,0.3)", backgroundColor: "rgba(251,191,36,0.08)" }}>
           <svg className="h-4 w-4 shrink-0" style={{ color: "var(--adm-warning)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
           </svg>
@@ -2559,7 +2559,7 @@ export default function AdminPlaysPage() {
       )}
 
       {deletionWarning && (
-        <div className="sticky top-13.25 z-10 flex items-center gap-3 px-6 py-3 backdrop-blur-sm" style={{ borderBottom: "1px solid var(--adm-danger)", backgroundColor: "var(--adm-danger-dim)" }}>
+        <div className="z-10 flex flex-wrap items-start gap-3 px-4 py-3 backdrop-blur-sm sm:px-6 lg:sticky lg:top-[59px]" style={{ borderBottom: "1px solid var(--adm-danger)", backgroundColor: "var(--adm-danger-dim)" }}>
           <svg className="h-4 w-4 shrink-0" style={{ color: "var(--adm-danger)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
           </svg>
@@ -2573,7 +2573,7 @@ export default function AdminPlaysPage() {
       )}
 
       {activeTab === "sections" && (
-        <div className="mx-auto max-w-4xl px-6 py-8">
+        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
           <h2 className="mb-1 font-Manrope text-base font-bold" style={{ color: "var(--adm-text)" }}>Page Sections</h2>
           <p className="mb-6 text-xs" style={{ color: "var(--adm-muted)" }}>Assign a platform play to each section. The play&apos;s animation will be shown as a live preview on that page.</p>
           {error && <div className="mb-4 rounded-[var(--adm-radius-sm)] px-4 py-2 text-sm" style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}>{error}</div>}
@@ -2602,10 +2602,10 @@ export default function AdminPlaysPage() {
       )}
 
       {activeTab === "presets" && (
-        <div className="mx-auto max-w-4xl px-6 py-8">
+        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
           <h2 className="mb-1 font-Manrope text-base font-bold" style={{ color: "var(--adm-text)" }}>Sport Presets</h2>
           <p className="mb-6 text-xs" style={{ color: "var(--adm-muted)" }}>Manage starting-canvas presets for each sport. Click a sport to view and create presets for it.</p>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {PRESET_SPORTS.map((sport) => {
               const count = sportPresets.filter((p) => p.sport === sport).length;
               return (
@@ -2633,9 +2633,9 @@ export default function AdminPlaysPage() {
       )}
 
       {activeTab === "plays" && (
-        <div className="mx-auto flex max-w-7xl gap-6 px-6 py-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8 lg:flex-row lg:gap-6">
           {/* Folder sidebar */}
-          <aside className="w-52 shrink-0">
+          <aside className="w-full shrink-0 lg:w-52">
             <p className="mb-2 px-1 text-[10px] font-normal uppercase tracking-wider" style={{ color: "var(--adm-muted)" }}>Folders</p>
             <button
               onClick={() => setCurrentFolderId(null)}
@@ -2646,7 +2646,7 @@ export default function AdminPlaysPage() {
               <span className="flex-1">All Plays</span>
               <span className="text-[10px] opacity-60">{plays.length}</span>
             </button>
-            <div className="space-y-0.5">
+            <div className="max-h-64 space-y-0.5 overflow-y-auto pr-1 lg:max-h-none lg:overflow-visible lg:pr-0">
               {folders.map((folder) => (
                 <FolderItem key={folder.id} folder={folder} isActive={currentFolderId === folder.id} onClick={() => setCurrentFolderId(folder.id)} onRename={folder.isSportFolder ? null : handleRenameFolder} onDelete={folder.isSportFolder ? null : handleDeleteFolder} />
               ))}
@@ -2677,21 +2677,21 @@ export default function AdminPlaysPage() {
 
           {/* Main content */}
           <div className="min-w-0 flex-1">
-            <div className="mb-6 flex items-center gap-3">
-              <div className="flex items-center gap-1 text-xs" style={{ color: "var(--adm-muted)" }}>
+            <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="flex min-w-0 flex-wrap items-center gap-1 text-xs" style={{ color: "var(--adm-muted)" }}>
                 <button onClick={() => setCurrentFolderId(null)} className="transition" style={!currentFolderId ? { fontWeight: 600, color: "var(--adm-text)" } : {}}>All</button>
                 {currentFolder && (
                   <><FiChevronRight className="text-[10px]" /><span className="font-normal" style={{ color: "var(--adm-text)" }}>{currentFolder.name}</span></>
                 )}
               </div>
-              <div className="relative max-w-sm flex-1">
+              <div className="relative w-full lg:max-w-sm lg:flex-1">
                 <svg className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2" style={{ color: "var(--adm-muted)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803a7.5 7.5 0 0010.607 0z" />
                 </svg>
                 <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search plays..." className="w-full rounded-[var(--adm-radius-sm)] py-2 pl-9 pr-3 text-sm outline-none" style={{ border: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface2)", color: "var(--adm-text)" }} />
               </div>
               {search && <button onClick={() => setSearch("")} className="text-xs" style={{ color: "var(--adm-muted)" }}>Clear</button>}
-              <select value={playSort} onChange={(e) => setPlaySort(e.target.value)} className="shrink-0 cursor-pointer rounded-[var(--adm-radius-sm)] px-2.5 py-2 text-xs outline-none" style={{ border: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface2)", color: "var(--adm-text)" }}>
+              <select value={playSort} onChange={(e) => setPlaySort(e.target.value)} className="w-full cursor-pointer rounded-[var(--adm-radius-sm)] px-2.5 py-2 text-xs outline-none sm:w-auto sm:shrink-0" style={{ border: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface2)", color: "var(--adm-text)" }}>
                 <option value="custom">Custom Order</option>
                 <option value="updated">Recently Updated</option>
                 <option value="created">Recently Created</option>
