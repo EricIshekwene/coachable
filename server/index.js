@@ -23,6 +23,7 @@ import demoVideosRoutes from "./routes/demoVideos.js";
 import prefabsRoutes from "./routes/prefabs.js";
 import sportPresetsRoutes from "./routes/sportPresets.js";
 import { syncSports } from "./utils/syncSports.js";
+import { syncPlaybookDefaults } from "./utils/syncPlaybookDefaults.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -125,6 +126,7 @@ async function autoMigrate() {
 
 autoMigrate()
   .then(() => syncSports(pool))
+  .then(() => syncPlaybookDefaults(pool))
   .then(() => {
   app.listen(PORT, () => {
     console.log(`Coachable API listening on port ${PORT}`);

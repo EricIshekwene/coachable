@@ -1,14 +1,19 @@
 import { useState, useEffect } from "react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import darkLogo from "../assets/logos/White_Coachable_Logo.png";
 import lightLogo from "../assets/logos/coachable_Logo.png";
-import { FiBookOpen, FiUsers, FiUser, FiLogOut, FiSettings, FiEye, FiX, FiFlag, FiPlay } from "react-icons/fi";
+import { FiBookOpen, FiUsers, FiUser, FiLogOut, FiSettings, FiEye, FiX, FiFlag, FiPlay, FiGrid } from "react-icons/fi";
 import useThemeColor from "../utils/useThemeColor";
 import TeamSwitcher from "../components/TeamSwitcher";
+import {
+  fetchPublishedPlaybookSections,
+  filterPublishedPlaybookSectionsForSport,
+} from "../utils/playbookSectionsApi";
 
 const BASE_TEAM_NAV = [
   { to: "/app/plays", icon: FiBookOpen, label: "Plays" },
+  { to: "/app/playbooks", icon: FiGrid, label: "Playbooks" },
   { to: "/app/team", icon: FiUsers, label: "Team" },
   { to: "/app/profile", icon: FiUser, label: "Profile" },
   { to: "/app/settings", icon: FiSettings, label: "Settings" },
@@ -17,20 +22,27 @@ const BASE_TEAM_NAV = [
 
 const BASE_SOLO_NAV = [
   { to: "/app/plays", icon: FiBookOpen, label: "Plays" },
+  { to: "/app/playbooks", icon: FiGrid, label: "Playbooks" },
   { to: "/app/profile", icon: FiUser, label: "Profile" },
   { to: "/app/settings", icon: FiSettings, label: "Settings" },
   { to: "/app/videos", icon: FiPlay, label: "How To" },
 ];
 
+const PLAYBOOKS_ROUTE = "/app/playbooks";
+
 export default function AppLayout() {
   const { user, logout, playerViewMode, setPlayerViewMode } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const isPersonal = user?.isPersonalTeam;
   const baseNav = isPersonal ? BASE_SOLO_NAV : BASE_TEAM_NAV;
-  const navItems = user?.isBetaTester
-    ? [...baseNav, { to: "/app/report-issue", icon: FiFlag, label: "Report Issue" }]
-    : baseNav;
   const [isLight, setIsLight] = useState(document.documentElement.getAttribute("data-theme") === "light");
+  const [hasPlaybookSections, setHasPlaybookSections] = useState(true);
+
+  const navItems = (user?.isBetaTester
+    ? [...baseNav, { to: "/app/report-issue", icon: FiFlag, label: "Report Issue" }]
+    : baseNav
+  ).filter((item) => item.to !== PLAYBOOKS_ROUTE || hasPlaybookSections);
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
@@ -42,6 +54,33 @@ export default function AppLayout() {
 
   // iOS Safari overscroll area matches the app shell background
   useThemeColor(isLight ? "#ffffff" : "#121212");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchPublishedPlaybookSections()
+      .then((sections) => {
+        if (cancelled) return;
+        const visibleSections = filterPublishedPlaybookSectionsForSport(sections, user?.sport || "");
+        setHasPlaybookSections(visibleSections.length > 0);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          // Fail open so temporary API issues do not remove navigation.
+          setHasPlaybookSections(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.sport, user?.teamId]);
+
+  useEffect(() => {
+    if (!hasPlaybookSections && location.pathname === PLAYBOOKS_ROUTE) {
+      navigate("/app/plays", { replace: true });
+    }
+  }, [hasPlaybookSections, location.pathname, navigate]);
 
   const handleLogout = () => {
     logout();

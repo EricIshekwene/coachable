@@ -274,6 +274,7 @@ export function AppRoutes() {
         <Route path="settings" element={<Settings />} />
         <Route path="report-issue" element={<ReportIssue />} />
         <Route path="playbooks" element={<Playbooks />} />
+        <Route path="playbooks/:sectionId" element={<Playbooks />} />
         <Route path="videos" element={<DemoVideos />} />
       </Route>
 

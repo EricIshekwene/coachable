@@ -884,6 +884,7 @@ router.get("/playbook-sections", requireAdmin, async (_req, res, next) => {
         sport: r.sport || null,
         sortOrder: r.sort_order,
         isPublished: r.is_published,
+        isDefault: r.is_default,
         playCount: r.play_count,
         createdAt: r.created_at,
         updatedAt: r.updated_at,
@@ -917,6 +918,7 @@ router.post("/playbook-sections", requireAdmin, async (req, res, next) => {
         sport: r.sport || null,
         sortOrder: r.sort_order,
         isPublished: r.is_published,
+        isDefault: r.is_default,
         playCount: 0,
         createdAt: r.created_at,
         updatedAt: r.updated_at,
@@ -943,6 +945,7 @@ router.patch("/playbook-sections/:id", requireAdmin, async (req, res, next) => {
     if (sport !== undefined) { setClauses.push(`sport = $${idx++}`); values.push(sport || null); }
     if (sortOrder !== undefined) { setClauses.push(`sort_order = $${idx++}`); values.push(sortOrder); }
     if (isPublished !== undefined) { setClauses.push(`is_published = $${idx++}`); values.push(!!isPublished); }
+    // is_default is system-managed — never allow API callers to change it
     if (setClauses.length === 1) return res.status(400).json({ error: "Nothing to update" });
     values.push(req.params.id);
     const { rows } = await pool.query(
@@ -963,6 +966,7 @@ router.patch("/playbook-sections/:id", requireAdmin, async (req, res, next) => {
         sport: r.sport || null,
         sortOrder: r.sort_order,
         isPublished: r.is_published,
+        isDefault: r.is_default,
         playCount: countRows[0].play_count,
         createdAt: r.created_at,
         updatedAt: r.updated_at,
@@ -976,9 +980,18 @@ router.patch("/playbook-sections/:id", requireAdmin, async (req, res, next) => {
 /**
  * DELETE /admin/playbook-sections/:id
  * Delete a playbook section and all its play associations (cascade).
+ * Default sections (is_default = true) cannot be deleted.
  */
 router.delete("/playbook-sections/:id", requireAdmin, async (req, res, next) => {
   try {
+    const { rows } = await pool.query(
+      "SELECT is_default FROM playbook_sections WHERE id = $1",
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Section not found" });
+    if (rows[0].is_default) {
+      return res.status(403).json({ error: "Default playbook sections cannot be deleted." });
+    }
     await pool.query("DELETE FROM playbook_sections WHERE id = $1", [req.params.id]);
     res.json({ ok: true });
   } catch (err) {

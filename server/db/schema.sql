@@ -472,9 +472,27 @@ CREATE TABLE IF NOT EXISTS playbook_sections (
   sport       TEXT,
   sort_order  INT NOT NULL DEFAULT 0,
   is_published BOOLEAN NOT NULL DEFAULT false,
+  is_default  BOOLEAN NOT NULL DEFAULT false,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Safe migration: add is_default to existing rows if the column doesn't exist yet
+DO $$ BEGIN
+  ALTER TABLE playbook_sections ADD COLUMN is_default BOOLEAN NOT NULL DEFAULT false;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- One default playbook per sport (NULL sport excluded — only named sports get a default)
+-- Guard with pg_indexes check so this is safe to re-run after the column migration above
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes WHERE indexname = 'playbook_sections_default_sport_unique'
+  ) THEN
+    EXECUTE 'CREATE UNIQUE INDEX playbook_sections_default_sport_unique
+      ON playbook_sections(sport) WHERE is_default = true AND sport IS NOT NULL';
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS playbook_section_plays (
   section_id UUID NOT NULL REFERENCES playbook_sections(id) ON DELETE CASCADE,

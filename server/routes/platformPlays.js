@@ -40,6 +40,85 @@ router.get("/", async (_req, res, next) => {
 });
 
 /**
+ * GET /platform-plays/folders
+ * Returns all platform play folders that contain at least one play, with their play
+ * counts and sport label. Sport is taken directly from the folder or inferred from
+ * its nearest sport-folder ancestor.
+ * Requires authentication.
+ */
+router.get("/folders", requireAuth, async (_req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT
+         f.id,
+         f.name,
+         f.parent_id,
+         f.is_sport_folder,
+         f.sort_order,
+         COALESCE(f.sport, parent.sport) AS sport,
+         parent.name AS parent_name,
+         COUNT(pp.id)::int AS play_count
+       FROM platform_play_folders f
+       LEFT JOIN platform_play_folders parent ON parent.id = f.parent_id
+       LEFT JOIN platform_plays pp ON pp.folder_id = f.id
+       GROUP BY f.id, f.name, f.parent_id, f.is_sport_folder, f.sort_order, f.sport, parent.sport, parent.name
+       HAVING COUNT(pp.id) > 0
+       ORDER BY f.sort_order ASC, f.name ASC`
+    );
+    res.json({
+      folders: rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        sport: r.sport || null,
+        parentId: r.parent_id || null,
+        parentName: r.parent_name || null,
+        isSportFolder: r.is_sport_folder,
+        playCount: r.play_count,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /platform-plays/folders/:id
+ * Returns a platform play folder and all plays inside it, including play_data
+ * for animation rendering.
+ * Requires authentication.
+ */
+router.get("/folders/:id", requireAuth, async (req, res, next) => {
+  try {
+    const { rows: folderRows } = await pool.query(
+      `SELECT f.*, COALESCE(f.sport, parent.sport) AS resolved_sport
+       FROM platform_play_folders f
+       LEFT JOIN platform_play_folders parent ON parent.id = f.parent_id
+       WHERE f.id = $1`,
+      [req.params.id]
+    );
+    if (!folderRows.length) return res.status(404).json({ error: "Folder not found" });
+    const folder = folderRows[0];
+
+    const { rows: playRows } = await pool.query(
+      `SELECT * FROM platform_plays WHERE folder_id = $1 ORDER BY sort_order ASC, created_at DESC`,
+      [req.params.id]
+    );
+
+    res.json({
+      folder: {
+        id: folder.id,
+        name: folder.name,
+        sport: folder.resolved_sport || null,
+        isSportFolder: folder.is_sport_folder,
+      },
+      plays: playRows.map((r) => toPlatformPlayResponse(r, { includePlayData: true })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * GET /platform-plays/:id
  * Returns a single platform play including its full play_data.
  * Public — no authentication required.

@@ -317,3 +317,288 @@ describe("copySectionToTeam (coach)", () => {
     );
   });
 });
+
+// ── Default playbook section behaviour ────────────────────────────────────────
+
+describe("section detail play filtering logic (unit)", () => {
+  function normalizeFilterValue(value) {
+    return String(value || "").trim().toLowerCase();
+  }
+
+  function filterSectionPlays(plays, searchValue, activeTags) {
+    const searchTerm = normalizeFilterValue(searchValue);
+    const normalizedActiveTags = activeTags.map(normalizeFilterValue).filter(Boolean);
+
+    return plays.filter((play) => {
+      const title = normalizeFilterValue(play.title);
+      const playTags = (play.tags || []).map(normalizeFilterValue).filter(Boolean);
+      const matchesSearch = !searchTerm
+        || title.includes(searchTerm)
+        || playTags.some((tag) => tag.includes(searchTerm));
+      const matchesTags = normalizedActiveTags.every((tag) => playTags.includes(tag));
+      return matchesSearch && matchesTags;
+    });
+  }
+
+  const plays = [
+    { id: "p1", title: "Blitz Package", tags: ["Defense", "Pressure"] },
+    { id: "p2", title: "Red Zone Counter", tags: ["Offense", "Goal Line"] },
+    { id: "p3", title: "Pressure Release", tags: ["Offense", "Pressure"] },
+  ];
+
+  it("returns all plays when search and tag filters are empty", () => {
+    expect(filterSectionPlays(plays, "", [])).toHaveLength(3);
+  });
+
+  it("matches title search in a case-insensitive way", () => {
+    const result = filterSectionPlays(plays, "blitz", []);
+    expect(result.map((play) => play.id)).toEqual(["p1"]);
+  });
+
+  it("matches tag search in a case-insensitive way", () => {
+    const result = filterSectionPlays(plays, "goal", []);
+    expect(result.map((play) => play.id)).toEqual(["p2"]);
+  });
+
+  it("combines search and selected tags with AND logic", () => {
+    const result = filterSectionPlays(plays, "pressure", ["Offense"]);
+    expect(result.map((play) => play.id)).toEqual(["p3"]);
+  });
+
+  it("requires a play to match all selected tags", () => {
+    const result = filterSectionPlays(plays, "", ["Offense", "Pressure"]);
+    expect(result.map((play) => play.id)).toEqual(["p3"]);
+  });
+
+  it("returns an empty array when no plays satisfy the combined filters", () => {
+    expect(filterSectionPlays(plays, "blitz", ["Offense"])).toEqual([]);
+  });
+});
+
+describe("isDefault field in fetchPlaybookSections (admin)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("exposes isDefault on sections returned by the list endpoint", async () => {
+    mockFetch({
+      sections: [
+        { id: "s1", name: "Rugby — Default", sport: "Rugby", isDefault: true, isPublished: false, playCount: 0 },
+        { id: "s2", name: "Attacking Moves", sport: "Rugby", isDefault: false, isPublished: true, playCount: 3 },
+      ],
+    });
+    const sections = await fetchPlaybookSections(SESSION);
+    expect(sections[0].isDefault).toBe(true);
+    expect(sections[1].isDefault).toBe(false);
+  });
+
+  it("default sections can be fetched even when unpublished", async () => {
+    mockFetch({
+      sections: [
+        { id: "s1", name: "Football — Default", sport: "Football", isDefault: true, isPublished: false, playCount: 0 },
+      ],
+    });
+    const sections = await fetchPlaybookSections(SESSION);
+    expect(sections[0].isPublished).toBe(false);
+    expect(sections[0].isDefault).toBe(true);
+  });
+});
+
+describe("deletePlaybookSection — default sections are protected", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("throws when the server rejects deletion of a default section", async () => {
+    mockFetch({ error: "Default playbook sections cannot be deleted." }, false, 403);
+    await expect(deletePlaybookSection(SESSION, "s-default")).rejects.toThrow(
+      "Failed to delete section"
+    );
+  });
+
+  it("succeeds for non-default sections", async () => {
+    mockFetch({ ok: true });
+    await expect(deletePlaybookSection(SESSION, "s-custom")).resolves.not.toThrow();
+  });
+});
+
+describe("sport grouping logic (unit)", () => {
+  /**
+   * Replicates the sportGroups memoisation from PlaybookSectionPanel.
+   * Tests that default sections sort first within a group.
+   */
+  function buildSportGroups(sections, supportedSports) {
+    const map = new Map();
+    for (const s of sections) {
+      const key = s.sport || "__other__";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(s);
+    }
+    for (const [, group] of map) {
+      group.sort((a, b) => {
+        if (a.isDefault && !b.isDefault) return -1;
+        if (!a.isDefault && b.isDefault) return 1;
+        return a.name.localeCompare(b.name);
+      });
+    }
+    const ordered = [];
+    for (const sport of supportedSports) {
+      if (map.has(sport)) ordered.push({ sport, sections: map.get(sport) });
+    }
+    if (map.has("__other__")) ordered.push({ sport: "__other__", sections: map.get("__other__") });
+    return ordered;
+  }
+
+  const SPORTS = ["Rugby", "Football", "Soccer"];
+
+  it("groups sections by sport in the order of SUPPORTED_FIELD_TYPES", () => {
+    const sections = [
+      { id: "1", sport: "Soccer", name: "A", isDefault: false },
+      { id: "2", sport: "Rugby", name: "B", isDefault: false },
+    ];
+    const groups = buildSportGroups(sections, SPORTS);
+    expect(groups[0].sport).toBe("Rugby");
+    expect(groups[1].sport).toBe("Soccer");
+  });
+
+  it("sorts default section first within its group", () => {
+    const sections = [
+      { id: "1", sport: "Rugby", name: "Zzz Custom", isDefault: false },
+      { id: "2", sport: "Rugby", name: "Rugby — Default", isDefault: true },
+    ];
+    const [group] = buildSportGroups(sections, SPORTS);
+    expect(group.sections[0].isDefault).toBe(true);
+    expect(group.sections[1].isDefault).toBe(false);
+  });
+
+  it("puts sections with no sport into the __other__ group", () => {
+    const sections = [
+      { id: "1", sport: null, name: "Generic", isDefault: false },
+    ];
+    const groups = buildSportGroups(sections, SPORTS);
+    expect(groups[0].sport).toBe("__other__");
+    expect(groups[0].sections[0].name).toBe("Generic");
+  });
+
+  it("omits sport groups that have no sections", () => {
+    const sections = [
+      { id: "1", sport: "Rugby", name: "X", isDefault: false },
+    ];
+    const groups = buildSportGroups(sections, SPORTS);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].sport).toBe("Rugby");
+  });
+});
+
+// ── Add folder to section — duplicate detection logic ─────────────────────────
+
+describe("handleSelectFolder duplicate detection (unit)", () => {
+  /**
+   * Mirrors the duplicate-detection logic from handleSelectFolder in PlaybookSectionPanel.
+   * Returns { hasDuplicates, duplicates, newPlays } so callers can decide how to proceed.
+   */
+  function detectFolderDuplicates(folderPlays, sectionPlayIds) {
+    const duplicates = folderPlays.filter((p) => sectionPlayIds.has(p.id));
+    const newPlays = folderPlays.filter((p) => !sectionPlayIds.has(p.id));
+    return { hasDuplicates: duplicates.length > 0, duplicates, newPlays };
+  }
+
+  const folderPlays = [
+    { id: "p1", title: "Play One" },
+    { id: "p2", title: "Play Two" },
+    { id: "p3", title: "Play Three" },
+  ];
+
+  it("reports no duplicates when the section is empty", () => {
+    const { hasDuplicates } = detectFolderDuplicates(folderPlays, new Set());
+    expect(hasDuplicates).toBe(false);
+  });
+
+  it("detects duplicates when some plays are already in the section", () => {
+    const { hasDuplicates, duplicates, newPlays } = detectFolderDuplicates(
+      folderPlays,
+      new Set(["p1", "p3"])
+    );
+    expect(hasDuplicates).toBe(true);
+    expect(duplicates.map((p) => p.id)).toEqual(["p1", "p3"]);
+    expect(newPlays.map((p) => p.id)).toEqual(["p2"]);
+  });
+
+  it("reports all plays as duplicates when they are all already in the section", () => {
+    const { hasDuplicates, duplicates, newPlays } = detectFolderDuplicates(
+      folderPlays,
+      new Set(["p1", "p2", "p3"])
+    );
+    expect(hasDuplicates).toBe(true);
+    expect(duplicates).toHaveLength(3);
+    expect(newPlays).toHaveLength(0);
+  });
+});
+
+describe("handleConfirmAddFolder — skip vs add-all (unit)", () => {
+  function resolveFolderPlays(folderPlays, sectionPlayIds, skipDuplicates) {
+    return skipDuplicates
+      ? folderPlays.filter((p) => !sectionPlayIds.has(p.id))
+      : folderPlays;
+  }
+
+  const folderPlays = [
+    { id: "p1", title: "Play One" },
+    { id: "p2", title: "Play Two" },
+    { id: "p3", title: "Play Three" },
+  ];
+  const existing = new Set(["p1"]);
+
+  it("skip duplicates: only returns plays not already in the section", () => {
+    const toAdd = resolveFolderPlays(folderPlays, existing, true);
+    expect(toAdd.map((p) => p.id)).toEqual(["p2", "p3"]);
+  });
+
+  it("add all: returns every play including duplicates", () => {
+    const toAdd = resolveFolderPlays(folderPlays, existing, false);
+    expect(toAdd).toHaveLength(3);
+    expect(toAdd.map((p) => p.id)).toEqual(["p1", "p2", "p3"]);
+  });
+
+  it("skip duplicates with no duplicates returns the full list", () => {
+    const toAdd = resolveFolderPlays(folderPlays, new Set(), true);
+    expect(toAdd).toHaveLength(3);
+  });
+
+  it("returns an empty array when skipping and all plays are duplicates", () => {
+    const toAdd = resolveFolderPlays(folderPlays, new Set(["p1", "p2", "p3"]), true);
+    expect(toAdd).toHaveLength(0);
+  });
+});
+
+describe("add folder to section — API calls (integration)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("calls addPlayToSection for each non-duplicate play when skipping duplicates", async () => {
+    const calls = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation((url, opts) => {
+      calls.push({ url, method: opts?.method });
+      return Promise.resolve({ ok: true, status: 201, json: () => Promise.resolve({ ok: true }) });
+    });
+
+    const toAdd = [{ id: "p2" }, { id: "p3" }];
+    await Promise.all(
+      toAdd.map((p) => addPlayToSection(SESSION, "section-1", p.id))
+    );
+
+    expect(calls).toHaveLength(2);
+    expect(calls.every((c) => c.url.includes("section-1/plays"))).toBe(true);
+    expect(calls.every((c) => c.method === "POST")).toBe(true);
+  });
+
+  it("calls addPlayToSection for all plays including duplicates when adding all", async () => {
+    const calls = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation((url, opts) => {
+      calls.push({ url, method: opts?.method });
+      return Promise.resolve({ ok: true, status: 201, json: () => Promise.resolve({ ok: true }) });
+    });
+
+    const folderPlays = [{ id: "p1" }, { id: "p2" }, { id: "p3" }];
+    await Promise.all(
+      folderPlays.map((p) => addPlayToSection(SESSION, "section-1", p.id))
+    );
+
+    expect(calls).toHaveLength(3);
+  });
+});

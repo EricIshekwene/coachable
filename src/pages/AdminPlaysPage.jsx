@@ -1181,14 +1181,16 @@ function SectionRow({ section, plays, onAssign, onTogglePriority }) {
 
 /**
  * Full admin panel for managing playbook sections.
- * Left side: list of sections. Right side: selected section detail with its plays.
+ * Left side: sections grouped by sport in collapsible groups (default section pinned first).
+ * Right side: selected section detail with its plays.
  * @param {Object} props
  * @param {string} props.session - Admin session token
  * @param {Object[]} props.allPlays - All platform plays (for the add-play picker)
+ * @param {Object[]} props.folders - All platform play folders (for the add-folder picker)
  * @param {string} props.error - Parent-level error string
  * @param {Function} props.setError - Error setter from parent
  */
-function PlaybookSectionPanel({ session, allPlays, error, setError }) {
+function PlaybookSectionPanel({ session, allPlays, folders, error, setError }) {
   const [sections, setSections] = useState([]);
   const [loadingSections, setLoadingSections] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
@@ -1206,6 +1208,14 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
   const [pickerSearch, setPickerSearch] = useState("");
   const pickerRef = useRef(null);
 
+  // Add-folder picker
+  const [folderPickerOpen, setFolderPickerOpen] = useState(false);
+  const [folderPickerSearch, setFolderPickerSearch] = useState("");
+  const folderPickerRef = useRef(null);
+
+  // Duplicate-detection modal: { folderPlays, duplicates }
+  const [dupModal, setDupModal] = useState(null);
+
   // Inline rename of selected section
   const [editingName, setEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState("");
@@ -1217,6 +1227,9 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
   // Drag-to-reorder within section plays
   const [sectionDragSrcId, setSectionDragSrcId] = useState(null);
   const [sectionDragOverId, setSectionDragOverId] = useState(null);
+
+  // Collapsed sport groups — keyed by sport name, true = collapsed
+  const [collapsedGroups, setCollapsedGroups] = useState({});
 
   const selectedSection = sections.find((s) => s.id === selectedId) || null;
 
@@ -1243,7 +1256,7 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
       .finally(() => setLoadingPlays(false));
   }, [selectedId, session, setError]);
 
-  // Close picker on outside click
+  // Close play picker on outside click
   useEffect(() => {
     if (!pickerOpen) return;
     const handler = (e) => {
@@ -1256,6 +1269,19 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
     return () => document.removeEventListener("mousedown", handler);
   }, [pickerOpen]);
 
+  // Close folder picker on outside click
+  useEffect(() => {
+    if (!folderPickerOpen) return;
+    const handler = (e) => {
+      if (folderPickerRef.current && !folderPickerRef.current.contains(e.target)) {
+        setFolderPickerOpen(false);
+        setFolderPickerSearch("");
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [folderPickerOpen]);
+
   useEffect(() => {
     if (creatingSection) setTimeout(() => newSectionRef.current?.focus(), 0);
   }, [creatingSection]);
@@ -1263,6 +1289,35 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
   useEffect(() => {
     if (editingName) setTimeout(() => editNameRef.current?.focus(), 0);
   }, [editingName]);
+
+  /** Group sections by sport. Sports with no sections get no group. Sections with no sport go under "Other". */
+  const sportGroups = (() => {
+    const map = new Map();
+    for (const s of sections) {
+      const key = s.sport || "__other__";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(s);
+    }
+    // Sort each group: default section first, then alphabetical
+    for (const [, group] of map) {
+      group.sort((a, b) => {
+        if (a.isDefault && !b.isDefault) return -1;
+        if (!a.isDefault && b.isDefault) return 1;
+        return a.name.localeCompare(b.name);
+      });
+    }
+    // Build ordered array: sport groups in SUPPORTED_FIELD_TYPES order, then "Other"
+    const ordered = [];
+    for (const sport of SUPPORTED_FIELD_TYPES) {
+      if (map.has(sport)) ordered.push({ sport, sections: map.get(sport) });
+    }
+    if (map.has("__other__")) ordered.push({ sport: "__other__", sections: map.get("__other__") });
+    return ordered;
+  })();
+
+  /** Toggle a sport group collapsed/expanded. */
+  const toggleGroup = (sport) =>
+    setCollapsedGroups((prev) => ({ ...prev, [sport]: !prev[sport] }));
 
   /** Create a new section and auto-select it. */
   const handleCreateSection = async () => {
@@ -1316,6 +1371,46 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
         const remaining = sections.filter((s) => s.id !== id);
         setSelectedId(remaining[0]?.id || null);
       }
+    } catch (err) { setError(err.message); }
+  };
+
+  /**
+   * Called when the user picks a folder from the folder picker.
+   * Computes which of the folder's plays are already in the section and either
+   * adds them immediately (no duplicates) or opens the duplicate-resolution modal.
+   * @param {string} folderId - The selected folder's ID
+   */
+  const handleSelectFolder = (folderId) => {
+    setFolderPickerOpen(false);
+    setFolderPickerSearch("");
+    const folderPlays = allPlays.filter((p) => p.folderId === folderId);
+    if (folderPlays.length === 0) return;
+    const duplicates = folderPlays.filter((p) => sectionPlayIds.has(p.id));
+    if (duplicates.length > 0) {
+      setDupModal({ folderPlays, duplicates });
+    } else {
+      handleConfirmAddFolder(folderPlays, false);
+    }
+  };
+
+  /**
+   * Adds folder plays to the section after duplicate resolution.
+   * @param {Object[]} folderPlays - All plays from the selected folder
+   * @param {boolean} skipDuplicates - If true, only add plays not already in the section
+   */
+  const handleConfirmAddFolder = async (folderPlays, skipDuplicates) => {
+    setDupModal(null);
+    const toAdd = skipDuplicates
+      ? folderPlays.filter((p) => !sectionPlayIds.has(p.id))
+      : folderPlays;
+    if (toAdd.length === 0) return;
+    try {
+      await Promise.all(toAdd.map((p) => addPlayToSection(session, selectedId, p.id)));
+      const plays = await fetchSectionPlays(session, selectedId);
+      setSectionPlays(plays);
+      setSections((prev) =>
+        prev.map((s) => (s.id === selectedId ? { ...s, playCount: plays.length } : s))
+      );
     } catch (err) { setError(err.message); }
   };
 
@@ -1404,8 +1499,8 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
       )}
 
       <div className="flex min-h-[520px] gap-5">
-        {/* ── Left: Section list ── */}
-        <div className="w-64 shrink-0 rounded-2xl p-3" style={PANEL_STYLE}>
+        {/* ── Left: Section list grouped by sport ── */}
+        <div className="w-64 shrink-0 overflow-y-auto rounded-2xl p-3" style={PANEL_STYLE}>
           <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--adm-muted)" }}>
             Sections
           </p>
@@ -1414,37 +1509,74 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
             <div className="flex justify-center py-8">
               <AdminSpinner size={24} />
             </div>
+          ) : sportGroups.length === 0 && !creatingSection ? (
+            <p className="px-1 text-xs" style={{ color: "var(--adm-muted)" }}>No sections yet</p>
           ) : (
             <div className="space-y-1">
-              {sections.map((section) => (
-                <button
-                  key={section.id}
-                  onClick={() => setSelectedId(section.id)}
-                  className="group flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs transition hover:opacity-90"
-                  style={selectedId === section.id
-                    ? {
-                        backgroundColor: "var(--adm-accent-dim)",
-                        color: "var(--adm-accent)",
-                        boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--adm-accent) 18%, transparent)",
-                      }
-                    : {
-                        backgroundColor: "transparent",
-                        color: "var(--adm-text2)",
-                      }}
-                >
-                  <FiBookOpen className="shrink-0 text-xs" />
-                  <span className="flex-1 truncate font-semibold">{section.name}</span>
-                  <span className="shrink-0 text-[10px]" style={{ color: selectedId === section.id ? "var(--adm-accent)" : "var(--adm-muted)" }}>{section.playCount}</span>
-                  {!section.isPublished && (
-                    <span className="shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider" style={NEUTRAL_BADGE_STYLE}>
-                      draft
-                    </span>
-                  )}
-                </button>
-              ))}
-              {sections.length === 0 && !creatingSection && (
-                <p className="px-1 text-xs" style={{ color: "var(--adm-muted)" }}>No sections yet</p>
-              )}
+              {sportGroups.map(({ sport, sections: groupSections }) => {
+                const isCollapsed = !!collapsedGroups[sport];
+                const label = sport === "__other__" ? "Other" : sport;
+                return (
+                  <div key={sport}>
+                    {/* Sport group header */}
+                    <button
+                      onClick={() => toggleGroup(sport)}
+                      className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left transition hover:opacity-80"
+                      style={{ color: "var(--adm-text2)" }}
+                    >
+                      <FiChevronRight
+                        className="shrink-0 text-[10px] transition-transform duration-150"
+                        style={{ transform: isCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}
+                      />
+                      <span className="flex-1 truncate text-[10px] font-bold uppercase tracking-wider">
+                        {label}
+                      </span>
+                      <span className="text-[10px]" style={{ color: "var(--adm-muted)" }}>
+                        {groupSections.length}
+                      </span>
+                    </button>
+
+                    {/* Section rows */}
+                    {!isCollapsed && (
+                      <div className="mb-1 ml-3 space-y-0.5 border-l pl-2" style={{ borderColor: "var(--adm-border)" }}>
+                        {groupSections.map((section) => (
+                          <button
+                            key={section.id}
+                            onClick={() => setSelectedId(section.id)}
+                            className="group flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition hover:opacity-90"
+                            style={selectedId === section.id
+                              ? {
+                                  backgroundColor: "var(--adm-accent-dim)",
+                                  color: "var(--adm-accent)",
+                                  boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--adm-accent) 18%, transparent)",
+                                }
+                              : {
+                                  backgroundColor: "transparent",
+                                  color: "var(--adm-text2)",
+                                }}
+                          >
+                            <FiBookOpen className="shrink-0 text-[10px]" />
+                            <span className="flex-1 truncate font-semibold">{section.name}</span>
+                            <span className="shrink-0 text-[10px]" style={{ color: selectedId === section.id ? "var(--adm-accent)" : "var(--adm-muted)" }}>
+                              {section.playCount}
+                            </span>
+                            {section.isDefault && (
+                              <span className="shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider" style={SUCCESS_BADGE_STYLE}>
+                                default
+                              </span>
+                            )}
+                            {!section.isPublished && (
+                              <span className="shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider" style={NEUTRAL_BADGE_STYLE}>
+                                draft
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -1467,21 +1599,21 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
                   color: "var(--adm-text)",
                 }}
               />
-              <input
+              <select
                 value={newSectionSport}
                 onChange={(e) => setNewSectionSport(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleCreateSection();
-                  if (e.key === "Escape") { setCreatingSection(false); setNewSectionName(""); }
-                }}
-                placeholder="Sport (optional)"
-                className="w-full rounded-lg border px-2.5 py-1.5 text-xs outline-none placeholder:text-slate-400"
+                className="w-full rounded-lg border px-2.5 py-1.5 text-xs outline-none"
                 style={{
                   borderColor: "var(--adm-border2)",
                   backgroundColor: "var(--adm-surface-elevated)",
-                  color: "var(--adm-text)",
+                  color: newSectionSport ? "var(--adm-text)" : "var(--adm-muted)",
                 }}
-              />
+              >
+                <option value="">Sport (optional)</option>
+                {SUPPORTED_FIELD_TYPES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
               <div className="flex gap-1">
                 <button
                   onClick={handleCreateSection}
@@ -1555,6 +1687,11 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
                           {selectedSection.sport}
                         </span>
                       )}
+                      {selectedSection.isDefault && (
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={SUCCESS_BADGE_STYLE}>
+                          Default
+                        </span>
+                      )}
                       <button
                         onClick={() => {
                           setEditNameValue(selectedSection.name);
@@ -1570,6 +1707,11 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
                   )}
                   <p className="mt-0.5 text-xs" style={{ color: "var(--adm-muted)" }}>
                     {selectedSection.playCount} {selectedSection.playCount === 1 ? "play" : "plays"}
+                    {selectedSection.isDefault && (
+                      <span className="ml-2" style={{ color: "var(--adm-muted)" }}>
+                        · Standard plays given to coaches on signup
+                      </span>
+                    )}
                   </p>
                 </div>
 
@@ -1596,26 +1738,28 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
                       : <><FiEyeOff className="text-xs" /> Draft</>
                     }
                   </button>
-                  <button
-                    onClick={() => setDeleteTarget(selectedSection)}
-                    title="Delete section"
-                    className="flex items-center justify-center rounded-lg border px-2.5 py-2 text-xs transition hover:opacity-85"
-                    style={{
-                      borderColor: "rgba(220, 38, 38, 0.18)",
-                      backgroundColor: "var(--adm-danger-dim)",
-                      color: "var(--adm-danger)",
-                    }}
-                  >
-                    <FiTrash2 className="text-xs" />
-                  </button>
+                  {!selectedSection.isDefault && (
+                    <button
+                      onClick={() => setDeleteTarget(selectedSection)}
+                      title="Delete section"
+                      className="flex items-center justify-center rounded-lg border px-2.5 py-2 text-xs transition hover:opacity-85"
+                      style={{
+                        borderColor: "rgba(220, 38, 38, 0.18)",
+                        backgroundColor: "var(--adm-danger-dim)",
+                        color: "var(--adm-danger)",
+                      }}
+                    >
+                      <FiTrash2 className="text-xs" />
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* Add play button + picker */}
+              {/* Add play / Add folder buttons */}
               <div className="mb-4 flex items-center gap-3">
                 <div className="relative" ref={pickerRef}>
                   <button
-                    onClick={() => setPickerOpen((v) => !v)}
+                    onClick={() => { setPickerOpen((v) => !v); setFolderPickerOpen(false); }}
                     className="flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold text-white transition hover:brightness-110"
                     style={{ backgroundColor: "var(--adm-accent)" }}
                   >
@@ -1676,10 +1820,116 @@ function PlaybookSectionPanel({ session, allPlays, error, setError }) {
                     </div>
                   )}
                 </div>
+
+                {/* Add Folder picker */}
+                <div className="relative" ref={folderPickerRef}>
+                  <button
+                    onClick={() => { setFolderPickerOpen((v) => !v); setPickerOpen(false); }}
+                    className="flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-xs font-semibold transition hover:opacity-85"
+                    style={{
+                      borderColor: "var(--adm-border2)",
+                      backgroundColor: "var(--adm-surface2)",
+                      color: "var(--adm-text2)",
+                    }}
+                  >
+                    <FiFolderPlus className="text-xs" /> Add Folder
+                  </button>
+
+                  {folderPickerOpen && (
+                    <div className="absolute left-0 top-full z-30 mt-2 w-72 overflow-hidden rounded-xl" style={MENU_STYLE}>
+                      <div className="flex items-center gap-2 border-b px-3 py-2.5" style={MENU_DIVIDER_STYLE}>
+                        <FiSearch className="shrink-0 text-xs" style={{ color: "var(--adm-muted)" }} />
+                        <input
+                          autoFocus
+                          value={folderPickerSearch}
+                          onChange={(e) => setFolderPickerSearch(e.target.value)}
+                          placeholder="Search folders..."
+                          className="flex-1 bg-transparent text-xs outline-none placeholder:text-slate-400"
+                          style={{ color: "var(--adm-text)" }}
+                        />
+                      </div>
+                      <div className="max-h-64 overflow-y-auto">
+                        {(() => {
+                          const visibleFolders = (folders || []).filter((f) => {
+                            if (!folderPickerSearch.trim()) return true;
+                            return f.name.toLowerCase().includes(folderPickerSearch.toLowerCase());
+                          });
+                          if (visibleFolders.length === 0) {
+                            return (
+                              <p className="px-4 py-3 text-xs" style={{ color: "var(--adm-muted)" }}>
+                                No folders found
+                              </p>
+                            );
+                          }
+                          return visibleFolders.map((f) => {
+                            const count = allPlays.filter((p) => p.folderId === f.id).length;
+                            return (
+                              <button
+                                key={f.id}
+                                onClick={() => handleSelectFolder(f.id)}
+                                className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs transition hover:opacity-85"
+                                style={{ color: "var(--adm-text)" }}
+                              >
+                                <FiFolder className="shrink-0 text-sm" style={{ color: "var(--adm-muted)" }} />
+                                <span className="flex-1 truncate font-semibold">{f.name}</span>
+                                <span className="shrink-0 text-[10px]" style={{ color: "var(--adm-muted)" }}>
+                                  {count} {count === 1 ? "play" : "plays"}
+                                </span>
+                              </button>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <p className="text-xs" style={{ color: "var(--adm-muted)" }}>
                   {sectionPlays.length} {sectionPlays.length === 1 ? "play" : "plays"} in this section
                 </p>
               </div>
+
+              {/* Duplicate-resolution modal */}
+              {dupModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.55)" }}>
+                  <div className="w-full max-w-sm rounded-2xl p-6" style={{ backgroundColor: "var(--adm-surface-elevated)", border: "1px solid var(--adm-border2)", boxShadow: "var(--adm-shadow)" }}>
+                    <h3 className="font-Manrope text-sm font-bold" style={{ color: "var(--adm-text)" }}>
+                      Duplicate plays detected
+                    </h3>
+                    <p className="mt-2 text-xs" style={{ color: "var(--adm-text2)" }}>
+                      <span className="font-semibold" style={{ color: "var(--adm-text)" }}>{dupModal.duplicates.length}</span> of the {dupModal.folderPlays.length} plays in this folder are already in the section.
+                    </p>
+                    <ul className="mt-3 max-h-32 space-y-1 overflow-y-auto rounded-lg p-2 text-xs" style={{ backgroundColor: "var(--adm-surface2)", border: "1px solid var(--adm-border)" }}>
+                      {dupModal.duplicates.map((p) => (
+                        <li key={p.id} className="truncate" style={{ color: "var(--adm-text2)" }}>· {p.title}</li>
+                      ))}
+                    </ul>
+                    <div className="mt-5 flex gap-2">
+                      <button
+                        onClick={() => handleConfirmAddFolder(dupModal.folderPlays, true)}
+                        className="flex-1 rounded-lg py-2 text-xs font-semibold transition hover:brightness-110"
+                        style={{ backgroundColor: "var(--adm-accent)", color: "#fff" }}
+                      >
+                        Skip duplicates
+                      </button>
+                      <button
+                        onClick={() => handleConfirmAddFolder(dupModal.folderPlays, false)}
+                        className="flex-1 rounded-lg border py-2 text-xs font-semibold transition hover:opacity-85"
+                        style={{ borderColor: "var(--adm-border2)", backgroundColor: "var(--adm-surface2)", color: "var(--adm-text2)" }}
+                      >
+                        Add all
+                      </button>
+                      <button
+                        onClick={() => setDupModal(null)}
+                        className="rounded-lg border px-3 py-2 text-xs font-semibold transition hover:opacity-85"
+                        style={{ borderColor: "var(--adm-border2)", backgroundColor: "var(--adm-surface)", color: "var(--adm-text2)" }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Plays list */}
               {loadingPlays ? (
@@ -2345,6 +2595,7 @@ export default function AdminPlaysPage() {
         <PlaybookSectionPanel
           session={session}
           allPlays={plays}
+          folders={folders}
           error={error}
           setError={setError}
         />

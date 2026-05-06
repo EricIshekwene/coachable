@@ -586,18 +586,109 @@ export default function Plays() {
       {(visibleFolders.length > 0 || newFolderMode) && (
         <div className="mt-6">
           <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-BrandGray2">Folders</p>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {visibleFolders.map((folder) => (
-              <div key={folder.id} onClick={() => setFolderPath([...folderPath, folder.id])} onDragOver={(e) => handleDragOver(e, folder.id)} onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, folder.id)} className={`group relative flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition ${dragOverFolder === folder.id ? "border-BrandOrange bg-BrandOrange/5 shadow-[0_0_0_2px_rgba(255,122,24,0.2)]" : "border-BrandGray2/20 bg-BrandBlack2/30 hover:border-BrandGray2/40"}`}>
-                <div className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${dragOverFolder === folder.id ? "bg-BrandOrange/20" : "bg-BrandGray2/15"}`}><FiFolder className={`text-lg ${dragOverFolder === folder.id ? "text-BrandOrange" : "text-BrandGray"}`} /></div>
-                <div className="min-w-0 flex-1">
-                  {renameTarget === folder.id ? (<input ref={renameRef} value={renameValue} onChange={(e) => setRenameValue(e.target.value)} onBlur={confirmRename} onKeyDown={(e) => { if (e.key === "Enter") confirmRename(); if (e.key === "Escape") setRenameTarget(null); }} onClick={(e) => e.stopPropagation()} className="w-full rounded bg-transparent text-sm font-semibold outline-none ring-1 ring-BrandOrange px-1" />) : (<p className="truncate text-sm font-semibold">{folder.name}</p>)}
-                  <p className="text-[11px] text-BrandGray2">{folder.playIds.length} plays</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {visibleFolders.map((folder) => {
+              const subFolderCount = folders.filter((f) => f.parentId === folder.id).length;
+
+              return (
+                <div
+                  key={folder.id}
+                  onClick={() => setFolderPath([...folderPath, folder.id])}
+                  onDragOver={(e) => handleDragOver(e, folder.id)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, folder.id)}
+                  className={`group relative cursor-pointer overflow-hidden rounded-2xl border transition ${
+                    dragOverFolder === folder.id
+                      ? "border-BrandOrange/60 bg-BrandOrange/8 shadow-[0_0_0_2px_rgba(255,122,24,0.18)]"
+                      : "border-BrandGray2/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0)),rgba(24,26,31,0.96)] hover:border-BrandOrange/25 hover:bg-[linear-gradient(180deg,rgba(255,122,24,0.05),rgba(255,255,255,0.02)),rgba(24,26,31,0.98)]"
+                  }`}
+                >
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
+                  <div className="flex items-start gap-4 p-4">
+                    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border transition ${
+                      dragOverFolder === folder.id
+                        ? "border-BrandOrange/35 bg-BrandOrange/14"
+                        : "border-white/6 bg-white/[0.04]"
+                    }`}>
+                      <FiFolder className={`text-lg ${dragOverFolder === folder.id ? "text-BrandOrange" : "text-BrandText"}`} />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start gap-2">
+                        <div className="min-w-0 flex-1">
+                          {renameTarget === folder.id ? (
+                            <input
+                              ref={renameRef}
+                              value={renameValue}
+                              onChange={(e) => setRenameValue(e.target.value)}
+                              onBlur={confirmRename}
+                              onKeyDown={(e) => { if (e.key === "Enter") confirmRename(); if (e.key === "Escape") setRenameTarget(null); }}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-full rounded bg-transparent px-1 text-sm font-semibold outline-none ring-1 ring-BrandOrange"
+                            />
+                          ) : (
+                            <p className="truncate font-Manrope text-sm font-semibold text-BrandText">{folder.name}</p>
+                          )}
+                          <p className="mt-1 text-[11px] text-BrandGray2">
+                            {folder.playIds.length} play{folder.playIds.length !== 1 ? "s" : ""}
+                            {subFolderCount > 0 && ` · ${subFolderCount} subfolder${subFolderCount !== 1 ? "s" : ""}`}
+                          </p>
+                        </div>
+
+                        {isCoach && (
+                          <div className="relative shrink-0">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setMenuOpen(menuOpen === folder.id ? null : folder.id); }}
+                              className="rounded-lg p-1.5 text-BrandGray2 opacity-100 transition hover:bg-BrandBlack2 hover:text-BrandText md:opacity-0 group-hover:opacity-100"
+                            >
+                              <FiMoreHorizontal className="text-sm" />
+                            </button>
+                            <ContextMenu id={folder.id} type="folder" />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <div className="flex flex-wrap gap-2">
+                          <span className="rounded-full border border-BrandGray2/20 bg-BrandBlack/40 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-BrandGray2">
+                            Folder
+                          </span>
+                          {dragOverFolder === folder.id && (
+                            <span className="rounded-full border border-BrandOrange/35 bg-BrandOrange/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-BrandOrange">
+                              Drop Here
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-BrandGray2/20 bg-BrandBlack/40 text-BrandGray transition group-hover:border-BrandOrange/30 group-hover:text-BrandOrange">
+                          <FiChevronRight className="text-sm" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                {isCoach && (<div className="relative"><button onClick={(e) => { e.stopPropagation(); setMenuOpen(menuOpen === folder.id ? null : folder.id); }} className="rounded-md p-1.5 text-BrandGray2 opacity-100 md:opacity-0 transition hover:bg-BrandBlack2 hover:text-BrandText group-hover:opacity-100"><FiMoreHorizontal className="text-sm" /></button><ContextMenu id={folder.id} type="folder" /></div>)}
+              );
+            })}
+            {newFolderMode && (
+              <div className="overflow-hidden rounded-2xl border border-BrandOrange/40 bg-[linear-gradient(180deg,rgba(255,122,24,0.09),rgba(255,122,24,0.03))]">
+                <div className="flex items-center gap-4 p-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-BrandOrange/35 bg-BrandOrange/16">
+                    <FiFolder className="text-lg text-BrandOrange" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-BrandOrange/80">New Folder</p>
+                    <input
+                      ref={newFolderRef}
+                      value={newFolderName}
+                      onChange={(e) => setNewFolderName(e.target.value)}
+                      onBlur={handleCreateFolder}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleCreateFolder(); if (e.key === "Escape") setNewFolderMode(false); }}
+                      placeholder="Folder name..."
+                      className="w-full bg-transparent text-sm font-semibold text-BrandText outline-none placeholder:text-BrandGray2"
+                    />
+                  </div>
+                </div>
               </div>
-            ))}
-            {newFolderMode && (<div className="flex items-center gap-3 rounded-xl border border-BrandOrange/40 bg-BrandOrange/5 p-4"><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-BrandOrange/20"><FiFolder className="text-lg text-BrandOrange" /></div><input ref={newFolderRef} value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} onBlur={handleCreateFolder} onKeyDown={(e) => { if (e.key === "Enter") handleCreateFolder(); if (e.key === "Escape") setNewFolderMode(false); }} placeholder="Folder name..." className="flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-BrandGray2" /></div>)}
+            )}
           </div>
         </div>
       )}
@@ -618,24 +709,106 @@ export default function Plays() {
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {sortedVisiblePlays.map((play) => (
-            <div key={play.id} draggable={isCoach && !bulkMode} onDragStart={(e) => handleDragStart(e, play.id)} onDragEnd={handleDragEnd} className={`group relative flex cursor-grab flex-col rounded-xl border p-5 transition active:cursor-grabbing ${bulkMode && bulkSelected.has(play.id) ? "border-BrandOrange bg-BrandOrange/5" : "border-BrandGray2/20 bg-BrandBlack2/30 hover:border-BrandOrange/30 hover:bg-BrandBlack2/60"}`} onClick={bulkMode ? () => toggleBulkSelect(play.id) : undefined}>
+            <div
+              key={play.id}
+              draggable={isCoach && !bulkMode}
+              onDragStart={(e) => handleDragStart(e, play.id)}
+              onDragEnd={handleDragEnd}
+              className={`group relative flex cursor-grab flex-col overflow-hidden rounded-2xl border transition active:cursor-grabbing ${
+                bulkMode && bulkSelected.has(play.id)
+                  ? "border-BrandOrange/50 bg-BrandOrange/6 shadow-[0_0_0_1px_rgba(255,122,24,0.16)]"
+                  : "border-BrandGray2/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0)),rgba(24,26,31,0.96)] hover:border-BrandOrange/25 hover:shadow-[0_18px_50px_rgba(0,0,0,0.22)]"
+              }`}
+              onClick={bulkMode ? () => toggleBulkSelect(play.id) : undefined}
+            >
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
               {bulkMode && (
                 <div className="absolute top-3 left-3 z-10">
                   {bulkSelected.has(play.id) ? <FiCheckSquare className="text-lg text-BrandOrange" /> : <FiSquare className="text-lg text-BrandGray2" />}
                 </div>
               )}
-              <div className="flex flex-1 cursor-pointer flex-col" onClick={bulkMode ? undefined : () => navigate(playerViewMode ? `/app/plays/${play.id}/view` : `/app/plays/${play.id}`)}>
-                <PlayPreviewCard playData={play.playData} autoplay="hover" shape="landscape" cameraMode="fit-distribution" background="field" paddingPx={20} minSpanPx={100} showHoverHint={false} className="mb-4" />
-                <div className="flex items-center gap-1.5">
-                  {play.hiddenFromPlayers && isCoach && <FiEyeOff className="shrink-0 text-sm text-BrandGray2" title="Hidden from players" />}
-                  {play.favorited && <FiStar className="shrink-0 fill-BrandOrange text-sm text-BrandOrange" />}
-                  {renameTarget === play.id ? (<input ref={renameRef} value={renameValue} onChange={(e) => setRenameValue(e.target.value)} onBlur={confirmRename} onKeyDown={(e) => { if (e.key === "Enter") confirmRename(); if (e.key === "Escape") setRenameTarget(null); }} onClick={(e) => e.stopPropagation()} className="min-w-0 flex-1 rounded bg-transparent font-Manrope text-sm font-semibold outline-none ring-1 ring-BrandOrange px-1" />) : (<h3 className="min-w-0 flex-1 font-Manrope text-sm font-semibold truncate">{play.title}</h3>)}
-                  {isCoach && (<div className="relative shrink-0"><button onClick={(e) => { e.stopPropagation(); setMenuOpen(menuOpen === play.id ? null : play.id); }} className="rounded-md p-1 text-BrandGray2 opacity-100 md:opacity-0 transition hover:bg-BrandBlack2 hover:text-BrandText group-hover:opacity-100"><FiMoreHorizontal className="text-sm" /></button><ContextMenu id={play.id} type="play" /></div>)}
+              <div
+                className="flex flex-1 cursor-pointer flex-col"
+                onClick={bulkMode ? undefined : () => navigate(playerViewMode ? `/app/plays/${play.id}/view` : `/app/plays/${play.id}`)}
+              >
+                <div className="border-b border-white/6 bg-BrandBlack/40 p-3">
+                  <PlayPreviewCard
+                    playData={play.playData}
+                    autoplay="hover"
+                    shape="landscape"
+                    cameraMode="fit-distribution"
+                    background="field"
+                    paddingPx={20}
+                    minSpanPx={100}
+                    showHoverHint={false}
+                    className="overflow-hidden rounded-xl"
+                  />
                 </div>
-                {(play.tags || []).length > 0 && <div className="mt-2 flex flex-wrap gap-1.5">{play.tags.map((tag) => (<span key={tag} className="inline-flex items-center gap-1 rounded-md bg-BrandGray2/20 px-2 py-0.5 text-[10px] text-BrandGray"><FiTag className="text-[8px]" />{tag}</span>))}</div>}
-                <div className="mt-auto pt-3 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 text-[11px] text-BrandGray2"><FiClock className="text-[10px]" />{formatRelativeTime(play.updatedAt || play.createdAt)}</span>
-                  {canEditPlay && (<button onClick={(e) => { e.stopPropagation(); navigate(`/app/plays/${play.id}/edit`); }} className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-BrandGray transition hover:bg-BrandGray2/20 hover:text-BrandOrange"><FiEdit2 className="text-[10px]" />Edit</button>)}
+
+                <div className="flex flex-1 flex-col p-4">
+                  <div className="flex items-start gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        {play.hiddenFromPlayers && isCoach && <FiEyeOff className="shrink-0 text-sm text-BrandGray2" title="Hidden from players" />}
+                        {play.favorited && <FiStar className="shrink-0 fill-BrandOrange text-sm text-BrandOrange" />}
+                        {renameTarget === play.id ? (
+                          <input
+                            ref={renameRef}
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            onBlur={confirmRename}
+                            onKeyDown={(e) => { if (e.key === "Enter") confirmRename(); if (e.key === "Escape") setRenameTarget(null); }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="min-w-0 flex-1 rounded bg-transparent px-1 font-Manrope text-sm font-semibold outline-none ring-1 ring-BrandOrange"
+                          />
+                        ) : (
+                          <h3 className="min-w-0 flex-1 truncate font-Manrope text-sm font-semibold text-BrandText">{play.title}</h3>
+                        )}
+                      </div>
+                      <p className="mt-1 text-[11px] text-BrandGray2">
+                        {currentFolderId ? "Stored in this folder" : "Play preview and details"}
+                      </p>
+                    </div>
+
+                    {isCoach && (
+                      <div className="relative shrink-0">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setMenuOpen(menuOpen === play.id ? null : play.id); }}
+                          className="rounded-lg p-1.5 text-BrandGray2 opacity-100 transition hover:bg-BrandBlack2 hover:text-BrandText md:opacity-0 group-hover:opacity-100"
+                        >
+                          <FiMoreHorizontal className="text-sm" />
+                        </button>
+                        <ContextMenu id={play.id} type="play" />
+                      </div>
+                    )}
+                  </div>
+
+                  {(play.tags || []).length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {play.tags.map((tag) => (
+                        <span key={tag} className="inline-flex items-center gap-1 rounded-full border border-BrandGray2/15 bg-BrandBlack/35 px-2.5 py-1 text-[10px] text-BrandGray">
+                          <FiTag className="text-[8px]" />
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-auto flex items-center justify-between gap-3 pt-4">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-BrandGray2/15 bg-BrandBlack/35 px-2.5 py-1 text-[11px] text-BrandGray2">
+                      <FiClock className="text-[10px]" />
+                      {formatRelativeTime(play.updatedAt || play.createdAt)}
+                    </span>
+                    {canEditPlay && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate(`/app/plays/${play.id}/edit`); }}
+                        className="flex items-center gap-1 rounded-full border border-BrandGray2/20 bg-BrandBlack/35 px-3 py-1.5 text-[11px] text-BrandGray transition hover:border-BrandOrange/30 hover:text-BrandOrange"
+                      >
+                        <FiEdit2 className="text-[10px]" />
+                        Edit
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
