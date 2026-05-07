@@ -167,6 +167,9 @@ router.post("/elevate/confirm", requireAdmin, async (req, res) => {
   res.json({ ok: true, elevatedUntil });
 });
 
+// Pending security email changes: sessionId -> { newEmail, code, expiresAt }
+const pendingEmailChanges = new Map();
+
 /**
  * Get the currently configured admin security email (masked).
  * @route GET /admin/settings/security-email
@@ -179,19 +182,69 @@ router.get("/settings/security-email", requireAdmin, (req, res) => {
 });
 
 /**
- * Update the admin security email used for Danger Mode verification.
+ * Step 1: Request a security email change. If a current email is configured,
+ * sends an OTP to that address before applying the change. If no email is set,
+ * applies immediately.
  * @route PUT /admin/settings/security-email
  */
-router.put("/settings/security-email", requireAdmin, (req, res) => {
+router.put("/settings/security-email", requireAdmin, async (req, res) => {
   const { email } = req.body;
-  if (email !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  const newEmail = (email || "").trim();
+
+  if (newEmail !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
     return res.status(400).json({ error: "Invalid email address" });
   }
-  adminSecurityEmail = email.trim();
+
+  // No current email — apply immediately (nothing to verify against)
+  if (!adminSecurityEmail) {
+    adminSecurityEmail = newEmail;
+    if (!adminSecurityEmail) return res.json({ ok: true, configured: false });
+    const [localPart, domain] = adminSecurityEmail.split("@");
+    return res.json({ ok: true, configured: true, maskedEmail: `${localPart[0]}*****@${domain}` });
+  }
+
+  // Current email exists — send OTP to it before allowing the change
+  const sid = resolveSessionId(req);
+  const code = generateCode();
+  pendingEmailChanges.set(sid, { newEmail, code, expiresAt: Date.now() + OTP_TTL_MS });
+
+  try {
+    await sendDangerModeEmail(adminSecurityEmail, code);
+  } catch (err) {
+    pendingEmailChanges.delete(sid);
+    return res.status(500).json({ error: "Failed to send verification email." });
+  }
+
+  const [localPart, domain] = adminSecurityEmail.split("@");
+  res.json({ ok: true, codeSent: true, maskedEmail: `${localPart[0]}*****@${domain}` });
+});
+
+/**
+ * Step 2: Confirm the OTP sent to the current security email and apply the change.
+ * @route POST /admin/settings/security-email/confirm
+ */
+router.post("/settings/security-email/confirm", requireAdmin, (req, res) => {
+  const { code } = req.body;
+  if (!code) return res.status(400).json({ error: "Verification code required" });
+
+  const sid = resolveSessionId(req);
+  const pending = pendingEmailChanges.get(sid);
+
+  if (!pending) return res.status(400).json({ error: "No pending change. Request a new code." });
+  if (Date.now() > pending.expiresAt) {
+    pendingEmailChanges.delete(sid);
+    return res.status(400).json({ error: "Code expired. Request a new one." });
+  }
+  if (pending.code !== String(code).trim()) {
+    return res.status(401).json({ error: "Invalid code" });
+  }
+
+  pendingEmailChanges.delete(sid);
+  adminSecurityEmail = pending.newEmail;
+
   if (!adminSecurityEmail) return res.json({ ok: true, configured: false });
   const [localPart, domain] = adminSecurityEmail.split("@");
-  const maskedEmail = `${localPart[0]}*****@${domain}`;
-  res.json({ ok: true, configured: true, maskedEmail });
+  res.json({ ok: true, configured: true, maskedEmail: `${localPart[0]}*****@${domain}` });
 });
 
 /**
@@ -649,11 +702,19 @@ function toPlatformFolderResponse(row) {
   };
 }
 
-// GET /admin/plays — list all platform plays
+// GET /admin/plays — list admin-curated platform plays only (excludes community submissions)
 router.get("/plays", requireAdmin, async (_req, res, next) => {
   try {
     const { rows } = await pool.query(
-      "SELECT * FROM platform_plays ORDER BY sort_order ASC, created_at DESC"
+      `SELECT * FROM platform_plays
+       WHERE is_community_submitted = false
+         AND id NOT IN (
+           SELECT psp.play_id
+           FROM playbook_section_plays psp
+           JOIN playbook_sections ps ON ps.id = psp.section_id
+           WHERE ps.is_default = false
+         )
+       ORDER BY sort_order ASC, created_at DESC`
     );
     res.json({ plays: rows.map(toPlatformPlayResponse) });
   } catch (err) {

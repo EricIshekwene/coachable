@@ -504,12 +504,59 @@ function BrowseTile({ title, description, playCount, onClick }) {
   );
 }
 
+// ── Tab selector ──────────────────────────────────────────────────────────────
+
+/**
+ * Platform / Community tab switcher with orange underline + glow on the active tab.
+ * @param {{ activeTab: string, onChange: Function }} props
+ */
+function PlaybookTabs({ activeTab, onChange, hasCommunity }) {
+  const tabs = [
+    { key: "platform", label: "Platform" },
+    ...(hasCommunity ? [{ key: "community", label: "Community" }] : []),
+  ];
+
+  return (
+    <div className="flex items-end gap-6">
+      {tabs.map(({ key, label }) => {
+        const isActive = activeTab === key;
+        return (
+          <button
+            key={key}
+            onClick={() => onChange(key)}
+            className="relative pb-2.5 text-sm font-semibold transition-colors"
+            style={{ color: isActive ? "#FF7A18" : undefined }}
+          >
+            <span className={isActive ? "text-BrandOrange" : "text-BrandGray hover:text-BrandText"}>
+              {label}
+            </span>
+            {isActive && (
+              <>
+                {/* underline */}
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-BrandOrange" />
+                {/* radial glow bleeding upward from the underline */}
+                <span
+                  className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2"
+                  style={{
+                    width: "120%",
+                    height: "32px",
+                    background: "radial-gradient(ellipse at 50% 100%, rgba(255,122,24,0.28) 0%, transparent 70%)",
+                  }}
+                />
+              </>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 /**
- * Playbooks page — shows admin-curated playbook sections for the team's sport.
- * Coaches can click any section tile to see its plays, preview animations,
- * and add plays to their team playbook.
+ * Playbooks page — shows admin-curated (Platform) and community-submitted (Community)
+ * playbook sections for the team's sport. Coaches can browse, preview, and add plays.
  */
 export default function Playbooks() {
   const { user } = useAuth();
@@ -521,6 +568,7 @@ export default function Playbooks() {
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState("platform");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -547,6 +595,11 @@ export default function Playbooks() {
     }
   }, [loading, navigate, sectionId, sections]);
 
+  // Split into platform (default/curated) and community sections
+  const platformSections = sections.filter((s) => s.isDefault);
+  const communitySections = sections.filter((s) => !s.isDefault);
+  const visibleSections = activeTab === "platform" ? platformSections : communitySections;
+
   if (sectionId) {
     return (
       <SectionDetail
@@ -558,15 +611,20 @@ export default function Playbooks() {
   }
 
   return (
-    <div className="min-h-full px-6 py-8">
-      <div className="mb-6">
+    <div className="overflow-y-auto min-h-full px-6 py-8">
+      <div className="mb-2">
         <h1 className="font-Manrope text-xl font-bold text-BrandText">Playbook Library</h1>
         <p className="mt-1 text-sm text-BrandGray">
           {teamSport
-            ? `Browse curated ${teamSport} play collections. Add plays to your team's playbook with one click.`
-            : "Browse curated play collections. Add plays to your team's playbook with one click."
+            ? `Browse ${teamSport} play collections. Add plays to your team's playbook with one click.`
+            : "Browse play collections. Add plays to your team's playbook with one click."
           }
         </p>
+      </div>
+
+      {/* Tab selector — sits between header and content, below the nav */}
+      <div className="mb-6 border-b border-BrandGray2/15 pt-4">
+        <PlaybookTabs activeTab={activeTab} onChange={setActiveTab} hasCommunity={communitySections.length > 0} />
       </div>
 
       {error && (
@@ -577,17 +635,22 @@ export default function Playbooks() {
         <div className="flex justify-center py-20">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-BrandOrange/30 border-t-BrandOrange" />
         </div>
-      ) : sections.length === 0 ? (
+      ) : visibleSections.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-BrandGray2/20 py-20 text-center">
           <FiBookOpen className="mb-4 text-4xl text-BrandGray2" />
-          <p className="font-Manrope font-semibold text-BrandText">No playbooks yet</p>
+          <p className="font-Manrope font-semibold text-BrandText">
+            {activeTab === "community" ? "No community plays yet" : "No playbooks yet"}
+          </p>
           <p className="mt-1 text-sm text-BrandGray">
-            Check back soon — collections for your sport will appear here once published.
+            {activeTab === "community"
+              ? "Plays posted to the community will appear here once published."
+              : "Check back soon — collections for your sport will appear here once published."
+            }
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {sections.map((section) => (
+          {visibleSections.map((section) => (
             <BrowseTile
               key={section.id}
               title={section.name}

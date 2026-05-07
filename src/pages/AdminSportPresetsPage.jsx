@@ -127,6 +127,9 @@ export default function AdminSportPresetsPage() {
   const [elevatePassword, setElevatePassword] = useState("");
   const [elevateError, setElevateError] = useState("");
   const [elevating, setElevating] = useState(false);
+  const [elevateStep, setElevateStep] = useState("password"); // "password" | "code"
+  const [elevateCode, setElevateCode] = useState("");
+  const [elevateMaskedEmail, setElevateMaskedEmail] = useState("");
   const [deletingId, setDeletingId] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
   const [duplicatingId, setDuplicatingId] = useState(null);
@@ -176,7 +179,9 @@ export default function AdminSportPresetsPage() {
     new Promise((resolve) => {
       elevateResolveRef.current = resolve;
       setElevatePassword("");
+      setElevateCode("");
       setElevateError("");
+      setElevateStep("password");
       setElevateModal(true);
     });
 
@@ -184,19 +189,39 @@ export default function AdminSportPresetsPage() {
     setElevating(true);
     setElevateError("");
     try {
-      const res = await fetch(`${API_URL}/admin/elevate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-session": session },
-        body: JSON.stringify({ password: elevatePassword }),
-      });
-      if (!res.ok) { setElevateError("Incorrect password."); return; }
-      const data = await res.json();
-      setAdminElevated(data.elevatedUntil);
-      setElevatedUntil(getAdminElevatedUntil());
-      setElevateModal(false);
-      elevateResolveRef.current?.(true);
-    } catch {
-      setElevateError("Request failed.");
+      if (elevateStep === "password") {
+        const res = await fetch(`${API_URL}/admin/elevate/request`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-admin-session": session },
+          body: JSON.stringify({ password: elevatePassword }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Incorrect password.");
+        if (data.elevated) {
+          setAdminElevated(data.elevatedUntil);
+          setElevatedUntil(getAdminElevatedUntil());
+          setElevateModal(false);
+          elevateResolveRef.current?.(true);
+        } else {
+          setElevateMaskedEmail(data.maskedEmail || "");
+          setElevatePassword("");
+          setElevateStep("code");
+        }
+      } else {
+        const res = await fetch(`${API_URL}/admin/elevate/confirm`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-admin-session": session },
+          body: JSON.stringify({ code: elevateCode }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Invalid code");
+        setAdminElevated(data.elevatedUntil);
+        setElevatedUntil(getAdminElevatedUntil());
+        setElevateModal(false);
+        elevateResolveRef.current?.(true);
+      }
+    } catch (err) {
+      setElevateError(err.message || "Request failed.");
     } finally {
       setElevating(false);
     }
@@ -341,20 +366,37 @@ export default function AdminSportPresetsPage() {
       )}
 
       <AdminModal open={elevateModal} onClose={() => { setElevateModal(false); elevateResolveRef.current?.(false); }} title="Danger Mode">
-        <p className="mb-4 text-sm" style={{ color: "var(--adm-muted)" }}>Enter admin password to enable destructive actions for 10 minutes.</p>
-        <AdminInput
-          type="password"
-          value={elevatePassword}
-          onChange={(e) => setElevatePassword(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleElevate()}
-          placeholder="Password"
-          autoFocus
-          className="mb-3"
-        />
+        {elevateStep === "password" ? (
+          <>
+            <p className="mb-4 text-sm" style={{ color: "var(--adm-muted)" }}>Enter admin password to enable destructive actions for 10 minutes.</p>
+            <AdminInput
+              type="password"
+              value={elevatePassword}
+              onChange={(e) => setElevatePassword(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleElevate()}
+              placeholder="Password"
+              autoFocus
+              className="mb-3"
+            />
+          </>
+        ) : (
+          <>
+            <p className="mb-4 text-sm" style={{ color: "var(--adm-muted)" }}>A verification code was sent to {elevateMaskedEmail}. Enter it below.</p>
+            <AdminInput
+              type="text"
+              value={elevateCode}
+              onChange={(e) => setElevateCode(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleElevate()}
+              placeholder="6-digit code"
+              autoFocus
+              className="mb-3"
+            />
+          </>
+        )}
         {elevateError && <p className="mb-3 text-xs" style={{ color: "var(--adm-danger)" }}>{elevateError}</p>}
         <div className="flex gap-2">
-          <AdminBtn variant="danger" className="flex-1" onClick={handleElevate} disabled={elevating}>
-            {elevating ? "Verifying..." : "Enable Danger Mode"}
+          <AdminBtn variant="danger" className="flex-1" onClick={handleElevate} disabled={elevating || (elevateStep === "password" ? !elevatePassword : !elevateCode)}>
+            {elevating ? "Verifying..." : elevateStep === "password" ? "Enable Danger Mode" : "Confirm Code"}
           </AdminBtn>
           <AdminBtn variant="secondary" onClick={() => { setElevateModal(false); elevateResolveRef.current?.(false); }}>Cancel</AdminBtn>
         </div>

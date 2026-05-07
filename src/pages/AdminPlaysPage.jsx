@@ -1738,7 +1738,7 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError }) {
                       : <><FiEyeOff className="text-xs" /> Draft</>
                     }
                   </button>
-                  {!selectedSection.isDefault && (
+                  {!selectedSection.isDefault && !/^community\s/i.test(selectedSection.name) && (
                     <button
                       onClick={() => setDeleteTarget(selectedSection)}
                       title="Delete section"
@@ -2071,6 +2071,9 @@ export default function AdminPlaysPage() {
   const [elevatePassword, setElevatePassword] = useState("");
   const [elevateError, setElevateError] = useState("");
   const [elevating, setElevating] = useState(false);
+  const [elevateStep, setElevateStep] = useState("password"); // "password" | "code"
+  const [elevateCode, setElevateCode] = useState("");
+  const [elevateMaskedEmail, setElevateMaskedEmail] = useState("");
   const elevateResolveRef = useRef(null);
   useEffect(() => {
     const id = setInterval(() => {
@@ -2145,7 +2148,8 @@ export default function AdminPlaysPage() {
   }, [newFolderMode]);
 
   /**
-   * Submit the elevation password to enter Danger Mode.
+   * Submit elevation form — step 1 sends password to /elevate/request,
+   * step 2 sends OTP code to /elevate/confirm.
    * @param {React.FormEvent} e
    */
   const handleElevate = async (e) => {
@@ -2153,18 +2157,39 @@ export default function AdminPlaysPage() {
     setElevateError("");
     setElevating(true);
     try {
-      const res = await fetch(`${API_URL}/admin/elevate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-session": session },
-        body: JSON.stringify({ password: elevatePassword }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Elevation failed");
-      setAdminElevated(data.elevatedUntil);
-      setElevatedUntil(data.elevatedUntil);
-      setElevatePassword("");
-      setElevateModal(false);
-      elevateResolveRef.current?.(true);
+      if (elevateStep === "password") {
+        const res = await fetch(`${API_URL}/admin/elevate/request`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-admin-session": session },
+          body: JSON.stringify({ password: elevatePassword }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Elevation failed");
+        if (data.elevated) {
+          setAdminElevated(data.elevatedUntil);
+          setElevatedUntil(data.elevatedUntil);
+          setElevatePassword("");
+          setElevateModal(false);
+          elevateResolveRef.current?.(true);
+        } else {
+          setElevateMaskedEmail(data.maskedEmail || "");
+          setElevatePassword("");
+          setElevateStep("code");
+        }
+      } else {
+        const res = await fetch(`${API_URL}/admin/elevate/confirm`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-admin-session": session },
+          body: JSON.stringify({ code: elevateCode }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Invalid code");
+        setAdminElevated(data.elevatedUntil);
+        setElevatedUntil(data.elevatedUntil);
+        setElevateCode("");
+        setElevateModal(false);
+        elevateResolveRef.current?.(true);
+      }
     } catch (err) {
       setElevateError(err.message || "Invalid password");
     } finally {
@@ -2175,7 +2200,9 @@ export default function AdminPlaysPage() {
   const handleElevateCancel = () => {
     setElevateModal(false);
     setElevatePassword("");
+    setElevateCode("");
     setElevateError("");
+    setElevateStep("password");
     elevateResolveRef.current?.(false);
   };
 
@@ -2188,7 +2215,9 @@ export default function AdminPlaysPage() {
     return new Promise((resolve) => {
       elevateResolveRef.current = resolve;
       setElevatePassword("");
+      setElevateCode("");
       setElevateError("");
+      setElevateStep("password");
       setElevateModal(true);
     });
   }, []);
@@ -2491,14 +2520,23 @@ export default function AdminPlaysPage() {
 
       {/* Danger Mode modal */}
       <AdminModal open={elevateModal} onClose={handleElevateCancel} title="Danger Mode Required">
-        <p className="mb-4 text-sm" style={{ color: "var(--adm-danger)" }}>Re-enter your admin password to unlock destructive operations for 10 minutes.</p>
         <form onSubmit={handleElevate} className="flex flex-col gap-3">
-          <AdminInput type="password" value={elevatePassword} onChange={(e) => setElevatePassword(e.target.value)} placeholder="Admin password" autoFocus />
+          {elevateStep === "password" ? (
+            <>
+              <p className="text-sm" style={{ color: "var(--adm-danger)" }}>Re-enter your admin password to unlock destructive operations for 10 minutes.</p>
+              <AdminInput type="password" value={elevatePassword} onChange={(e) => setElevatePassword(e.target.value)} placeholder="Admin password" autoFocus />
+            </>
+          ) : (
+            <>
+              <p className="text-sm" style={{ color: "var(--adm-muted)" }}>A verification code was sent to {elevateMaskedEmail}. Enter it below.</p>
+              <AdminInput type="text" value={elevateCode} onChange={(e) => setElevateCode(e.target.value)} placeholder="6-digit code" autoFocus />
+            </>
+          )}
           {elevateError && <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{elevateError}</p>}
           <div className="flex gap-2">
             <AdminBtn type="button" variant="secondary" className="flex-1" onClick={handleElevateCancel}>Cancel</AdminBtn>
-            <AdminBtn type="submit" variant="danger" className="flex-1" disabled={elevating || !elevatePassword}>
-              {elevating ? "Verifying..." : "Unlock Danger Mode"}
+            <AdminBtn type="submit" variant="danger" className="flex-1" disabled={elevating || (elevateStep === "password" ? !elevatePassword : !elevateCode)}>
+              {elevating ? "Verifying..." : elevateStep === "password" ? "Unlock Danger Mode" : "Confirm Code"}
             </AdminBtn>
           </div>
         </form>

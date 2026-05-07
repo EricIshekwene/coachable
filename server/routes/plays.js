@@ -20,6 +20,7 @@ function toPlayResponse(row, { tags = [], favorited = false } = {}) {
     notesUpdatedAt: row.notes_updated_at || null,
     favorited,
     hiddenFromPlayers: Boolean(row.hidden_from_players),
+    createdByUserId: row.created_by_user_id || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -654,6 +655,105 @@ router.post(
       );
 
       res.status(201).json({ token });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /teams/:teamId/plays/:playId/post-to-community
+// Copies a team play as a new platform play and adds it to the sport's Community section.
+// Accessible to owners, coaches, and assistant coaches only.
+router.post(
+  "/:teamId/plays/:playId/post-to-community",
+  requireAuth,
+  requireTeamRole("owner", "coach", "assistant_coach"),
+  async (req, res, next) => {
+    try {
+      const { title, description } = req.body;
+      if (!title?.trim()) return res.status(400).json({ error: "Title is required" });
+
+      // Fetch the play and team in one round-trip
+      const { rows: playRows } = await pool.query(
+        `SELECT p.*, t.sport AS team_sport
+         FROM plays p
+         JOIN teams t ON t.id = p.team_id
+         WHERE p.id = $1 AND p.team_id = $2`,
+        [req.params.playId, req.params.teamId]
+      );
+      if (!playRows.length) return res.status(404).json({ error: "Play not found" });
+
+      const play = playRows[0];
+
+      if (play.created_by_user_id !== req.userId) {
+        return res.status(403).json({ error: "Only the creator of a play can post it to the community." });
+      }
+
+      // Derive sport: prefer fieldType from play_data, fall back to team sport
+      const fieldType = play.play_data?.play?.settings?.advancedSettings?.fieldType;
+      const rawSport = (fieldType && fieldType !== "Blank") ? fieldType : play.team_sport;
+      if (!rawSport) return res.status(400).json({ error: "Could not determine sport for this play. Make sure the play has a field type set." });
+
+      // Find the community section with a case-insensitive sport match so
+      // minor casing differences between team.sport and section.sport don't break the lookup.
+      const { rows: sectionRows } = await pool.query(
+        `SELECT id, sport FROM playbook_sections
+         WHERE LOWER(name) = LOWER($1) AND LOWER(sport) = LOWER($2)
+         LIMIT 1`,
+        [`Community ${rawSport} Plays`, rawSport]
+      );
+      if (!sectionRows.length) {
+        return res.status(400).json({ error: `No community section found for sport "${rawSport}". The section may not have been created yet — try again in a moment.` });
+      }
+      const sport = sectionRows[0].sport; // use the canonical sport name from the section
+      const sectionId = sectionRows[0].id;
+
+      // Create the platform play, flagged as community-submitted so it stays
+      // out of the admin-curated plays list.
+      const { rows: platformRows } = await pool.query(
+        `INSERT INTO platform_plays (title, description, sport, play_data, thumbnail_url, is_community_submitted)
+         VALUES ($1, $2, $3, $4, $5, true)
+         RETURNING id`,
+        [
+          title.trim(),
+          description?.trim() || "",
+          sport,
+          play.play_data || null,
+          play.thumbnail_url || null,
+        ]
+      );
+      const platformPlayId = platformRows[0].id;
+
+      // Add the platform play to the community section
+      const { rows: maxRows } = await pool.query(
+        `SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order
+         FROM playbook_section_plays WHERE section_id = $1`,
+        [sectionId]
+      );
+      await pool.query(
+        `INSERT INTO playbook_section_plays (section_id, play_id, sort_order)
+         VALUES ($1, $2, $3)`,
+        [sectionId, platformPlayId, maxRows[0].next_order]
+      );
+
+      // If a review team is configured, auto-copy the play into that team's library.
+      const reviewTeamId = process.env.COMMUNITY_REVIEW_TEAM_ID;
+      if (reviewTeamId) {
+        // Verify the team exists before inserting
+        const { rows: teamRows } = await pool.query(
+          "SELECT id FROM teams WHERE id = $1 AND deleted_at IS NULL",
+          [reviewTeamId]
+        );
+        if (teamRows.length) {
+          await pool.query(
+            `INSERT INTO plays (team_id, title, play_data, thumbnail_url, created_by_user_id, updated_by_user_id)
+             VALUES ($1, $2, $3, $4, $5, $5)`,
+            [reviewTeamId, title.trim(), play.play_data || null, play.thumbnail_url || null, req.userId]
+          );
+        }
+      }
+
+      res.status(201).json({ ok: true, platformPlayId });
     } catch (err) {
       next(err);
     }

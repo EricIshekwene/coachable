@@ -18,6 +18,7 @@ export default function Login() {
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get("returnTo") || "/app/plays";
   const inviteCode = searchParams.get("invite") || "";
+  const sportSlug = searchParams.get("sport") || null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -58,8 +59,12 @@ export default function Login() {
       {/* Left - Form */}
       <div className="flex w-full flex-col justify-center overflow-auto bg-white px-8 sm:px-16 md:w-1/2 lg:px-24 xl:px-32">
         <div className="mx-auto w-full max-w-md">
-          <Link to="/" className="mb-6 inline-flex items-center gap-1.5 text-xs text-BrandGray2 transition hover:text-BrandBlack">
-            <FiArrowLeft className="text-sm" /> Back to home
+          <Link
+            to={sportSlug ? `/${sportSlug}` : "/"}
+            className="mb-6 inline-flex items-center gap-1.5 text-xs text-BrandGray2 transition hover:text-BrandBlack"
+          >
+            <FiArrowLeft className="text-sm" />
+            {sportSlug ? `Back to ${sportSlug.replace(/-/g, " ")} home` : "Back to home"}
           </Link>
 
           <img src={logo} alt="Coachable" className="mb-10 h-7" />

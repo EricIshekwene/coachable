@@ -1,5 +1,6 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import logo from "../assets/logos/White_Full_Coachable.png";
+import SportAwarePublicNav from "../components/SportAwarePublicNav";
 import ericPhoto from "../assets/pictures/faces/IMG_7356 (5).jpg";
 import ericRugbyPhoto from "../assets/pictures/faces/Eric_Rugby.JPG";
 import rugbyHeroLong from "../assets/pictures/Rugby_staring_at_ipad_long.png";
@@ -64,6 +65,8 @@ const TAGS = [
  * Linked from the main nav at /enterprise.
  */
 export default function Enterprise() {
+  const [searchParams] = useSearchParams();
+  const sport = searchParams.get("sport") || null;
 
   return (
     <div
@@ -71,42 +74,7 @@ export default function Enterprise() {
       style={{ height: "100dvh", overflowY: "auto" }}
     >
       {/* ── Nav ── */}
-      <nav className="fixed top-0 w-full z-50 bg-BrandBlack/70 backdrop-blur-xl border-b border-BrandGray2/10">
-        <div className="flex items-center px-6 h-16 md:px-12 lg:px-20 max-w-7xl mx-auto">
-          <div className="flex flex-1 items-center">
-            <Link to="/home">
-              <img src={logo} alt="Coachable" className="h-7 md:h-8" />
-            </Link>
-          </div>
-
-          <div className="hidden flex-1 items-center justify-center gap-8 md:flex">
-            <Link to="/enterprise" className="text-sm text-white transition">
-              Enterprise
-            </Link>
-            <Link to="/slate" className="text-sm text-BrandGray transition hover:text-white">
-              Product
-            </Link>
-            <Link to="/resources" className="text-sm text-BrandGray transition hover:text-white">
-              Resources
-            </Link>
-          </div>
-
-          <div className="flex flex-1 items-center justify-end gap-3">
-            <Link
-              to="/login"
-              className="rounded-lg px-4 py-2 text-sm text-BrandGray transition hover:text-white"
-            >
-              Log in
-            </Link>
-            <Link
-              to="/signup"
-              className="rounded-lg bg-BrandOrange px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.97]"
-            >
-              Get Started
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <SportAwarePublicNav sport={sport} activePage="enterprise" />
 
       {/* ── Hero ── */}
       <section className="relative min-h-screen flex items-center pt-16 overflow-hidden">

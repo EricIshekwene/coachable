@@ -7,6 +7,7 @@ import videoSectionBg from "../assets/backgrounds/Gemini_Generated_Image_fet7z5f
 import { FiArrowRight, FiPlay, FiUsers, FiLayers, FiPlus, FiCheck } from "react-icons/fi";
 import { createPlay } from "../utils/apiPlays";
 import PlayPreviewCard from "../components/PlayPreviewCard";
+import SportAwarePublicNav from "../components/SportAwarePublicNav";
 
 // Local photography assets
 import filmSessionLong from "../assets/pictures/film_session_long.png";
@@ -95,43 +96,7 @@ export default function Landing({ sport = null }) {
       style={{ height: "100dvh", overflowY: "auto" }}
     >
       {/* ── Nav ── */}
-      <nav className="fixed top-0 w-full z-50 bg-BrandBlack/70 backdrop-blur-xl border-b border-BrandGray2/10">
-        <div className="flex items-center px-6 h-16 md:px-12 lg:px-20 max-w-7xl mx-auto">
-          {/* Logo */}
-          <div className="flex flex-1 items-center">
-            <img src={logo} alt="Coachable" className="h-7 md:h-8" />
-          </div>
-
-          {/* Center links */}
-          <div className="hidden flex-1 items-center justify-center gap-8 md:flex">
-            <Link to="/enterprise" className="text-sm text-BrandGray transition hover:text-white">
-              Enterprise
-            </Link>
-            <Link to="/slate" className="text-sm text-BrandGray transition hover:text-white">
-              Product
-            </Link>
-            <Link to="/resources" className="text-sm text-BrandGray transition hover:text-white">
-              Resources
-            </Link>
-          </div>
-
-          {/* Auth buttons */}
-          <div className="flex flex-1 items-center justify-end gap-3">
-            <Link
-              to="/login"
-              className="rounded-lg px-4 py-2 text-sm text-BrandGray transition hover:text-white"
-            >
-              Log in
-            </Link>
-            <Link
-              to="/signup"
-              className="rounded-lg bg-BrandOrange px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.97]"
-            >
-              Get Started
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <SportAwarePublicNav sport={sport} activePage={null} />
 
       {/* ── Hero ── */}
       <section className="relative min-h-screen flex items-center pt-16 overflow-hidden">

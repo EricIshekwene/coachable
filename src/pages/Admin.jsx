@@ -305,6 +305,9 @@ export default function Admin() {
   const [securityEmailSaving, setSecurityEmailSaving] = useState(false);
   const [securityEmailError, setSecurityEmailError] = useState("");
   const [securityEmailSuccess, setSecurityEmailSuccess] = useState("");
+  const [securityEmailStep, setSecurityEmailStep] = useState("input"); // "input" | "code"
+  const [securityEmailCode, setSecurityEmailCode] = useState("");
+  const [securityEmailMasked, setSecurityEmailMasked] = useState(""); // current masked email shown during OTP step
   // Tick every second so the countdown display stays live
   useEffect(() => {
     const id = setInterval(() => {
@@ -771,7 +774,8 @@ export default function Admin() {
   }, [fetchUsers, fetchErrors, fetchPlatformPlays, fetchUserIssues]);
 
   /**
-   * Save the admin security email for Danger Mode verification.
+   * Step 1: Submit new security email. If a current email exists the server
+   * sends an OTP to it; we advance to the code step. Otherwise applies immediately.
    * @param {React.FormEvent} e
    */
   const handleSaveSecurityEmail = async (e) => {
@@ -784,14 +788,49 @@ export default function Admin() {
         method: "PUT",
         body: { email: securityEmailInput },
       });
+      if (data.codeSent) {
+        setSecurityEmailMasked(data.maskedEmail || "");
+        setSecurityEmailCode("");
+        setSecurityEmailStep("code");
+      } else {
+        setSecurityEmail(data.maskedEmail || "");
+        setSecurityEmailConfigured(!!data.configured);
+        setSecurityEmailInput("");
+        setSecurityEmailEditing(false);
+        setSecurityEmailStep("input");
+        setSecurityEmailSuccess(data.configured ? "Security email saved." : "Security email cleared.");
+        setTimeout(() => setSecurityEmailSuccess(""), 3000);
+      }
+    } catch (err) {
+      setSecurityEmailError(err.message || "Failed to save");
+    } finally {
+      setSecurityEmailSaving(false);
+    }
+  };
+
+  /**
+   * Step 2: Submit OTP to confirm the security email change.
+   * @param {React.FormEvent} e
+   */
+  const handleConfirmSecurityEmailCode = async (e) => {
+    e.preventDefault();
+    setSecurityEmailError("");
+    setSecurityEmailSaving(true);
+    try {
+      const data = await adminFetch("/admin/settings/security-email/confirm", {
+        method: "POST",
+        body: { code: securityEmailCode },
+      });
       setSecurityEmail(data.maskedEmail || "");
       setSecurityEmailConfigured(!!data.configured);
       setSecurityEmailInput("");
+      setSecurityEmailCode("");
+      setSecurityEmailStep("input");
       setSecurityEmailEditing(false);
-      setSecurityEmailSuccess(data.configured ? "Security email saved." : "Security email cleared.");
+      setSecurityEmailSuccess(data.configured ? "Security email updated." : "Security email cleared.");
       setTimeout(() => setSecurityEmailSuccess(""), 3000);
     } catch (err) {
-      setSecurityEmailError(err.message || "Failed to save");
+      setSecurityEmailError(err.message || "Invalid code");
     } finally {
       setSecurityEmailSaving(false);
     }
@@ -1542,11 +1581,11 @@ export default function Admin() {
                     ) : (
                       <AdminBadge status={undefined}>Not set</AdminBadge>
                     )}
-                    <AdminBtn variant="secondary" size="sm" onClick={() => { setSecurityEmailEditing(true); setSecurityEmailInput(""); setSecurityEmailError(""); setSecurityEmailSuccess(""); }}>
+                    <AdminBtn variant="secondary" size="sm" onClick={() => { setSecurityEmailEditing(true); setSecurityEmailInput(""); setSecurityEmailCode(""); setSecurityEmailStep("input"); setSecurityEmailError(""); setSecurityEmailSuccess(""); }}>
                       {securityEmailConfigured ? "Change" : "Set Email"}
                     </AdminBtn>
                   </div>
-                ) : (
+                ) : securityEmailStep === "input" ? (
                   <form onSubmit={handleSaveSecurityEmail} className="flex flex-col gap-3 max-w-sm">
                     <AdminInput
                       type="email"
@@ -1557,9 +1596,9 @@ export default function Admin() {
                     />
                     {securityEmailError && <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{securityEmailError}</p>}
                     <div className="flex gap-2">
-                      <AdminBtn variant="secondary" type="button" size="sm" onClick={() => { setSecurityEmailEditing(false); setSecurityEmailError(""); }}>Cancel</AdminBtn>
+                      <AdminBtn variant="secondary" type="button" size="sm" onClick={() => { setSecurityEmailEditing(false); setSecurityEmailStep("input"); setSecurityEmailError(""); }}>Cancel</AdminBtn>
                       <AdminBtn variant="primary" type="submit" size="sm" disabled={securityEmailSaving || !securityEmailInput}>
-                        {securityEmailSaving ? "Saving…" : "Save"}
+                        {securityEmailSaving ? "Sending…" : "Save"}
                       </AdminBtn>
                       {securityEmailConfigured && (
                         <AdminBtn variant="danger" type="button" size="sm" disabled={securityEmailSaving} onClick={async () => {
@@ -1567,12 +1606,20 @@ export default function Admin() {
                           setSecurityEmailSuccess("");
                           setSecurityEmailSaving(true);
                           try {
-                            await adminFetch("/admin/settings/security-email", { method: "PUT", body: { email: "" } });
-                            setSecurityEmail("");
-                            setSecurityEmailConfigured(false);
-                            setSecurityEmailEditing(false);
-                            setSecurityEmailSuccess("Security email cleared.");
-                            setTimeout(() => setSecurityEmailSuccess(""), 3000);
+                            const data = await adminFetch("/admin/settings/security-email", { method: "PUT", body: { email: "" } });
+                            if (data.codeSent) {
+                              setSecurityEmailMasked(data.maskedEmail || "");
+                              setSecurityEmailInput("");
+                              setSecurityEmailCode("");
+                              setSecurityEmailStep("code");
+                            } else {
+                              setSecurityEmail("");
+                              setSecurityEmailConfigured(false);
+                              setSecurityEmailEditing(false);
+                              setSecurityEmailStep("input");
+                              setSecurityEmailSuccess("Security email cleared.");
+                              setTimeout(() => setSecurityEmailSuccess(""), 3000);
+                            }
                           } catch (err) {
                             setSecurityEmailError(err.message || "Failed to clear");
                           } finally {
@@ -1582,6 +1629,26 @@ export default function Admin() {
                           Clear
                         </AdminBtn>
                       )}
+                    </div>
+                  </form>
+                ) : (
+                  <form onSubmit={handleConfirmSecurityEmailCode} className="flex flex-col gap-3 max-w-sm">
+                    <p className="text-sm" style={{ color: "var(--adm-muted)" }}>
+                      A verification code was sent to {securityEmailMasked}. Enter it to confirm the change.
+                    </p>
+                    <AdminInput
+                      type="text"
+                      value={securityEmailCode}
+                      onChange={(e) => setSecurityEmailCode(e.target.value)}
+                      placeholder="6-digit code"
+                      autoFocus
+                    />
+                    {securityEmailError && <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{securityEmailError}</p>}
+                    <div className="flex gap-2">
+                      <AdminBtn variant="secondary" type="button" size="sm" onClick={() => { setSecurityEmailEditing(false); setSecurityEmailStep("input"); setSecurityEmailError(""); }}>Cancel</AdminBtn>
+                      <AdminBtn variant="primary" type="submit" size="sm" disabled={securityEmailSaving || !securityEmailCode}>
+                        {securityEmailSaving ? "Verifying…" : "Confirm"}
+                      </AdminBtn>
                     </div>
                   </form>
                 )}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { FiChevronDown, FiArrowRight, FiPlay, FiClock } from "react-icons/fi";
-import logo from "../assets/logos/White_Full_Coachable.png";
+import SportAwarePublicNav from "../components/SportAwarePublicNav";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
@@ -217,6 +217,8 @@ function FAQItem({ q, a }) {
 export default function Resources() {
   const [videos, setVideos] = useState([]);
   const [activeYtId, setActiveYtId] = useState(null);
+  const [searchParams] = useSearchParams();
+  const sport = searchParams.get("sport") || null;
 
   useEffect(() => {
     fetch(`${API_URL}/demo-videos`)
@@ -233,29 +235,7 @@ export default function Resources() {
       style={{ height: "100dvh", overflowY: "auto" }}
     >
       {/* ── Nav ── */}
-      <nav className="fixed top-0 w-full z-50 bg-BrandBlack/70 backdrop-blur-xl border-b border-BrandGray2/10">
-        <div className="flex items-center px-6 h-16 md:px-12 lg:px-20 max-w-7xl mx-auto">
-          <div className="flex flex-1 items-center">
-            <Link to="/">
-              <img src={logo} alt="Coachable" className="h-7 md:h-8" />
-            </Link>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link
-              to="/login"
-              className="rounded-lg px-4 py-2 text-sm text-BrandGray transition hover:text-white"
-            >
-              Log in
-            </Link>
-            <Link
-              to="/signup"
-              className="rounded-lg bg-BrandOrange px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.97]"
-            >
-              Get Started
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <SportAwarePublicNav sport={sport} activePage="resources" />
 
       {/* ── Hero ── */}
       <section className="pt-36 pb-16 px-6 md:px-12 lg:px-20 max-w-4xl mx-auto">

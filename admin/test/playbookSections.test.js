@@ -567,6 +567,39 @@ describe("handleConfirmAddFolder — skip vs add-all (unit)", () => {
   });
 });
 
+// ── Community section delete guard (UI logic) ────────────────────────────────
+
+describe("community section delete guard (unit)", () => {
+  /**
+   * Mirrors the visibility condition used in PlaybookSectionPanel:
+   *   !section.isDefault && !/^community\s/i.test(section.name)
+   * Returns true when the delete button should be shown.
+   */
+  function canDeleteSection(section) {
+    return !section.isDefault && !/^community\s/i.test(section.name);
+  }
+
+  it("hides delete for default sections", () => {
+    expect(canDeleteSection({ isDefault: true, name: "Rugby — Default" })).toBe(false);
+  });
+
+  it("hides delete for 'Community Rugby Plays' sections", () => {
+    expect(canDeleteSection({ isDefault: false, name: "Community Rugby Plays" })).toBe(false);
+  });
+
+  it("hides delete for 'Community Football Plays' regardless of case", () => {
+    expect(canDeleteSection({ isDefault: false, name: "COMMUNITY Football Plays" })).toBe(false);
+  });
+
+  it("shows delete for custom non-default sections", () => {
+    expect(canDeleteSection({ isDefault: false, name: "Attacking Moves" })).toBe(true);
+  });
+
+  it("shows delete for admin-created sections that do not start with 'Community '", () => {
+    expect(canDeleteSection({ isDefault: false, name: "My Custom Section" })).toBe(true);
+  });
+});
+
 describe("add folder to section — API calls (integration)", () => {
   afterEach(() => vi.restoreAllMocks());
 

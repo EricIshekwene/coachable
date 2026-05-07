@@ -52,6 +52,7 @@ import NotFound from "./pages/NotFound";
 import NoTeam from "./pages/NoTeam";
 import Resources from "./pages/Resources";
 import Enterprise from "./pages/Enterprise";
+import PublicPlaybooksPage from "./pages/PublicPlaybooksPage";
 
 const SPORT_HOME_ROUTES = {
   rugby: "/rugby",
@@ -216,13 +217,21 @@ export function AppRoutes() {
       <Route path="/" element={<LandingGate />} />
       <Route path="/home" element={<Landing />} />
       <Route path="/rugby" element={<Landing sport="rugby" />} />
+      <Route path="/rugby/playbooks" element={<PublicPlaybooksPage sport="rugby" />} />
       <Route path="/football" element={<Landing sport="football" />} />
+      <Route path="/football/playbooks" element={<PublicPlaybooksPage sport="football" />} />
       <Route path="/lacrosse" element={<Landing sport="lacrosse" />} />
+      <Route path="/lacrosse/playbooks" element={<PublicPlaybooksPage sport="lacrosse" />} />
       <Route path="/basketball" element={<Landing sport="basketball" />} />
+      <Route path="/basketball/playbooks" element={<PublicPlaybooksPage sport="basketball" />} />
       <Route path="/soccer" element={<Landing sport="soccer" />} />
+      <Route path="/soccer/playbooks" element={<PublicPlaybooksPage sport="soccer" />} />
       <Route path="/field-hockey" element={<Landing sport="field hockey" />} />
+      <Route path="/field-hockey/playbooks" element={<PublicPlaybooksPage sport="field hockey" />} />
       <Route path="/ice-hockey" element={<Landing sport="ice hockey" />} />
+      <Route path="/ice-hockey/playbooks" element={<PublicPlaybooksPage sport="ice hockey" />} />
       <Route path="/womens-lacrosse" element={<Landing sport="womens lacrosse" />} />
+      <Route path="/womens-lacrosse/playbooks" element={<PublicPlaybooksPage sport="womens lacrosse" />} />
       <Route path="/resources" element={<Resources />} />
       <Route path="/enterprise" element={<Enterprise />} />
       <Route path="/signup" element={<Signup />} />

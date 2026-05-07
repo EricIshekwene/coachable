@@ -158,6 +158,9 @@ export default function AdminDemoVideos() {
   const [dangerPassword, setDangerPassword] = useState("");
   const [dangerError, setDangerError] = useState("");
   const [dangerLoading, setDangerLoading] = useState(false);
+  const [dangerStep, setDangerStep] = useState("password"); // "password" | "code"
+  const [dangerCode, setDangerCode] = useState("");
+  const [dangerMaskedEmail, setDangerMaskedEmail] = useState("");
   const dangerResolveRef = useRef(null);
 
   const authed = Boolean(session);
@@ -190,7 +193,9 @@ export default function AdminDemoVideos() {
     return new Promise((resolve) => {
       dangerResolveRef.current = resolve;
       setDangerPassword("");
+      setDangerCode("");
       setDangerError("");
+      setDangerStep("password");
       setDangerModal(true);
     });
   }, []);
@@ -200,16 +205,35 @@ export default function AdminDemoVideos() {
     setDangerLoading(true);
     setDangerError("");
     try {
-      const res = await fetch(`${API_URL}/admin/elevate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-session": session },
-        body: JSON.stringify({ password: dangerPassword }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Wrong password");
-      setAdminElevated(data.elevatedUntil);
-      setDangerModal(false);
-      dangerResolveRef.current?.(true);
+      if (dangerStep === "password") {
+        const res = await fetch(`${API_URL}/admin/elevate/request`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-admin-session": session },
+          body: JSON.stringify({ password: dangerPassword }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Wrong password");
+        if (data.elevated) {
+          setAdminElevated(data.elevatedUntil);
+          setDangerModal(false);
+          dangerResolveRef.current?.(true);
+        } else {
+          setDangerMaskedEmail(data.maskedEmail || "");
+          setDangerPassword("");
+          setDangerStep("code");
+        }
+      } else {
+        const res = await fetch(`${API_URL}/admin/elevate/confirm`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-admin-session": session },
+          body: JSON.stringify({ code: dangerCode }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Invalid code");
+        setAdminElevated(data.elevatedUntil);
+        setDangerModal(false);
+        dangerResolveRef.current?.(true);
+      }
     } catch (err) {
       setDangerError(err.message);
     } finally {
@@ -383,21 +407,37 @@ export default function AdminDemoVideos() {
 
       {/* Danger Mode modal */}
       <AdminModal open={dangerModal} onClose={handleDangerCancel} title="Danger Mode Required">
-        <p className="mb-4 text-sm" style={{ color: "var(--adm-muted)" }}>Re-enter your admin password to unlock destructive actions for 10 minutes.</p>
         <form onSubmit={handleDangerSubmit}>
-          <AdminInput
-            type="password"
-            autoFocus
-            value={dangerPassword}
-            onChange={(e) => setDangerPassword(e.target.value)}
-            placeholder="Admin password"
-            className="mb-3"
-          />
+          {dangerStep === "password" ? (
+            <>
+              <p className="mb-4 text-sm" style={{ color: "var(--adm-muted)" }}>Re-enter your admin password to unlock destructive actions for 10 minutes.</p>
+              <AdminInput
+                type="password"
+                autoFocus
+                value={dangerPassword}
+                onChange={(e) => setDangerPassword(e.target.value)}
+                placeholder="Admin password"
+                className="mb-3"
+              />
+            </>
+          ) : (
+            <>
+              <p className="mb-4 text-sm" style={{ color: "var(--adm-muted)" }}>A verification code was sent to {dangerMaskedEmail}. Enter it below.</p>
+              <AdminInput
+                type="text"
+                autoFocus
+                value={dangerCode}
+                onChange={(e) => setDangerCode(e.target.value)}
+                placeholder="6-digit code"
+                className="mb-3"
+              />
+            </>
+          )}
           {dangerError && <p className="mb-3 text-xs" style={{ color: "var(--adm-danger)" }}>{dangerError}</p>}
           <div className="flex gap-2">
             <AdminBtn type="button" variant="secondary" className="flex-1" onClick={handleDangerCancel}>Cancel</AdminBtn>
-            <AdminBtn type="submit" variant="danger" className="flex-1" disabled={dangerLoading || !dangerPassword}>
-              {dangerLoading ? "Verifying..." : "Unlock Danger Mode"}
+            <AdminBtn type="submit" variant="danger" className="flex-1" disabled={dangerLoading || (dangerStep === "password" ? !dangerPassword : !dangerCode)}>
+              {dangerLoading ? "Verifying..." : dangerStep === "password" ? "Unlock Danger Mode" : "Confirm Code"}
             </AdminBtn>
           </div>
         </form>

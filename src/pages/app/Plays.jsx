@@ -5,9 +5,9 @@ import {
   FiPlus, FiPlay, FiEdit2, FiClock, FiTag, FiFolder, FiMoreHorizontal,
   FiStar, FiCopy, FiExternalLink, FiTrash2, FiEdit3, FiChevronRight,
   FiLoader, FiSearch, FiRotateCcw, FiX, FiCheckSquare, FiSquare,
-  FiEyeOff, FiEye,
+  FiEyeOff, FiEye, FiSend,
 } from "react-icons/fi";
-import { fetchPlays, deletePlay as apiDeletePlay, updatePlay, toggleFavorite as apiToggleFavorite, movePlayToFolder as apiMovePlayToFolder, sharePlay, fetchTrashedPlays, restorePlay as apiRestorePlay, permanentDeletePlay as apiPermanentDelete, duplicatePlay as apiDuplicatePlay, bulkDeletePlays, bulkMovePlays, bulkTagPlays } from "../../utils/apiPlays";
+import { fetchPlays, deletePlay as apiDeletePlay, updatePlay, toggleFavorite as apiToggleFavorite, movePlayToFolder as apiMovePlayToFolder, sharePlay, fetchTrashedPlays, restorePlay as apiRestorePlay, permanentDeletePlay as apiPermanentDelete, duplicatePlay as apiDuplicatePlay, bulkDeletePlays, bulkMovePlays, bulkTagPlays, postToCommunity as apiPostToCommunity } from "../../utils/apiPlays";
 import { fetchFolders, createFolder as apiCreateFolder, updateFolder, deleteFolder as apiFolderDelete, shareFolder } from "../../utils/apiFolders";
 import PlayPreviewCard from "../../components/PlayPreviewCard";
 
@@ -31,6 +31,7 @@ export default function Plays() {
   const { user, playerViewMode } = useAuth();
   const navigate = useNavigate();
   const isCoach = (user?.role === "coach" || user?.role === "owner") && !playerViewMode;
+  const canRolePostToCommunity = (user?.role === "owner" || user?.role === "coach" || user?.role === "assistant_coach") && !playerViewMode;
   const teamId = user?.teamId;
 
   const [isMobile, setIsMobile] = useState(() =>
@@ -72,6 +73,10 @@ export default function Plays() {
   const [bulkTagInput, setBulkTagInput] = useState("");
   const [copyFallbackUrl, setCopyFallbackUrl] = useState(null);
   const [playSort, setPlaySort] = useState("updated");
+  const [postTarget, setPostTarget] = useState(null);
+  const [postTitle, setPostTitle] = useState("");
+  const [postBio, setPostBio] = useState("");
+  const [postLoading, setPostLoading] = useState(false);
 
   const menuRef = useRef(null);
   const renameRef = useRef(null);
@@ -300,6 +305,33 @@ export default function Plays() {
     }
   };
 
+  /**
+   * Opens the Post to Community modal, pre-filling the play's current title.
+   * @param {string} playId
+   */
+  const openPostModal = (playId) => {
+    const play = plays.find((p) => p.id === playId);
+    setPostTarget(playId);
+    setPostTitle(play?.title ?? "");
+    setPostBio("");
+    setMenuOpen(null);
+  };
+
+  /** Submits the play to the sport-specific community playbook section. */
+  const handlePostToCommunity = async () => {
+    if (!postTarget || !postTitle.trim()) return;
+    setPostLoading(true);
+    try {
+      await apiPostToCommunity(teamId, postTarget, { title: postTitle.trim(), description: postBio.trim() });
+      showToast("Play posted to community!");
+      setPostTarget(null);
+    } catch (err) {
+      showToast(err?.message || "Failed to post play");
+    } finally {
+      setPostLoading(false);
+    }
+  };
+
   const exitBulkMode = () => { setBulkMode(false); setBulkSelected(new Set()); };
 
   const toggleBulkSelect = (playId) => {
@@ -418,6 +450,9 @@ export default function Plays() {
           <button onClick={() => copyLink(id)} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiCopy className="text-sm" /> Share</button>
           <button onClick={() => handleDuplicatePlay(id)} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiCopy className="text-sm" /> Duplicate</button>
           <button onClick={() => handleToggleHidden(id)} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText">{play?.hiddenFromPlayers ? <><FiEye className="text-sm" /> Show to Players</> : <><FiEyeOff className="text-sm" /> Hide from Players</>}</button>
+          {canRolePostToCommunity && play?.createdByUserId === user?.id && (
+            <button onClick={() => openPostModal(id)} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiSend className="text-sm" /> Post to Community</button>
+          )}
         </>)}
         {isFolder && (
           <button onClick={() => copyFolderLink(id)} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiCopy className="text-sm" /> Share Folder</button>
@@ -878,6 +913,47 @@ export default function Plays() {
             <div className="mt-4 flex justify-end gap-2">
               <button onClick={() => { setBulkTagOpen(false); setBulkTagInput(""); }} className="rounded-lg border border-BrandGray2/30 px-3.5 py-2 text-sm text-BrandGray transition hover:text-BrandText">Cancel</button>
               <button onClick={handleBulkTag} disabled={!bulkTagInput.trim()} className="rounded-lg bg-BrandOrange px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50">Add Tag</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Post to Community modal */}
+      {postTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 font-DmSans" onClick={() => !postLoading && setPostTarget(null)}>
+          <div className="w-full max-w-sm rounded-xl border border-BrandGray2/20 bg-BrandBlack p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="font-Manrope text-base font-bold">Post to Community</h2>
+            <p className="mt-1 text-sm text-BrandGray2">This play will be added to the community playbook for your sport.</p>
+            <div className="mt-4 flex flex-col gap-3">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-BrandGray">Title</label>
+                <input
+                  autoFocus
+                  type="text"
+                  value={postTitle}
+                  onChange={(e) => setPostTitle(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && postTitle.trim()) handlePostToCommunity(); if (e.key === "Escape") setPostTarget(null); }}
+                  placeholder="Play title..."
+                  className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none placeholder:text-BrandGray2 focus:border-BrandOrange"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-BrandGray">Description <span className="text-BrandGray2">(optional)</span></label>
+                <textarea
+                  value={postBio}
+                  onChange={(e) => setPostBio(e.target.value)}
+                  placeholder="Describe this play..."
+                  rows={3}
+                  className="w-full resize-none rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none placeholder:text-BrandGray2 focus:border-BrandOrange"
+                />
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setPostTarget(null)} disabled={postLoading} className="rounded-lg border border-BrandGray2/30 px-3.5 py-2 text-sm text-BrandGray transition hover:text-BrandText disabled:opacity-50">Cancel</button>
+              <button onClick={handlePostToCommunity} disabled={!postTitle.trim() || postLoading} className="flex items-center gap-2 rounded-lg bg-BrandOrange px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50">
+                {postLoading ? <FiLoader className="animate-spin text-sm" /> : <FiSend className="text-sm" />}
+                {postLoading ? "Posting..." : "Post"}
+              </button>
             </div>
           </div>
         </div>

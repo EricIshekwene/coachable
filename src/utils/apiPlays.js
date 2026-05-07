@@ -121,6 +121,20 @@ export async function duplicatePlay(teamId, playId) {
   return mapApiPlayToLocal(data.play || data);
 }
 
+/**
+ * Post a team play to the sport-specific community playbook section.
+ * Creates a platform play copy and adds it to "Community [Sport] Plays".
+ * @param {string} teamId
+ * @param {string} playId
+ * @param {{ title: string, description?: string }} data
+ */
+export async function postToCommunity(teamId, playId, { title, description }) {
+  return apiFetch(`/teams/${teamId}/plays/${playId}/post-to-community`, {
+    method: "POST",
+    body: { title, description },
+  });
+}
+
 /** Bulk soft-delete plays. */
 export async function bulkDeletePlays(teamId, playIds) {
   await apiFetch(`/teams/${teamId}/plays/bulk/delete`, { method: "POST", body: { playIds } });
@@ -172,6 +186,7 @@ function mapApiPlayToLocal(p) {
     notesUpdatedAt: p.notesUpdatedAt || null,
     favorited: Boolean(p.favorited),
     hiddenFromPlayers: Boolean(p.hiddenFromPlayers),
+    createdByUserId: p.createdByUserId || null,
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
     // Legacy aliases

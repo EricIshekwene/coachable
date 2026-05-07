@@ -17,6 +17,7 @@ function toSectionResponse(row, playCount = 0) {
     description: row.description,
     sport: row.sport || null,
     sortOrder: row.sort_order,
+    isDefault: Boolean(row.is_default),
     playCount,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -26,9 +27,9 @@ function toSectionResponse(row, playCount = 0) {
 /**
  * GET /playbook-sections
  * Returns all published playbook sections with play counts.
- * Requires authentication — coach/owner/assistant_coach roles.
+ * Public endpoint — only exposes published sections.
  */
-router.get("/", requireAuth, async (_req, res, next) => {
+router.get("/", async (_req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT ps.*, COUNT(psp.play_id)::int AS play_count
@@ -39,6 +40,69 @@ router.get("/", requireAuth, async (_req, res, next) => {
        ORDER BY ps.sort_order ASC, ps.name ASC`
     );
     res.json({ sections: rows.map((r) => toSectionResponse(r, r.play_count)) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /playbook-sections/sport/:sport/plays
+ * Returns the first N published plays for a sport across published sections.
+ * Public endpoint — used by the public sport playbooks landing page.
+ *
+ * Query params:
+ *   limit  {number}  default 20, max 50
+ *   type   {"platform"|"community"}  filter by section type.
+ *          "platform"  → is_default = true sections only
+ *          "community" → is_default = false sections only
+ *          omitted     → all published sections
+ */
+router.get("/sport/:sport/plays", async (req, res, next) => {
+  try {
+    const sport = req.params.sport.toLowerCase().replace(/-/g, " ");
+    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+    const type = req.query.type; // "platform" | "community" | undefined
+
+    let typeFilter = "";
+    if (type === "platform") typeFilter = "AND ps.is_default = true";
+    else if (type === "community") typeFilter = "AND ps.is_default = false";
+
+    const { rows } = await pool.query(
+      `SELECT pp.id, pp.title, pp.description, pp.sport, pp.thumbnail_url,
+              pp.tags, pp.play_data
+       FROM platform_plays pp
+       JOIN playbook_section_plays psp ON psp.play_id = pp.id
+       JOIN playbook_sections ps ON ps.id = psp.section_id
+       WHERE ps.is_published = true
+         AND LOWER(ps.sport) = $1
+         ${typeFilter}
+       ORDER BY ps.sort_order ASC, psp.sort_order ASC
+       LIMIT $2`,
+      [sport, limit]
+    );
+
+    const { rows: countRows } = await pool.query(
+      `SELECT COUNT(DISTINCT pp.id)::int AS total
+       FROM platform_plays pp
+       JOIN playbook_section_plays psp ON psp.play_id = pp.id
+       JOIN playbook_sections ps ON ps.id = psp.section_id
+       WHERE ps.is_published = true
+         AND LOWER(ps.sport) = $1
+         ${typeFilter}`,
+      [sport]
+    );
+
+    const plays = rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      description: r.description || "",
+      sport: r.sport || null,
+      thumbnail: r.thumbnail_url || null,
+      tags: r.tags || [],
+      playData: r.play_data || null,
+    }));
+
+    res.json({ plays, total: countRows[0]?.total ?? 0 });
   } catch (err) {
     next(err);
   }

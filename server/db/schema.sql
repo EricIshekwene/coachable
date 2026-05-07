@@ -393,6 +393,23 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_column THEN NULL;
 END $$;
 
+-- Safe migration: flag plays submitted via the community post flow
+DO $$ BEGIN
+  ALTER TABLE platform_plays ADD COLUMN is_community_submitted BOOLEAN NOT NULL DEFAULT false;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Backfill: mark any existing play that lives in a community section
+UPDATE platform_plays
+SET is_community_submitted = true
+WHERE is_community_submitted = false
+  AND id IN (
+    SELECT psp.play_id
+    FROM playbook_section_plays psp
+    JOIN playbook_sections ps ON ps.id = psp.section_id
+    WHERE ps.is_default = false
+  );
+
 CREATE INDEX IF NOT EXISTS platform_plays_featured_idx
   ON platform_plays(is_featured, sort_order);
 
