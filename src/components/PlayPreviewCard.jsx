@@ -732,6 +732,7 @@ export default function PlayPreviewCard({
           preserveAspectRatio={isFill ? "xMidYMid slice" : "xMidYMid meet"}
           role="img"
           aria-label="Play preview"
+          style={{ pointerEvents: "none" }}
         >
           <rect
             x={viewBounds.left}

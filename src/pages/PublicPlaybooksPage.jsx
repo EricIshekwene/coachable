@@ -25,13 +25,16 @@ const SPORT_LABELS = {
  */
 function PublicPlayCard({ play }) {
   return (
-    <div className="group flex flex-col overflow-hidden rounded-3xl border border-BrandGray2/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0)),rgba(24,26,31,0.96)] transition hover:border-BrandOrange/25 hover:shadow-[0_18px_50px_rgba(0,0,0,0.24)]">
+    <div
+      className="group flex flex-col overflow-hidden rounded-3xl border border-BrandGray2/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0)),rgba(24,26,31,0.96)] transition hover:border-BrandOrange/25 hover:shadow-[0_18px_50px_rgba(0,0,0,0.24)]"
+      style={{ touchAction: "pan-y" }}
+    >
       <div className="relative block w-full text-left">
         <div className="border-b border-white/6 bg-BrandBlack/40 p-3">
           {play.playData ? (
             <PlayPreviewCard
               playData={play.playData}
-              autoplay="hover"
+              autoplay="always"
               shape="landscape"
               cameraMode="fit-distribution"
               background="field"
@@ -207,7 +210,7 @@ export default function PublicPlaybooksPage({ sport }) {
   return (
     <div
       ref={scrollContainerRef}
-      className="bg-BrandBlack text-white font-DmSans"
+      className="touch-scroll bg-BrandBlack text-white font-DmSans"
       style={{ height: "100dvh", overflowY: "auto" }}
     >
       {/* Nav */}
