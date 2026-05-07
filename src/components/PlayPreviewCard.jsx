@@ -713,7 +713,7 @@ export default function PlayPreviewCard({
   return (
     <div
       className={`relative w-full overflow-hidden rounded-xl border border-BrandGray2/60 ${shapeClass} ${className}`}
-      style={containerStyle}
+      style={{ ...containerStyle, touchAction: "pan-y" }}
       onMouseEnter={() => {
         if (autoplay !== "hover") return;
         setTimeMs(0);
