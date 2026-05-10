@@ -881,6 +881,10 @@ export default function Admin() {
       if (hideOptions.has("assistant_coach") && (u.memberships || []).some((m) => m.role === "assistant_coach")) return false;
       if (hideOptions.has("coach") && (u.memberships || []).some((m) => m.role === "coach")) return false;
       if (hideOptions.has("owner") && (u.memberships || []).some((m) => m.role === "owner")) return false;
+      if (hideOptions.has("verified") && u.email_verified_at) return false;
+      if (hideOptions.has("unverified") && !u.email_verified_at) return false;
+      if (hideOptions.has("beta_tester") && u.is_beta_tester) return false;
+      if (hideOptions.has("standard") && !u.is_beta_tester) return false;
       if (normalizedUsersSearch) {
         const haystack = [
           u.name,
@@ -1148,6 +1152,10 @@ export default function Admin() {
                         { key: "assistant_coach", label: "Assistant coaches" },
                         { key: "coach", label: "Coaches" },
                         { key: "owner", label: "Owners" },
+                        { key: "verified", label: "Verified" },
+                        { key: "unverified", label: "Unverified" },
+                        { key: "beta_tester", label: "Beta testers" },
+                        { key: "standard", label: "Standard" },
                       ].map(({ key, label }) => (
                         <div key={key} className="px-3 py-1.5">
                           <AdminCheckbox checked={hideOptions.has(key)} onChange={() => toggleHideOption(key)} label={label} />
