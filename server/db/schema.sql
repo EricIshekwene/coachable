@@ -410,6 +410,10 @@ WHERE is_community_submitted = false
     WHERE ps.is_default = false
   );
 
+-- Cleanup: signup seed comes from page_sections instead of an is_demo flag
+DROP INDEX IF EXISTS platform_plays_one_demo_per_sport_idx;
+ALTER TABLE platform_plays DROP COLUMN IF EXISTS is_demo;
+
 CREATE INDEX IF NOT EXISTS platform_plays_featured_idx
   ON platform_plays(is_featured, sort_order);
 
@@ -446,7 +450,8 @@ INSERT INTO page_sections (section_key, label, page) VALUES
   ('landing.visualize.soccer',          'Soccer — Visualize',                  'soccer'),
   ('landing.visualize.ice_hockey',      'Ice Hockey — Visualize',              'ice_hockey'),
   ('landing.visualize.field_hockey',    'Field Hockey — Visualize',            'field_hockey'),
-  ('landing.visualize.womens_lacrosse', 'Womens Lacrosse — Visualize',         'womens_lacrosse')
+  ('landing.visualize.womens_lacrosse', 'Womens Lacrosse — Visualize',         'womens_lacrosse'),
+  ('one-pager.play',                    'One Pager — Play Preview',            'one-pager')
 ON CONFLICT DO NOTHING;
 
 -- ============================================================

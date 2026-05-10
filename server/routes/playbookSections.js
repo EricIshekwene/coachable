@@ -167,11 +167,23 @@ router.post("/:id/copy", requireAuth, async (req, res, next) => {
     );
     if (!sectionRows.length) return res.status(404).json({ error: "Section not found" });
 
-    // Verify user is a coach/owner
-    const { rows: memberRows } = await pool.query(
-      "SELECT team_id, role FROM team_memberships WHERE user_id = $1",
+    // Resolve the user's currently active team (the one they're viewing in the app),
+    // falling back to their earliest membership if active_team_id is unset.
+    const { rows: userRows } = await pool.query(
+      "SELECT active_team_id FROM users WHERE id = $1",
       [req.userId]
     );
+    const activeTeamId = userRows[0]?.active_team_id || null;
+
+    const { rows: memberRows } = activeTeamId
+      ? await pool.query(
+          "SELECT team_id, role FROM team_memberships WHERE user_id = $1 AND team_id = $2",
+          [req.userId, activeTeamId]
+        )
+      : await pool.query(
+          "SELECT team_id, role FROM team_memberships WHERE user_id = $1 ORDER BY joined_at ASC LIMIT 1",
+          [req.userId]
+        );
     if (!memberRows.length) {
       return res.status(400).json({ error: "You are not a member of any team" });
     }

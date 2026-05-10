@@ -1,32 +1,33 @@
 import pool from "../db/pool.js";
 
 /**
- * Seeds all platform plays tagged for a sport into a newly created team's playbook.
- * Queries platform_plays directly by sport so any play added to the admin plays section
- * for that sport is automatically seeded — no manual page_sections assignment required.
- * Silently skips if sport is null or no matching platform plays exist.
+ * Seeds the demo play assigned to the sport's landing-page section into a new team's playbook.
+ * Looks up page_sections where section_key = 'landing.visualize.<normalized_sport>'
+ * (sport lowercased and spaces replaced with underscores, matching schema seed keys).
+ * Silently skips if sport is null or the section has no play_id assigned.
  * @param {import('pg').PoolClient} client - Active transaction client
  * @param {string} teamId
  * @param {string|null} sport
- * @param {string} userId - Used as created_by_user_id on the new plays
+ * @param {string} userId - Used as created_by_user_id on the new play
  */
 export async function seedDemoPlay(client, teamId, sport, userId) {
   if (!sport) return;
+  const sectionKey = `landing.visualize.${sport.trim().toLowerCase().replace(/\s+/g, "_")}`;
   const { rows } = await client.query(
-    `SELECT title, play_data, thumbnail_url
-     FROM platform_plays
-     WHERE LOWER(sport) = LOWER($1)
-     ORDER BY sort_order, created_at`,
-    [sport]
+    `SELECT pp.title, pp.play_data, pp.thumbnail_url
+     FROM page_sections ps
+     JOIN platform_plays pp ON pp.id = ps.play_id
+     WHERE ps.section_key = $1
+     LIMIT 1`,
+    [sectionKey]
   );
   if (!rows.length) return;
-  for (const seed of rows) {
-    await client.query(
-      `INSERT INTO plays (team_id, title, play_data, thumbnail_url, created_by_user_id, updated_by_user_id, is_seeded)
-       VALUES ($1, $2, $3, $4, $5, $5, true)`,
-      [teamId, seed.title, seed.play_data, seed.thumbnail_url || null, userId]
-    );
-  }
+  const seed = rows[0];
+  await client.query(
+    `INSERT INTO plays (team_id, title, play_data, thumbnail_url, created_by_user_id, updated_by_user_id, is_seeded)
+     VALUES ($1, $2, $3, $4, $5, $5, true)`,
+    [teamId, seed.title, seed.play_data, seed.thumbnail_url || null, userId]
+  );
 }
 
 /**
