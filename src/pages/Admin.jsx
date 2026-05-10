@@ -1076,6 +1076,11 @@ export default function Admin() {
         <section>
           <AdminSection title="Analytics" className="mb-4" />
           <AnalyticsDashboard session={session} />
+          <div className="mt-4 flex justify-end">
+            <AdminBtn variant="secondary" size="sm" onClick={() => navigate(adminPath(basePath, "/one-page"))}>
+              View One Pager
+            </AdminBtn>
+          </div>
         </section>
 
         {/* USERS TABLE */}

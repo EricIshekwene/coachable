@@ -23,6 +23,15 @@ function PlaysIcon() {
   );
 }
 
+function OnePageIcon() {
+  return (
+    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 3.75h6.879c.398 0 .779.158 1.06.44l4.371 4.37c.281.282.44.663.44 1.061V19.5A1.5 1.5 0 0118.75 21h-11.5a1.5 1.5 0 01-1.5-1.5v-14a1.5 1.5 0 011.5-1.5Z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 3.75V8.25h4.5M9 12h6M9 15.75h6" />
+    </svg>
+  );
+}
+
 function ErrorsIcon() {
   return (
     <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

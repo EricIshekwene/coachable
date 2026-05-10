@@ -412,6 +412,7 @@ const ADMIN_ROUTE_CASES = [
   { label: "admin tests", pattern: "/admin/tests", entry: "/admin/tests" },
   { label: "admin errors", pattern: "/admin/errors", entry: "/admin/errors" },
   { label: "admin app", pattern: "/admin/app", entry: "/admin/app" },
+  { label: "company one-pager", pattern: "/admin/one-page", entry: "/admin/one-page" },
   { label: "admin slate", pattern: "/admin/slate", entry: "/admin/slate" },
   { label: "reported issues", pattern: "/admin/user-issues", entry: "/admin/user-issues" },
   { label: "admin play edit", pattern: "/admin/plays/:playId/edit", entry: "/admin/plays/play-1/edit" },

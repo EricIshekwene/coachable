@@ -5,6 +5,7 @@ import { adminPath } from "../adminNav";
 const NAV_ITEMS = [
   { label: "Dashboard", path: "" },
   { label: "Plays", path: "/app" },
+  { label: "One Page", path: "/one-page" },
   { label: "Errors", path: "/errors" },
   { label: "Issues", path: "/user-issues" },
   { label: "Videos", path: "/demo-videos" },

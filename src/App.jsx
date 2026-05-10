@@ -29,6 +29,7 @@ import AdminUserIssues from "./pages/AdminUserIssues";
 import AdminMobileView from "./pages/AdminMobileView";
 import AdminTestSlate from "./pages/AdminTestSlate";
 import AdminDemoVideos from "./pages/AdminDemoVideos";
+import AdminOnePage from "./pages/AdminOnePage";
 import AppLayout from "./layouts/AppLayout";
 import Plays from "./pages/app/Plays";
 import PlayNew from "./pages/app/PlayNew";
@@ -254,6 +255,7 @@ export function AppRoutes() {
         <Route path="/admin/mobile-view" element={<RequireAdminSession><AdminMobileView /></RequireAdminSession>} />
         <Route path="/admin/test" element={<RequireAdminSession><AdminTestSlate /></RequireAdminSession>} />
         <Route path="/admin/demo-videos" element={<RequireAdminSession><AdminDemoVideos /></RequireAdminSession>} />
+        <Route path="/admin/one-page" element={<RequireAdminSession><AdminOnePage /></RequireAdminSession>} />
       </Route>
 
       <Route path="/platform-play/:playId" element={<PlatformPlayView />} />
