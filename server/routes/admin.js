@@ -281,7 +281,7 @@ router.get("/users", requireAdmin, async (_req, res, next) => {
     const { rows } = await pool.query(
       `SELECT u.id, u.name, u.email, u.email_verified_at, u.onboarded_at, u.created_at,
               u.is_beta_tester,
-              (SELECT COUNT(*)::int FROM plays WHERE created_by_user_id = u.id AND NOT is_seeded) AS plays_created,
+              (SELECT COUNT(*)::int FROM plays WHERE created_by_user_id = u.id AND NOT is_seeded AND copied_from_platform_play_id IS NULL) AS plays_created,
               (SELECT COUNT(*)::int FROM play_folders WHERE created_by_user_id = u.id) AS folders_created,
               COALESCE(
                 json_agg(
@@ -345,8 +345,8 @@ router.get("/users/:id/activity", requireAdmin, async (req, res, next) => {
       ),
       pool.query(
         `SELECT
-           (SELECT COUNT(*)::int FROM plays WHERE created_by_user_id = $1 AND NOT is_seeded) AS plays_created,
-           (SELECT COUNT(*)::int FROM plays WHERE updated_by_user_id = $1 AND created_by_user_id <> $1 AND NOT is_seeded) AS plays_updated,
+           (SELECT COUNT(*)::int FROM plays WHERE created_by_user_id = $1 AND NOT is_seeded AND copied_from_platform_play_id IS NULL) AS plays_created,
+           (SELECT COUNT(*)::int FROM plays WHERE updated_by_user_id = $1 AND created_by_user_id <> $1 AND NOT is_seeded AND copied_from_platform_play_id IS NULL) AS plays_updated,
            (SELECT COUNT(*)::int FROM play_folders WHERE created_by_user_id = $1) AS folders_created,
            (SELECT COUNT(*)::int FROM play_share_links WHERE created_by_user_id = $1) AS play_shares_created,
            (SELECT COUNT(*)::int FROM folder_share_links WHERE created_by_user_id = $1) AS folder_shares_created,
@@ -372,6 +372,7 @@ router.get("/users/:id/activity", requireAdmin, async (req, res, next) => {
          JOIN teams t ON t.id = p.team_id
          LEFT JOIN play_folders pf ON pf.id = p.folder_id
          WHERE p.created_by_user_id = $1
+           AND p.copied_from_platform_play_id IS NULL
          ORDER BY p.created_at DESC
          LIMIT 25`,
         [userId]
@@ -393,6 +394,7 @@ router.get("/users/:id/activity", requireAdmin, async (req, res, next) => {
            FROM plays p
            JOIN teams t ON t.id = p.team_id
            WHERE p.created_by_user_id = $1
+             AND p.copied_from_platform_play_id IS NULL
 
            UNION ALL
 
@@ -407,6 +409,7 @@ router.get("/users/:id/activity", requireAdmin, async (req, res, next) => {
            JOIN teams t ON t.id = p.team_id
            WHERE p.updated_by_user_id = $1
              AND p.created_by_user_id <> $1
+             AND p.copied_from_platform_play_id IS NULL
 
            UNION ALL
 

@@ -179,10 +179,10 @@ router.post("/:id/copy", requireAuth, async (req, res, next) => {
       return res.status(403).json({ error: "Only coaches can add plays to the playbook" });
     }
 
-    // Create a copy in the user's team
+    // Create a copy in the user's team; track the source play so analytics can exclude it
     const { rows: newPlay } = await pool.query(
-      `INSERT INTO plays (team_id, title, play_data, thumbnail_url, created_by_user_id, updated_by_user_id)
-       VALUES ($1, $2, $3, $4, $5, $5)
+      `INSERT INTO plays (team_id, title, play_data, thumbnail_url, created_by_user_id, updated_by_user_id, copied_from_platform_play_id)
+       VALUES ($1, $2, $3, $4, $5, $5, $6)
        RETURNING *`,
       [
         membership.team_id,
@@ -190,6 +190,7 @@ router.post("/:id/copy", requireAuth, async (req, res, next) => {
         platformPlay.play_data,
         platformPlay.thumbnail_url || null,
         req.userId,
+        platformPlay.id,
       ]
     );
 

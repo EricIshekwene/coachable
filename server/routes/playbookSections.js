@@ -211,8 +211,8 @@ router.post("/:id/copy", requireAuth, async (req, res, next) => {
     const createdPlays = [];
     for (const play of playRows) {
       const { rows: newRows } = await pool.query(
-        `INSERT INTO plays (team_id, folder_id, title, play_data, thumbnail_url, created_by_user_id, updated_by_user_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $6)
+        `INSERT INTO plays (team_id, folder_id, title, play_data, thumbnail_url, created_by_user_id, updated_by_user_id, copied_from_platform_play_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $6, $7)
          RETURNING id, title`,
         [
           membership.team_id,
@@ -221,6 +221,7 @@ router.post("/:id/copy", requireAuth, async (req, res, next) => {
           play.play_data || null,
           play.thumbnail_url || null,
           req.userId,
+          play.id,
         ]
       );
       createdPlays.push({ id: newRows[0].id, title: newRows[0].title });

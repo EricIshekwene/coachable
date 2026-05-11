@@ -249,6 +249,12 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_column THEN NULL;
 END $$;
 
+-- Safe migration: track which platform play a team play was copied from (null = user-created)
+DO $$ BEGIN
+  ALTER TABLE plays ADD COLUMN copied_from_platform_play_id UUID REFERENCES platform_plays(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS play_tags (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
