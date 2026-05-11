@@ -86,6 +86,12 @@ const DEFAULT_PLAY_NAME = "Untitled";
 /** Minimum gap (ms) between keyframes — prevents placing keyframes too close together. */
 const KEYFRAME_MIN_GAP_MS = 500;
 const KEYFRAME_TIME_TOLERANCE_MS = 0.5;
+/**
+ * Proximity (ms) within which the playhead is considered "on" a keyframe.
+ * MUST match PROXIMITY_TOLERANCE_MS in ControlPill.jsx so the visual highlight
+ * and the write target stay in sync — highlighted keyframe = where edits land.
+ */
+const KEYFRAME_HIGHLIGHT_PROXIMITY_MS = 300;
 
 /** Returns true if timeMs is too close to any existing keyframe in the track (excluding exact matches which are updates). */
 const isTooCloseToExistingKeyframe = (track, timeMs) => {
@@ -631,13 +637,47 @@ function Slate({
     return Array.from(new Set((trackIds || []).filter(Boolean)));
   }, [getTimelineTrackIds]);
 
+  /**
+   * Determines the time (ms) at which a keyframe write should land.
+   *
+   * Priority:
+   *   1. An explicitly clicked keyframe (`selectedKeyframeMs`) wins.
+   *   2. When paused, snap to the nearest existing keyframe within
+   *      KEYFRAME_HIGHLIGHT_PROXIMITY_MS of the playhead — this matches the
+   *      visual "highlighted keyframe" in the timeline so edits update the
+   *      keyframe the user can see is active, rather than silently dropping
+   *      because `isTooCloseToExistingKeyframe` blocks a near-but-not-exact write.
+   *   3. Otherwise (playing, or no nearby keyframe), use the current playhead time.
+   */
   const resolveKeyframeWriteTimeMs = useCallback(() => {
     const selectedTime = selectedKeyframeMsRef.current;
     if (selectedTime !== null && selectedTime !== undefined) {
       return Math.round(selectedTime);
     }
-    return Math.round(currentTimeRef.current);
-  }, []);
+    const currentTime = currentTimeRef.current;
+    const isPlayingNow = Boolean(engineRef.current?.isPlaying?.());
+    if (!isPlayingNow) {
+      const tracks = animationDataRef.current?.tracks || {};
+      const trackIds = getTimelineTrackIds();
+      let nearestKfTime = null;
+      let nearestGap = Infinity;
+      trackIds.forEach((id) => {
+        const kfs = tracks[id]?.keyframes;
+        if (!kfs?.length) return;
+        kfs.forEach((kf) => {
+          const gap = Math.abs((kf?.t ?? 0) - currentTime);
+          if (gap < nearestGap) {
+            nearestGap = gap;
+            nearestKfTime = kf.t;
+          }
+        });
+      });
+      if (nearestKfTime !== null && nearestGap <= KEYFRAME_HIGHLIGHT_PROXIMITY_MS) {
+        return Math.round(nearestKfTime);
+      }
+    }
+    return Math.round(currentTime);
+  }, [getTimelineTrackIds]);
 
   const ensureKeyframeCoverageAtTime = useCallback(
     (baseAnimation, tracks, timeMs) => {

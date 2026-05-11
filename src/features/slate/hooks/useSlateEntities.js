@@ -768,8 +768,19 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
     isRestoringRef.current = false;
   };
 
-  const items = useMemo(
-    () => [
+  const items = useMemo(() => {
+    const ballItems = Object.values(ballsById || {}).map((ball) => ({
+      id: ball.id,
+      type: "ball",
+      x: ball.x,
+      y: ball.y,
+      objectType: normalizeObjectType(ball.objectType),
+      hidden: ball.hidden || false,
+      locked: ball.locked || false,
+    }));
+    // Cones render first (bottom), then players, then balls (top).
+    return [
+      ...ballItems.filter((b) => b.objectType === "cone"),
       ...Object.values(playersById).map((p) => ({
         id: p.id,
         type: "player",
@@ -781,18 +792,9 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
         hidden: p.hidden || false,
         locked: p.locked || false,
       })),
-      ...Object.values(ballsById || {}).map((ball) => ({
-        id: ball.id,
-        type: "ball",
-        x: ball.x,
-        y: ball.y,
-        objectType: normalizeObjectType(ball.objectType),
-        hidden: ball.hidden || false,
-        locked: ball.locked || false,
-      })),
-    ],
-    [playersById, allPlayersDisplay.color, ballsById]
-  );
+      ...ballItems.filter((b) => b.objectType !== "cone"),
+    ];
+  }, [playersById, allPlayersDisplay.color, ballsById]);
 
   const selectedPlayers = useMemo(
     () => (selectedPlayerIds || []).map((id) => playersById?.[id]).filter(Boolean),

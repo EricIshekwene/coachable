@@ -1,5 +1,10 @@
 import React, { useMemo } from "react";
 
+/**
+ * Proximity (ms) within which the playhead is considered "on" a keyframe — drives the
+ * visual highlight on the timeline. MUST match KEYFRAME_HIGHLIGHT_PROXIMITY_MS in
+ * Slate.jsx: the highlighted keyframe is also where edits land while paused.
+ */
 const PROXIMITY_TOLERANCE_MS = 300;
 import TimeBar from "./TimeBar";
 import SpeedSlider from "./SpeedSlider";
@@ -63,6 +68,10 @@ export default function ControlPill({
   const handlePlayToggle = () => {
     if (!isPlaying && clampedTimeMs >= timelineDurationMs) {
       onSeek?.(0, { source: "engine" });
+    }
+    // Clear explicit selection on play so the button label tracks
+    // the playhead position rather than staying locked to the last-clicked keyframe.
+    if (!isPlaying) {
       onSelectKeyframe?.(null);
     }
     onPlayToggle?.();

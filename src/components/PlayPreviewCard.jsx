@@ -13,6 +13,7 @@ import SoccerBall from "../assets/objects/balls/Soccer_ball.png";
 import FootballBall from "../assets/objects/balls/Football.png";
 import BasketballBall from "../assets/objects/balls/Basketball (4).png";
 import RugbyBall from "../assets/objects/balls/Rugby_ball.png";
+import ConeImage from "../assets/objects/cone.png";
 
 const FIELD_TYPE_TO_BALL_IMAGE_SRC = {
   Rugby: RugbyBall,
@@ -705,6 +706,9 @@ export default function PlayPreviewCard({
   const ballSizePercent = clamp(toFiniteNumber(ballSettings?.sizePercent, 100), 10, 400);
   const ballSizePx = Math.max(6, Math.round((22 * ballSizePercent) / 100));
   const ballRadius = ballSizePx / 2;
+  const coneSizePercent = clamp(toFiniteNumber(ballSettings?.coneSizePercent, 70), 10, 400);
+  const coneSizePx = Math.max(6, Math.round((22 * coneSizePercent) / 100));
+  const coneRadius = coneSizePx / 2;
 
   const hasRenderableContent = !!play;
 
@@ -756,6 +760,23 @@ export default function PlayPreviewCard({
 
           {drawings.map((d, idx) => renderSVGDrawing(d, d.id || idx))}
 
+          {/* Cones — rendered first so players and balls appear on top */}
+          {Object.entries(ballsById).filter(([, entity]) => entity?.objectType === "cone").map(([id, entity]) => {
+            const pose = poses?.[id] || fallbackPoses?.[id] || { x: 0, y: 0 };
+            return (
+              <g key={id}>
+                <image
+                  href={ConeImage}
+                  x={pose.x - coneRadius}
+                  y={pose.y - coneRadius}
+                  width={coneSizePx}
+                  height={coneSizePx}
+                  preserveAspectRatio="xMidYMid meet"
+                />
+              </g>
+            );
+          })}
+
           {Object.entries(playersById).map(([id, player]) => {
             const pose = poses?.[id] || fallbackPoses?.[id] || { x: 0, y: 0 };
             const numberText = player?.number ?? "";
@@ -785,7 +806,8 @@ export default function PlayPreviewCard({
             );
           })}
 
-          {Object.entries(ballsById).map(([id]) => {
+          {/* Balls — rendered last so they sit above players and cones */}
+          {Object.entries(ballsById).filter(([, entity]) => entity?.objectType !== "cone").map(([id]) => {
             const pose = poses?.[id] || fallbackPoses?.[id] || { x: 0, y: 0 };
             const isOblongBall = !ROUND_BALL_FIELD_TYPES.has(fieldType.toLowerCase());
             let ballRotation = null;

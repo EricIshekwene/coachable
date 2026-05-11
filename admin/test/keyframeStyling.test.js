@@ -1,12 +1,15 @@
 /**
  * Tests for testVariant keyframe styling logic.
  * Covers ControlPill proximity auto-selection, KeyframeDisplay drag clamping,
- * and KeyframeManager label derivation — all mirroring the component source.
+ * KeyframeManager label derivation, and Slate's resolveKeyframeWriteTimeMs
+ * (which routes edits to the highlighted keyframe when paused) — all mirroring
+ * the component source.
  */
 import { describe, it, expect } from "vitest";
 
 const PROXIMITY_TOLERANCE_MS = 300; // ControlPill.jsx
 const KEYFRAME_MIN_GAP_MS = 500;    // KeyframeDisplay.jsx
+const KEYFRAME_HIGHLIGHT_PROXIMITY_MS = 300; // Slate.jsx
 
 // ── ControlPill effectiveSelectedKeyframeMs ───────────────────────────────────
 
@@ -141,5 +144,83 @@ describe("KeyframeManager button label", () => {
 
   it('shows "Delete Keyframe" for the start keyframe (time 0)', () => {
     expect(resolveKeyframeLabel(0)).toBe("Delete Keyframe");
+  });
+});
+
+// ── Slate resolveKeyframeWriteTimeMs ──────────────────────────────────────────
+
+/**
+ * Mirrors resolveKeyframeWriteTimeMs in Slate.jsx — determines where a keyframe
+ * write lands. Priority: explicit selection > paused-near-keyframe snap > current time.
+ * Collapses the track keyframes argument into a flat times list for test brevity.
+ */
+const resolveKeyframeWriteTimeMs = (
+  selectedKeyframeMs,
+  currentTimeMs,
+  isPlaying,
+  allKeyframeTimes
+) => {
+  if (selectedKeyframeMs !== null && selectedKeyframeMs !== undefined) {
+    return Math.round(selectedKeyframeMs);
+  }
+  if (!isPlaying && allKeyframeTimes?.length) {
+    let nearestTime = null;
+    let nearestGap = Infinity;
+    for (const t of allKeyframeTimes) {
+      const gap = Math.abs(t - currentTimeMs);
+      if (gap < nearestGap) {
+        nearestGap = gap;
+        nearestTime = t;
+      }
+    }
+    if (nearestTime !== null && nearestGap <= KEYFRAME_HIGHLIGHT_PROXIMITY_MS) {
+      return Math.round(nearestTime);
+    }
+  }
+  return Math.round(currentTimeMs);
+};
+
+describe("Slate resolveKeyframeWriteTimeMs — routes edits to highlighted keyframe", () => {
+  it("returns explicit selectedKeyframeMs regardless of playhead", () => {
+    expect(resolveKeyframeWriteTimeMs(5000, 12345, false, [0, 5000, 10000])).toBe(5000);
+    expect(resolveKeyframeWriteTimeMs(5000, 0, true, [0, 5000, 10000])).toBe(5000);
+  });
+
+  it("snaps to nearest keyframe when paused within proximity", () => {
+    // Bug scenario: playhead at 4980ms, keyframe at 5000ms — must write to 5000
+    expect(resolveKeyframeWriteTimeMs(null, 4980, false, [0, 5000])).toBe(5000);
+    // After keyframe
+    expect(resolveKeyframeWriteTimeMs(null, 5250, false, [0, 5000])).toBe(5000);
+  });
+
+  it("snaps at the exact 300ms boundary when paused", () => {
+    expect(resolveKeyframeWriteTimeMs(null, 4700, false, [5000])).toBe(5000);
+    expect(resolveKeyframeWriteTimeMs(null, 5300, false, [5000])).toBe(5000);
+  });
+
+  it("uses current time when paused outside proximity", () => {
+    expect(resolveKeyframeWriteTimeMs(null, 4699, false, [5000])).toBe(4699);
+    expect(resolveKeyframeWriteTimeMs(null, 5301, false, [5000])).toBe(5301);
+  });
+
+  it("never snaps while playing — uses current time", () => {
+    // Even though playhead would highlight 5000, while playing we don't snap
+    expect(resolveKeyframeWriteTimeMs(null, 4980, true, [0, 5000])).toBe(4980);
+  });
+
+  it("picks the closer of two nearby keyframes when paused", () => {
+    // 5100 is closer to 5000 (100ms) than 5300 (200ms)
+    expect(resolveKeyframeWriteTimeMs(null, 5100, false, [5000, 5300])).toBe(5000);
+    // 5250 is closer to 5300 (50ms) than 5000 (250ms)
+    expect(resolveKeyframeWriteTimeMs(null, 5250, false, [5000, 5300])).toBe(5300);
+  });
+
+  it("falls back to current time when no keyframes exist", () => {
+    expect(resolveKeyframeWriteTimeMs(null, 4980, false, [])).toBe(4980);
+  });
+
+  it("rounds non-integer times", () => {
+    expect(resolveKeyframeWriteTimeMs(null, 4980.7, false, [])).toBe(4981);
+    expect(resolveKeyframeWriteTimeMs(5000.4, 0, false, [])).toBe(5000);
   });
 });
