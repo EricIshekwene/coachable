@@ -21,6 +21,7 @@ export default function WideSidebar({
     onCollapse,
     onNavigateHome,
     adminMode,
+    drawingMode = false,
 }) {
     return (
         <WideSidebarRoot
@@ -44,6 +45,7 @@ export default function WideSidebar({
             onCollapse={onCollapse}
             onNavigateHome={onNavigateHome}
             adminMode={adminMode}
+            drawingMode={drawingMode}
         />
     );
 }

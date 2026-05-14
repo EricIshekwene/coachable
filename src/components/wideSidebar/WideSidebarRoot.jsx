@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { IoFootball } from "react-icons/io5";
 import { TbLayoutSidebarLeftCollapse } from "react-icons/tb";
 import { FiUser, FiX } from "react-icons/fi";
+import { FaArrowUpLong } from "react-icons/fa6";
 import { useAuth } from "../../context/AuthContext";
 import coachableLogo from "../../assets/logos/White_Coachable_Logo.png";
 import coneIcon from "../../assets/objects/cone.png";
@@ -136,6 +137,7 @@ export default function WideSidebarRoot({
     onCollapse,
     onNavigateHome,
     adminMode = false,
+    drawingMode = false,
 }) {
     const [selectedTool, setSelectedTool] = useState("select");
     const [selectToolType, setSelectToolType] = useState("select");

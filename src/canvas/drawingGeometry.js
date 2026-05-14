@@ -607,3 +607,46 @@ export function hitTestEndpointHandle(handles, worldPoint) {
   }
   return null;
 }
+
+/**
+ * Samples a world-space position along a flat [x0,y0,x1,y1,...] points array
+ * at parameter t ∈ [0, 1], using cumulative arc-length parameterisation so
+ * motion is speed-uniform along the path.
+ *
+ * Works for both stroke (many points) and arrow (4 values) drawings.
+ *
+ * @param {number[]} points - flat world-coordinate array
+ * @param {number} t - normalised time 0 = start, 1 = end
+ * @returns {{ x: number, y: number } | null}
+ */
+export function samplePathAtT(points, t) {
+  if (!points || points.length < 4) return null;
+  if (t <= 0) return { x: points[0], y: points[1] };
+  if (t >= 1) return { x: points[points.length - 2], y: points[points.length - 1] };
+
+  const n = points.length / 2;
+  // Build cumulative arc-length table
+  const lengths = new Float64Array(n);
+  lengths[0] = 0;
+  for (let i = 1; i < n; i++) {
+    const dx = points[i * 2] - points[(i - 1) * 2];
+    const dy = points[i * 2 + 1] - points[(i - 1) * 2 + 1];
+    lengths[i] = lengths[i - 1] + Math.sqrt(dx * dx + dy * dy);
+  }
+  const totalLength = lengths[n - 1];
+  if (totalLength === 0) return { x: points[0], y: points[1] };
+
+  const target = t * totalLength;
+  // Binary-search for the segment containing `target`
+  let lo = 0, hi = n - 1;
+  while (lo + 1 < hi) {
+    const mid = (lo + hi) >> 1;
+    if (lengths[mid] <= target) lo = mid; else hi = mid;
+  }
+  const segLen = lengths[hi] - lengths[lo];
+  const segT = segLen > 0 ? (target - lengths[lo]) / segLen : 0;
+  return {
+    x: points[lo * 2] + segT * (points[hi * 2] - points[lo * 2]),
+    y: points[lo * 2 + 1] + segT * (points[hi * 2 + 1] - points[lo * 2 + 1]),
+  };
+}

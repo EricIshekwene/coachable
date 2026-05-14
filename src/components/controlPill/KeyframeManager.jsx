@@ -26,7 +26,7 @@ export default function KeyframeManager({
             : "text-[10px] sm:text-[12px] md:text-[15px] lg:text-[17.5px]"
         }`}
       >
-        {selectedKeyframe !== null ? "Delete Keyframe" : "Add Keyframe"}
+        {selectedKeyframe !== null ? "Delete Step" : "Add Step"}
       </p>
     </div>
   );

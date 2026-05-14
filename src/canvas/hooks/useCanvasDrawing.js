@@ -16,6 +16,35 @@ const MOVE_LOG_INTERVAL_MS = 120;
 const STAB_MAX_STRING_LEN = 30; // max dead zone radius in world px
 const STAB_MAX_WINDOW = 8; // max moving average window size
 
+// Auto stabilization level used when drawingModeSnap is active (animation drawing)
+const ANIM_DRAW_STAB_LEVEL = 80;
+
+/**
+ * Chaikin corner-cutting smoothing for a flat [x,y,...] points array.
+ * Preserves the first and last points (for player-snap attachment).
+ * @param {number[]} points - flat array of world coordinates
+ * @param {number} iterations - number of smoothing passes (2–3 recommended)
+ * @returns {number[]} smoothed flat array
+ */
+function chaikinSmooth(points, iterations = 3) {
+  if (points.length < 6) return points; // need at least 3 points to smooth
+  let pts = points;
+  for (let i = 0; i < iterations; i++) {
+    const result = [pts[0], pts[1]];
+    for (let j = 0; j < pts.length / 2 - 1; j++) {
+      const x0 = pts[j * 2];
+      const y0 = pts[j * 2 + 1];
+      const x1 = pts[j * 2 + 2];
+      const y1 = pts[j * 2 + 3];
+      result.push(0.75 * x0 + 0.25 * x1, 0.75 * y0 + 0.25 * y1);
+      result.push(0.25 * x0 + 0.75 * x1, 0.25 * y0 + 0.75 * y1);
+    }
+    result.push(pts[pts.length - 2], pts[pts.length - 1]);
+    pts = result;
+  }
+  return pts;
+}
+
 const round2 = (value) => (Number.isFinite(value) ? Number(value).toFixed(2) : "nan");
 
 /**
@@ -56,6 +85,9 @@ export function useCanvasDrawing({
   drawGuides,
   clearGuides,
   guidelineOffsetWorld,
+  // Drawing-mode player snap
+  playerSnapItems = null,
+  drawingModeSnap = false,
 }) {
   const drawingRef = useRef(null);
   const eraseRef = useRef({ active: false, removedIds: new Set() });
@@ -252,6 +284,27 @@ export function useCanvasDrawing({
     clearGuides?.();
   }, [clearGuides]);
 
+  /**
+   * In drawing mode, finds the nearest player within PLAYER_SNAP_RADIUS world units.
+   * Returns { x, y, id } of the snapped player center, or null if none close enough.
+   */
+  const PLAYER_SNAP_RADIUS = 50;
+  const findSnapPlayer = useCallback((wx, wy) => {
+    if (!playerSnapItems?.length) return null;
+    let best = null;
+    let bestDist = PLAYER_SNAP_RADIUS;
+    for (const item of playerSnapItems) {
+      const dx = item.x - wx;
+      const dy = item.y - wy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = item;
+      }
+    }
+    return best ? { x: best.x, y: best.y, id: best.id } : null;
+  }, [playerSnapItems]);
+
   const handlePointerDown = useCallback(
     (e) => {
       if (tool !== "pen") return false;
@@ -271,28 +324,48 @@ export function useCanvasDrawing({
       const world = toWorldCoords(pointer);
 
       if (subTool === "draw") {
-        const snapped = snapDrawingPoint(world.x, world.y, { showGuides: false });
+        // Drawing mode: must start near a player — snap start to player center
+        let startX = world.x;
+        let startY = world.y;
+        let attachedPlayerId;
+        if (drawingModeSnap) {
+          const snap = findSnapPlayer(world.x, world.y);
+          if (!snap) {
+            logDrawDebug(`draw rejected reason=noNearbyPlayer x=${round2(world.x)} y=${round2(world.y)}`);
+            return false;
+          }
+          startX = snap.x;
+          startY = snap.y;
+          attachedPlayerId = snap.id;
+          logDrawDebug(`draw snapped to player id=${snap.id} x=${round2(startX)} y=${round2(startY)}`);
+        } else {
+          const snapped = snapDrawingPoint(world.x, world.y, { showGuides: false });
+          startX = snapped.x;
+          startY = snapped.y;
+        }
         drawingRef.current = {
           type: "stroke",
-          points: [snapped.x, snapped.y],
+          points: [startX, startY],
           color: drawColor,
           opacity: drawOpacity,
           strokeWidth: drawStrokeWidth,
           tension: drawTension,
           arrowTip: drawArrowTip || undefined,
           arrowHeadType: drawArrowTip ? drawArrowHeadType : undefined,
+          ...(attachedPlayerId ? { attachedPlayerId } : {}),
         };
-        // Initialize stabilization state
-        const level = drawStabilization / 100;
+        // Animation drawing mode always uses high stabilization; otherwise respect setting
+        const effectiveStab = drawingModeSnap ? ANIM_DRAW_STAB_LEVEL : drawStabilization;
+        const level = effectiveStab / 100;
         const stringLen = level * STAB_MAX_STRING_LEN;
         const windowSize = Math.max(1, Math.round(1 + level * (STAB_MAX_WINDOW - 1)));
         stabRef.current = {
-          enabled: drawStabilization > 0,
+          enabled: effectiveStab > 0,
           stringLen,
           windowSize,
-          brushX: snapped.x,
-          brushY: snapped.y,
-          rawBuffer: [{ x: snapped.x, y: snapped.y }],
+          brushX: startX,
+          brushY: startY,
+          rawBuffer: [{ x: startX, y: startY }],
         };
         setActiveDrawing({ ...drawingRef.current });
         logDrawDebug(
@@ -302,18 +375,36 @@ export function useCanvasDrawing({
       }
 
       if (subTool === "arrow") {
-        const snapped = snapDrawingPoint(world.x, world.y, { showGuides: false });
+        let startX = world.x;
+        let startY = world.y;
+        let attachedPlayerId;
+        if (drawingModeSnap) {
+          const snap = findSnapPlayer(world.x, world.y);
+          if (!snap) {
+            logDrawDebug(`arrow rejected reason=noNearbyPlayer x=${round2(world.x)} y=${round2(world.y)}`);
+            return false;
+          }
+          startX = snap.x;
+          startY = snap.y;
+          attachedPlayerId = snap.id;
+          logDrawDebug(`arrow snapped to player id=${snap.id} x=${round2(startX)} y=${round2(startY)}`);
+        } else {
+          const snapped = snapDrawingPoint(world.x, world.y, { showGuides: false });
+          startX = snapped.x;
+          startY = snapped.y;
+        }
         drawingRef.current = {
           type: "arrow",
-          points: [snapped.x, snapped.y, snapped.x, snapped.y],
+          points: [startX, startY, startX, startY],
           color: drawColor,
           opacity: drawOpacity,
           strokeWidth: drawStrokeWidth,
           arrowHeadType: drawArrowHeadType,
+          ...(attachedPlayerId ? { attachedPlayerId } : {}),
         };
         setActiveDrawing({ ...drawingRef.current });
         logDrawDebug(
-          `arrow start x=${round2(world.x)} y=${round2(world.y)} color=${drawColor} width=${drawStrokeWidth} head=${drawArrowHeadType}`
+          `arrow start x=${round2(startX)} y=${round2(startY)} color=${drawColor} width=${drawStrokeWidth} head=${drawArrowHeadType}`
         );
         return true;
       }
@@ -439,6 +530,8 @@ export function useCanvasDrawing({
       onStartTextEdit,
       commitCustomShape,
       snapDrawingPoint,
+      findSnapPlayer,
+      drawingModeSnap,
     ]
   );
 
@@ -595,6 +688,11 @@ export function useCanvasDrawing({
       logDrawDebug(`draw commit skipped reason=tooShort points=${drawing.points.length / 2}`);
       return true;
     }
+    // Apply Chaikin post-process smoothing for animation drawing strokes
+    if (drawing.type === "stroke" && drawingModeSnap) {
+      drawing.points = chaikinSmooth(drawing.points, 3);
+      logDrawDebug(`draw chaikin smooth outputPoints=${drawing.points.length / 2}`);
+    }
     if (drawing.type === "arrow") {
       const dx = drawing.points[2] - drawing.points[0];
       const dy = drawing.points[3] - drawing.points[1];
@@ -622,7 +720,7 @@ export function useCanvasDrawing({
 
     onAddDrawing?.(drawing);
     return true;
-  }, [onAddDrawing, onRemoveDrawing, onRemoveMultipleDrawings, clearGuides]);
+  }, [onAddDrawing, onRemoveDrawing, onRemoveMultipleDrawings, clearGuides, drawingModeSnap]);
 
   const commitText = useCallback(
     (text) => {

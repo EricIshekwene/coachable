@@ -156,7 +156,7 @@ export default function RightPanel({
             onReset={onReset}
           />
 
-          {canvasTool === "pen" && (
+          {(canvasTool === "pen" || canvasTool === "animDraw") && (
             <DrawingStyleSection
               drawSubTool={drawSubTool}
               drawColor={drawColor}
@@ -220,7 +220,7 @@ export default function RightPanel({
             />
           )}
 
-          {canvasTool === "pen" && (
+          {(canvasTool === "pen" || canvasTool === "animDraw") && (
             <DrawingObjectsList
               drawings={drawings}
               selectedDrawingIds={selectedDrawingIds}
@@ -253,7 +253,7 @@ export default function RightPanel({
             />
           )}
 
-          {canvasTool !== "pen" && (
+          {canvasTool !== "pen" && canvasTool !== "animDraw" && (
             <DrawingObjectsList
               drawings={drawings}
               selectedDrawingIds={selectedDrawingIds}

@@ -178,6 +178,7 @@ function KonvaCanvasRoot({
   onTogglePlayerLocked,
   onToggleBallLocked,
   adminMode = false,
+  drawingModeSnap = false,
 }) {
   const viewportRef = useRef(null);
   const stageRef = useRef(null);
@@ -370,8 +371,11 @@ function KonvaCanvasRoot({
     setInlineEdit({ id: drawing.id, text: drawing.text || "", height: null });
   }, []);
 
+  // "animDraw" is a sidebar-level tool; the canvas drawing engine treats it as "pen"
+  const effectiveDrawTool = tool === "animDraw" ? "pen" : tool;
+
   const canvasDrawing = useCanvasDrawing({
-    tool,
+    tool: effectiveDrawTool,
     subTool: drawSubTool,
     stageRef,
     toWorldCoords,
@@ -401,6 +405,8 @@ function KonvaCanvasRoot({
     drawGuides,
     clearGuides,
     guidelineOffsetWorld,
+    playerSnapItems: drawingModeSnap ? items : null,
+    drawingModeSnap,
   });
 
   const drawingSelection = useDrawingSelection({
@@ -914,9 +920,9 @@ function KonvaCanvasRoot({
     }
 
     // Drawing tools — handle before pan/select/add
-    if (tool === "pen" && !isMiddleMouse && isPrimaryButton) {
-      // Select sub-tool routes to the selection hook
-      if (drawSubTool === "select") {
+    if ((tool === "pen" || tool === "animDraw") && !isMiddleMouse && isPrimaryButton) {
+      // animDraw never routes to selection; pen with select sub-tool uses selection hook
+      if (tool === "pen" && drawSubTool === "select") {
         const handled = drawingSelection.handleSelectPointerDown(e);
         if (handled) return;
       } else {
@@ -1313,8 +1319,8 @@ function KonvaCanvasRoot({
     }
 
     // Drawing tools — handle before marquee/pan
-    if (tool === "pen") {
-      if (drawSubTool === "select") {
+    if (tool === "pen" || tool === "animDraw") {
+      if (tool === "pen" && drawSubTool === "select") {
         const handled = drawingSelection.handleSelectPointerMove(e);
         if (handled) return;
       } else {
@@ -1373,8 +1379,8 @@ function KonvaCanvasRoot({
     }
 
     // Drawing tools
-    if (tool === "pen") {
-      if (drawSubTool === "select") {
+    if (tool === "pen" || tool === "animDraw") {
+      if (tool === "pen" && drawSubTool === "select") {
         const handled = drawingSelection.handleSelectPointerUp(e);
         if (handled) return;
       } else {
@@ -2059,10 +2065,10 @@ function KonvaCanvasRoot({
                       onClick={handleItemClick(item)}
                       onTap={handleItemClick(item)}
                       onMouseDown={(e) => {
-                        e.cancelBubble = true;
+                        if (tool !== "pen" && tool !== "animDraw") e.cancelBubble = true;
                       }}
                       onTouchStart={(e) => {
-                        e.cancelBubble = true;
+                        if (tool !== "pen" && tool !== "animDraw") e.cancelBubble = true;
                       }}
                     >
                       {objectType === "ball" && ballColorOverride ? (
@@ -2140,10 +2146,10 @@ function KonvaCanvasRoot({
                     onClick={handleItemClick(item)}
                     onTap={handleItemClick(item)}
                     onMouseDown={(e) => {
-                      e.cancelBubble = true;
+                      if (tool !== "pen" && tool !== "animDraw") e.cancelBubble = true;
                     }}
                     onTouchStart={(e) => {
-                      e.cancelBubble = true;
+                      if (tool !== "pen" && tool !== "animDraw") e.cancelBubble = true;
                     }}
                   >
                     <Circle

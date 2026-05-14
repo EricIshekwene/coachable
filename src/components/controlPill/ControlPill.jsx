@@ -10,6 +10,7 @@ import TimeBar from "./TimeBar";
 import SpeedSlider from "./SpeedSlider";
 import PlaybackControls from "./PlaybackControls";
 import KeyframeManager from "./KeyframeManager";
+import StepTrack from "./StepTrack";
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -34,6 +35,10 @@ export default function ControlPill({
   getAuthoritativeTimeMs,
   onDragStateChange,
   variant = "default",
+  // Step track (drawing mode only)
+  drawings,
+  onUpdateDrawing,
+  playersById,
 }) {
   const timelineDurationMs = Math.max(1, Math.round(Number(durationMs) || 30000));
   const clampedTimeMs = clamp(Math.round(Number(currentTimeMs) || 0), 0, timelineDurationMs);
@@ -161,15 +166,23 @@ export default function ControlPill({
     onSelectKeyframe?.(null);
   };
 
+  const stepDrawings = (drawings || []).filter(
+    (d) => d.source === "coaching-draw" && d.attachedPlayerId
+  );
+  const hasSteps = stepDrawings.length > 0;
+
   return (
     <div
-      className="aspect-[641/124] h-[62.5px] sm:h-[75px] md:h-[100px] lg:h-[125px]
-                      flex flex-col items-center justify-between gap-[3.125px] sm:gap-[6.25px]
+      className={`flex flex-col items-center justify-between gap-[3.125px] sm:gap-[6.25px]
                       bg-BrandBlack
                        py-[3.125px] sm:py-[6.25px] px-[12.5px] sm:px-[15.625px] md:px-[18.75px]
                       rounded-[25px] sm:rounded-[28.125px] md:rounded-[31.25px]
                       select-none z-50
-                      absolute left-1/2 transform -translate-x-1/2 bottom-[12px]"
+                      absolute left-1/2 transform -translate-x-1/2 bottom-[12px]
+                      ${hasSteps
+                        ? "w-[500px] sm:w-[600px] md:w-[750px] lg:w-[900px]"
+                        : "aspect-[641/124] h-[62.5px] sm:h-[75px] md:h-[100px] lg:h-[125px]"
+                      }`}
     >
       <TimeBar
         durationMs={timelineDurationMs}
@@ -189,6 +202,15 @@ export default function ControlPill({
         variant={variant}
       />
 
+      {hasSteps && (
+        <StepTrack
+          drawings={drawings}
+          durationMs={timelineDurationMs}
+          onUpdateDrawing={onUpdateDrawing}
+          playersById={playersById}
+        />
+      )}
+
       <div className="flex flex-1 w-full items-center justify-between gap-[3.125px] sm:gap-[6.25px]">
         <SpeedSlider
           speedMultiplier={speedMultiplier}
@@ -203,12 +225,14 @@ export default function ControlPill({
           onSkipForward={handleSkipForward}
         />
 
-        <KeyframeManager
-          selectedKeyframe={effectiveSelectedKeyframeMs}
-          onAddKeyframe={handleAddKeyframe}
-          onDeleteKeyframe={handleDeleteKeyframe}
-          variant={variant}
-        />
+        {(onAddKeyframe || onDeleteKeyframe) && (
+          <KeyframeManager
+            selectedKeyframe={effectiveSelectedKeyframeMs}
+            onAddKeyframe={handleAddKeyframe}
+            onDeleteKeyframe={handleDeleteKeyframe}
+            variant={variant}
+          />
+        )}
       </div>
     </div>
   );

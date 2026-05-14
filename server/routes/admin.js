@@ -280,6 +280,7 @@ router.get("/users", requireAdmin, async (_req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT u.id, u.name, u.email, u.email_verified_at, u.onboarded_at, u.created_at,
+              u.updated_at,
               u.is_beta_tester,
               (SELECT COUNT(*)::int FROM plays WHERE created_by_user_id = u.id AND NOT is_seeded AND copied_from_platform_play_id IS NULL) AS plays_created,
               (SELECT COUNT(*)::int FROM play_folders WHERE created_by_user_id = u.id) AS folders_created,
@@ -301,7 +302,7 @@ router.get("/users", requireAdmin, async (_req, res, next) => {
        FROM users u
        LEFT JOIN team_memberships tm ON tm.user_id = u.id
        LEFT JOIN teams t ON t.id = tm.team_id
-       GROUP BY u.id, u.name, u.email, u.email_verified_at, u.onboarded_at, u.created_at, u.is_beta_tester
+       GROUP BY u.id, u.name, u.email, u.email_verified_at, u.onboarded_at, u.created_at, u.updated_at, u.is_beta_tester
        ORDER BY u.created_at DESC`,
       [COACHING_ROLES]
     );

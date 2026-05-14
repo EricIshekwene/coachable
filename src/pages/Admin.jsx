@@ -34,6 +34,18 @@ const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 const USER_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
+const TIME_AGE_OPTIONS = [
+  { value: "1h",  label: "1 hour" },
+  { value: "2h",  label: "2 hours" },
+  { value: "4h",  label: "4 hours" },
+  { value: "8h",  label: "8 hours" },
+  { value: "1d",  label: "1 day" },
+  { value: "2d",  label: "2 days" },
+  { value: "7d",  label: "7 days" },
+  { value: "30d", label: "30 days" },
+];
+const TIME_AGE_MS = { "1h": 36e5, "2h": 72e5, "4h": 144e5, "8h": 288e5, "1d": 864e5, "2d": 1728e5, "7d": 6048e5, "30d": 2592e6 };
+
 // ── Test suite registry (names/descriptions only — suites loaded lazily) ──
 const SUITE_NAMES = ["Drawing Geometry", "Interpolation", "Import / Export", "Animation Schema", "Routes"];
 const SUITE_DESCRIPTIONS = {
@@ -249,6 +261,11 @@ export default function Admin() {
   const [filterOnboarded, setFilterOnboarded] = useState(""); // "yes"|"no"|""
   const [filterPlays, setFilterPlays] = useState("");
   const [filterPlaysOp, setFilterPlaysOp] = useState(">");
+  const [filterSport, setFilterSport] = useState("");
+  const [filterJoinedAge, setFilterJoinedAge] = useState("");
+  const [filterJoinedOp, setFilterJoinedOp] = useState("<");
+  const [filterActivityAge, setFilterActivityAge] = useState("");
+  const [filterActivityOp, setFilterActivityOp] = useState("<");
   const [emailCopied, setEmailCopied] = useState(null); // "outlook"|"gmail"|null
 
   // ── Tests ──
@@ -905,11 +922,25 @@ export default function Admin() {
       if (filterOnboarded === "yes" && !u.onboarded_at) return false;
       if (filterOnboarded === "no" && u.onboarded_at) return false;
       if (playsVal !== null && !isNaN(playsVal) && !matchesOp(u.plays_created ?? 0, filterPlaysOp, playsVal)) return false;
+      if (filterJoinedAge) {
+        const ageMs = TIME_AGE_MS[filterJoinedAge];
+        const userAgeMs = Date.now() - new Date(u.created_at).getTime();
+        if (!matchesOp(userAgeMs, filterJoinedOp, ageMs)) return false;
+      }
+      if (filterActivityAge) {
+        const ageMs = TIME_AGE_MS[filterActivityAge];
+        const userAgeMs = Date.now() - new Date(u.updated_at || u.created_at).getTime();
+        if (!matchesOp(userAgeMs, filterActivityOp, ageMs)) return false;
+      }
+      if (filterSport) {
+        const hasSport = (u.memberships || []).some((m) => m.sport?.toLowerCase().includes(filterSport.toLowerCase()));
+        if (!hasSport) return false;
+      }
       return true;
     });
-  }, [users, normalizedUsersSearch, hideOptions, filterRole, filterVerified, filterOnboarded, filterPlays, filterPlaysOp]);
+  }, [users, normalizedUsersSearch, hideOptions, filterRole, filterVerified, filterOnboarded, filterPlays, filterPlaysOp, filterSport, filterJoinedAge, filterJoinedOp, filterActivityAge, filterActivityOp]);
 
-  const activeFilterCount = [filterRole, filterVerified, filterOnboarded, filterPlays].filter(Boolean).length;
+  const activeFilterCount = [filterRole, filterVerified, filterOnboarded, filterPlays, filterSport, filterJoinedAge, filterActivityAge].filter(Boolean).length;
   const filteredUserStats = useMemo(() => ({
     verified: filteredUsers.filter((u) => u.email_verified_at).length,
     beta: filteredUsers.filter((u) => u.is_beta_tester).length,
@@ -933,6 +964,11 @@ export default function Admin() {
     setFilterOnboarded("");
     setFilterPlays("");
     setFilterPlaysOp(">");
+    setFilterSport("");
+    setFilterJoinedAge("");
+    setFilterJoinedOp("<");
+    setFilterActivityAge("");
+    setFilterActivityOp("<");
     setHideOptions(new Set(["demo", "player"]));
   }
 
@@ -1172,6 +1208,90 @@ export default function Admin() {
                     {emailCopied === "gmail" ? "Copied!" : "Copy · Gmail"}
                   </AdminBtn>
                 </div>
+              </div>
+              {/* Row 2: filters */}
+              <div className="flex flex-wrap items-center gap-2">
+                <AdminSelect value={filterRole} onChange={(e) => setFilterRole(e.target.value)} className="w-36">
+                  <option value="">All roles</option>
+                  <option value="owner">Owner</option>
+                  <option value="coach">Coach</option>
+                  <option value="assistant_coach">Asst. Coach</option>
+                  <option value="player">Player</option>
+                </AdminSelect>
+                <AdminSelect value={filterVerified} onChange={(e) => setFilterVerified(e.target.value)} className="w-36">
+                  <option value="">Any verified</option>
+                  <option value="verified">Verified</option>
+                  <option value="unverified">Unverified</option>
+                </AdminSelect>
+                <AdminSelect value={filterOnboarded} onChange={(e) => setFilterOnboarded(e.target.value)} className="w-36">
+                  <option value="">Any onboarded</option>
+                  <option value="yes">Onboarded</option>
+                  <option value="no">Not onboarded</option>
+                </AdminSelect>
+                <div className="flex items-center gap-1">
+                  <AdminSelect value={filterPlaysOp} onChange={(e) => setFilterPlaysOp(e.target.value)} className="w-14">
+                    <option value=">">&gt;</option>
+                    <option value="<">&lt;</option>
+                    <option value="=">=</option>
+                  </AdminSelect>
+                  <AdminInput
+                    type="number"
+                    min={0}
+                    value={filterPlays}
+                    onChange={(e) => setFilterPlays(e.target.value)}
+                    placeholder="# plays"
+                    className="w-24"
+                  />
+                </div>
+                <AdminSelect value={filterSport} onChange={(e) => setFilterSport(e.target.value)} className="w-36">
+                  <option value="">All sports</option>
+                  <option value="rugby">Rugby</option>
+                  <option value="football">Football</option>
+                  <option value="lacrosse">Lacrosse</option>
+                  <option value="womens lacrosse">Women's Lacrosse</option>
+                  <option value="basketball">Basketball</option>
+                  <option value="soccer">Soccer</option>
+                  <option value="field hockey">Field Hockey</option>
+                  <option value="ice hockey">Ice Hockey</option>
+                </AdminSelect>
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--adm-muted)" }}>Joined</span>
+                  <AdminSelect value={filterJoinedOp} onChange={(e) => setFilterJoinedOp(e.target.value)} className="w-14">
+                    <option value=">">&gt;</option>
+                    <option value="<">&lt;</option>
+                    <option value="=">=</option>
+                  </AdminSelect>
+                  <AdminSelect value={filterJoinedAge} onChange={(e) => setFilterJoinedAge(e.target.value)} className="w-28">
+                    <option value="">Any time</option>
+                    {TIME_AGE_OPTIONS.map(({ value, label }) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </AdminSelect>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--adm-muted)" }}>Active</span>
+                  <AdminSelect value={filterActivityOp} onChange={(e) => setFilterActivityOp(e.target.value)} className="w-14">
+                    <option value=">">&gt;</option>
+                    <option value="<">&lt;</option>
+                    <option value="=">=</option>
+                  </AdminSelect>
+                  <AdminSelect value={filterActivityAge} onChange={(e) => setFilterActivityAge(e.target.value)} className="w-28">
+                    <option value="">Any time</option>
+                    {TIME_AGE_OPTIONS.map(({ value, label }) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </AdminSelect>
+                </div>
+                {activeFilterCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    className="rounded-[var(--adm-radius)] px-3 py-1.5 text-xs font-medium transition-colors hover:opacity-80"
+                    style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}
+                  >
+                    Reset filters
+                  </button>
+                )}
               </div>
               </div>
             </div>

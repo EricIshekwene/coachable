@@ -6,6 +6,7 @@ import { AdminProvider } from "./admin/AdminContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Slate from "./features/slate/Slate";
 import SlateRecord from "./features/slate/SlateRecord";
+import SlateDrawing from "./features/slate/SlateDrawing";
 import MessagePopup from "./components/MessagePopup/MessagePopup";
 import { useMessagePopup } from "./components/messaging/useMessagePopup";
 import useThemeColor from "./utils/useThemeColor";
@@ -95,6 +96,36 @@ export function SlateRoot({ adminMode = false, sport = null }) {
           sport={sport}
           onNavigateHome={navigateHome}
           testVariant
+        />
+      </MobileViewOnlyGate>
+    </div>
+  );
+}
+
+/**
+ * Admin-only wrapper for the drawing-mode slate sandbox.
+ * Accessible only at /admin/drawing (guarded by RequireAdminSession).
+ */
+export function SlateDrawingRoot() {
+  const { messagePopup, showMessage, hideMessage } = useMessagePopup();
+  useThemeColor("#121212");
+  return (
+    <div
+      className="w-full bg-BrandBlack flex flex-row justify-between relative overflow-hidden"
+      style={{ height: "100dvh" }}
+    >
+      <MessagePopup
+        message={messagePopup.message}
+        subtitle={messagePopup.subtitle}
+        visible={messagePopup.visible}
+        type={messagePopup.type}
+        autoHideDuration={messagePopup.autoHideDuration}
+        onClose={hideMessage}
+      />
+      <MobileViewOnlyGate>
+        <SlateDrawing
+          onShowMessage={showMessage}
+          adminMode
         />
       </MobileViewOnlyGate>
     </div>
@@ -246,6 +277,7 @@ export function AppRoutes() {
         <Route path="/admin/errors" element={<RequireAdminSession><AdminErrors /></RequireAdminSession>} />
         <Route path="/admin/slate" element={<RequireAdminSession><SlateRoot adminMode /></RequireAdminSession>} />
         <Route path="/admin/record" element={<RequireAdminSession><SlateRecordRoot /></RequireAdminSession>} />
+        <Route path="/admin/drawing" element={<RequireAdminSession><SlateDrawingRoot /></RequireAdminSession>} />
         <Route path="/admin/app" element={<RequireAdminSession><AdminPlaysPage /></RequireAdminSession>} />
         <Route path="/admin/plays/:playId/edit" element={<RequireAdminSession><AdminPlayEditPage /></RequireAdminSession>} />
         <Route path="/admin/presets/:sport" element={<RequireAdminSession><AdminSportPresetsPage /></RequireAdminSession>} />
