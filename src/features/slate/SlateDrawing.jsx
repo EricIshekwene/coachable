@@ -13,6 +13,7 @@ export default function SlateDrawing({ onShowMessage, adminMode = true }) {
       adminMode={adminMode}
       testVariant
       drawingMode
+      sport="Football"
     />
   );
 }

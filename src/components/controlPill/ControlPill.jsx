@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { IoPlayOutline, IoRefreshOutline } from "react-icons/io5";
 
 /**
  * Proximity (ms) within which the playhead is considered "on" a keyframe — drives the
@@ -35,10 +36,13 @@ export default function ControlPill({
   getAuthoritativeTimeMs,
   onDragStateChange,
   variant = "default",
-  // Step track (drawing mode only)
+  // Step track / drawing mode
   drawings,
   onUpdateDrawing,
+  onAddStep,
+  selectedPlayerIds,
   playersById,
+  drawingMode = false,
 }) {
   const timelineDurationMs = Math.max(1, Math.round(Number(durationMs) || 30000));
   const clampedTimeMs = clamp(Math.round(Number(currentTimeMs) || 0), 0, timelineDurationMs);
@@ -166,10 +170,14 @@ export default function ControlPill({
     onSelectKeyframe?.(null);
   };
 
-  const stepDrawings = (drawings || []).filter(
-    (d) => d.source === "coaching-draw" && d.attachedPlayerId
-  );
-  const hasSteps = stepDrawings.length > 0;
+  // One lane per selected player, each showing their coaching-draw steps.
+  const stepLanes = (selectedPlayerIds || []).map((playerId) => ({
+    playerId,
+    drawings: (drawings || []).filter(
+      (d) => d.source === "coaching-draw" && d.attachedPlayerId === playerId
+    ),
+  })).filter(({ drawings: d }) => d.length > 0);
+  const hasSteps = stepLanes.length > 0;
 
   return (
     <div
@@ -179,61 +187,105 @@ export default function ControlPill({
                       rounded-[25px] sm:rounded-[28.125px] md:rounded-[31.25px]
                       select-none z-50
                       absolute left-1/2 transform -translate-x-1/2 bottom-[12px]
-                      ${hasSteps
-                        ? "w-[500px] sm:w-[600px] md:w-[750px] lg:w-[900px]"
-                        : "aspect-[641/124] h-[62.5px] sm:h-[75px] md:h-[100px] lg:h-[125px]"
-                      }`}
+                      w-[323px] sm:w-[388px] md:w-[517px] lg:w-[646px]
+                      min-h-[62.5px] sm:min-h-[75px] md:min-h-[100px] lg:min-h-[125px]`}
     >
-      <TimeBar
-        durationMs={timelineDurationMs}
-        currentTimeMs={clampedTimeMs}
-        isPlaying={isPlaying}
-        keyframes={keyframeMarkers}
-        selectedKeyframeMs={selectedKeyframeMs}
-        effectiveSelectedKeyframeMs={effectiveSelectedKeyframeMs}
-        onSeek={handleSeek}
-        onKeyframeClick={handleKeyframeClick}
-        onKeyframeDragStart={handleKeyframeDragStart}
-        onKeyframeDragMove={handleKeyframeDragMove}
-        onKeyframeDragEnd={handleKeyframeDragEnd}
-        getAuthoritativeTimeMs={getAuthoritativeTimeMs}
-        onDragStateChange={onDragStateChange}
-        keyframesMs={keyframesMs}
-        variant={variant}
-      />
-
-      {hasSteps && (
-        <StepTrack
-          drawings={drawings}
+      <div className="flex flex-col w-full" style={{ gap: hasSteps ? 2 : undefined }}>
+        <TimeBar
           durationMs={timelineDurationMs}
-          onUpdateDrawing={onUpdateDrawing}
-          playersById={playersById}
-        />
-      )}
-
-      <div className="flex flex-1 w-full items-center justify-between gap-[3.125px] sm:gap-[6.25px]">
-        <SpeedSlider
-          speedMultiplier={speedMultiplier}
-          onSpeedChange={onSpeedChange}
-          durationMs={timelineDurationMs}
-        />
-
-        <PlaybackControls
+          currentTimeMs={clampedTimeMs}
           isPlaying={isPlaying}
-          onPlayToggle={handlePlayToggle}
-          onSkipBack={handleSkipBack}
-          onSkipForward={handleSkipForward}
+          keyframes={keyframeMarkers}
+          selectedKeyframeMs={selectedKeyframeMs}
+          effectiveSelectedKeyframeMs={effectiveSelectedKeyframeMs}
+          onSeek={handleSeek}
+          onPause={onPause}
+          onKeyframeClick={handleKeyframeClick}
+          onKeyframeDragStart={handleKeyframeDragStart}
+          onKeyframeDragMove={handleKeyframeDragMove}
+          onKeyframeDragEnd={handleKeyframeDragEnd}
+          getAuthoritativeTimeMs={getAuthoritativeTimeMs}
+          onDragStateChange={onDragStateChange}
+          keyframesMs={keyframesMs}
+          variant={variant}
         />
 
-        {(onAddKeyframe || onDeleteKeyframe) && (
-          <KeyframeManager
-            selectedKeyframe={effectiveSelectedKeyframeMs}
-            onAddKeyframe={handleAddKeyframe}
-            onDeleteKeyframe={handleDeleteKeyframe}
-            variant={variant}
-          />
+        {hasSteps && (
+          <div style={{ marginTop: -12, display: "flex", flexDirection: "column", gap: 2 }}>
+            {stepLanes.map(({ playerId, drawings: laneDrawings }) => (
+              <StepTrack
+                key={playerId}
+                drawings={laneDrawings}
+                durationMs={timelineDurationMs}
+                currentTimeMs={clampedTimeMs}
+                onUpdateDrawing={onUpdateDrawing}
+                onSeek={handleSeek}
+                playersById={playersById}
+              />
+            ))}
+          </div>
         )}
       </div>
+
+      {drawingMode ? (
+        <div className="flex flex-1 w-full items-center gap-[3.125px] sm:gap-[6.25px]">
+          {/* Left third — matches SpeedSlider's natural w-200/641 */}
+          <SpeedSlider
+            speedMultiplier={speedMultiplier}
+            onSpeedChange={onSpeedChange}
+            durationMs={timelineDurationMs}
+          />
+          {/* Center third — play button */}
+          <div className="flex-1 flex items-center justify-center">
+            <div
+              onClick={handlePlayToggle}
+              className="h-[37.5px] w-[37.5px] sm:h-[43.75px] sm:w-[43.75px] md:h-[50px] md:w-[50px] bg-BrandOrange flex items-center justify-center rounded-lg cursor-pointer"
+            >
+              {isPlaying ? (
+                <svg width="22.5" height="22.5" viewBox="0 0 24 24" fill="currentColor" className="text-BrandBlack">
+                  <rect x="6" y="4" width="4" height="16" />
+                  <rect x="14" y="4" width="4" height="16" />
+                </svg>
+              ) : (
+                <IoPlayOutline className="text-BrandBlack text-[22.5px] sm:text-[22.5px] md:text-[25px] lg:text-[31.25px]" />
+              )}
+            </div>
+          </div>
+          {/* Right third — mirrors left width, reset button right-aligned */}
+          <div className="w-200/641 flex items-center justify-end">
+            <div
+              onClick={() => { onPause?.(); onSeek?.(0, { source: "engine" }); }}
+              className="h-[16px] sm:h-[22px] md:h-[24px] lg:h-[32px] w-[16px] sm:w-[22px] md:w-[24px] lg:w-[32px] bg-BrandBlack2 flex items-center justify-center rounded-sm cursor-pointer"
+            >
+              <IoRefreshOutline className="text-BrandOrange text-[17.5px] sm:text-[20px] md:text-[22.5px] lg:text-[25px]" />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-1 w-full items-center justify-between gap-[3.125px] sm:gap-[6.25px]">
+          <SpeedSlider
+            speedMultiplier={speedMultiplier}
+            onSpeedChange={onSpeedChange}
+            durationMs={timelineDurationMs}
+          />
+
+          <PlaybackControls
+            isPlaying={isPlaying}
+            onPlayToggle={handlePlayToggle}
+            onSkipBack={handleSkipBack}
+            onSkipForward={handleSkipForward}
+          />
+
+          {(onAddKeyframe || onDeleteKeyframe) && (
+            <KeyframeManager
+              selectedKeyframe={effectiveSelectedKeyframeMs}
+              onAddKeyframe={handleAddKeyframe}
+              onDeleteKeyframe={handleDeleteKeyframe}
+              variant={variant}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }

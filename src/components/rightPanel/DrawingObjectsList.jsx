@@ -2,6 +2,10 @@ import { FiTrash2, FiEye, FiEyeOff } from "react-icons/fi";
 import { PiPenNib } from "react-icons/pi";
 
 function getDrawingLabel(drawing, index, drawings) {
+  if (drawing.source === "coaching-draw") {
+    const stepNum = (drawing.stepIndex ?? 0) + 1;
+    return `Step ${stepNum}`;
+  }
   if (drawing.type === "text") {
     const preview = (drawing.text || "").split(/\s+/).slice(0, 3).join(" ");
     return preview || "T";
@@ -61,29 +65,51 @@ export default function DrawingObjectsList({
       <div className={`flex flex-col w-full gap-0.5 max-h-32 overflow-y-auto hide-scroll transition-opacity ${hideAllDrawings ? "opacity-40" : ""}`}>
         {drawings.map((d, i) => {
           const isSelected = selectedSet.has(d.id);
+          const isAnimDraw = d.source === "coaching-draw";
+          const stepColor = isAnimDraw ? (d.color ?? "#FF7A18") : null;
           return (
             <div
               key={d.id}
               onClick={() => onSelectedDrawingIdsChange?.([d.id])}
               className={`
-                flex items-center gap-1.5 px-1.5 py-1 rounded cursor-pointer
+                flex items-center gap-1.5 py-1 rounded cursor-pointer
                 transition-all duration-100 group
+                ${isAnimDraw ? "pl-0 pr-1.5" : "px-1.5"}
                 ${d.hidden ? "opacity-40" : ""}
                 ${isSelected
-                  ? "bg-BrandOrange/20"
-                  : "hover:bg-BrandBlack2"
+                  ? isAnimDraw ? "" : "bg-BrandOrange/20"
+                  : isAnimDraw ? "" : "hover:bg-BrandBlack2"
                 }
               `}
+              style={isAnimDraw ? {
+                borderLeft: `2.5px solid ${stepColor}`,
+                paddingLeft: 6,
+                backgroundColor: isSelected
+                  ? `${stepColor}28`
+                  : undefined,
+              } : undefined}
+              onMouseEnter={isAnimDraw ? (e) => { if (!isSelected) e.currentTarget.style.backgroundColor = `${stepColor}14`; } : undefined}
+              onMouseLeave={isAnimDraw ? (e) => { if (!isSelected) e.currentTarget.style.backgroundColor = ""; } : undefined}
             >
-              <span className="text-BrandOrange text-xs font-DmSans font-bold w-4 text-center shrink-0">
-                {getTypeIcon(d)}
+              <span
+                className="text-xs font-DmSans font-bold w-4 text-center shrink-0"
+                style={isAnimDraw ? { color: stepColor } : undefined}
+              >
+                {isAnimDraw
+                  ? <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", backgroundColor: stepColor, verticalAlign: "middle" }} />
+                  : <span className="text-BrandOrange">{getTypeIcon(d)}</span>
+                }
               </span>
               <span
-                className={`text-[10px] sm:text-xs font-DmSans flex-1 truncate ${
-                  isSelected ? "text-BrandOrange" : "text-BrandWhite"
-                }`}
+                className={`text-[10px] sm:text-xs font-DmSans flex-1 truncate`}
+                style={isAnimDraw ? { color: isSelected ? stepColor : `${stepColor}cc` } : undefined}
               >
-                {getDrawingLabel(d, i, drawings)}
+                {!isAnimDraw && (
+                  <span className={isSelected ? "text-BrandOrange" : "text-BrandWhite"}>
+                    {getDrawingLabel(d, i, drawings)}
+                  </span>
+                )}
+                {isAnimDraw && getDrawingLabel(d, i, drawings)}
               </span>
               <button
                 onClick={(e) => {

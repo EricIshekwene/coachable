@@ -135,6 +135,7 @@ function KonvaCanvasRoot({
   onAnimationRendererReady,
   drawings = [],
   hideAllDrawings = false,
+  drawingsRevealProgress = 1,
   drawSubTool,
   drawColor,
   drawOpacity = 1,
@@ -179,6 +180,8 @@ function KonvaCanvasRoot({
   onToggleBallLocked,
   adminMode = false,
   drawingModeSnap = false,
+  animDrawSubTool = null,
+  drawingMode = false,
 }) {
   const viewportRef = useRef(null);
   const stageRef = useRef(null);
@@ -371,8 +374,9 @@ function KonvaCanvasRoot({
     setInlineEdit({ id: drawing.id, text: drawing.text || "", height: null });
   }, []);
 
-  // "animDraw" is a sidebar-level tool; the canvas drawing engine treats it as "pen"
-  const effectiveDrawTool = tool === "animDraw" ? "pen" : tool;
+  // "animDraw" tool (legacy) or drawingMode+animDrawSubTool — both treated as "pen" by drawing engine
+  const isAnimDrawActive = tool === "animDraw" || !!animDrawSubTool;
+  const effectiveDrawTool = isAnimDrawActive ? "pen" : tool;
 
   const canvasDrawing = useCanvasDrawing({
     tool: effectiveDrawTool,
@@ -396,6 +400,7 @@ function KonvaCanvasRoot({
     onAddDrawing,
     onRemoveDrawing,
     onRemoveMultipleDrawings,
+    onEraseMiss: isAnimDrawActive ? () => onSelectItem?.(null, null, { mode: "clear" }) : undefined,
     textEditing,
     onTextEditingChange,
     onSelectedDrawingIdsChange,
@@ -919,18 +924,6 @@ function KonvaCanvasRoot({
       return;
     }
 
-    // Drawing tools — handle before pan/select/add
-    if ((tool === "pen" || tool === "animDraw") && !isMiddleMouse && isPrimaryButton) {
-      // animDraw never routes to selection; pen with select sub-tool uses selection hook
-      if (tool === "pen" && drawSubTool === "select") {
-        const handled = drawingSelection.handleSelectPointerDown(e);
-        if (handled) return;
-      } else {
-        const handled = canvasDrawing.handlePointerDown(e);
-        if (handled) return;
-      }
-    }
-
     if (isAddTool && !isMiddleMouse) {
       if (!isPrimaryButton) return;
       const pointer = stage?.getPointerPosition?.();
@@ -944,6 +937,24 @@ function KonvaCanvasRoot({
         onCanvasAddPlayer?.({ x: world.x, y: world.y, source: tool });
       }
       return;
+    }
+
+    // Drawing tools — handle before pan/select once explicit add tools are ruled out.
+    if ((tool === "pen" || isAnimDrawActive) && !isMiddleMouse && isPrimaryButton) {
+      if ((tool === "pen" || isAnimDrawActive) && drawSubTool === "select") {
+        const handled = drawingSelection.handleSelectPointerDown(e);
+        if (handled) return;
+      } else {
+        // In animDraw mode: allow drawing to start from anywhere (including on players).
+        // drawingModeSnap's findSnapPlayer snaps the draw start to the nearest player.
+        // Player onPointerDown simultaneously handles selection.
+        const handled = canvasDrawing.handlePointerDown(e);
+        if (handled) return;
+        // Click landed on empty canvas (no snap target) — deselect any selected drawing.
+        if (isAnimDrawActive && selectedDrawingIds?.length > 0) {
+          onSelectedDrawingIdsChange?.([]);
+        }
+      }
     }
 
     if (tool === "prefab" && !isMiddleMouse && isPrimaryButton) {
@@ -1319,8 +1330,8 @@ function KonvaCanvasRoot({
     }
 
     // Drawing tools — handle before marquee/pan
-    if (tool === "pen" || tool === "animDraw") {
-      if (tool === "pen" && drawSubTool === "select") {
+    if (tool === "pen" || isAnimDrawActive) {
+      if ((tool === "pen" || isAnimDrawActive) && drawSubTool === "select") {
         const handled = drawingSelection.handleSelectPointerMove(e);
         if (handled) return;
       } else {
@@ -1379,8 +1390,8 @@ function KonvaCanvasRoot({
     }
 
     // Drawing tools
-    if (tool === "pen" || tool === "animDraw") {
-      if (tool === "pen" && drawSubTool === "select") {
+    if (tool === "pen" || isAnimDrawActive) {
+      if ((tool === "pen" || isAnimDrawActive) && drawSubTool === "select") {
         const handled = drawingSelection.handleSelectPointerUp(e);
         if (handled) return;
       } else {
@@ -1635,7 +1646,18 @@ function KonvaCanvasRoot({
 
   const erasingIds = canvasDrawing.erasingIds;
 
-  const renderDrawingNode = (d, key) => {
+  // Slices a flat [x,y,x,y,...] points array to show only the first `progress` fraction,
+  // creating a retrace effect. Returns null when nothing should be visible.
+  const getVisiblePoints = (pts, progress) => {
+    if (!pts || pts.length < 4) return pts;
+    if (progress >= 1) return pts;
+    if (progress <= 0) return null;
+    const totalPairs = Math.floor(pts.length / 2);
+    const visiblePairs = Math.max(2, Math.ceil(totalPairs * progress));
+    return pts.slice(0, visiblePairs * 2);
+  };
+
+  const renderDrawingNode = (d, key, revealProgress = 1) => {
     const isErasing = erasingIds && erasingIds.has(d.id);
     const drawingOpacity = d.opacity == null ? 1 : d.opacity;
     const opacity = isErasing ? Math.min(0.3, drawingOpacity) : drawingOpacity;
@@ -1643,7 +1665,9 @@ function KonvaCanvasRoot({
     if (d.type === "stroke") {
       const strokeColor = d.color || "#FFFFFF";
       const sw = d.strokeWidth || 3;
-      const hasArrowTip = d.arrowTip && d.points && d.points.length >= 4;
+      const visiblePts = getVisiblePoints(d.points, revealProgress);
+      if (!visiblePts) return null;
+      const hasArrowTip = d.arrowTip && visiblePts.length >= 6;
       const headType = hasArrowTip ? (d.arrowHeadType || "standard") : null;
       const tipStyle = (hasArrowTip && headType !== "none")
         ? (STROKE_TIP_STYLES[headType] || STROKE_TIP_STYLES.standard)
@@ -1654,7 +1678,7 @@ function KonvaCanvasRoot({
       const strokeLine = (
         <Line
           key={hasArrowTip ? undefined : key}
-          points={d.points}
+          points={visiblePts}
           stroke={strokeColor}
           strokeWidth={sw}
           lineCap="round"
@@ -1668,8 +1692,8 @@ function KonvaCanvasRoot({
         return strokeLine;
       }
       const headPts = isChevron
-        ? getChevronHeadPoints(d.points, tipStyle.pointerLength, tipStyle.pointerWidth)
-        : getFilledHeadPoints(d.points, tipStyle.pointerLength, tipStyle.pointerWidth);
+        ? getChevronHeadPoints(visiblePts, tipStyle.pointerLength, tipStyle.pointerWidth)
+        : getFilledHeadPoints(visiblePts, tipStyle.pointerLength, tipStyle.pointerWidth);
       return (
         <React.Fragment key={key}>
           {strokeLine}
@@ -1703,12 +1727,16 @@ function KonvaCanvasRoot({
       const headStyle = ARROW_HEAD_STYLES[d.arrowHeadType] || ARROW_HEAD_STYLES.standard;
       const strokeColor = d.color || "#FFFFFF";
       const strokeWidth = d.strokeWidth || 3;
+      const visiblePts = getVisiblePoints(d.points, revealProgress);
+      if (!visiblePts) return null;
       if (d.arrowHeadType === "chevron") {
-        const chevronHeadPoints = getChevronHeadPoints(d.points, headStyle.pointerLength, headStyle.pointerWidth);
+        const chevronHeadPoints = visiblePts.length >= 4
+          ? getChevronHeadPoints(visiblePts, headStyle.pointerLength, headStyle.pointerWidth)
+          : null;
         return (
           <React.Fragment key={key}>
             <Line
-              points={d.points}
+              points={visiblePts}
               stroke={strokeColor}
               strokeWidth={strokeWidth}
               lineCap="round"
@@ -1733,7 +1761,7 @@ function KonvaCanvasRoot({
       return (
         <Arrow
           key={key}
-          points={d.points}
+          points={visiblePts}
           stroke={strokeColor}
           fill={strokeColor}
           strokeWidth={strokeWidth}
@@ -1896,7 +1924,7 @@ function KonvaCanvasRoot({
           {/* Drawings layer: renders below players/ball */}
           <Layer listening={false} name="drawingsLayer">
             <Group x={worldOrigin.x} y={worldOrigin.y} scaleX={worldOrigin.scale} scaleY={worldOrigin.scale}>
-              {!hideAllDrawings && drawings.map((d) => d.hidden ? null : renderDrawingNode(d, d.id))}
+              {!hideAllDrawings && drawingsRevealProgress > 0 && drawings.map((d) => d.hidden ? null : renderDrawingNode(d, d.id, drawingsRevealProgress))}
               {canvasDrawing.activeDrawing && renderDrawingNode(canvasDrawing.activeDrawing, "active-preview")}
               {/* Custom shape preview line (from last point to cursor) */}
               {canvasDrawing.customPreviewLine && (() => {
@@ -2037,7 +2065,7 @@ function KonvaCanvasRoot({
                   item.type === "player"
                     ? selectedPlayerIds?.includes(item.id)
                     : selectedItemIds?.includes(item.id);
-                const draggable = tool === "select" && item.draggable !== false && !isMarqueeActive && !lockDrag && !viewOnly;
+                const draggable = tool === "select" && !isAnimDrawActive && item.draggable !== false && !isMarqueeActive && !lockDrag && !viewOnly;
 
                 if (item.type === "ball") {
                   const objectType = renderedItem.objectType === "cone" ? "cone" : "ball";
@@ -2065,10 +2093,18 @@ function KonvaCanvasRoot({
                       onClick={handleItemClick(item)}
                       onTap={handleItemClick(item)}
                       onMouseDown={(e) => {
-                        if (tool !== "pen" && tool !== "animDraw") e.cancelBubble = true;
+                        // In animDraw mode, let event bubble to Stage so drawing can start from player position
+                        if (tool !== "pen" && !isAnimDrawActive) e.cancelBubble = true;
+                      }}
+                      onPointerDown={(e) => {
+                        if (tool !== "pen" && !isAnimDrawActive) e.cancelBubble = true;
+                        // Select the item immediately on pointer down in animDraw mode
+                        if (isAnimDrawActive) {
+                          onSelectItem?.(item.id, item.type, { mode: "replace" });
+                        }
                       }}
                       onTouchStart={(e) => {
-                        if (tool !== "pen" && tool !== "animDraw") e.cancelBubble = true;
+                        if (tool !== "pen" && !isAnimDrawActive) e.cancelBubble = true;
                       }}
                     >
                       {objectType === "ball" && ballColorOverride ? (
@@ -2146,10 +2182,16 @@ function KonvaCanvasRoot({
                     onClick={handleItemClick(item)}
                     onTap={handleItemClick(item)}
                     onMouseDown={(e) => {
-                      if (tool !== "pen" && tool !== "animDraw") e.cancelBubble = true;
+                      if (tool !== "pen" && !isAnimDrawActive) e.cancelBubble = true;
+                    }}
+                    onPointerDown={(e) => {
+                      if (tool !== "pen" && !isAnimDrawActive) e.cancelBubble = true;
+                      if (isAnimDrawActive) {
+                        onSelectItem?.(item.id, item.type, { mode: "replace" });
+                      }
                     }}
                     onTouchStart={(e) => {
-                      if (tool !== "pen" && tool !== "animDraw") e.cancelBubble = true;
+                      if (tool !== "pen" && !isAnimDrawActive) e.cancelBubble = true;
                     }}
                   >
                     <Circle
@@ -2319,8 +2361,8 @@ function KonvaCanvasRoot({
           />
         );
       })()}
-      {/* Player / item action popup — shown when exactly one item is selected in select mode */}
-      {!viewOnly && tool === "select" && selectedItemIds?.length === 1 && (() => {
+      {/* Player / item action popup — shown when exactly one item is selected in select mode (suppressed in anim draw mode, drawing mode, or while actively drawing) */}
+      {!viewOnly && tool === "select" && !isAnimDrawActive && !drawingMode && !canvasDrawing.activeDrawing && selectedItemIds?.length === 1 && (() => {
         const selectedId = selectedItemIds[0];
         const selectedItem = items.find((it) => it.id === selectedId);
         if (!selectedItem || selectedItem.hidden) return null;
@@ -2340,8 +2382,8 @@ function KonvaCanvasRoot({
           />
         );
       })()}
-      {/* Multi-select action popup — shown when 2+ items are selected in select mode */}
-      {!viewOnly && tool === "select" && selectedItemIds?.length > 1 && (() => {
+      {/* Multi-select action popup — shown when 2+ items are selected in select mode (suppressed in anim draw mode, drawing mode, or while actively drawing) */}
+      {!viewOnly && tool === "select" && !isAnimDrawActive && !drawingMode && !canvasDrawing.activeDrawing && selectedItemIds?.length > 1 && (() => {
         const selectedItems = selectedItemIds
           .map((id) => {
             const item = items.find((it) => it.id === id);

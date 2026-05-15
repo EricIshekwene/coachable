@@ -19,6 +19,9 @@ const STAB_MAX_WINDOW = 8; // max moving average window size
 // Auto stabilization level used when drawingModeSnap is active (animation drawing)
 const ANIM_DRAW_STAB_LEVEL = 80;
 
+// Snap radius for continuing from the tip of an existing coaching-draw path
+const PATH_TIP_SNAP_RADIUS = 70;
+
 /**
  * Chaikin corner-cutting smoothing for a flat [x,y,...] points array.
  * Preserves the first and last points (for player-snap attachment).
@@ -75,6 +78,7 @@ export function useCanvasDrawing({
   onAddDrawing,
   onRemoveDrawing,
   onRemoveMultipleDrawings,
+  onEraseMiss,
   textEditing,
   onTextEditingChange,
   onSelectedDrawingIdsChange,
@@ -285,25 +289,61 @@ export function useCanvasDrawing({
   }, [clearGuides]);
 
   /**
-   * In drawing mode, finds the nearest player within PLAYER_SNAP_RADIUS world units.
-   * Returns { x, y, id } of the snapped player center, or null if none close enough.
+   * In drawing mode, finds the nearest snap target — path tips take priority over player centers.
+   * Returns { x, y, id, type: "pathTip"|"player", continuedFromDrawingId? } or null.
    */
   const PLAYER_SNAP_RADIUS = 50;
   const findSnapPlayer = useCallback((wx, wy) => {
-    if (!playerSnapItems?.length) return null;
-    let best = null;
-    let bestDist = PLAYER_SNAP_RADIUS;
-    for (const item of playerSnapItems) {
-      const dx = item.x - wx;
-      const dy = item.y - wy;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < bestDist) {
-        bestDist = dist;
-        best = item;
+    // Find the best path tip candidate (last step per player only).
+    let bestTip = null;
+    let bestTipDist = PATH_TIP_SNAP_RADIUS;
+    if (drawingModeSnap) {
+      const coachingDrawings = (drawings || []).filter(
+        (d) => d.source === "coaching-draw" && d.attachedPlayerId && d.points?.length >= 2
+      );
+      // Keep only the highest-stepIndex drawing per player
+      const lastStepByPlayer = new Map();
+      for (const d of coachingDrawings) {
+        const existing = lastStepByPlayer.get(d.attachedPlayerId);
+        if (!existing || (d.stepIndex ?? 0) > (existing.stepIndex ?? 0)) {
+          lastStepByPlayer.set(d.attachedPlayerId, d);
+        }
+      }
+      for (const d of lastStepByPlayer.values()) {
+        const tx = d.points[d.points.length - 2];
+        const ty = d.points[d.points.length - 1];
+        const dist = Math.sqrt((tx - wx) ** 2 + (ty - wy) ** 2);
+        if (dist < bestTipDist) {
+          bestTipDist = dist;
+          bestTip = { x: tx, y: ty, id: d.attachedPlayerId, type: "pathTip", continuedFromDrawingId: d.id };
+        }
       }
     }
-    return best ? { x: best.x, y: best.y, id: best.id } : null;
-  }, [playerSnapItems]);
+
+    // Find the best player center candidate.
+    let best = null;
+    let bestDist = PLAYER_SNAP_RADIUS;
+    if (playerSnapItems?.length) {
+      for (const item of playerSnapItems) {
+        const dx = item.x - wx;
+        const dy = item.y - wy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = item;
+        }
+      }
+    }
+
+    // Prefer whichever snap target is actually closer. Player center wins ties
+    // so that drawing on top of a player always starts a fresh step from their body.
+    if (best && bestDist <= bestTipDist) {
+      return { x: best.x, y: best.y, id: best.id, type: "player" };
+    }
+    if (bestTip) return bestTip;
+    if (best) return { x: best.x, y: best.y, id: best.id, type: "player" };
+    return null;
+  }, [playerSnapItems, drawings, drawingModeSnap]);
 
   const handlePointerDown = useCallback(
     (e) => {
@@ -324,10 +364,11 @@ export function useCanvasDrawing({
       const world = toWorldCoords(pointer);
 
       if (subTool === "draw") {
-        // Drawing mode: must start near a player — snap start to player center
+        // Drawing mode: must start near a player or path tip — snap accordingly
         let startX = world.x;
         let startY = world.y;
         let attachedPlayerId;
+        let continuedFromDrawingId;
         if (drawingModeSnap) {
           const snap = findSnapPlayer(world.x, world.y);
           if (!snap) {
@@ -337,7 +378,8 @@ export function useCanvasDrawing({
           startX = snap.x;
           startY = snap.y;
           attachedPlayerId = snap.id;
-          logDrawDebug(`draw snapped to player id=${snap.id} x=${round2(startX)} y=${round2(startY)}`);
+          continuedFromDrawingId = snap.continuedFromDrawingId;
+          logDrawDebug(`draw snapped type=${snap.type} id=${snap.id} x=${round2(startX)} y=${round2(startY)}`);
         } else {
           const snapped = snapDrawingPoint(world.x, world.y, { showGuides: false });
           startX = snapped.x;
@@ -353,6 +395,7 @@ export function useCanvasDrawing({
           arrowTip: drawArrowTip || undefined,
           arrowHeadType: drawArrowTip ? drawArrowHeadType : undefined,
           ...(attachedPlayerId ? { attachedPlayerId } : {}),
+          ...(continuedFromDrawingId ? { continuedFromDrawingId } : {}),
         };
         // Animation drawing mode always uses high stabilization; otherwise respect setting
         const effectiveStab = drawingModeSnap ? ANIM_DRAW_STAB_LEVEL : drawStabilization;
@@ -378,6 +421,7 @@ export function useCanvasDrawing({
         let startX = world.x;
         let startY = world.y;
         let attachedPlayerId;
+        let continuedFromDrawingId;
         if (drawingModeSnap) {
           const snap = findSnapPlayer(world.x, world.y);
           if (!snap) {
@@ -387,7 +431,8 @@ export function useCanvasDrawing({
           startX = snap.x;
           startY = snap.y;
           attachedPlayerId = snap.id;
-          logDrawDebug(`arrow snapped to player id=${snap.id} x=${round2(startX)} y=${round2(startY)}`);
+          continuedFromDrawingId = snap.continuedFromDrawingId;
+          logDrawDebug(`arrow snapped type=${snap.type} id=${snap.id} x=${round2(startX)} y=${round2(startY)}`);
         } else {
           const snapped = snapDrawingPoint(world.x, world.y, { showGuides: false });
           startX = snapped.x;
@@ -401,6 +446,7 @@ export function useCanvasDrawing({
           strokeWidth: drawStrokeWidth,
           arrowHeadType: drawArrowHeadType,
           ...(attachedPlayerId ? { attachedPlayerId } : {}),
+          ...(continuedFromDrawingId ? { continuedFromDrawingId } : {}),
         };
         setActiveDrawing({ ...drawingRef.current });
         logDrawDebug(
@@ -494,7 +540,18 @@ export function useCanvasDrawing({
       if (subTool === "erase") {
         const newSet = new Set();
         const hitId = hitTestDrawings(drawings, world, eraserSize);
-        if (hitId) newSet.add(hitId);
+        if (hitId) {
+          newSet.add(hitId);
+        } else {
+          // Only deselect if the click is genuinely in empty space — not near a player.
+          // Clicking on a player with erase should leave their selection intact.
+          const nearPlayer = playerSnapItems?.some((item) => {
+            const dx = item.x - world.x;
+            const dy = item.y - world.y;
+            return Math.sqrt(dx * dx + dy * dy) < PLAYER_SNAP_RADIUS;
+          });
+          if (!nearPlayer) onEraseMiss?.();
+        }
         eraseRef.current = { active: true, removedIds: newSet };
         setErasingIds(newSet.size > 0 ? new Set(newSet) : null);
         logDrawDebug(
@@ -525,6 +582,7 @@ export function useCanvasDrawing({
       drawFontSize,
       drawTextAlign,
       onAddDrawing,
+      onEraseMiss,
       onSelectedDrawingIdsChange,
       onSubToolChange,
       onStartTextEdit,
@@ -665,7 +723,27 @@ export function useCanvasDrawing({
   const handlePointerUp = useCallback(() => {
     // Erase drag commit.
     if (eraseRef.current.active) {
-      const ids = Array.from(eraseRef.current.removedIds);
+      const directIds = Array.from(eraseRef.current.removedIds);
+
+      // Chain erase: removing a coaching-draw step also removes all later steps for the same player.
+      const chainIds = new Set(directIds);
+      for (const id of directIds) {
+        const erased = drawings.find((d) => d.id === id);
+        if (erased?.source === "coaching-draw" && erased.attachedPlayerId != null) {
+          const erasedStep = erased.stepIndex ?? 0;
+          for (const d of drawings) {
+            if (
+              d.source === "coaching-draw" &&
+              d.attachedPlayerId === erased.attachedPlayerId &&
+              (d.stepIndex ?? 0) > erasedStep
+            ) {
+              chainIds.add(d.id);
+            }
+          }
+        }
+      }
+
+      const ids = Array.from(chainIds);
       eraseRef.current = { active: false, removedIds: new Set() };
       setErasingIds(null);
       if (ids.length === 1) {
@@ -673,7 +751,7 @@ export function useCanvasDrawing({
       } else if (ids.length > 1) {
         onRemoveMultipleDrawings?.(ids);
       }
-      logDrawDebug(`erase commit removed=${ids.length}`);
+      logDrawDebug(`erase commit removed=${ids.length} direct=${directIds.length}`);
       return true;
     }
 
@@ -720,7 +798,7 @@ export function useCanvasDrawing({
 
     onAddDrawing?.(drawing);
     return true;
-  }, [onAddDrawing, onRemoveDrawing, onRemoveMultipleDrawings, clearGuides, drawingModeSnap]);
+  }, [onAddDrawing, onRemoveDrawing, onRemoveMultipleDrawings, clearGuides, drawingModeSnap, drawings]);
 
   const commitText = useCallback(
     (text) => {

@@ -82,11 +82,14 @@ export function useDrawingSelection({
     [selectionBounds, zoom, isTextOnlySelection]
   );
 
-  // Arrow endpoint handles (only when exactly 1 arrow is selected)
+  // Endpoint handles for arrows and coaching-draw strokes (single selection only)
   const arrowEndpointHandles = useMemo(() => {
     if (selectedDrawingIds.length !== 1) return [];
     const selD = drawings.find((d) => d.id === selectedDrawingIds[0]);
-    if (!selD || selD.type !== "arrow") return [];
+    if (!selD) return [];
+    const isArrow = selD.type === "arrow";
+    const isCoachingStroke = selD.type === "stroke" && selD.source === "coaching-draw";
+    if (!isArrow && !isCoachingStroke) return [];
     return getArrowEndpointHandles(selD, handleSize * 1.5);
   }, [drawings, selectedDrawingIds, handleSize]);
 
@@ -327,21 +330,62 @@ export function useDrawingSelection({
         return true;
       }
 
-      // Endpoint drag (arrow)
+      // Endpoint drag (arrow or coaching-draw stroke)
       if (gestureRef.current?.type === "endpoint") {
         const id = gestureRef.current.ids[0];
         const snap = gestureRef.current.startDrawingsSnapshot.get(id);
         if (snap && snap.points) {
           const newPoints = [...snap.points];
-          if (gestureRef.current.endpointPosition === "start") {
+          const movingEnd = gestureRef.current.endpointPosition === "end";
+          if (!movingEnd) {
             newPoints[0] = world.x;
             newPoints[1] = world.y;
+          } else if (snap.type === "stroke") {
+            // Strokes: end is the last two coords, not indices 2,3
+            newPoints[newPoints.length - 2] = world.x;
+            newPoints[newPoints.length - 1] = world.y;
           } else {
             newPoints[2] = world.x;
             newPoints[3] = world.y;
           }
           const changes = new Map();
           changes.set(id, { points: newPoints });
+
+          // Cascade to the connected adjacent coaching-draw step so the link stays intact
+          if (snap.source === "coaching-draw" && snap.attachedPlayerId != null) {
+            if (movingEnd) {
+              // End of step N → start of step N+1
+              const nextStep = (snap.stepIndex ?? 0) + 1;
+              const linked = drawings.find(
+                (d) => d.source === "coaching-draw" &&
+                       d.attachedPlayerId === snap.attachedPlayerId &&
+                       (d.stepIndex ?? 0) === nextStep
+              );
+              if (linked) {
+                const linkedPts = [...linked.points];
+                linkedPts[0] = world.x;
+                linkedPts[1] = world.y;
+                changes.set(linked.id, { points: linkedPts });
+              }
+            } else {
+              // Start of step N → end of step N-1
+              const prevStep = (snap.stepIndex ?? 0) - 1;
+              if (prevStep >= 0) {
+                const linked = drawings.find(
+                  (d) => d.source === "coaching-draw" &&
+                         d.attachedPlayerId === snap.attachedPlayerId &&
+                         (d.stepIndex ?? 0) === prevStep
+                );
+                if (linked) {
+                  const linkedPts = [...linked.points];
+                  linkedPts[linkedPts.length - 2] = world.x;
+                  linkedPts[linkedPts.length - 1] = world.y;
+                  changes.set(linked.id, { points: linkedPts });
+                }
+              }
+            }
+          }
+
           onUpdateMultipleNoHistory(changes);
         }
         return true;
@@ -518,7 +562,7 @@ export function useDrawingSelection({
 
       return false;
     },
-    [stageRef, toWorldCoords, onUpdateMultipleNoHistory]
+    [stageRef, toWorldCoords, onUpdateMultipleNoHistory, drawings]
   );
 
   const handleSelectPointerUp = useCallback(

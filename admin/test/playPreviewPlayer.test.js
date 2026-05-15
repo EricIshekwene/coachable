@@ -26,7 +26,6 @@ const formatTime = (ms) => {
   return `${m}:${(s % 60).toString().padStart(2, "0")}`;
 };
 
-const DEFAULT_SPEED_MULTIPLIER = 50;
 const DEFAULT_DURATION_MS = 30000;
 
 /**

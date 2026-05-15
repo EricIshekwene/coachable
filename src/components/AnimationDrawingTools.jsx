@@ -1,6 +1,7 @@
 import { createElement } from "react";
-import { PiPenNib, PiEraserFill } from "react-icons/pi";
+import { PiPenNib, PiEraserFill, PiCursorFill } from "react-icons/pi";
 import { FaArrowUpLong } from "react-icons/fa6";
+import { FiEye, FiEyeOff } from "react-icons/fi";
 
 const TOOLS = [
   { id: "arrow", label: "Arrow", Icon: FaArrowUpLong, iconStyle: { transform: "rotate(45deg)" } },
@@ -10,12 +11,16 @@ const TOOLS = [
 
 /**
  * Permanent animation drawing tool palette for coaching mode.
- * Always visible — shows Arrow and Draw tools only, no close button.
- * A tool is only highlighted active when the canvas is in pen mode AND that subtool is selected.
+ * Always visible — shows Arrow, Draw, and Erase tools plus a hide-drawings toggle.
  *
- * @param {{ canvasTool: string, activeSubTool: string, onSubToolChange: (id: string) => void }} props
+ * @param {{
+ *   activeSubTool: string,
+ *   onSubToolChange: (id: string) => void,
+ *   hideDrawings: boolean,
+ *   onToggleHideDrawings: () => void,
+ * }} props
  */
-export default function AnimationDrawingTools({ activeSubTool, onSubToolChange }) {
+export default function AnimationDrawingTools({ activeSubTool, onSubToolChange, hideDrawings = false, onToggleHideDrawings }) {
   return (
     <div className="absolute top-17 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 select-none rounded-full border border-white/10 bg-[rgba(18,18,18,0.92)] px-1.5 py-1.5 shadow-[0_1px_4px_rgba(0,0,0,0.08)] backdrop-blur-sm">
       {TOOLS.map(({ id, label, Icon, iconStyle }) => {
@@ -30,7 +35,7 @@ export default function AnimationDrawingTools({ activeSubTool, onSubToolChange }
               "group flex items-center justify-center gap-2 rounded-full px-3.5 py-2 text-xs font-DmSans font-medium tracking-[0.01em] transition-all duration-150",
               isActive
                 ? "border border-BrandOrange/55 bg-BrandOrange text-BrandBlack"
-                : "border border-transparent bg-white/[0.02] text-white/82 hover:bg-white/[0.04] active:scale-[0.98]",
+                : "border border-transparent bg-white/2 text-white/82 hover:bg-white/4 active:scale-[0.98]",
             ].join(" ")}
           >
             <span
@@ -49,7 +54,60 @@ export default function AnimationDrawingTools({ activeSubTool, onSubToolChange }
           </button>
         );
       })}
+
+      {/* Divider */}
+      <div className="w-px h-5 bg-white/10 mx-0.5" />
+
+      {/* Select tool */}
+      {(() => {
+        const isActive = activeSubTool === "select";
+        return (
+          <button
+            type="button"
+            aria-pressed={isActive}
+            onClick={() => onSubToolChange?.("select")}
+            className={[
+              "group flex items-center justify-center gap-2 rounded-full px-3.5 py-2 text-xs font-DmSans font-medium tracking-[0.01em] transition-all duration-150",
+              isActive
+                ? "border border-BrandOrange/55 bg-BrandOrange text-BrandBlack"
+                : "border border-transparent bg-white/2 text-white/82 hover:bg-white/4 active:scale-[0.98]",
+            ].join(" ")}
+          >
+            <span className={["flex h-5 w-5 items-center justify-center rounded-full transition-colors", isActive ? "text-BrandBlack" : "text-BrandOrange/95 group-hover:text-BrandOrange"].join(" ")}>
+              <PiCursorFill className="text-[13px]" />
+            </span>
+            <span className={isActive ? "text-BrandBlack" : "text-white/84"}>Select</span>
+          </button>
+        );
+      })()}
+
+      {/* Hide/show drawings toggle */}
+      <button
+        type="button"
+        aria-pressed={hideDrawings}
+        onClick={onToggleHideDrawings}
+        title={hideDrawings ? "Show drawings" : "Hide drawings"}
+        className={[
+          "group flex items-center justify-center gap-2 rounded-full px-3.5 py-2 text-xs font-DmSans font-medium tracking-[0.01em] transition-all duration-150",
+          hideDrawings
+            ? "border border-BrandOrange/55 bg-BrandOrange text-BrandBlack"
+            : "border border-transparent bg-white/2 text-white/82 hover:bg-white/4 active:scale-[0.98]",
+        ].join(" ")}
+      >
+        <span
+          className={[
+            "flex h-5 w-5 items-center justify-center rounded-full transition-colors",
+            hideDrawings
+              ? "text-BrandBlack"
+              : "text-BrandOrange/95 group-hover:text-BrandOrange",
+          ].join(" ")}
+        >
+          {hideDrawings
+            ? <FiEyeOff className="text-[13px]" />
+            : <FiEye className="text-[13px]" />
+          }
+        </span>
+      </button>
     </div>
   );
 }
-

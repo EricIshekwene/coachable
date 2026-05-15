@@ -13,7 +13,7 @@ export default function PlaybackControls({
 }) {
   return (
     <div className="flex flex-row items-center gap-[3.125px] sm:gap-[6.25px] justify-between">
-      <div 
+      <div
         onClick={onSkipBack}
         className="h-[16px] sm:h-[22px] md:h-[24px] lg:h-[32px] w-[16px] sm:w-[22px] md:w-[24px] lg:w-[32px] bg-BrandBlack2 flex items-center justify-center rounded-sm cursor-pointer"
       >
@@ -38,7 +38,7 @@ export default function PlaybackControls({
           <IoPlayOutline className="text-BrandBlack text-[22.5px] sm:text-[22.5px] md:text-[25px] lg:text-[31.25px]" />
         )}
       </div>
-      <div 
+      <div
         onClick={onSkipForward}
         className="h-[16px] sm:h-[22px] md:h-[24px] lg:h-[32px] w-[16px] sm:w-[22px] md:w-[24px] lg:w-[32px] bg-BrandBlack2 flex items-center justify-center rounded-sm cursor-pointer"
       >

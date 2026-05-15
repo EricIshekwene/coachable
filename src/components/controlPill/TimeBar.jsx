@@ -25,6 +25,7 @@ export default function TimeBar({
   selectedKeyframeMs = null,
   effectiveSelectedKeyframeMs = null,
   onSeek,
+  onPause,
   onKeyframeClick,
   onKeyframeDragStart,
   onKeyframeDragMove,
@@ -45,6 +46,7 @@ export default function TimeBar({
   const dragTimeRef = useRef(0);
   const durationRef = useRef(normalizeDuration(durationMs));
   const onSeekRef = useRef(onSeek);
+  const onPauseRef = useRef(onPause);
   const onDragStateChangeRef = useRef(onDragStateChange);
   const getAuthoritativeTimeRef = useRef(getAuthoritativeTimeMs);
   const currentTimeRef = useRef(toFinite(currentTimeMs, 0));
@@ -60,6 +62,10 @@ export default function TimeBar({
   useEffect(() => {
     onSeekRef.current = onSeek;
   }, [onSeek]);
+
+  useEffect(() => {
+    onPauseRef.current = onPause;
+  }, [onPause]);
 
   useEffect(() => {
     onDragStateChangeRef.current = onDragStateChange;
@@ -168,11 +174,11 @@ export default function TimeBar({
       pointerIdRef.current = null;
       onDragStateChangeRef.current?.(false);
       logAnimDebug(`dragEnd t=${Math.round(flushed)}`);
-
-      const followTime = isPlayingRef.current ? readAuthoritativeTime() : currentTimeRef.current;
-      applyVisualFromTime(followTime);
+      // Keep the thumb at the released position instead of briefly snapping back to the
+      // previously-rendered engine time while the parent state catches up.
+      applyVisualFromTime(flushed);
     },
-    [applyVisualFromTime, flushSeek, readAuthoritativeTime, syncFromPointer]
+    [applyVisualFromTime, flushSeek, syncFromPointer]
   );
 
   const handlePointerDown = useCallback(
@@ -186,6 +192,7 @@ export default function TimeBar({
       pointerIdRef.current = event.pointerId;
       trackNode.setPointerCapture?.(event.pointerId);
       onDragStateChangeRef.current?.(true);
+      onPauseRef.current?.();
       logAnimDebug("dragStart");
       lastDragLogTsRef.current = 0;
       syncFromPointer(event.clientX, { emitSeek: true });
@@ -258,12 +265,13 @@ export default function TimeBar({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      className={`h-29/124 mt-[3.125px] sm:mt-[6.25px] md:mt-[6.25px] lg:mt-[6.25px] w-full flex items-center px-[6.25px] rounded-full relative cursor-pointer touch-none ${
+      className={`w-full min-h-7 sm:min-h-8.5 flex items-center px-[6.25px] rounded-full relative cursor-ew-resize touch-none ${
         isTest
           ? "bg-transparent border-transparent"
           : "bg-BrandBlack2 border-[0.3125px] border-BrandGray"
       }`}
     >
+      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-8 sm:h-9 bg-transparent" />
       <div
         className={`absolute left-[3%] right-[3%] top-1/2 -translate-y-1/2 rounded-full overflow-hidden pointer-events-none ${
           isTest ? "h-2 bg-white/10" : "h-[1.25px] bg-BrandOrange2/35"

@@ -470,11 +470,9 @@ export function applyResize(drawingsSnapshot, selectedIds, oldBounds, newBounds)
           newBounds.y + (d.points[i + 1] - oldBounds.y) * scaleY
         );
       }
-      const changes = { points: newPoints };
-      if (d.strokeWidth) {
-        changes.strokeWidth = Math.max(1, d.strokeWidth * Math.min(scaleX, scaleY));
-      }
-      result.set(d.id, changes);
+      // strokeWidth is intentionally not scaled — stretching a stroke or arrow path
+      // should not change its line thickness.
+      result.set(d.id, { points: newPoints });
     }
   }
   return result;
@@ -581,13 +579,17 @@ export function pointInPolygon(px, py, points, tolerance = 0) {
  * Returns 2 handle descriptors for the start and end points of an arrow drawing.
  */
 export function getArrowEndpointHandles(drawing, handleSize) {
-  if (!drawing || drawing.type !== "arrow" || !drawing.points || drawing.points.length < 4) {
-    return [];
-  }
+  if (!drawing || !drawing.points || drawing.points.length < 4) return [];
+  const isArrow = drawing.type === "arrow";
+  const isCoachingStroke = drawing.type === "stroke" && drawing.source === "coaching-draw";
+  if (!isArrow && !isCoachingStroke) return [];
   const hs = handleSize / 2;
+  // Arrows: end at [2,3]. Strokes: end at last two coords.
+  const endX = isArrow ? drawing.points[2] : drawing.points[drawing.points.length - 2];
+  const endY = isArrow ? drawing.points[3] : drawing.points[drawing.points.length - 1];
   return [
     { position: "start", x: drawing.points[0] - hs, y: drawing.points[1] - hs, width: handleSize, height: handleSize },
-    { position: "end", x: drawing.points[2] - hs, y: drawing.points[3] - hs, width: handleSize, height: handleSize },
+    { position: "end", x: endX - hs, y: endY - hs, width: handleSize, height: handleSize },
   ];
 }
 

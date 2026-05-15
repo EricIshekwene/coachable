@@ -11,39 +11,38 @@ import { POPUP_TOAST_SURFACE_CLASS } from "../subcomponents/popupStyles";
 const TYPE_STYLES = {
   error: {
     icon: IoAlertCircleOutline,
-    iconColor: "text-red-200",
-    iconContainer: "bg-red-500/15 ring-red-300/35",
-    title: "text-red-100",
-    text: "text-red-100/80",
-    border: "border-red-400/40",
-    accent: "from-red-400/75 via-red-400/45 to-red-500/10",
+    iconColor: "text-red-300/95",
+    iconContainer: "bg-red-500/10",
+    title: "text-BrandWhite",
+    text: "text-white/68",
   },
   success: {
     icon: IoCheckmarkCircleOutline,
-    iconColor: "text-emerald-200",
-    iconContainer: "bg-emerald-500/15 ring-emerald-300/35",
-    title: "text-emerald-100",
-    text: "text-emerald-100/80",
-    border: "border-emerald-400/40",
-    accent: "from-emerald-400/75 via-emerald-400/45 to-emerald-500/10",
+    iconColor: "text-emerald-300/95",
+    iconContainer: "bg-emerald-500/10",
+    title: "text-BrandWhite",
+    text: "text-white/68",
   },
   warning: {
     icon: IoWarningOutline,
-    iconColor: "text-amber-200",
-    iconContainer: "bg-amber-500/15 ring-amber-300/35",
-    title: "text-amber-100",
-    text: "text-amber-100/80",
-    border: "border-amber-300/45",
-    accent: "from-amber-300/75 via-amber-300/45 to-amber-400/10",
+    iconColor: "text-amber-300/95",
+    iconContainer: "bg-amber-400/10",
+    title: "text-BrandWhite",
+    text: "text-white/68",
   },
   standard: {
     icon: IoInformationCircleOutline,
     iconColor: "text-BrandOrange",
-    iconContainer: "bg-BrandOrange/10 ring-BrandOrange/30",
+    iconContainer: "bg-BrandOrange/10",
     title: "text-BrandWhite",
-    text: "text-BrandGray",
-    border: "border-BrandOrange/45",
-    accent: "from-BrandOrange/80 via-BrandOrange/50 to-BrandOrange/10",
+    text: "text-white/68",
+  },
+  info: {
+    icon: IoInformationCircleOutline,
+    iconColor: "text-sky-300/95",
+    iconContainer: "bg-sky-400/10",
+    title: "text-BrandWhite",
+    text: "text-white/68",
   },
 };
 
@@ -84,23 +83,22 @@ export default function MessagePopup({
   if (!isVisible) return null;
 
   return (
-    <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[100] w-[min(92vw,460px)] px-2">
+    <div className="pointer-events-none fixed inset-x-0 top-3 z-[120] flex justify-center px-3 md:top-4">
       <div
-        className={`relative overflow-hidden bg-BrandBlack/95 ${POPUP_TOAST_SURFACE_CLASS} ${styles.border}`}
+        className={`pointer-events-auto w-full max-w-[min(92vw,460px)] border border-white/10 bg-[rgba(18,18,18,0.92)] ${POPUP_TOAST_SURFACE_CLASS} animate-[fadeInUp_0.2s_ease-out]`}
         role="status"
         aria-live="polite"
       >
-        <div className={`absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r ${styles.accent}`} />
-        <div className="flex items-start gap-3 p-3 sm:px-4 sm:py-3.5">
-          <div className={`mt-[2px] flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-1 ${styles.iconContainer}`}>
-            <StatusIcon className={`text-lg ${styles.iconColor}`} aria-hidden />
+        <div className="flex items-start gap-3 px-3 py-2.5 sm:px-3.5 sm:py-3">
+          <div className={`mt-[1px] flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${styles.iconContainer}`}>
+            <StatusIcon className={`text-[17px] ${styles.iconColor}`} aria-hidden />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className={`${styles.title} text-xs sm:text-sm font-DmSans font-semibold leading-tight`}>
+            <h2 className={`${styles.title} text-[13px] font-DmSans font-medium leading-[1.2] tracking-[0.01em]`}>
               {message}
             </h2>
             {subtitle ? (
-              <p className={`${styles.text} mt-1 text-[11px] sm:text-xs font-DmSans leading-relaxed break-words`}>
+              <p className={`${styles.text} mt-0.5 text-[11px] font-DmSans leading-[1.4] break-words`}>
                 {subtitle}
               </p>
             ) : null}
@@ -109,9 +107,9 @@ export default function MessagePopup({
             type="button"
             onClick={hide}
             aria-label="Dismiss message"
-            className="shrink-0 rounded-md p-1 text-BrandGray hover:text-BrandWhite hover:bg-white/5 transition-colors"
+            className="shrink-0 rounded-full p-1.5 text-BrandGray hover:text-BrandWhite hover:bg-white/[0.04] transition-colors"
           >
-            <IoClose className="text-sm" aria-hidden />
+            <IoClose className="text-[14px]" aria-hidden />
           </button>
         </div>
       </div>

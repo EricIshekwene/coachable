@@ -1,10 +1,12 @@
 import { useRef, useCallback } from "react";
+import { getStepColor } from "../../utils/stepColor";
 
 // Mirrors the coordinate system used by TimeBar
 const TRACK_VISUAL_START_PERCENT = 3;
 const TRACK_VISUAL_SPAN_PERCENT = 94;
 
 const MIN_STEP_MS = 500;
+const BODY_DRAG_THRESHOLD_PX = 5;
 
 /**
  * StepTrack — horizontal lane showing one resizable/draggable block per coaching-draw path.
@@ -13,22 +15,29 @@ const MIN_STEP_MS = 500;
  * - Left edge: drag to trim the start time
  * - Right edge: drag to trim the end time
  * - Body: drag to reposition the block across the timeline
+ * - Empty space: click/drag to scrub (seek) the animation timeline
  *
  * @param {{
  *   drawings: object[],
  *   durationMs: number,
+ *   currentTimeMs: number,
  *   onUpdateDrawing: (id: string, patch: object) => void,
+ *   onSeek: (timeMs: number) => void,
  *   playersById: object,
  * }} props
  */
-export default function StepTrack({ drawings, durationMs, onUpdateDrawing, playersById }) {
-  const steps = (drawings || []).filter(
-    (d) => d.source === "coaching-draw" && d.attachedPlayerId
-  );
+export default function StepTrack({ drawings, durationMs, currentTimeMs = 0, onUpdateDrawing, onSeek, playersById }) {
+  const steps = (drawings || [])
+    .filter((d) => d.source === "coaching-draw" && d.attachedPlayerId)
+    .sort((a, b) => (a.stepStartMs ?? 0) - (b.stepStartMs ?? 0));
 
   const containerRef = useRef(null);
   // { id, pointerId, type: "left-edge"|"right-edge"|"body", offsetMs }
   const dragRef = useRef(null);
+  // { id, pointerId, startClientX, offsetMs } while deciding whether a body press is a click or a drag
+  const bodyPressRef = useRef(null);
+  // { pointerId } when scrubbing empty space
+  const scrubRef = useRef(null);
 
   /** Convert a clientX position into a timeline millisecond value. */
   const timeFromClientX = useCallback(
@@ -43,39 +52,100 @@ export default function StepTrack({ drawings, durationMs, onUpdateDrawing, playe
     [durationMs]
   );
 
+  // --- Block drag handlers ---
+
+  const startBodyDrag = useCallback((step, pointerId, clientX) => {
+    const startMs = step.stepStartMs ?? 0;
+    const offsetMs = timeFromClientX(clientX) - startMs;
+    dragRef.current = { id: step.id, pointerId, type: "body", offsetMs };
+    bodyPressRef.current = null;
+  }, [timeFromClientX]);
+
   const handlePointerDown = useCallback((e, step, type) => {
     e.preventDefault();
     e.stopPropagation();
-    const startMs = step.stepStartMs ?? 0;
-    const offsetMs = type === "body" ? timeFromClientX(e.clientX) - startMs : 0;
-    dragRef.current = { id: step.id, pointerId: e.pointerId, type, offsetMs };
     e.currentTarget.setPointerCapture(e.pointerId);
-  }, [timeFromClientX]);
+    if (type === "body") {
+      bodyPressRef.current = {
+        id: step.id,
+        pointerId: e.pointerId,
+        startClientX: e.clientX,
+      };
+      dragRef.current = null;
+      return;
+    }
+    dragRef.current = { id: step.id, pointerId: e.pointerId, type, offsetMs: 0 };
+    bodyPressRef.current = null;
+  }, []);
 
   const handlePointerMove = useCallback((e, step) => {
+    const bodyPress = bodyPressRef.current;
+    if (bodyPress && bodyPress.id === step.id && bodyPress.pointerId === e.pointerId) {
+      const deltaPx = Math.abs(e.clientX - bodyPress.startClientX);
+      if (deltaPx >= BODY_DRAG_THRESHOLD_PX) {
+        startBodyDrag(step, e.pointerId, e.clientX);
+      } else {
+        return;
+      }
+    }
+
     const drag = dragRef.current;
-    if (!drag || drag.id !== step.id) return;
+    if (!drag || drag.id !== step.id || drag.pointerId !== e.pointerId) return;
     const timeMs = timeFromClientX(e.clientX);
     const startMs = step.stepStartMs ?? 0;
     const endMs = step.stepEndMs ?? durationMs;
     const spanMs = endMs - startMs;
 
+    // Collision bounds from neighbouring steps (steps is sorted by stepStartMs).
+    const idx = steps.findIndex((s) => s.id === step.id);
+    const prevEnd = idx > 0 ? (steps[idx - 1].stepEndMs ?? durationMs) : 0;
+    const nextStart = idx < steps.length - 1 ? (steps[idx + 1].stepStartMs ?? durationMs) : durationMs;
+
     if (drag.type === "right-edge") {
-      const newEnd = Math.round(Math.min(durationMs, Math.max(startMs + MIN_STEP_MS, timeMs)));
+      const newEnd = Math.round(Math.min(nextStart, Math.max(startMs + MIN_STEP_MS, timeMs)));
       onUpdateDrawing?.(step.id, { stepEndMs: newEnd });
     } else if (drag.type === "left-edge") {
-      const newStart = Math.round(Math.max(0, Math.min(endMs - MIN_STEP_MS, timeMs)));
+      const newStart = Math.round(Math.max(prevEnd, Math.min(endMs - MIN_STEP_MS, timeMs)));
       onUpdateDrawing?.(step.id, { stepStartMs: newStart });
     } else if (drag.type === "body") {
-      const newStart = Math.round(Math.max(0, Math.min(durationMs - spanMs, timeMs - drag.offsetMs)));
+      const newStart = Math.round(Math.max(prevEnd, Math.min(nextStart - spanMs, timeMs - drag.offsetMs)));
       onUpdateDrawing?.(step.id, { stepStartMs: newStart, stepEndMs: newStart + spanMs });
     }
-  }, [durationMs, timeFromClientX, onUpdateDrawing]);
+  }, [durationMs, timeFromClientX, onUpdateDrawing, startBodyDrag, steps]);
 
   const handlePointerUp = useCallback((e, step) => {
-    if (!dragRef.current || dragRef.current.id !== step.id) return;
     e.currentTarget.releasePointerCapture(e.pointerId);
+    const bodyPress = bodyPressRef.current;
+    if (bodyPress && bodyPress.id === step.id && bodyPress.pointerId === e.pointerId) {
+      bodyPressRef.current = null;
+      dragRef.current = null;
+      onSeek?.(Math.round(timeFromClientX(e.clientX)));
+      return;
+    }
+    if (!dragRef.current || dragRef.current.id !== step.id || dragRef.current.pointerId !== e.pointerId) return;
     dragRef.current = null;
+    bodyPressRef.current = null;
+  }, [timeFromClientX, onSeek]);
+
+  // --- Empty-space scrub handlers ---
+
+  const handleContainerPointerDown = useCallback((e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    e.preventDefault();
+    scrubRef.current = { pointerId: e.pointerId };
+    containerRef.current?.setPointerCapture(e.pointerId);
+    onSeek?.(Math.round(timeFromClientX(e.clientX)));
+  }, [timeFromClientX, onSeek]);
+
+  const handleContainerPointerMove = useCallback((e) => {
+    if (!scrubRef.current || scrubRef.current.pointerId !== e.pointerId) return;
+    onSeek?.(Math.round(timeFromClientX(e.clientX)));
+  }, [timeFromClientX, onSeek]);
+
+  const handleContainerPointerUp = useCallback((e) => {
+    if (!scrubRef.current || scrubRef.current.pointerId !== e.pointerId) return;
+    containerRef.current?.releasePointerCapture(e.pointerId);
+    scrubRef.current = null;
   }, []);
 
   if (!steps.length) return null;
@@ -83,16 +153,22 @@ export default function StepTrack({ drawings, durationMs, onUpdateDrawing, playe
   return (
     <div
       ref={containerRef}
-      className="relative w-full select-none"
-      style={{ height: steps.length * 22 + 4 }}
+      className="relative w-full select-none touch-none"
+      style={{ height: 26, cursor: "pointer" }}
+      onPointerDown={handleContainerPointerDown}
+      onPointerMove={handleContainerPointerMove}
+      onPointerUp={handleContainerPointerUp}
+      onPointerCancel={handleContainerPointerUp}
     >
+
       {steps.map((step, i) => {
         const startMs = step.stepStartMs ?? 0;
         const endMs = step.stepEndMs ?? durationMs;
         const leftPct = TRACK_VISUAL_START_PERCENT + (startMs / durationMs) * TRACK_VISUAL_SPAN_PERCENT;
         const widthPct = ((endMs - startMs) / durationMs) * TRACK_VISUAL_SPAN_PERCENT;
         const player = playersById?.[step.attachedPlayerId];
-        const color = player?.color ?? "#FF7A18";
+        const baseColor = player?.color ?? "#FF7A18";
+        const color = step.color ?? getStepColor(baseColor, step.stepIndex ?? i);
         const label = player?.name
           ? player.name
           : player?.number != null
@@ -106,7 +182,7 @@ export default function StepTrack({ drawings, durationMs, onUpdateDrawing, playe
             style={{
               left: `${leftPct}%`,
               width: `${Math.max(0, widthPct)}%`,
-              top: i * 22 + 2,
+              top: 2,
               height: 18,
               backgroundColor: color + "28",
               border: `1px solid ${color}60`,

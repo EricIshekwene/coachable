@@ -55,6 +55,7 @@ export default function RightPanel({
 
   // Drawing style props
   canvasTool,
+  animDrawSubTool,
   drawSubTool,
   drawColor,
   drawOpacity,
@@ -156,7 +157,7 @@ export default function RightPanel({
             onReset={onReset}
           />
 
-          {(canvasTool === "pen" || canvasTool === "animDraw") && (
+          {(canvasTool === "pen" || canvasTool === "animDraw" || !!animDrawSubTool) && (
             <DrawingStyleSection
               drawSubTool={drawSubTool}
               drawColor={drawColor}
@@ -220,7 +221,7 @@ export default function RightPanel({
             />
           )}
 
-          {(canvasTool === "pen" || canvasTool === "animDraw") && (
+          {(canvasTool === "pen" || canvasTool === "animDraw" || !!animDrawSubTool) && (
             <DrawingObjectsList
               drawings={drawings}
               selectedDrawingIds={selectedDrawingIds}

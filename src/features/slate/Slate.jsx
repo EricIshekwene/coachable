@@ -44,6 +44,7 @@ import { getLogs as getKeyToolDebugLogs, log as logKeyToolDebug } from "../../ca
 import { getLogs as getVideoExportDebugLogs, log as logVideoExport } from "../../utils/videoExportDebugLogger";
 import { supportsWebCodecsMP4, createMP4Encoder, isIOSDevice, convertWebMToMP4 } from "../../utils/videoEncoder";
 import { samplePathAtT } from "../../canvas/drawingGeometry";
+import { getStepColor } from "../../utils/stepColor";
 import { reportError } from "../../utils/errorReporter";
 import { getLogs as getPlaceBallDebugLogs, log as logPlaceBallDebug } from "./placeBallDebugLogger";
 import { getLogs as getRecordingDebugLogs, log as logRecordingDebug } from "./recordingDebugLogger";
@@ -255,7 +256,7 @@ function Slate({
   }, []);
   const [canvasTool, setCanvasTool] = useState("select");
   const [drawSubTool, setDrawSubTool] = useState("draw");
-  const [animDrawSubTool, setAnimDrawSubTool] = useState("arrow");
+  const [animDrawSubTool, setAnimDrawSubTool] = useState(null);
   const [drawColor, setDrawColor] = useState("#FFFFFF");
   const [drawOpacity, setDrawOpacity] = useState(1);
   const [drawStrokeWidth, setDrawStrokeWidth] = useState(3);
@@ -264,14 +265,19 @@ function Slate({
   const drawStabilization = drawSmoothing;        // 0-100 for pull-string algorithm
   const [drawFontSize, setDrawFontSize] = useState(18);
   const [drawTextAlign, setDrawTextAlign] = useState("left");
-  const [drawArrowHeadType, setDrawArrowHeadType] = useState("standard");
-  const [drawArrowTip, setDrawArrowTip] = useState(false);
+  const [drawArrowHeadType, setDrawArrowHeadType] = useState(drawingMode ? "chevron" : "standard");
+  const [drawArrowTip, setDrawArrowTip] = useState(drawingMode);
   const [eraserSize, setEraserSize] = useState(10);
   const [drawShapeType, setDrawShapeType] = useState("rect");
   const [drawShapeStrokeColor, setDrawShapeStrokeColor] = useState("#FFFFFF");
   const [drawShapeFill, setDrawShapeFill] = useState("transparent");
   const [selectedDrawingIds, setSelectedDrawingIds] = useState([]);
   const [hideAllDrawings, setHideAllDrawings] = useState(false);
+  // Drawing retrace animation (AnimationDrawingTools hide button only)
+  const [drawingsHidden, setDrawingsHidden] = useState(false);
+  const drawingsRevealProgressRef = useRef(1);
+  const [drawingsRevealProgress, setDrawingsRevealProgress] = useState(1);
+  const drawingsAnimFrameRef = useRef(null);
   const drawingSelectionRef = useRef(null);
   const [textEditing, setTextEditing] = useState(null);
   const [fieldBounds, setFieldBounds] = useState(null);
@@ -487,18 +493,97 @@ function Slate({
     entities.handleDeletePlayer(id);
   }, [entities.handleDeletePlayer, drawingsState.drawings, drawingsState.removeDrawing]);
 
+  const animateDrawingsTo = useCallback((target) => {
+    if (drawingsAnimFrameRef.current) cancelAnimationFrame(drawingsAnimFrameRef.current);
+    const DURATION_MS = 550;
+    const startVal = drawingsRevealProgressRef.current;
+    const startTime = performance.now();
+    const tick = (now) => {
+      const t = Math.min(1, (now - startTime) / DURATION_MS);
+      // Cubic ease-out: fast start, decelerates — natural for a retrace
+      const eased = 1 - Math.pow(1 - t, 3);
+      const val = startVal + (target - startVal) * eased;
+      drawingsRevealProgressRef.current = val;
+      setDrawingsRevealProgress(val);
+      if (t < 1) {
+        drawingsAnimFrameRef.current = requestAnimationFrame(tick);
+      } else {
+        drawingsRevealProgressRef.current = target;
+        setDrawingsRevealProgress(target);
+      }
+    };
+    drawingsAnimFrameRef.current = requestAnimationFrame(tick);
+  }, []);
+
   const addDrawingTagged = useCallback((data) => {
-    if (drawingMode && data.attachedPlayerId) {
-      const existing = drawingsState.drawings.find(
+    if (!drawingMode) {
+      return drawingsState.addDrawing(data);
+    }
+
+    const isContinuation = !!data.continuedFromDrawingId && !!data.attachedPlayerId;
+    const durationMs = animationDataRef.current?.durationMs ?? 30000;
+    const MIN_STEP_MS = 500;
+
+    // Fresh draw on a player/ball: remove ALL existing coaching-draw steps for that entity
+    if (!isContinuation && data.attachedPlayerId) {
+      const existing = drawingsState.drawings.filter(
         (d) => d.source === "coaching-draw" && d.attachedPlayerId === data.attachedPlayerId
       );
-      if (existing) drawingsState.removeDrawing(existing.id);
+      existing.forEach((d) => drawingsState.removeDrawing(d.id));
     }
-    const extra = drawingMode
-      ? { source: "coaching-draw", stepEndMs: animationDataRef.current?.durationMs ?? 30000 }
-      : {};
-    return drawingsState.addDrawing({ ...data, ...extra });
-  }, [drawingsState.addDrawing, drawingsState.removeDrawing, drawingsState.drawings, drawingMode]);
+
+    // Compute step index and time window
+    let stepStartMs = 0;
+    let stepIndex = 0;
+    if (isContinuation) {
+      const parent = drawingsState.drawings.find((d) => d.id === data.continuedFromDrawingId);
+      const parentStartMs = parent?.stepStartMs ?? 0;
+      const parentEndMs = parent?.stepEndMs ?? 0;
+      stepStartMs = parentEndMs;
+
+      // If the last step already reaches the end of the track, split that step in half
+      // and let the new continuation occupy the freed second half.
+      if (stepStartMs >= durationMs * 0.95 && parent) {
+        const parentSpanMs = Math.max(0, parentEndMs - parentStartMs);
+        if (parentSpanMs < MIN_STEP_MS * 2) {
+          onShowMessage?.(
+            "No room for another step",
+            "The last step is already too short to split again.",
+            "error"
+          );
+          return null;
+        }
+        const splitMs = Math.round(parentStartMs + parentSpanMs / 2);
+        drawingsState.updateDrawing(parent.id, { stepEndMs: splitMs });
+        stepStartMs = splitMs;
+      }
+      stepIndex = drawingsState.drawings.filter(
+        (d) => d.source === "coaching-draw" && d.attachedPlayerId === data.attachedPlayerId
+      ).length;
+    }
+
+    // Derive step color from the player/ball's base color
+    const baseColor =
+      entities.playersById?.[data.attachedPlayerId]?.color ??
+      (entities.ballsById?.[data.attachedPlayerId] ? "#FF7A18" : "#ef4444");
+    const stepColor = getStepColor(baseColor, stepIndex);
+
+    const { continuedFromDrawingId: _drop, ...drawingData } = data;
+    const result = drawingsState.addDrawing({
+      ...drawingData,
+      color: stepColor,
+      source: "coaching-draw",
+      stepStartMs,
+      stepEndMs: durationMs,
+      stepIndex,
+    });
+
+    if (data.attachedPlayerId) {
+      const attachedItemType = entities.ballsById?.[data.attachedPlayerId] ? "ball" : "player";
+      entities.handleSelectItem(data.attachedPlayerId, attachedItemType, { mode: "set" });
+    }
+    return result;
+  }, [drawingsState.addDrawing, drawingsState.removeDrawing, drawingsState.drawings, drawingMode, entities.handleSelectItem, entities.playersById, entities.ballsById, onShowMessage]);
 
   const selectedDrawings = useMemo(
     () => drawingsState.drawings.filter((d) => selectedDrawingIds.includes(d.id)),
@@ -855,21 +940,38 @@ function Slate({
       trackIds
     );
 
-    // Drawing-mode path animation: override each player's position with its attached
-    // coaching-draw path position. Each drawing has its own stepEndMs duration;
-    // after stepEndMs the player holds at the end of the path (t=1).
+    // Drawing-mode path animation: override each item's position with the active
+    // coaching-draw step for the current time. For multi-step paths, only the latest
+    // started step should drive the pose; future steps must not overwrite earlier ones.
+    // After stepEndMs, the active step holds at the end of the path (t=1) until the
+    // next step begins.
     if (drawingModeRef.current) {
       const drawings = drawingsRef.current;
       const fullDurationMs = animationDataRef.current?.durationMs || (30 * 1000);
+      const activeStepByItemId = new Map();
+
       for (const d of drawings) {
         if (d.source !== "coaching-draw" || !d.attachedPlayerId || !d.points?.length) continue;
         const stepStartMs = d.stepStartMs ?? 0;
+        if (timeMs < stepStartMs) continue;
+        const existing = activeStepByItemId.get(d.attachedPlayerId);
+        if (!existing || stepStartMs >= existing.stepStartMs) {
+          activeStepByItemId.set(d.attachedPlayerId, {
+            drawing: d,
+            stepStartMs,
+          });
+        }
+      }
+
+      for (const [itemId, activeStep] of activeStepByItemId) {
+        const d = activeStep.drawing;
+        const stepStartMs = activeStep.stepStartMs;
         const stepEndMs = d.stepEndMs ?? fullDurationMs;
         const spanMs = stepEndMs - stepStartMs;
         const t = spanMs > 0 ? Math.min(1, Math.max(0, (timeMs - stepStartMs) / spanMs)) : 0;
         const pos = samplePathAtT(d.points, t);
         if (pos) {
-          sampledPoses[d.attachedPlayerId] = { ...(sampledPoses[d.attachedPlayerId] ?? {}), x: pos.x, y: pos.y };
+          sampledPoses[itemId] = { ...(sampledPoses[itemId] ?? {}), x: pos.x, y: pos.y };
         }
       }
     }
@@ -1004,6 +1106,13 @@ function Slate({
     renderPoseAtTime,
     recording.recordingModeEnabled,
   ]);
+
+  // In drawing mode: all selected player/ball IDs whose step tracks are shown.
+  const selectedDrawingModePlayerIds = useMemo(() => {
+    if (!drawingMode) return [];
+    const ids = entities.selectedItemIds || [];
+    return ids.filter((id) => entities.playersById?.[id] || entities.ballsById?.[id]);
+  }, [drawingMode, entities.selectedItemIds, entities.playersById, entities.ballsById]);
 
   // Show ALL keyframes from all tracks, not just selected ones.
   // Always includes t=0 so the locked start keyframe is always visible.
@@ -1785,12 +1894,12 @@ function Slate({
   // Routes subtool changes from the right panel to the correct state bucket
   // (animDraw has its own subtool state, separate from pen's drawSubTool)
   const handleRightPanelSubToolChange = useCallback((nextSubTool, opts) => {
-    if (canvasTool === "animDraw") {
+    if (drawingMode && animDrawSubTool) {
       setAnimDrawSubTool(nextSubTool);
     } else {
       handleDrawSubToolChange(nextSubTool, opts);
     }
-  }, [canvasTool, handleDrawSubToolChange]);
+  }, [drawingMode, animDrawSubTool, handleDrawSubToolChange]);
 
   const handleDrawColorChange = useCallback((nextColor) => {
     setDrawColor((prevColor) => {
@@ -2376,6 +2485,9 @@ function Slate({
 
   const seekTimeline = useCallback((timeMs, meta = {}) => {
     const source = typeof meta?.source === "string" ? meta.source : "engine";
+    const roundedTime = Math.max(0, Math.min(animationDataRef.current?.durationMs ?? 30000, Math.round(Number(timeMs) || 0)));
+    currentTimeRef.current = roundedTime;
+    setTimelineDisplayTimeMs((prev) => (prev === roundedTime ? prev : roundedTime));
     engineRef.current.seek(timeMs, { source });
   }, []);
 
@@ -3374,8 +3486,8 @@ function Slate({
           <WideSidebar
             activeTool={canvasTool}
             onToolChange={handleToolChange}
-            onUndo={slateHistory.onUndo}
-            onRedo={slateHistory.onRedo}
+            onUndo={drawingMode ? undefined : slateHistory.onUndo}
+            onRedo={drawingMode ? undefined : slateHistory.onRedo}
             onReset={onReset}
             onAddPlayer={handleAddPlayerLogged}
             onPlayerColorChange={entities.handlePlayerColorChange}
@@ -3423,7 +3535,8 @@ function Slate({
           onAnimationRendererReady={handleAnimationRendererReady}
           drawings={drawingsState.drawings}
           hideAllDrawings={hideAllDrawings}
-          drawSubTool={canvasTool === "animDraw" ? animDrawSubTool : drawSubTool}
+          drawingsRevealProgress={drawingsRevealProgress}
+          drawSubTool={drawingMode && animDrawSubTool ? animDrawSubTool : drawSubTool}
           drawColor={drawColor}
           drawOpacity={drawOpacity}
           drawStrokeWidth={drawStrokeWidth}
@@ -3459,12 +3572,14 @@ function Slate({
           onAssetsLoaded={handleAssetsLoaded}
           onFieldBoundsChange={setFieldBounds}
           adminMode={adminMode}
-          drawingModeSnap={canvasTool === "animDraw"}
+          drawingModeSnap={drawingMode && !!animDrawSubTool}
+          drawingMode={drawingMode}
           onEditPlayer={entities.handleEditPlayer}
           onTogglePlayerHidden={entities.handleTogglePlayerHidden}
           onToggleBallHidden={entities.handleToggleBallHidden}
           onTogglePlayerLocked={handleLockPlayer}
           onToggleBallLocked={handleLockBall}
+          animDrawSubTool={drawingMode ? animDrawSubTool : null}
         />
         {/* Text editing is now handled via right panel textarea */}
         {!viewOnly && recording.countdownValue != null && (
@@ -3494,10 +3609,16 @@ function Slate({
         )}
         {!viewOnly && drawingMode && !screenshotMode && (
           <AnimationDrawingTools
-            activeSubTool={canvasTool === "animDraw" ? animDrawSubTool : null}
+            activeSubTool={animDrawSubTool}
             onSubToolChange={(id) => {
-              setAnimDrawSubTool(id);
-              handleToolChange("animDraw");
+              // Toggle the sub-tool on/off; canvasTool stays "select" always in drawing mode
+              setAnimDrawSubTool((prev) => (prev === id ? null : id));
+            }}
+            hideDrawings={drawingsHidden}
+            onToggleHideDrawings={() => {
+              const newHidden = !drawingsHidden;
+              setDrawingsHidden(newHidden);
+              animateDrawingsTo(newHidden ? 0 : 1);
             }}
           />
         )}
@@ -3690,7 +3811,10 @@ function Slate({
             variant={testVariant ? "test" : "default"}
             drawings={drawingMode ? drawingsState.drawings : undefined}
             onUpdateDrawing={drawingMode ? drawingsState.updateDrawing : undefined}
+            onAddStep={drawingMode ? () => setAnimDrawSubTool((prev) => prev ? null : "arrow") : undefined}
+            selectedPlayerIds={drawingMode ? selectedDrawingModePlayerIds : undefined}
             playersById={drawingMode ? entities.playersById : undefined}
+            drawingMode={drawingMode}
           />
         )}
       </div>
@@ -3802,7 +3926,8 @@ function Slate({
         onReflectX={() => handleReflectAxis("x")}
         onReflectY={() => handleReflectAxis("y")}
         canvasTool={canvasTool}
-        drawSubTool={canvasTool === "animDraw" ? animDrawSubTool : drawSubTool}
+        animDrawSubTool={drawingMode ? animDrawSubTool : null}
+        drawSubTool={drawingMode && animDrawSubTool ? animDrawSubTool : drawSubTool}
         drawColor={drawColor}
         drawOpacity={drawOpacity}
         drawStrokeWidth={drawStrokeWidth}
