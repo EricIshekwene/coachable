@@ -276,7 +276,11 @@ function Slate({
 
   // ─── Motion drawing state (entity-attached paths — only active when drawingMode) ───
   const [motionDrawSubTool, setMotionDrawSubTool] = useState(null);
-  const [motionDrawColor, setMotionDrawColor] = useState("#FFFFFF");
+  // Default base color for motion drawings. Matches the default player red
+  // (#ef4444) so a brand-new play already has a visible-on-field motion path
+  // color before the user picks anything. Continuations of the same chain are
+  // automatically lightened by getStepColor against this base.
+  const [motionDrawColor, setMotionDrawColor] = useState("#ef4444");
   const [motionDrawOpacity, setMotionDrawOpacity] = useState(1);
   const [motionDrawStrokeWidth, setMotionDrawStrokeWidth] = useState(3);
   const [motionDrawSmoothing, setMotionDrawSmoothing] = useState(30);
@@ -721,13 +725,22 @@ function Slate({
         ).length;
       }
 
-      // Derive step color from the player/ball's base color
+      // Base color comes from the user's palette selection (data.color, set
+      // by useCanvasDrawing from motionDrawColor). The previous behavior of
+      // hard-overriding with the entity color made the right-panel color
+      // picker feel locked — picking a color had no visible effect because
+      // addDrawingTagged ignored it. We still fall back to entity color and
+      // then a global red default so legacy callers don't break.
       const attachedEntityType =
         data.attachedEntityType ||
         (entities.ballsById?.[attachedEntityId] ? "ball" : "player");
       const baseColor =
-        entities.playersById?.[attachedEntityId]?.color ??
+        data.color ||
+        entities.playersById?.[attachedEntityId]?.color ||
         (entities.ballsById?.[attachedEntityId] ? "#FF7A18" : "#ef4444");
+      // Continuations get progressively lighter via getStepColor based on
+      // stepIndex — so each new step in a chain is automatically a tint of
+      // whatever base color the user chose.
       const stepColor = getStepColor(baseColor, stepIndex);
 
       const {
@@ -2122,13 +2135,19 @@ function Slate({
     }
   }, [isMotionScopeActive, animDrawSubTool, setAnimDrawSubTool, handleDrawSubToolChange]);
 
+  // Each setter routes through the active-scope shim (isMotionScopeActive
+  // ? setMotion* : setAnnotation*). The shim returns a different setter ref
+  // when scope flips, so we MUST add it to deps — otherwise the callback
+  // closes over the first render's setter and the right-panel control
+  // silently writes into the wrong bucket (the bug that made the motion
+  // color picker feel locked).
   const handleDrawColorChange = useCallback((nextColor) => {
     setDrawColor((prevColor) => {
       if (prevColor === nextColor) return prevColor;
       logDrawDebug(`style color prev=${prevColor} next=${nextColor}`);
       return nextColor;
     });
-  }, []);
+  }, [setDrawColor]);
 
   const handleDrawOpacityChange = useCallback((nextOpacity) => {
     setDrawOpacity((prevOpacity) => {
@@ -2136,7 +2155,7 @@ function Slate({
       logDrawDebug(`style opacity prev=${prevOpacity} next=${nextOpacity}`);
       return nextOpacity;
     });
-  }, []);
+  }, [setDrawOpacity]);
 
   const handleDrawStrokeWidthChange = useCallback((nextWidth) => {
     setDrawStrokeWidth((prevWidth) => {
@@ -2144,7 +2163,7 @@ function Slate({
       logDrawDebug(`style strokeWidth prev=${prevWidth} next=${nextWidth}`);
       return nextWidth;
     });
-  }, []);
+  }, [setDrawStrokeWidth]);
 
   const handleDrawSmoothingChange = useCallback((nextSmoothing) => {
     setDrawSmoothing((prev) => {
@@ -2152,7 +2171,7 @@ function Slate({
       logDrawDebug(`style smoothing prev=${prev} next=${nextSmoothing}`);
       return nextSmoothing;
     });
-  }, []);
+  }, [setDrawSmoothing]);
 
   const handleDrawFontSizeChange = useCallback((nextFontSize) => {
     setDrawFontSize((prevFontSize) => {
@@ -2176,7 +2195,7 @@ function Slate({
       logDrawDebug(`style arrowHead prev=${prevArrowHeadType} next=${nextArrowHeadType}`);
       return nextArrowHeadType;
     });
-  }, []);
+  }, [setDrawArrowHeadType]);
 
   const handleEraserSizeChange = useCallback((nextSize) => {
     setEraserSize((prev) => {
@@ -2184,7 +2203,7 @@ function Slate({
       logDrawDebug(`style eraserSize prev=${prev} next=${nextSize}`);
       return nextSize;
     });
-  }, []);
+  }, [setEraserSize]);
 
   const handleDrawShapeTypeChange = useCallback((nextType) => {
     setDrawShapeType((prev) => {
@@ -4099,8 +4118,13 @@ function Slate({
             onUpdateAnnotationDrawing={annotationDrawingsState.updateDrawing}
             onUpdateAnnotationDrawingNoHistory={annotationDrawingsState.updateDrawingNoHistory}
             activeDrawingUi={activeDrawingUi}
-            onBeginHistoryGroup={drawingMode ? slateHistory.beginGroup : undefined}
-            onEndHistoryGroup={drawingMode ? slateHistory.endGroup : undefined}
+            // History grouping is wired unconditionally because annotation
+            // visibility lanes exist in normal slate mode too (not just
+            // drawing mode). Without these, AnnotationVisibilityTrack drags
+            // emit only NoHistory updates and never capture a pre-drag
+            // snapshot, so undo skips the entire drag.
+            onBeginHistoryGroup={slateHistory.beginGroup}
+            onEndHistoryGroup={slateHistory.endGroup}
             onAddStep={drawingMode ? () => setMotionDrawSubTool((prev) => prev ? null : "arrow") : undefined}
             selectedPlayerIds={drawingMode ? selectedDrawingModePlayerIds : undefined}
             playersById={drawingMode ? entities.playersById : undefined}

@@ -220,11 +220,21 @@ export default function StepTrack({
         const player = playersById?.[entityId];
         const baseColor = player?.color ?? "#FF7A18";
         const color = step.color ?? getStepColor(baseColor, step.stepIndex ?? i);
-        const label = player?.name
+        // Player identity prefix: prefer the explicit name, then the
+        // number/position label, then a generic "Player" fallback. Empty /
+        // whitespace-only number strings (football default) are skipped.
+        const rawNumber = player?.number;
+        const numberText = rawNumber != null ? String(rawNumber).trim() : "";
+        const playerLabel = player?.name
           ? player.name
-          : player?.number != null
-          ? `#${player.number}`
+          : numberText
+          ? numberText
           : "Player";
+        // Step number is 1-based and shown after the player label, e.g.
+        // "RB #1", "Smith #2". This makes each lane visually self-describing
+        // when a single player has multiple chained steps.
+        const stepNum = (step.stepIndex ?? i) + 1;
+        const label = `${playerLabel} #${stepNum}`;
 
         return (
           <div
