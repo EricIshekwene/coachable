@@ -40,8 +40,15 @@ export default function StepTrack({
   onSeek,
   playersById,
 }) {
+  // Motion-only. Accepts both v3 (`kind === "motion"`) and legacy v2
+  // (`source === "coaching-draw"`) drawings. Annotations are rejected.
   const steps = (drawings || [])
-    .filter((d) => d.source === "coaching-draw" && d.attachedPlayerId)
+    .filter((d) => {
+      if (d?.kind === "annotation") return false;
+      const isMotion = d?.kind === "motion" || d?.source === "coaching-draw";
+      const entityId = d?.attachedEntityId || d?.attachedPlayerId;
+      return isMotion && Boolean(entityId);
+    })
     .sort((a, b) => (a.stepStartMs ?? 0) - (b.stepStartMs ?? 0));
 
   const containerRef = useRef(null);
@@ -209,7 +216,8 @@ export default function StepTrack({
         const endMs = step.stepEndMs ?? durationMs;
         const leftPct = TRACK_VISUAL_START_PERCENT + (startMs / durationMs) * TRACK_VISUAL_SPAN_PERCENT;
         const widthPct = ((endMs - startMs) / durationMs) * TRACK_VISUAL_SPAN_PERCENT;
-        const player = playersById?.[step.attachedPlayerId];
+        const entityId = step.attachedEntityId || step.attachedPlayerId;
+        const player = playersById?.[entityId];
         const baseColor = player?.color ?? "#FF7A18";
         const color = step.color ?? getStepColor(baseColor, step.stepIndex ?? i);
         const label = player?.name

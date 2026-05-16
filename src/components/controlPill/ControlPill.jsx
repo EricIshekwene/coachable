@@ -12,6 +12,7 @@ import SpeedSlider from "./SpeedSlider";
 import PlaybackControls from "./PlaybackControls";
 import KeyframeManager from "./KeyframeManager";
 import StepTrack from "./StepTrack";
+import AnnotationVisibilityTrack from "./AnnotationVisibilityTrack";
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -36,7 +37,7 @@ export default function ControlPill({
   getAuthoritativeTimeMs,
   onDragStateChange,
   variant = "default",
-  // Step track / drawing mode
+  // Step track / drawing mode — motion drawings only.
   drawings,
   onUpdateDrawing,
   onUpdateDrawingNoHistory,
@@ -46,6 +47,14 @@ export default function ControlPill({
   selectedPlayerIds,
   playersById,
   drawingMode = false,
+  // Annotation visibility track inputs — render when annotations are selected
+  // in ANY slate mode (drawing, record, normal). Each selected annotation
+  // gets its own lane below the timeline.
+  annotationDrawings = [],
+  selectedAnnotationDrawingIds = [],
+  onUpdateAnnotationDrawing,
+  onUpdateAnnotationDrawingNoHistory,
+  activeDrawingUi = "none",
 }) {
   const timelineDurationMs = Math.max(1, Math.round(Number(durationMs) || 30000));
   const clampedTimeMs = clamp(Math.round(Number(currentTimeMs) || 0), 0, timelineDurationMs);
@@ -173,14 +182,30 @@ export default function ControlPill({
     onSelectKeyframe?.(null);
   };
 
-  // One lane per selected player, each showing their coaching-draw steps.
+  // One motion-step lane per selected player. Accepts both the new v3 shape
+  // (kind === "motion" + attachedEntityId) and legacy v2 entries.
   const stepLanes = (selectedPlayerIds || []).map((playerId) => ({
     playerId,
-    drawings: (drawings || []).filter(
-      (d) => d.source === "coaching-draw" && d.attachedPlayerId === playerId
-    ),
+    drawings: (drawings || []).filter((d) => {
+      if (d?.kind === "annotation") return false;
+      const isMotion = d?.kind === "motion" || d?.source === "coaching-draw";
+      const entityId = d?.attachedEntityId || d?.attachedPlayerId;
+      return isMotion && entityId === playerId;
+    }),
   })).filter(({ drawings: d }) => d.length > 0);
   const hasSteps = stepLanes.length > 0;
+
+  // Annotation visibility lanes: one per selected annotation drawing. Shown
+  // whenever annotation is the active scope and there is at least one
+  // selection, regardless of drawingMode — annotations are not bound to
+  // drawing mode.
+  const annotationLaneDrawings = useMemo(() => {
+    if (activeDrawingUi !== "annotation") return [];
+    if (!selectedAnnotationDrawingIds?.length) return [];
+    const selectedSet = new Set(selectedAnnotationDrawingIds);
+    return (annotationDrawings || []).filter((d) => selectedSet.has(d?.id));
+  }, [activeDrawingUi, annotationDrawings, selectedAnnotationDrawingIds]);
+  const hasAnnotationLanes = annotationLaneDrawings.length > 0;
 
   return (
     <div
@@ -193,7 +218,7 @@ export default function ControlPill({
                       w-[323px] sm:w-[388px] md:w-[517px] lg:w-[646px]
                       min-h-[62.5px] sm:min-h-[75px] md:min-h-[100px] lg:min-h-[125px]`}
     >
-      <div className="flex flex-col w-full" style={{ gap: hasSteps ? 2 : undefined }}>
+      <div className="flex flex-col w-full" style={{ gap: hasSteps || hasAnnotationLanes ? 2 : undefined }}>
         <TimeBar
           durationMs={timelineDurationMs}
           currentTimeMs={clampedTimeMs}
@@ -229,6 +254,21 @@ export default function ControlPill({
                 playersById={playersById}
               />
             ))}
+          </div>
+        )}
+
+        {hasAnnotationLanes && (
+          <div style={{ marginTop: hasSteps ? 2 : -12, display: "flex", flexDirection: "column", gap: 2 }}>
+            <AnnotationVisibilityTrack
+              drawings={annotationLaneDrawings}
+              durationMs={timelineDurationMs}
+              currentTimeMs={clampedTimeMs}
+              onUpdateDrawing={onUpdateAnnotationDrawing}
+              onUpdateDrawingNoHistory={onUpdateAnnotationDrawingNoHistory}
+              onBeginHistoryGroup={onBeginHistoryGroup}
+              onEndHistoryGroup={onEndHistoryGroup}
+              onSeek={handleSeek}
+            />
           </div>
         )}
       </div>
