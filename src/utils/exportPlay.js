@@ -1,7 +1,14 @@
 import { serializeAnimation } from "../animation";
+import { buildSeparatedDrawingsPayload, splitLegacyDrawingsArray } from "../features/slate/utils/drawingSchema";
 
-/** Current export schema version identifier. */
-export const EXPORT_SCHEMA_VERSION = "play-export-v2";
+/**
+ * Current export schema version identifier.
+ *
+ * v3 introduces separated `annotationDrawings` and `motionDrawings` arrays in
+ * place of the previous combined `drawings` array. See
+ * `features/slate/DRAWING_SEPARATION.md` for the full schema.
+ */
+export const EXPORT_SCHEMA_VERSION = "play-export-v3";
 
 /** Converts a play name into a safe, lowercase, hyphenated filename. */
 const sanitizeFilename = (name) => {
@@ -43,16 +50,50 @@ export const buildPlayExport = ({
   animationData,
   playback,
   coordinateSystem,
+  // v3 callers pass already-split arrays. v2 callers may still pass a single
+  // `drawings` array; we split it on the way out so the file is always v3 on
+  // disk.
+  annotationDrawings,
+  motionDrawings,
   drawings,
   editorMode,
 } = {}) => {
   const animationJson = serializeAnimation(animationData, { pretty: false });
   const animation = JSON.parse(animationJson);
   const normalizedPlayersById = playersById ?? {};
+  const normalizedBallsById = ballsById ?? null;
   const normalizedRepresentedPlayerIds = normalizeRepresentedPlayerIds(
     normalizedPlayersById,
     representedPlayerIds
   );
+
+  // Resolve the separated payload. If the caller passed split arrays we
+  // normalize them (defensive scrub of cross-scope fields). If they passed a
+  // legacy combined array we split it. Both paths produce identical output.
+  const durationMs = animation?.durationMs ?? animationData?.durationMs;
+  let exportAnnotations;
+  let exportMotion;
+  if (Array.isArray(annotationDrawings) || Array.isArray(motionDrawings)) {
+    const split = buildSeparatedDrawingsPayload({
+      annotationDrawings: annotationDrawings || [],
+      motionDrawings: motionDrawings || [],
+      entities: { playersById: normalizedPlayersById, ballsById: normalizedBallsById },
+      durationMs,
+    });
+    exportAnnotations = split.annotationDrawings;
+    exportMotion = split.motionDrawings;
+  } else if (Array.isArray(drawings)) {
+    const split = splitLegacyDrawingsArray(
+      drawings,
+      { playersById: normalizedPlayersById, ballsById: normalizedBallsById },
+      durationMs
+    );
+    exportAnnotations = split.annotationDrawings;
+    exportMotion = split.motionDrawings;
+  } else {
+    exportAnnotations = [];
+    exportMotion = [];
+  }
 
   return {
     schemaVersion: EXPORT_SCHEMA_VERSION,
@@ -78,10 +119,11 @@ export const buildPlayExport = ({
         playersById: normalizedPlayersById,
         representedPlayerIds: normalizedRepresentedPlayerIds,
         ball: ball ?? null,
-        ballsById: ballsById ?? null,
+        ballsById: normalizedBallsById,
       },
       animation,
-      drawings: Array.isArray(drawings) ? drawings : [],
+      annotationDrawings: exportAnnotations,
+      motionDrawings: exportMotion,
       playback: playback ?? null,
       meta: {
         appVersion: appVersion ?? null,

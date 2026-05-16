@@ -1,8 +1,18 @@
 import { createEmptyAnimation, deserializeAnimation } from "../animation";
 import { log as logAnimDebug } from "../animation/debugLogger";
+import { splitLegacyDrawingsArray, buildSeparatedDrawingsPayload } from "../features/slate/utils/drawingSchema";
 
-/** Expected schema version for import validation. */
-export const IMPORT_SCHEMA_VERSION = "play-export-v2";
+/**
+ * Expected schema versions for import validation. v3 is the current canonical
+ * shape; v2 is still accepted for backward compatibility and is migrated by
+ * `splitLegacyDrawingsArray`.
+ */
+export const IMPORT_SCHEMA_VERSION = "play-export-v3";
+export const LEGACY_IMPORT_SCHEMA_VERSION = "play-export-v2";
+const ACCEPTED_SCHEMA_VERSIONS = new Set([
+  IMPORT_SCHEMA_VERSION,
+  LEGACY_IMPORT_SCHEMA_VERSION,
+]);
 
 /** Maximum allowed file size for imports (5 MB). */
 export const IMPORT_FILE_SIZE_LIMIT_BYTES = 5 * 1024 * 1024;
@@ -57,8 +67,10 @@ export const validatePlayImport = (input) => {
     }
   }
 
-  if (input.schemaVersion !== IMPORT_SCHEMA_VERSION) {
-    return fail(`Unsupported schemaVersion. Expected "${IMPORT_SCHEMA_VERSION}" or animation version 1.`);
+  if (!ACCEPTED_SCHEMA_VERSIONS.has(input.schemaVersion)) {
+    return fail(
+      `Unsupported schemaVersion. Expected "${IMPORT_SCHEMA_VERSION}", "${LEGACY_IMPORT_SCHEMA_VERSION}", or animation version 1.`
+    );
   }
 
   const play = asObject(input.play);
@@ -94,6 +106,33 @@ export const validatePlayImport = (input) => {
       : null;
   const primaryBall = entities.ball ?? (normalizedBallsById ? Object.values(normalizedBallsById)[0] : null);
 
+  // Resolve drawings: prefer v3 separated arrays, fall back to legacy v2
+  // combined `drawings` array (which we split here so callers always get the
+  // new shape).
+  let annotationDrawings;
+  let motionDrawings;
+  if (Array.isArray(play.annotationDrawings) || Array.isArray(play.motionDrawings)) {
+    const normalized = buildSeparatedDrawingsPayload({
+      annotationDrawings: play.annotationDrawings || [],
+      motionDrawings: play.motionDrawings || [],
+      entities: { playersById, ballsById: normalizedBallsById },
+      durationMs: animation?.durationMs,
+    });
+    annotationDrawings = normalized.annotationDrawings;
+    motionDrawings = normalized.motionDrawings;
+  } else if (Array.isArray(play.drawings)) {
+    const split = splitLegacyDrawingsArray(
+      play.drawings,
+      { playersById, ballsById: normalizedBallsById },
+      animation?.durationMs
+    );
+    annotationDrawings = split.annotationDrawings;
+    motionDrawings = split.motionDrawings;
+  } else {
+    annotationDrawings = [];
+    motionDrawings = [];
+  }
+
   return {
     ok: true,
     play: {
@@ -107,7 +146,8 @@ export const validatePlayImport = (input) => {
         ballsById: normalizedBallsById,
       },
       animation,
-      drawings: Array.isArray(play.drawings) ? play.drawings : [],
+      annotationDrawings,
+      motionDrawings,
       playback: asObject(play.playback) || {},
       meta: asObject(play.meta) || {},
     },
