@@ -23,7 +23,7 @@ function resolveThemeAttr(theme) {
  * @returns {string}
  */
 function resolveShellClasses(extra = "") {
-  return `font-Manrope h-screen overflow-y-auto ${extra}`.trim();
+  return `font-Manrope overflow-y-auto ${extra}`.trim();
 }
 
 describe("AdminShell theme attribute", () => {
@@ -42,9 +42,9 @@ describe("AdminShell className", () => {
     expect(classes).toContain("overflow-y-auto");
   });
 
-  it("always includes h-screen", () => {
+  it("does not rely on h-screen for page height", () => {
     const classes = resolveShellClasses();
-    expect(classes).toContain("h-screen");
+    expect(classes).not.toContain("h-screen");
   });
 
   it("always includes font-Manrope", () => {

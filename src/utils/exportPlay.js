@@ -44,6 +44,7 @@ export const buildPlayExport = ({
   playback,
   coordinateSystem,
   drawings,
+  editorMode,
 } = {}) => {
   const animationJson = serializeAnimation(animationData, { pretty: false });
   const animation = JSON.parse(animationJson);
@@ -84,6 +85,7 @@ export const buildPlayExport = ({
       playback: playback ?? null,
       meta: {
         appVersion: appVersion ?? null,
+        editorMode: editorMode ?? "keyframe",
       },
     },
   };

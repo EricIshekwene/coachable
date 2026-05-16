@@ -2,7 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import pool from "../db/pool.js";
-import { generateCode, sendDangerModeEmail } from "../lib/email.js";
+import { generateCode, sendDangerModeEmail, sendAccountDeletedEmail } from "../lib/email.js";
 
 const router = Router();
 const COACHING_ROLES = ["owner", "coach", "assistant_coach"];
@@ -527,11 +527,29 @@ router.get("/users/:id/activity", requireAdmin, async (req, res, next) => {
   }
 });
 
-// Helper: fully delete a user and all their data
-async function deleteUserCascade(userId) {
+/**
+ * Fully delete a user and all their data, and send the user a notification
+ * email so they aren't silently stranded on the next login attempt.
+ *
+ * @param {string} userId - User UUID to delete.
+ * @param {"stale"|"admin"} [reason="admin"] - Why the account is being removed.
+ *   Drives the wording of the notification email.
+ * @returns {Promise<{email: string|null, name: string|null}|null>} The
+ *   captured contact info for the deleted user (so callers can log or
+ *   suppress email separately), or null if the user did not exist.
+ */
+async function deleteUserCascade(userId, reason = "admin") {
   const client = await pool.connect();
+  let userContact = null;
   try {
     await client.query("BEGIN");
+    // Snapshot email/name BEFORE deletion so we can email the user afterwards.
+    const { rows: contactRows } = await client.query(
+      "SELECT email, name FROM users WHERE id = $1",
+      [userId]
+    );
+    userContact = contactRows[0] || null;
+
     // Clean up tables that reference users without ON DELETE CASCADE
     await client.query("DELETE FROM folder_share_links WHERE created_by_user_id = $1", [userId]);
     await client.query("DELETE FROM play_share_links WHERE created_by_user_id = $1", [userId]);
@@ -552,6 +570,22 @@ async function deleteUserCascade(userId) {
   } finally {
     client.release();
   }
+
+  // Best-effort notification AFTER the transaction commits. Never let an
+  // email failure roll back or surface as a delete failure.
+  if (userContact?.email) {
+    try {
+      await sendAccountDeletedEmail({
+        toEmail: userContact.email,
+        userName: userContact.name,
+        reason,
+      });
+    } catch (emailErr) {
+      console.error(`Failed to send account-deleted email to ${userContact.email}:`, emailErr.message);
+    }
+  }
+
+  return userContact;
 }
 
 // DELETE /admin/users/:id — delete a single user and their owned teams (requires Danger Mode)
@@ -1276,14 +1310,20 @@ router.patch("/playbook-sections/:id/plays/:playId", requireAdmin, async (req, r
 
 // ── Cleanup ─────────────────────────────────────────────────────────────────
 
-// Cleanup helper — exported for use by the auto-cleanup scheduler
+/**
+ * Cleanup helper — deletes any user with `onboarded_at IS NULL` that is
+ * older than 24 hours, and emails them so they aren't silently stranded.
+ * Exported for use by the auto-cleanup scheduler.
+ *
+ * @returns {Promise<{ok: true, cleaned: number}>}
+ */
 export async function cleanupStaleAccounts() {
   const { rows } = await pool.query(
     "SELECT id FROM users WHERE onboarded_at IS NULL AND created_at < now() - interval '24 hours'"
   );
   for (const row of rows) {
     try {
-      await deleteUserCascade(row.id);
+      await deleteUserCascade(row.id, "stale");
     } catch (err) {
       console.error(`Failed to cleanup user ${row.id}:`, err.message);
     }

@@ -1,26 +1,35 @@
 @import "tailwindcss";
 
-/* Prevent iOS Safari overscroll/bounce at the page level */
-html, body {
-    position: fixed;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
+:root {
+    --app-viewport-height: 100dvh;
+    --app-keyboard-inset: 0px;
+}
+
+html {
+    min-height: 100%;
+    background-color: #121212;
+    overscroll-behavior-y: none;
+}
+
+body {
+    min-height: 100%;
+    margin: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
     touch-action: manipulation;
-    -webkit-overflow-scrolling: auto;
-    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
     background-color: #121212;
 }
 
 #root {
-    height: 100%;
+    min-height: var(--app-viewport-height);
 }
 
 /* Scrollable containers need their own touch-action to allow vertical scroll */
 .touch-scroll {
     touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior: none;
+    overscroll-behavior-y: contain;
 }
 
 @theme {

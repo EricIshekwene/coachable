@@ -49,10 +49,19 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="flex h-screen font-DmSans">
+    <div className="font-DmSans md:flex" style={{ minHeight: "var(--app-viewport-height)" }}>
       {/* Left - Form */}
-      <div className="flex w-full flex-col justify-center overflow-auto bg-white px-8 sm:px-16 md:w-1/2 lg:px-24 xl:px-32">
-        <div className="mx-auto w-full max-w-md">
+      <div
+        className="flex w-full flex-col overflow-y-auto bg-white px-8 sm:px-16 md:w-1/2 lg:px-24 xl:px-32"
+        style={{
+          minHeight: "var(--app-viewport-height)",
+          paddingTop: "max(2rem, env(safe-area-inset-top))",
+          paddingBottom: "calc(2rem + env(safe-area-inset-bottom) + var(--app-keyboard-inset))",
+          scrollPaddingTop: "2rem",
+          scrollPaddingBottom: "calc(8rem + var(--app-keyboard-inset))",
+        }}
+      >
+        <div className="mx-auto flex min-h-full w-full max-w-md flex-col justify-start md:justify-center">
           <img src={logo} alt="Coachable" className="mb-10 h-7" />
 
           <h1 className="font-Manrope text-2xl font-bold tracking-tight text-BrandBlack">

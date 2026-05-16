@@ -117,15 +117,21 @@ const normalizeRepresentedPlayerIds = (playersById, representedPlayerIds) => {
 };
 
 const normalizeBallsSnapshot = ({ ballsById, ball } = {}) => {
-  const normalizedById = cloneBallsById(ballsById);
-  if (Object.keys(normalizedById).length) {
-    return normalizedById;
+  // If ballsById is explicitly provided (even as {}), trust it as authoritative.
+  // This matches PlayPreviewCard semantics: an explicit empty ballsById means "no balls".
+  if (ballsById !== undefined && ballsById !== null) {
+    return cloneBallsById(ballsById);
   }
-  if (ball && typeof ball === "object") {
+  // Legacy fallback: derive a single ball from the `ball` field when ballsById is missing.
+  if (ball && typeof ball === "object" && Object.keys(ball).length > 0) {
     const normalized = normalizeBall(ball.id || INITIAL_BALL.id, ball);
     return { [normalized.id]: normalized };
   }
-  return cloneBallsById(INITIAL_BALLS_BY_ID);
+  // Default empty state: brand-new editor with no data at all.
+  if (ballsById === undefined && ball === undefined) {
+    return cloneBallsById(INITIAL_BALLS_BY_ID);
+  }
+  return {};
 };
 
 const getRandomNearbyPosition = (base) => {
@@ -196,7 +202,7 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
   const primaryBallId = useMemo(() => getPrimaryBallId(ballsById), [ballsById]);
   const primaryBall = useMemo(() => {
     if (primaryBallId && ballsById?.[primaryBallId]) return ballsById[primaryBallId];
-    return INITIAL_BALL;
+    return null;
   }, [ballsById, primaryBallId]);
 
   const setBall = (updater) => {
@@ -216,7 +222,7 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
   const snapshotSlate = () => ({
     playersById: { ...playersById },
     representedPlayerIds: [...representedPlayerIds],
-    ball: { ...primaryBall },
+    ball: primaryBall ? { ...primaryBall } : null,
     ballsById: cloneBallsById(ballsById),
   });
 
@@ -225,7 +231,7 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
       Object.entries(playersById || {}).map(([id, player]) => [id, { ...player }])
     ),
     representedPlayerIds: [...(representedPlayerIds || [])],
-    ball: { ...primaryBall },
+    ball: primaryBall ? { ...primaryBall } : null,
     ballsById: cloneBallsById(ballsById),
   });
 

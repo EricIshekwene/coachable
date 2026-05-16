@@ -191,6 +191,70 @@ describe("Sport Presets — Admin delete", () => {
   });
 });
 
+describe("Sport Presets — Admin preset picker includes hidden presets", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  /**
+   * Simulates the admin handleNew() logic: shows preset picker when ANY sport presets
+   * exist (including hidden ones), whereas the old logic only triggered on visible ones.
+   */
+  function shouldShowPresetPicker(sportPresets, currentFolderSport) {
+    const allSportPresets = sportPresets.filter(
+      (p) => p.sport?.toLowerCase() === currentFolderSport.toLowerCase()
+    );
+    return allSportPresets.length > 0;
+  }
+
+  /**
+   * Simulates the admin preset picker filter: all presets for the sport, hidden or not.
+   */
+  function getAdminPickerPresets(sportPresets, sport) {
+    return sportPresets.filter(
+      (p) => p.sport?.toLowerCase() === sport.toLowerCase()
+    );
+  }
+
+  it("shows preset picker when only hidden presets exist", () => {
+    const presets = [
+      { id: "1", sport: "Rugby", name: "Hidden Formation", playData: {}, isHidden: true },
+    ];
+    expect(shouldShowPresetPicker(presets, "Rugby")).toBe(true);
+  });
+
+  it("shows preset picker when mix of hidden and visible presets exist", () => {
+    const presets = [
+      { id: "1", sport: "Rugby", name: "Visible", playData: {}, isHidden: false },
+      { id: "2", sport: "Rugby", name: "Hidden", playData: {}, isHidden: true },
+    ];
+    expect(shouldShowPresetPicker(presets, "Rugby")).toBe(true);
+  });
+
+  it("does not show preset picker when no presets for sport", () => {
+    const presets = [
+      { id: "1", sport: "Football", name: "Preset", playData: {}, isHidden: false },
+    ];
+    expect(shouldShowPresetPicker(presets, "Rugby")).toBe(false);
+  });
+
+  it("admin picker includes hidden presets", () => {
+    const presets = [
+      { id: "1", sport: "Rugby", name: "Visible", playData: {}, isHidden: false },
+      { id: "2", sport: "Rugby", name: "Hidden", playData: {}, isHidden: true },
+    ];
+    const result = getAdminPickerPresets(presets, "Rugby");
+    expect(result).toHaveLength(2);
+    expect(result.find((p) => p.isHidden)).toBeTruthy();
+  });
+
+  it("admin picker is case-insensitive for sport matching", () => {
+    const presets = [
+      { id: "1", sport: "rugby", name: "Preset", playData: {}, isHidden: true },
+    ];
+    const result = getAdminPickerPresets(presets, "Rugby");
+    expect(result).toHaveLength(1);
+  });
+});
+
 describe("Sport Presets — App fetchSportPresets", () => {
   afterEach(() => vi.restoreAllMocks());
 

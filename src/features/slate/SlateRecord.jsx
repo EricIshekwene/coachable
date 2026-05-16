@@ -2653,7 +2653,7 @@ function SlateRecord({
 
       const nextPlayers = play.entities?.playersById || {};
       const nextRepresented = play.entities?.representedPlayerIds || Object.keys(nextPlayers);
-      const nextBall = play.entities?.ball ?? INITIAL_BALL;
+      const nextBall = play.entities?.ball !== undefined ? play.entities.ball : INITIAL_BALL;
       const nextBallsById = play.entities?.ballsById ?? null;
       const nextCamera = play.canvas?.camera ?? { x: 0, y: 0, zoom: 1 };
       const nextFieldRotation = play.canvas?.fieldRotation ?? 0;

@@ -1,7 +1,31 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = process.env.FROM_EMAIL || "Coachable <noreply@tcutss.com>";
+
+let resendOverride = null;
+let lazyResend = null;
+
+/**
+ * Return the Resend client used by the helpers below. In production it is
+ * lazily constructed from `RESEND_API_KEY`; in tests it is replaced via
+ * `__setResendClientForTests`.
+ */
+function getResend() {
+  if (resendOverride) return resendOverride;
+  if (!lazyResend) lazyResend = new Resend(process.env.RESEND_API_KEY);
+  return lazyResend;
+}
+
+/**
+ * Replace the Resend client used by this module. Tests inject a fake here
+ * so they don't hit the real Resend API. Pass `null` to restore the default
+ * client (constructed lazily from `process.env.RESEND_API_KEY`).
+ *
+ * @param {{ emails: { send: Function } } | null} client
+ */
+export function __setResendClientForTests(client) {
+  resendOverride = client;
+}
 
 /**
  * Generate a 6-digit verification code.
@@ -85,7 +109,7 @@ export async function sendVerificationEmail(toEmail, code, userName) {
 </body>
 </html>`;
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: FROM_EMAIL,
     to: toEmail,
     subject: `${code} is your Coachable verification code`,
@@ -158,7 +182,7 @@ export async function sendEmailChangeVerification(toEmail, code, userName) {
 </body>
 </html>`;
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: FROM_EMAIL,
     to: toEmail,
     subject: `${code} is your Coachable email change code`,
@@ -257,7 +281,7 @@ export async function sendTeamInviteEmail({ toEmail, inviteCode, role, teamName,
 </body>
 </html>`;
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: FROM_EMAIL,
     to: toEmail,
     subject: `${inviterName || "Your coach"} invited you to ${teamName || "a team"} on Coachable`,
@@ -345,7 +369,7 @@ export async function sendPasswordResetEmail(toEmail, code, userName) {
 </body>
 </html>`;
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: FROM_EMAIL,
     to: toEmail,
     subject: `${code} is your Coachable password reset code`,
@@ -418,7 +442,7 @@ export async function sendDangerModeEmail(toEmail, code) {
 </body>
 </html>`;
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: FROM_EMAIL,
     to: toEmail,
     subject: `${code} — Coachable Danger Mode verification`,
@@ -426,6 +450,107 @@ export async function sendDangerModeEmail(toEmail, code) {
   });
 
   if (error) throw new Error(error.message || "Failed to send Danger Mode verification email");
+}
+
+/**
+ * Send a notification email when a user's account is removed (either by
+ * the stale-account auto-cleanup or by an admin Danger Mode delete). The
+ * email tells them their account is gone and points them at signup so they
+ * are not silently stranded on the login screen.
+ *
+ * @param {Object} args
+ * @param {string} args.toEmail - Recipient email address.
+ * @param {string} args.userName - Display name from the deleted user row.
+ * @param {"stale"|"admin"} args.reason - Why the account was removed.
+ */
+export async function sendAccountDeletedEmail({ toEmail, userName, reason }) {
+  const firstName = (userName || "").split(" ")[0] || "there";
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const signupLink = `${frontendUrl}/signup`;
+
+  const reasonCopy =
+    reason === "stale"
+      ? "Your Coachable signup was never finished, so our automatic cleanup removed the unfinished account. No data was retained."
+      : "A Coachable admin has removed your account. If you believe this is a mistake, reply to this email and we'll get back to you.";
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+<body style="margin:0; padding:0; background-color:#f5f5f5; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f5f5; padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px; background-color:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.06);">
+
+          <tr>
+            <td style="background-color:#121212; padding:32px 40px; text-align:center;">
+              <span style="font-size:24px; font-weight:700; color:#FF7A18; letter-spacing:-0.5px;">coachable</span>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:40px 40px 16px;">
+              <h1 style="margin:0 0 8px; font-size:22px; font-weight:700; color:#121212; letter-spacing:-0.3px;">
+                Your account was removed
+              </h1>
+              <p style="margin:0 0 24px; font-size:15px; color:#4b5157; line-height:1.6;">
+                Hey ${firstName}, ${reasonCopy}
+              </p>
+
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+                <tr>
+                  <td align="center">
+                    <a href="${signupLink}" style="display:inline-block; background-color:#FF7A18; color:#ffffff; font-size:15px; font-weight:700; text-decoration:none; padding:14px 40px; border-radius:10px; letter-spacing:-0.2px;">
+                      Sign up again
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0; font-size:13px; color:#9AA0A6; line-height:1.5;">
+                If you didn't expect this, you can safely ignore the email.
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:0 40px;">
+              <div style="border-top:1px solid #e9ecef; margin:20px 0;"></div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:0 40px 32px; text-align:center;">
+              <p style="margin:0; font-size:12px; color:#9AA0A6; line-height:1.5;">
+                Coachable — The modern playbook platform for coaches and teams.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  const subject =
+    reason === "stale"
+      ? "Your unfinished Coachable signup was removed"
+      : "Your Coachable account was removed";
+
+  const { error } = await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: toEmail,
+    subject,
+    html,
+  });
+
+  if (error) throw new Error(error.message || "Failed to send account-deleted email");
 }
 
 /**
@@ -495,7 +620,7 @@ export async function sendMemberRemovedEmail({ toEmail, memberName, teamName, re
 </body>
 </html>`;
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: FROM_EMAIL,
     to: toEmail,
     subject: `You've been removed from ${teamName || "a team"} on Coachable`,

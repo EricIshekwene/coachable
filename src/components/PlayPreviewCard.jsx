@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { normalizeAnimation, samplePosesAtTime, getDirectionAtTime } from "../animation";
+import { samplePathAtT } from "../canvas/drawingGeometry";
 import RugbyField from "../assets/objects/Field Vectors/Rugby_Field.png";
 import SoccerField from "../assets/objects/Field Vectors/Soccer_Field.png";
 import FootballField from "../assets/objects/Field Vectors/Football_Field.png";
@@ -595,6 +596,74 @@ export default function PlayPreviewCard({
     [animation, displayTimeMs, fallbackPoses, entityIds]
   );
 
+  // Drawing-mode plays: animate players/balls along their coaching-draw paths.
+  // Mirrors the override logic in Slate's renderPoseAtTime so previews match the editor.
+  const drawingPathPoses = useMemo(() => {
+    if (!drawings.length) return null;
+    const fullDurationMs = animation?.durationMs || DEFAULT_DURATION_MS;
+    const activeStepByItemId = new Map();
+
+    for (const d of drawings) {
+      if (d.source !== "coaching-draw" || !d.attachedPlayerId || !d.points?.length) continue;
+      const stepStartMs = d.stepStartMs ?? 0;
+      if (displayTimeMs < stepStartMs) continue;
+      const existing = activeStepByItemId.get(d.attachedPlayerId);
+      if (!existing || stepStartMs >= existing.stepStartMs) {
+        activeStepByItemId.set(d.attachedPlayerId, { drawing: d, stepStartMs });
+      }
+    }
+
+    if (activeStepByItemId.size === 0) return null;
+
+    const overrides = {};
+    for (const [itemId, activeStep] of activeStepByItemId) {
+      const d = activeStep.drawing;
+      const stepEndMs = d.stepEndMs ?? fullDurationMs;
+      const spanMs = stepEndMs - activeStep.stepStartMs;
+      const t = spanMs > 0
+        ? Math.min(1, Math.max(0, (displayTimeMs - activeStep.stepStartMs) / spanMs))
+        : 0;
+      const pos = samplePathAtT(d.points, t);
+      if (pos) overrides[itemId] = { x: pos.x, y: pos.y, r: 0 };
+    }
+    return overrides;
+  }, [drawings, displayTimeMs, animation?.durationMs]);
+
+  const effectivePoses = useMemo(() => {
+    if (!drawingPathPoses) return poses;
+    return { ...poses, ...drawingPathPoses };
+  }, [poses, drawingPathPoses]);
+
+  // Rotation override for oblong balls being driven by coaching-draw paths:
+  // derive direction from the path tangent at the current sample point.
+  const drawingPathBallRotation = useMemo(() => {
+    if (!drawingPathPoses) return null;
+    const out = {};
+    for (const [id] of Object.entries(drawingPathPoses)) {
+      if (!ballsById?.[id]) continue;
+      const drawing = drawings.find(
+        (d) => d.source === "coaching-draw" && d.attachedPlayerId === id && d.points?.length >= 2
+      );
+      if (!drawing) continue;
+      const stepStartMs = drawing.stepStartMs ?? 0;
+      const stepEndMs = drawing.stepEndMs ?? (animation?.durationMs || DEFAULT_DURATION_MS);
+      const spanMs = stepEndMs - stepStartMs;
+      const t = spanMs > 0
+        ? Math.min(1, Math.max(0, (displayTimeMs - stepStartMs) / spanMs))
+        : 0;
+      const here = samplePathAtT(drawing.points, t);
+      const ahead = samplePathAtT(drawing.points, Math.min(1, t + 0.02));
+      if (here && ahead) {
+        const dx = ahead.x - here.x;
+        const dy = ahead.y - here.y;
+        if (Math.hypot(dx, dy) > 0.001) {
+          out[id] = (Math.atan2(dy, dx) * 180) / Math.PI;
+        }
+      }
+    }
+    return Object.keys(out).length ? out : null;
+  }, [drawingPathPoses, drawings, displayTimeMs, animation?.durationMs, ballsById]);
+
   // Reset animation when the play identity changes (not just object reference).
   // Use entity IDs + duration as a stable fingerprint to avoid resetting on every
   // parent re-render that creates a new playData object.
@@ -762,7 +831,7 @@ export default function PlayPreviewCard({
 
           {/* Cones — rendered first so players and balls appear on top */}
           {Object.entries(ballsById).filter(([, entity]) => entity?.objectType === "cone").map(([id, entity]) => {
-            const pose = poses?.[id] || fallbackPoses?.[id] || { x: 0, y: 0 };
+            const pose = effectivePoses?.[id] || fallbackPoses?.[id] || { x: 0, y: 0 };
             return (
               <g key={id}>
                 <image
@@ -778,7 +847,7 @@ export default function PlayPreviewCard({
           })}
 
           {Object.entries(playersById).map(([id, player]) => {
-            const pose = poses?.[id] || fallbackPoses?.[id] || { x: 0, y: 0 };
+            const pose = effectivePoses?.[id] || fallbackPoses?.[id] || { x: 0, y: 0 };
             const numberText = player?.number ?? "";
             const color = player?.color || allPlayersDisplay?.color || DEFAULT_PLAYER_COLOR;
             const isPositionLabel = numberText !== "" && isNaN(Number(numberText));
@@ -808,12 +877,17 @@ export default function PlayPreviewCard({
 
           {/* Balls — rendered last so they sit above players and cones */}
           {Object.entries(ballsById).filter(([, entity]) => entity?.objectType !== "cone").map(([id]) => {
-            const pose = poses?.[id] || fallbackPoses?.[id] || { x: 0, y: 0 };
+            const pose = effectivePoses?.[id] || fallbackPoses?.[id] || { x: 0, y: 0 };
             const isOblongBall = !ROUND_BALL_FIELD_TYPES.has(fieldType.toLowerCase());
             let ballRotation = null;
             if (isOblongBall) {
-              const track = animation?.tracks?.[id];
-              ballRotation = track ? getDirectionAtTime(track, displayTimeMs) : null;
+              const pathRot = drawingPathBallRotation?.[id];
+              if (pathRot != null) {
+                ballRotation = pathRot;
+              } else {
+                const track = animation?.tracks?.[id];
+                ballRotation = track ? getDirectionAtTime(track, displayTimeMs) : null;
+              }
             }
             const ballColorOverride = FIELD_TYPE_BALL_COLOR[fieldType] ?? null;
             const ballImg = ballColorOverride ? (

@@ -354,7 +354,7 @@ export default function AdminSportPresetsPage() {
   })();
 
   return (
-    <AdminShell>
+    <AdminShell sidebar={false}>
       {confirmModal && (
         <ConfirmModal
           open

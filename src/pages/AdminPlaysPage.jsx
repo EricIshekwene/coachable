@@ -2060,6 +2060,10 @@ export default function AdminPlaysPage() {
   const [confirmModal, setConfirmModal] = useState(null);
   const [newPlayModal, setNewPlayModal] = useState(false);
   const [newPlaySport, setNewPlaySport] = useState("Rugby");
+  const [newPlayMode, setNewPlayMode] = useState("keyframe");
+  // Football mode picker shown after preset selection (or blank) in a football folder
+  const [footballModeModal, setFootballModeModal] = useState(false);
+  const [pendingPresetData, setPendingPresetData] = useState(null);
   const [dragSrcId, setDragSrcId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const [playSort, setPlaySort] = useState("updated");
@@ -2225,33 +2229,56 @@ export default function AdminPlaysPage() {
   const handleEdit = (play) => navigate(`/admin/plays/${play.id}/edit`);
   const handleNew = () => {
     if (currentFolderSport) {
-      const visiblePresets = sportPresets.filter(
-        (p) => p.sport?.toLowerCase() === currentFolderSport.toLowerCase() && !p.isHidden
+      const allSportPresets = sportPresets.filter(
+        (p) => p.sport?.toLowerCase() === currentFolderSport.toLowerCase()
       );
-      if (visiblePresets.length > 0) {
+      if (allSportPresets.length > 0) {
         setPresetPickerSport(currentFolderSport);
       } else {
         navigate("/admin/plays/new/edit", { state: { sport: currentFolderSport, folderId: currentFolderId } });
       }
     } else {
       setNewPlaySport("Rugby");
+      setNewPlayMode("keyframe");
       setNewPlayModal(true);
     }
   };
 
   const handlePresetPick = (preset) => {
     setPresetPickerSport(null);
+    if (currentFolderSport?.toLowerCase() === "football") {
+      // For football: pause here and ask for mode before opening the editor
+      setPendingPresetData(preset ? { presetPlayData: preset.playData } : {});
+      setNewPlayMode("keyframe");
+      setFootballModeModal(true);
+    } else {
+      navigate("/admin/plays/new/edit", {
+        state: {
+          sport: currentFolderSport,
+          folderId: currentFolderId,
+          ...(preset ? { presetPlayData: preset.playData } : {}),
+        },
+      });
+    }
+  };
+
+  const handleFootballModeConfirm = () => {
+    setFootballModeModal(false);
     navigate("/admin/plays/new/edit", {
       state: {
         sport: currentFolderSport,
         folderId: currentFolderId,
-        ...(preset ? { presetPlayData: preset.playData } : {}),
+        mode: newPlayMode,
+        ...pendingPresetData,
       },
     });
+    setPendingPresetData(null);
   };
+
   const handleNewPlayConfirm = () => {
     setNewPlayModal(false);
-    navigate("/admin/plays/new/edit", { state: { sport: newPlaySport } });
+    const mode = newPlaySport === "Football" ? newPlayMode : "keyframe";
+    navigate("/admin/plays/new/edit", { state: { sport: newPlaySport, mode } });
   };
 
   const handleDelete = async (play) => {
@@ -2466,28 +2493,110 @@ export default function AdminPlaysPage() {
 
   return (
     <AdminShell sidebar={false}>
-      {/* New Play sport picker */}
+      {/* New Play sport + mode picker */}
       <AdminModal open={newPlayModal} onClose={() => setNewPlayModal(false)} title="New Play">
         <p className="mb-4 text-sm" style={{ color: "var(--adm-muted)" }}>Choose the sport. This sets the field type and defaults.</p>
-        <AdminSelect autoFocus value={newPlaySport} onChange={(e) => setNewPlaySport(e.target.value)} className="mb-4 w-full">
+        <AdminSelect
+          autoFocus
+          value={newPlaySport}
+          onChange={(e) => {
+            setNewPlaySport(e.target.value);
+            if (e.target.value !== "Football") setNewPlayMode("keyframe");
+          }}
+          className="mb-4 w-full"
+        >
           {["Rugby", "Football", "Soccer", "Lacrosse", "Womens Lacrosse", "Basketball", "Field Hockey", "Ice Hockey", "Blank"].map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}
         </AdminSelect>
+        {newPlaySport === "Football" && (
+          <div className="mb-4">
+            <p className="mb-2 text-xs font-medium" style={{ color: "var(--adm-muted)" }}>Editor mode</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setNewPlayMode("keyframe")}
+                className="flex flex-1 flex-col items-center gap-1 rounded-lg border p-3 text-sm font-medium transition-colors"
+                style={{
+                  borderColor: newPlayMode === "keyframe" ? "var(--adm-accent)" : "var(--adm-border)",
+                  backgroundColor: newPlayMode === "keyframe" ? "color-mix(in srgb, var(--adm-accent) 10%, transparent)" : "var(--adm-surface)",
+                  color: newPlayMode === "keyframe" ? "var(--adm-accent)" : "var(--adm-text2)",
+                }}
+              >
+                <span className="text-base">⏱</span>
+                Keyframe
+                <span className="text-xs font-normal" style={{ color: "var(--adm-muted)" }}>Animate players on a timeline</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setNewPlayMode("drawing")}
+                className="flex flex-1 flex-col items-center gap-1 rounded-lg border p-3 text-sm font-medium transition-colors"
+                style={{
+                  borderColor: newPlayMode === "drawing" ? "var(--adm-accent)" : "var(--adm-border)",
+                  backgroundColor: newPlayMode === "drawing" ? "color-mix(in srgb, var(--adm-accent) 10%, transparent)" : "var(--adm-surface)",
+                  color: newPlayMode === "drawing" ? "var(--adm-accent)" : "var(--adm-text2)",
+                }}
+              >
+                <span className="text-base">✏️</span>
+                Drawing
+                <span className="text-xs font-normal" style={{ color: "var(--adm-muted)" }}>Draw animated routes on players</span>
+              </button>
+            </div>
+          </div>
+        )}
         <div className="flex gap-2">
           <AdminBtn variant="secondary" className="flex-1" onClick={() => setNewPlayModal(false)}>Cancel</AdminBtn>
           <AdminBtn variant="primary" className="flex-1" onClick={handleNewPlayConfirm}>Create Play</AdminBtn>
         </div>
       </AdminModal>
 
+      {/* Football mode picker — shown after preset selection in a football folder */}
+      <AdminModal open={footballModeModal} onClose={() => { setFootballModeModal(false); setPendingPresetData(null); }} title="Choose Editor Mode">
+        <p className="mb-4 text-sm" style={{ color: "var(--adm-muted)" }}>How do you want to design this play?</p>
+        <div className="mb-4 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setNewPlayMode("keyframe")}
+            className="flex flex-1 flex-col items-center gap-1 rounded-lg border p-3 text-sm font-medium transition-colors"
+            style={{
+              borderColor: newPlayMode === "keyframe" ? "var(--adm-accent)" : "var(--adm-border)",
+              backgroundColor: newPlayMode === "keyframe" ? "color-mix(in srgb, var(--adm-accent) 10%, transparent)" : "var(--adm-surface)",
+              color: newPlayMode === "keyframe" ? "var(--adm-accent)" : "var(--adm-text2)",
+            }}
+          >
+            <span className="text-base">⏱</span>
+            Keyframe
+            <span className="text-xs font-normal" style={{ color: "var(--adm-muted)" }}>Animate players on a timeline</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setNewPlayMode("drawing")}
+            className="flex flex-1 flex-col items-center gap-1 rounded-lg border p-3 text-sm font-medium transition-colors"
+            style={{
+              borderColor: newPlayMode === "drawing" ? "var(--adm-accent)" : "var(--adm-border)",
+              backgroundColor: newPlayMode === "drawing" ? "color-mix(in srgb, var(--adm-accent) 10%, transparent)" : "var(--adm-surface)",
+              color: newPlayMode === "drawing" ? "var(--adm-accent)" : "var(--adm-text2)",
+            }}
+          >
+            <span className="text-base">✏️</span>
+            Drawing
+            <span className="text-xs font-normal" style={{ color: "var(--adm-muted)" }}>Draw animated routes on players</span>
+          </button>
+        </div>
+        <div className="flex gap-2">
+          <AdminBtn variant="secondary" className="flex-1" onClick={() => { setFootballModeModal(false); setPendingPresetData(null); }}>Cancel</AdminBtn>
+          <AdminBtn variant="primary" className="flex-1" onClick={handleFootballModeConfirm}>Open Editor</AdminBtn>
+        </div>
+      </AdminModal>
+
       {/* Preset picker modal */}
       {presetPickerSport && (() => {
-        const visiblePresets = sportPresets.filter(
-          (p) => p.sport?.toLowerCase() === presetPickerSport.toLowerCase() && !p.isHidden
+        const allPresets = sportPresets.filter(
+          (p) => p.sport?.toLowerCase() === presetPickerSport.toLowerCase()
         );
         return (
           <AdminModal open onClose={() => setPresetPickerSport(null)} title="Choose a Starting Preset">
-            <p className="mb-4 text-sm" style={{ color: "var(--adm-muted)" }}>{presetPickerSport} · Select a template or start blank.</p>
+            <p className="mb-4 text-sm" style={{ color: "var(--adm-muted)" }}>{presetPickerSport} · Select a template or start blank. Hidden presets are only visible to admins.</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <button
                 onClick={() => handlePresetPick(null)}
@@ -2497,17 +2606,27 @@ export default function AdminPlaysPage() {
                 <div className="flex h-24 w-full items-center justify-center rounded text-xs" style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-muted)" }}>Blank</div>
                 <span className="text-xs font-medium" style={{ color: "var(--adm-text)" }}>Blank</span>
               </button>
-              {visiblePresets.map((preset) => (
+              {allPresets.map((preset) => (
                 <button
                   key={preset.id}
                   onClick={() => handlePresetPick(preset)}
                   className="flex flex-col gap-2 rounded-[var(--adm-radius-sm)] p-3 text-left transition"
                   style={{ border: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface2)" }}
                 >
-                  <div className="overflow-hidden rounded" style={{ height: 96 }}>
+                  <div className="relative overflow-hidden rounded" style={{ height: 96 }}>
                     <PlayPreviewCard playData={preset.playData} shape="landscape" cameraMode="fit-distribution" />
+                    {preset.isHidden && (
+                      <div className="absolute inset-0 flex items-center justify-center rounded" style={{ backgroundColor: "rgba(0,0,0,0.45)" }}>
+                        <FiEyeOff className="text-white" style={{ fontSize: 18 }} />
+                      </div>
+                    )}
                   </div>
-                  <span className="text-xs font-medium" style={{ color: "var(--adm-text)" }}>{preset.name}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="truncate text-xs font-medium" style={{ color: "var(--adm-text)" }}>{preset.name}</span>
+                    {preset.isHidden && (
+                      <span className="shrink-0 rounded px-1 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-muted)" }}>hidden</span>
+                    )}
+                  </div>
                 </button>
               ))}
             </div>

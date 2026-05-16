@@ -31,9 +31,18 @@ export default function SportPickerPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex h-screen font-DmSans">
+    <div className="font-DmSans md:flex" style={{ minHeight: "var(--app-viewport-height)" }}>
       {/* Left - Sport picker */}
-      <div className="flex w-full flex-col overflow-y-auto hide-scroll bg-BrandBlack px-6 py-8 sm:px-12 md:w-1/2 lg:px-20 xl:px-24">
+      <div
+        className="flex w-full flex-col overflow-y-auto hide-scroll bg-BrandBlack px-6 sm:px-12 md:w-1/2 lg:px-20 xl:px-24"
+        style={{
+          minHeight: "var(--app-viewport-height)",
+          paddingTop: "max(2rem, env(safe-area-inset-top))",
+          paddingBottom: "calc(2rem + env(safe-area-inset-bottom) + var(--app-keyboard-inset))",
+          scrollPaddingTop: "2rem",
+          scrollPaddingBottom: "calc(8rem + var(--app-keyboard-inset))",
+        }}
+      >
         <div className="mx-auto w-full max-w-lg flex flex-col flex-1">
           {/* Back to home */}
           <Link to="/" className="mb-4 inline-flex items-center gap-1.5 text-xs text-white/40 transition hover:text-white/80">

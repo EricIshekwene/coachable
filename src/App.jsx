@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { installGlobalErrorHandlers } from "./utils/errorReporter";
+import { installMobileViewportFixes } from "./utils/mobileViewport";
 import "./index.css";
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { AdminProvider } from "./admin/AdminContext";
@@ -337,6 +338,11 @@ function ThemeInit() {
       : saved;
     document.documentElement.setAttribute("data-theme", resolved);
     installGlobalErrorHandlers();
+    const teardownMobileViewportFixes = installMobileViewportFixes();
+
+    return () => {
+      teardownMobileViewportFixes();
+    };
   }, []);
   return null;
 }

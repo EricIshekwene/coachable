@@ -1330,9 +1330,10 @@ function Slate({
         notes: "World coordinates are centered; +x right, +y down.",
       },
       drawings: drawingsState.drawings,
+      editorMode: drawingMode ? "drawing" : "keyframe",
     });
     return result;
-  }, [playName, advancedSettings, entities, fieldViewport, animationData, speedMultiplier, autoplayEnabled, drawingsState.drawings]);
+  }, [playName, advancedSettings, entities, fieldViewport, animationData, speedMultiplier, autoplayEnabled, drawingsState.drawings, drawingMode]);
 
   /**
    * Persists the current play data to localStorage for crash recovery.
@@ -1455,6 +1456,7 @@ function Slate({
         notes: "World coordinates are centered; +x right, +y down.",
       },
       drawings: drawingsState.drawings,
+      editorMode: drawingMode ? "drawing" : "keyframe",
     });
     const exportJson = JSON.stringify(exportPayload);
     const exportBytes = new TextEncoder().encode(exportJson).length;
@@ -3088,7 +3090,7 @@ function Slate({
 
       const nextPlayers = play.entities?.playersById || {};
       const nextRepresented = play.entities?.representedPlayerIds || Object.keys(nextPlayers);
-      const nextBall = play.entities?.ball ?? INITIAL_BALL;
+      const nextBall = play.entities?.ball !== undefined ? play.entities.ball : INITIAL_BALL;
       const nextBallsById = play.entities?.ballsById ?? null;
       const nextCamera = play.canvas?.camera ?? { x: 0, y: 0, zoom: 1 };
       const nextFieldRotation = play.canvas?.fieldRotation ?? 0;

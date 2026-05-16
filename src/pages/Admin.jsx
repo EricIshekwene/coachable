@@ -989,14 +989,32 @@ export default function Admin() {
   if (!authed) {
     if (cookieChecking) {
       return (
-        <AdminShell sidebar={false} className="flex items-center justify-center">
-          <AdminSpinner size={24} />
+        <AdminShell sidebar={false}>
+          <div
+            className="flex min-h-full items-start justify-center px-4 md:items-center md:px-6"
+            style={{
+              minHeight: "var(--app-viewport-height)",
+              paddingTop: "max(2rem, env(safe-area-inset-top))",
+              paddingBottom: "calc(2rem + env(safe-area-inset-bottom) + var(--app-keyboard-inset))",
+            }}
+          >
+            <AdminSpinner size={24} />
+          </div>
         </AdminShell>
       );
     }
     return (
-      <AdminShell sidebar={false} className="flex items-center justify-center">
-        <AdminCard className="w-full max-w-sm" style={{ boxShadow: "var(--adm-shadow)" }}>
+      <AdminShell sidebar={false}>
+        <div
+          className="flex min-h-full items-start justify-center px-4 md:items-center md:px-6"
+          style={{
+            minHeight: "var(--app-viewport-height)",
+            paddingTop: "max(2rem, env(safe-area-inset-top))",
+            paddingBottom: "calc(2rem + env(safe-area-inset-bottom) + var(--app-keyboard-inset))",
+            scrollPaddingBottom: "calc(8rem + var(--app-keyboard-inset))",
+          }}
+        >
+          <AdminCard className="w-full max-w-sm" style={{ boxShadow: "var(--adm-shadow)" }}>
           <div className="mb-6 text-center">
             <p className="font-Manrope text-sm font-normal" style={{ color: "var(--adm-text)" }}>Admin Panel</p>
             <p className="mt-0.5 text-xs" style={{ color: "var(--adm-muted)" }}>Restricted access</p>
@@ -1014,7 +1032,8 @@ export default function Admin() {
               {logging ? "Authenticating…" : "Sign in"}
             </AdminBtn>
           </form>
-        </AdminCard>
+          </AdminCard>
+        </div>
       </AdminShell>
     );
   }

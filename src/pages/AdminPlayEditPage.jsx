@@ -106,6 +106,7 @@ export default function AdminPlayEditPage() {
   const initialSport = location.state?.sport || null;
   const initialFolderId = location.state?.folderId || null;
   const initialPresetPlayData = location.state?.presetPlayData || null;
+  const initialModeFromState = location.state?.mode || "keyframe";
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
   const [ready, setReady] = useState(false);
   const [loadingPlay, setLoadingPlay] = useState(() => playId !== "new" && !!sessionStorage.getItem(SESSION_KEY));
@@ -236,6 +237,13 @@ export default function AdminPlayEditPage() {
   const effectivePlayId = persistedId || "new";
   const initialPlayData = recoveredData?.playData ?? existingPlay?.playData ?? initialPresetPlayData ?? null;
   const initialPlayName = recoveredData?.playName ?? existingPlay?.title;
+  // New plays: nav state is the explicit user choice and always wins (preset data may carry
+  // a stale editorMode that should not override the selection made in the mode picker).
+  // Existing plays: restore from saved meta so reopening a drawing-mode play stays drawing.
+  const editorMode = isNew
+    ? initialModeFromState
+    : (initialPlayData?.play?.meta?.editorMode ?? initialModeFromState);
+  const isDrawingMode = editorMode === "drawing";
 
   return (
     <div
@@ -279,6 +287,7 @@ export default function AdminPlayEditPage() {
         onReady={() => setReady(true)}
         adminMode
         sport={initialSport}
+        drawingMode={isDrawingMode}
       />
     </div>
   );

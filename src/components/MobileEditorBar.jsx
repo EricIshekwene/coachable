@@ -251,8 +251,13 @@ function TopSheet({ open, onClose, title, children }) {
   return (
     <div
       className={`overflow-hidden transition-[max-height] duration-300 ease-out bg-BrandBlack/90 ${
-        open ? "max-h-[65dvh] border-b border-white/15 shadow-xl" : "max-h-0"
+        open ? "border-b border-white/15 shadow-xl" : ""
       }`}
+      style={{
+        maxHeight: open
+          ? "calc(var(--app-viewport-height) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 9rem)"
+          : "0px",
+      }}
     >
       <div className="flex items-center justify-between px-5 py-2 border-b border-white/10">
         <span className="text-sm font-semibold text-white font-DmSans">{title}</span>
@@ -260,7 +265,13 @@ function TopSheet({ open, onClose, title, children }) {
           <FiChevronUp className="text-lg" />
         </button>
       </div>
-      <div className="overflow-y-auto px-5 py-4" style={{ maxHeight: "calc(65dvh - 44px)" }}>
+      <div
+        className="overflow-y-auto px-5 py-4"
+        style={{
+          maxHeight: "calc(var(--app-viewport-height) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 12rem)",
+          paddingBottom: "calc(1rem + env(safe-area-inset-bottom))",
+        }}
+      >
         {children}
       </div>
     </div>

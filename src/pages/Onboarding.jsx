@@ -99,9 +99,18 @@ export default function Onboarding() {
   // Simplified flow when arriving via invite link — skip create/join choice
   if (hasInvite) {
     return (
-      <div className="flex h-screen font-DmSans">
-        <div className="flex w-full flex-col justify-center overflow-auto bg-white px-8 sm:px-16 md:w-3/5 lg:px-24 xl:px-32">
-          <div className="mx-auto w-full max-w-lg">
+      <div className="font-DmSans md:flex" style={{ minHeight: "var(--app-viewport-height)" }}>
+        <div
+          className="flex w-full flex-col overflow-y-auto bg-white px-8 sm:px-16 md:w-3/5 lg:px-24 xl:px-32"
+          style={{
+            minHeight: "var(--app-viewport-height)",
+            paddingTop: "max(2rem, env(safe-area-inset-top))",
+            paddingBottom: "calc(2rem + env(safe-area-inset-bottom) + var(--app-keyboard-inset))",
+            scrollPaddingTop: "2rem",
+            scrollPaddingBottom: "calc(8rem + var(--app-keyboard-inset))",
+          }}
+        >
+          <div className="mx-auto flex min-h-full w-full max-w-lg flex-col justify-start md:justify-center">
             <Link to="/" className="mb-6 inline-flex items-center gap-1.5 text-xs text-BrandGray2 transition hover:text-BrandBlack">
               <FiArrowLeft className="text-sm" /> Back to home
             </Link>
@@ -167,9 +176,18 @@ export default function Onboarding() {
   }
 
   return (
-    <div className="flex h-screen font-DmSans">
-      <div className="flex w-full flex-col justify-center overflow-auto bg-white px-8 sm:px-16 md:w-3/5 lg:px-24 xl:px-32">
-        <div className="mx-auto w-full max-w-lg">
+    <div className="font-DmSans md:flex" style={{ minHeight: "var(--app-viewport-height)" }}>
+      <div
+        className="flex w-full flex-col overflow-y-auto bg-white px-8 sm:px-16 md:w-3/5 lg:px-24 xl:px-32"
+        style={{
+          minHeight: "var(--app-viewport-height)",
+          paddingTop: "max(2rem, env(safe-area-inset-top))",
+          paddingBottom: "calc(2rem + env(safe-area-inset-bottom) + var(--app-keyboard-inset))",
+          scrollPaddingTop: "2rem",
+          scrollPaddingBottom: "calc(8rem + var(--app-keyboard-inset))",
+        }}
+      >
+        <div className="mx-auto flex min-h-full w-full max-w-lg flex-col justify-start md:justify-center">
           <Link to="/" className="mb-6 inline-flex items-center gap-1.5 text-xs text-BrandGray2 transition hover:text-BrandBlack">
             <FiArrowLeft className="text-sm" /> Back to home
           </Link>

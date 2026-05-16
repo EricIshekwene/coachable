@@ -27,8 +27,12 @@ export default function AdminShell({ children, className = "", sidebar = true })
     return (
       <div
         data-admin-theme={theme}
-        className={`font-Manrope h-screen overflow-y-auto ${className}`}
-        style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-text)" }}
+        className={`font-Manrope overflow-y-auto ${className}`}
+        style={{
+          minHeight: "var(--app-viewport-height)",
+          backgroundColor: "var(--adm-bg)",
+          color: "var(--adm-text)",
+        }}
       >
         {children}
       </div>

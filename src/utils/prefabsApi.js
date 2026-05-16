@@ -58,7 +58,7 @@ export async function savePrefabToServer(prefab, adminMode = false) {
   try {
     const data = await apiFetch("/prefabs", {
       method: "POST",
-      body: JSON.stringify({ label, prefab_data: rest }),
+      body: { label, prefab_data: rest },
     });
     return data.prefab || null;
   } catch {
