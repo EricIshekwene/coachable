@@ -57,6 +57,8 @@ import {
   summarizePlayData as summarizePersistedPlayData,
 } from "../../utils/playPersistenceDebugLogger";
 import { useDrawings } from "./hooks/useDrawings";
+import { splitLegacyDrawingsArray } from "./utils/drawingSchema";
+import { isAnnotationDrawingVisibleAtTime } from "./utils/drawingTiming";
 import { useRecordingMode } from "./hooks/useRecordingMode";
 import RecordingControlBar from "../../components/RecordingControlBar";
 import RecordingCountdown from "../../components/RecordingCountdown";
@@ -255,23 +257,83 @@ function Slate({
     return () => document.removeEventListener("fullscreenchange", handler);
   }, []);
   const [canvasTool, setCanvasTool] = useState("select");
-  const [drawSubTool, setDrawSubTool] = useState("draw");
-  const [animDrawSubTool, setAnimDrawSubTool] = useState(null);
-  const [drawColor, setDrawColor] = useState("#FFFFFF");
-  const [drawOpacity, setDrawOpacity] = useState(1);
-  const [drawStrokeWidth, setDrawStrokeWidth] = useState(3);
-  const [drawSmoothing, setDrawSmoothing] = useState(30);
+
+  // ─── Annotation drawing state (overlays — only active when !drawingMode) ───
+  const [annotationDrawSubTool, setAnnotationDrawSubTool] = useState("draw");
+  const [annotationDrawColor, setAnnotationDrawColor] = useState("#FFFFFF");
+  const [annotationDrawOpacity, setAnnotationDrawOpacity] = useState(1);
+  const [annotationDrawStrokeWidth, setAnnotationDrawStrokeWidth] = useState(3);
+  const [annotationDrawSmoothing, setAnnotationDrawSmoothing] = useState(30);
+  const [annotationDrawFontSize, setAnnotationDrawFontSize] = useState(18);
+  const [annotationDrawTextAlign, setAnnotationDrawTextAlign] = useState("left");
+  const [annotationDrawArrowHeadType, setAnnotationDrawArrowHeadType] = useState("standard");
+  const [annotationDrawArrowTip, setAnnotationDrawArrowTip] = useState(false);
+  const [annotationEraserSize, setAnnotationEraserSize] = useState(10);
+  const [annotationDrawShapeType, setAnnotationDrawShapeType] = useState("rect");
+  const [annotationDrawShapeStrokeColor, setAnnotationDrawShapeStrokeColor] = useState("#FFFFFF");
+  const [annotationDrawShapeFill, setAnnotationDrawShapeFill] = useState("transparent");
+  const [selectedAnnotationDrawingIds, setSelectedAnnotationDrawingIds] = useState([]);
+
+  // ─── Motion drawing state (entity-attached paths — only active when drawingMode) ───
+  const [motionDrawSubTool, setMotionDrawSubTool] = useState(null);
+  const [motionDrawColor, setMotionDrawColor] = useState("#FFFFFF");
+  const [motionDrawOpacity, setMotionDrawOpacity] = useState(1);
+  const [motionDrawStrokeWidth, setMotionDrawStrokeWidth] = useState(3);
+  const [motionDrawSmoothing, setMotionDrawSmoothing] = useState(30);
+  const [motionDrawArrowHeadType, setMotionDrawArrowHeadType] = useState("chevron");
+  const [motionDrawArrowTip, setMotionDrawArrowTip] = useState(true);
+  const [motionEraserSize, setMotionEraserSize] = useState(10);
+  const [selectedMotionDrawingIds, setSelectedMotionDrawingIds] = useState([]);
+
+  // ─── Active-scope shims ───
+  // `drawingMode` is the sole gate: drawing-mode → motion only; otherwise → annotation only.
+  // The two scopes cannot coexist by construction.
+  const activeDrawingUi = drawingMode
+    ? (motionDrawSubTool ? "motion" : "none")
+    : (canvasTool === "pen" ? "annotation" : "none");
+
+  // Back-compat aliases — many handlers still use the old single-bucket names.
+  // These point at whichever scope is currently active so the existing logic
+  // keeps working until those call sites are updated to be explicit.
+  const drawSubTool = drawingMode
+    ? (motionDrawSubTool || "draw")
+    : annotationDrawSubTool;
+  const setDrawSubTool = drawingMode ? setMotionDrawSubTool : setAnnotationDrawSubTool;
+  const animDrawSubTool = motionDrawSubTool;
+  const setAnimDrawSubTool = setMotionDrawSubTool;
+  const drawColor = drawingMode ? motionDrawColor : annotationDrawColor;
+  const setDrawColor = drawingMode ? setMotionDrawColor : setAnnotationDrawColor;
+  const drawOpacity = drawingMode ? motionDrawOpacity : annotationDrawOpacity;
+  const setDrawOpacity = drawingMode ? setMotionDrawOpacity : setAnnotationDrawOpacity;
+  const drawStrokeWidth = drawingMode ? motionDrawStrokeWidth : annotationDrawStrokeWidth;
+  const setDrawStrokeWidth = drawingMode ? setMotionDrawStrokeWidth : setAnnotationDrawStrokeWidth;
+  const drawSmoothing = drawingMode ? motionDrawSmoothing : annotationDrawSmoothing;
+  const setDrawSmoothing = drawingMode ? setMotionDrawSmoothing : setAnnotationDrawSmoothing;
   const drawTension = drawSmoothing / 100;       // 0-1 for Konva line tension
   const drawStabilization = drawSmoothing;        // 0-100 for pull-string algorithm
-  const [drawFontSize, setDrawFontSize] = useState(18);
-  const [drawTextAlign, setDrawTextAlign] = useState("left");
-  const [drawArrowHeadType, setDrawArrowHeadType] = useState(drawingMode ? "chevron" : "standard");
-  const [drawArrowTip, setDrawArrowTip] = useState(drawingMode);
-  const [eraserSize, setEraserSize] = useState(10);
-  const [drawShapeType, setDrawShapeType] = useState("rect");
-  const [drawShapeStrokeColor, setDrawShapeStrokeColor] = useState("#FFFFFF");
-  const [drawShapeFill, setDrawShapeFill] = useState("transparent");
-  const [selectedDrawingIds, setSelectedDrawingIds] = useState([]);
+  const drawFontSize = annotationDrawFontSize;    // motion has no text tool
+  const setDrawFontSize = setAnnotationDrawFontSize;
+  const drawTextAlign = annotationDrawTextAlign;
+  const setDrawTextAlign = setAnnotationDrawTextAlign;
+  const drawArrowHeadType = drawingMode ? motionDrawArrowHeadType : annotationDrawArrowHeadType;
+  const setDrawArrowHeadType = drawingMode ? setMotionDrawArrowHeadType : setAnnotationDrawArrowHeadType;
+  const drawArrowTip = drawingMode ? motionDrawArrowTip : annotationDrawArrowTip;
+  const setDrawArrowTip = drawingMode ? setMotionDrawArrowTip : setAnnotationDrawArrowTip;
+  const eraserSize = drawingMode ? motionEraserSize : annotationEraserSize;
+  const setEraserSize = drawingMode ? setMotionEraserSize : setAnnotationEraserSize;
+  const drawShapeType = annotationDrawShapeType;  // motion has no shape tool
+  const setDrawShapeType = setAnnotationDrawShapeType;
+  const drawShapeStrokeColor = annotationDrawShapeStrokeColor;
+  const setDrawShapeStrokeColor = setAnnotationDrawShapeStrokeColor;
+  const drawShapeFill = annotationDrawShapeFill;
+  const setDrawShapeFill = setAnnotationDrawShapeFill;
+  // Selection follows active scope: drawing-mode reads motion, otherwise annotation.
+  const selectedDrawingIds = drawingMode
+    ? selectedMotionDrawingIds
+    : selectedAnnotationDrawingIds;
+  const setSelectedDrawingIds = drawingMode
+    ? setSelectedMotionDrawingIds
+    : setSelectedAnnotationDrawingIds;
   const [hideAllDrawings, setHideAllDrawings] = useState(false);
   // Drawing retrace animation (AnimationDrawingTools hide button only)
   const [drawingsHidden, setDrawingsHidden] = useState(false);
@@ -477,7 +539,24 @@ function Slate({
     }
   }, [entities.playerEditor.open]);
 
-  const drawingsState = useDrawings({ historyApiRef });
+  // ─── Two scope-specific drawing state buckets ───
+  // Annotation = overlays (text, shape, arrow, stroke). Motion = entity-attached
+  // animation-driving paths. Each bucket owns its own ids, history snapshots,
+  // and CRUD operations. They never mutate each other.
+  const annotationDrawingsState = useDrawings({ historyApiRef, kind: "annotation" });
+  const motionDrawingsState = useDrawings({ historyApiRef, kind: "motion" });
+
+  // Back-compat: `drawingsState` previously referred to whichever bucket the
+  // current mode was operating on. Keep that shim alive until every call site
+  // becomes explicit about its scope. New code should reach into the typed
+  // buckets directly.
+  const drawingsState = drawingMode ? motionDrawingsState : annotationDrawingsState;
+  // Read-only combined view for the few places that need to render or export
+  // both buckets at once (canvas rendering, export payload, flip play, reset).
+  const combinedDrawings = useMemo(
+    () => [...annotationDrawingsState.drawings, ...motionDrawingsState.drawings],
+    [annotationDrawingsState.drawings, motionDrawingsState.drawings]
+  );
 
   /**
    * In drawing mode, stamp every new drawing with source="coaching-draw".
@@ -490,21 +569,23 @@ function Slate({
    * undo entry (otherwise each inner mutation would push its own snapshot).
    */
   const handleDeletePlayer = useCallback((id) => {
-    const attached = drawingsState.drawings.filter(
-      (d) => d.source === "coaching-draw" && d.attachedPlayerId === id
+    // Only motion drawings can be attached to an entity — annotations are
+    // overlays and must never be touched by entity deletion.
+    const attached = motionDrawingsState.drawings.filter(
+      (d) => (d.attachedEntityId || d.attachedPlayerId) === id
     );
     const run = () => {
       if (attached.length === 1) {
-        drawingsState.removeDrawing(attached[0].id);
+        motionDrawingsState.removeDrawing(attached[0].id);
       } else if (attached.length > 1) {
-        drawingsState.removeMultipleDrawings(attached.map((d) => d.id));
+        motionDrawingsState.removeMultipleDrawings(attached.map((d) => d.id));
       }
       entities.handleDeletePlayer(id);
     };
     const withGroup = historyApiRef.current?.withGroup;
     if (typeof withGroup === "function") withGroup(run);
     else run();
-  }, [entities.handleDeletePlayer, drawingsState.drawings, drawingsState.removeDrawing, drawingsState.removeMultipleDrawings]);
+  }, [entities.handleDeletePlayer, motionDrawingsState.drawings, motionDrawingsState.removeDrawing, motionDrawingsState.removeMultipleDrawings]);
 
   const animateDrawingsTo = useCallback((target) => {
     if (drawingsAnimFrameRef.current) cancelAnimationFrame(drawingsAnimFrameRef.current);
@@ -529,27 +610,54 @@ function Slate({
   }, []);
 
   const addDrawingTagged = useCallback((data) => {
+    // Outside drawing-mode: pure annotation. Annotations can never carry
+    // motion metadata — strip any motion-only fields defensively before
+    // forwarding to the annotation bucket.
     if (!drawingMode) {
-      return drawingsState.addDrawing(data);
+      const {
+        attachedPlayerId: _ann1,
+        attachedEntityId: _ann2,
+        attachedEntityType: _ann3,
+        stepStartMs: _ann4,
+        stepEndMs: _ann5,
+        stepIndex: _ann6,
+        continuedFromDrawingId: _ann7,
+        continuedFromMotionDrawingId: _ann8,
+        source: _ann9,
+        ...annData
+      } = data || {};
+      const durationMs = animationDataRef.current?.durationMs ?? 30000;
+      // Default to full-duration visibility unless the caller already supplied one.
+      const visibleStartMs = annData.visibleStartMs ?? 0;
+      const visibleEndMs = annData.visibleEndMs ?? durationMs;
+      return annotationDrawingsState.addDrawing({
+        ...annData,
+        visibleStartMs,
+        visibleEndMs,
+      });
     }
 
-    const isContinuation = !!data.continuedFromDrawingId && !!data.attachedPlayerId;
+    // Drawing-mode: motion drawing. Caller may use legacy `attachedPlayerId`
+    // (from useCanvasDrawing) or the new `attachedEntityId` field; we accept
+    // both and persist the new one.
+    const attachedEntityId = data.attachedEntityId || data.attachedPlayerId;
+    const isContinuation = !!data.continuedFromDrawingId && !!attachedEntityId;
     const durationMs = animationDataRef.current?.durationMs ?? 30000;
     const MIN_STEP_MS = 500;
 
-    // The body below mutates the drawings array multiple times (replace existing
+    // The body below mutates the motion array multiple times (replace existing
     // step + split parent on continuation + add new step). Wrap in a history
     // group so undo collapses the whole sequence into one entry.
     const run = () => {
-      // Fresh draw on a player/ball: remove ALL existing coaching-draw steps for that entity
-      if (!isContinuation && data.attachedPlayerId) {
-        const existing = drawingsState.drawings.filter(
-          (d) => d.source === "coaching-draw" && d.attachedPlayerId === data.attachedPlayerId
+      // Fresh draw on a player/ball: remove ALL existing motion steps for that entity
+      if (!isContinuation && attachedEntityId) {
+        const existing = motionDrawingsState.drawings.filter(
+          (d) => (d.attachedEntityId || d.attachedPlayerId) === attachedEntityId
         );
         if (existing.length === 1) {
-          drawingsState.removeDrawing(existing[0].id);
+          motionDrawingsState.removeDrawing(existing[0].id);
         } else if (existing.length > 1) {
-          drawingsState.removeMultipleDrawings(existing.map((d) => d.id));
+          motionDrawingsState.removeMultipleDrawings(existing.map((d) => d.id));
         }
       }
 
@@ -557,7 +665,9 @@ function Slate({
       let stepStartMs = 0;
       let stepIndex = 0;
       if (isContinuation) {
-        const parent = drawingsState.drawings.find((d) => d.id === data.continuedFromDrawingId);
+        const parent = motionDrawingsState.drawings.find(
+          (d) => d.id === data.continuedFromDrawingId
+        );
         const parentStartMs = parent?.stepStartMs ?? 0;
         const parentEndMs = parent?.stepEndMs ?? 0;
         stepStartMs = parentEndMs;
@@ -575,64 +685,95 @@ function Slate({
             return null;
           }
           const splitMs = Math.round(parentStartMs + parentSpanMs / 2);
-          drawingsState.updateDrawing(parent.id, { stepEndMs: splitMs });
+          motionDrawingsState.updateDrawing(parent.id, { stepEndMs: splitMs });
           stepStartMs = splitMs;
         }
-        stepIndex = drawingsState.drawings.filter(
-          (d) => d.source === "coaching-draw" && d.attachedPlayerId === data.attachedPlayerId
+        stepIndex = motionDrawingsState.drawings.filter(
+          (d) => (d.attachedEntityId || d.attachedPlayerId) === attachedEntityId
         ).length;
       }
 
       // Derive step color from the player/ball's base color
+      const attachedEntityType =
+        data.attachedEntityType ||
+        (entities.ballsById?.[attachedEntityId] ? "ball" : "player");
       const baseColor =
-        entities.playersById?.[data.attachedPlayerId]?.color ??
-        (entities.ballsById?.[data.attachedPlayerId] ? "#FF7A18" : "#ef4444");
+        entities.playersById?.[attachedEntityId]?.color ??
+        (entities.ballsById?.[attachedEntityId] ? "#FF7A18" : "#ef4444");
       const stepColor = getStepColor(baseColor, stepIndex);
 
-      const { continuedFromDrawingId: _drop, ...drawingData } = data;
-      const newId = drawingsState.addDrawing({
+      const {
+        continuedFromDrawingId: parentLegacyId,
+        attachedPlayerId: _legacyAttach,
+        ...drawingData
+      } = data;
+      const newId = motionDrawingsState.addDrawing({
         ...drawingData,
         color: stepColor,
-        source: "coaching-draw",
+        attachedEntityId,
+        attachedEntityType,
+        ...(parentLegacyId ? { continuedFromMotionDrawingId: parentLegacyId } : {}),
         stepStartMs,
         stepEndMs: durationMs,
         stepIndex,
       });
 
-      if (data.attachedPlayerId) {
-        const attachedItemType = entities.ballsById?.[data.attachedPlayerId] ? "ball" : "player";
-        entities.handleSelectItem(data.attachedPlayerId, attachedItemType, { mode: "set" });
+      if (attachedEntityId) {
+        entities.handleSelectItem(attachedEntityId, attachedEntityType, { mode: "set" });
       }
       return newId;
     };
 
     const withGroup = historyApiRef.current?.withGroup;
     return typeof withGroup === "function" ? withGroup(run) : run();
-  }, [drawingsState.addDrawing, drawingsState.removeDrawing, drawingsState.removeMultipleDrawings, drawingsState.updateDrawing, drawingsState.drawings, drawingMode, entities.handleSelectItem, entities.playersById, entities.ballsById, onShowMessage]);
+  }, [annotationDrawingsState.addDrawing, motionDrawingsState.addDrawing, motionDrawingsState.removeDrawing, motionDrawingsState.removeMultipleDrawings, motionDrawingsState.updateDrawing, motionDrawingsState.drawings, drawingMode, entities.handleSelectItem, entities.playersById, entities.ballsById, onShowMessage]);
 
+  // Selected drawings are sourced from the active scope only. Cross-scope
+  // selection is forbidden — selecting an annotation does not deselect motion
+  // drawings (they live in their own selection set) and vice versa.
   const selectedDrawings = useMemo(
-    () => drawingsState.drawings.filter((d) => selectedDrawingIds.includes(d.id)),
-    [drawingsState.drawings, selectedDrawingIds]
+    () =>
+      drawingMode
+        ? motionDrawingsState.drawings.filter((d) => selectedMotionDrawingIds.includes(d.id))
+        : annotationDrawingsState.drawings.filter((d) => selectedAnnotationDrawingIds.includes(d.id)),
+    [drawingMode, motionDrawingsState.drawings, selectedMotionDrawingIds, annotationDrawingsState.drawings, selectedAnnotationDrawingIds]
   );
   const selectedDrawing = selectedDrawings.length === 1 ? selectedDrawings[0] : null;
 
   useEffect(() => {
-    logDrawDebug(`selection drawingIds=[${selectedDrawingIds.join(",")}]`);
-  }, [selectedDrawingIds]);
+    logDrawDebug(`selection annotation=[${selectedAnnotationDrawingIds.join(",")}] motion=[${selectedMotionDrawingIds.join(",")}]`);
+  }, [selectedAnnotationDrawingIds, selectedMotionDrawingIds]);
 
   const compositeSnapshotSlate = useCallback(() => ({
     ...entities.snapshotSlate(),
-    drawings: drawingsState.snapshotDrawings(),
+    annotationDrawings: annotationDrawingsState.snapshotDrawings(),
+    motionDrawings: motionDrawingsState.snapshotDrawings(),
     animationData: animationData,
-  }), [entities.snapshotSlate, drawingsState.snapshotDrawings, animationData]);
+  }), [entities.snapshotSlate, annotationDrawingsState.snapshotDrawings, motionDrawingsState.snapshotDrawings, animationData]);
 
   const compositeApplySlate = useCallback((snapshot) => {
     entities.applySlate(snapshot);
-    drawingsState.applyDrawings(snapshot.drawings);
+    // Accept both new (separated) and legacy (combined) snapshots so undo
+    // history saved before this refactor still restores correctly.
+    if (snapshot.annotationDrawings || snapshot.motionDrawings) {
+      annotationDrawingsState.applyDrawings(snapshot.annotationDrawings || []);
+      motionDrawingsState.applyDrawings(snapshot.motionDrawings || []);
+    } else if (snapshot.drawings) {
+      const { annotationDrawings, motionDrawings } = splitLegacyDrawingsArray(
+        snapshot.drawings,
+        { playersById: entities.playersById, ballsById: entities.ballsById },
+        snapshot.animationData?.durationMs ?? animationData?.durationMs ?? 30000
+      );
+      annotationDrawingsState.applyDrawings(annotationDrawings);
+      motionDrawingsState.applyDrawings(motionDrawings);
+    } else {
+      annotationDrawingsState.applyDrawings([]);
+      motionDrawingsState.applyDrawings([]);
+    }
     if (snapshot.animationData != null) {
       setAnimationData(snapshot.animationData);
     }
-  }, [entities.applySlate, drawingsState.applyDrawings]);
+  }, [entities.applySlate, entities.playersById, entities.ballsById, animationData, annotationDrawingsState.applyDrawings, motionDrawingsState.applyDrawings]);
 
   const slateHistory = useSlateHistory({
     snapshotSlate: compositeSnapshotSlate,
@@ -667,8 +808,12 @@ function Slate({
   }, [animationData]);
 
   useEffect(() => {
-    drawingsRef.current = drawingsState.drawings;
-  }, [drawingsState.drawings]);
+    // drawingsRef historically held the unified array. It's still used by
+    // animation playback closures (renderPoseAtTime) which only need motion
+    // drawings — pose sampling never reads annotations. Keep the ref pointing
+    // at motion only so non-motion changes don't trigger expensive recomputes.
+    drawingsRef.current = motionDrawingsState.drawings;
+  }, [motionDrawingsState.drawings]);
 
   useEffect(() => {
     drawingModeRef.current = drawingMode;
@@ -970,23 +1115,25 @@ function Slate({
       trackIds
     );
 
-    // Drawing-mode path animation: override each item's position with the active
-    // coaching-draw step for the current time. For multi-step paths, only the latest
-    // started step should drive the pose; future steps must not overwrite earlier ones.
-    // After stepEndMs, the active step holds at the end of the path (t=1) until the
-    // next step begins.
+    // Drawing-mode path animation: override each item's position with the
+    // active motion step for the current time. Pose sampling reads ONLY motion
+    // drawings — annotation drawings can never influence entity positions.
+    // For multi-step paths, only the latest started step drives the pose;
+    // future steps must not overwrite earlier ones. After stepEndMs the active
+    // step holds at the end of the path (t=1) until the next step begins.
     if (drawingModeRef.current) {
-      const drawings = drawingsRef.current;
+      const motionDrawings = drawingsRef.current;
       const fullDurationMs = animationDataRef.current?.durationMs || (30 * 1000);
       const activeStepByItemId = new Map();
 
-      for (const d of drawings) {
-        if (d.source !== "coaching-draw" || !d.attachedPlayerId || !d.points?.length) continue;
+      for (const d of motionDrawings) {
+        const attachedId = d.attachedEntityId || d.attachedPlayerId;
+        if (!attachedId || !d.points?.length) continue;
         const stepStartMs = d.stepStartMs ?? 0;
         if (timeMs < stepStartMs) continue;
-        const existing = activeStepByItemId.get(d.attachedPlayerId);
+        const existing = activeStepByItemId.get(attachedId);
         if (!existing || stepStartMs >= existing.stepStartMs) {
-          activeStepByItemId.set(d.attachedPlayerId, {
+          activeStepByItemId.set(attachedId, {
             drawing: d,
             stepStartMs,
           });
@@ -1293,11 +1440,11 @@ function Slate({
       return { ...base, tracks: nextTracks };
     });
 
-    // Drawing-mode geometry (strokes, arrows, text, shapes) lives outside the
-    // animation tracks and needs an explicit flip so it stays aligned with
-    // the players/ball after a reflect.
-    drawingsState.flipAllDrawings(axis);
-  }, [entities.setPlayersById, entities.setBallsById, setAnimationDataWithMeta, drawingsState.flipAllDrawings]);
+    // Reflect every drawing — annotations AND motion paths — across the same
+    // axis so the play stays visually consistent.
+    annotationDrawingsState.flipAllDrawings(axis);
+    motionDrawingsState.flipAllDrawings(axis);
+  }, [entities.setPlayersById, entities.setBallsById, setAnimationDataWithMeta, annotationDrawingsState.flipAllDrawings, motionDrawingsState.flipAllDrawings]);
 
   const handleRotateLeft = useCallback(() => {
     rotateEntitiesByDelta(-90);
@@ -1330,8 +1477,10 @@ function Slate({
     engineRef.current.pause({ shouldLog: false });
     engineRef.current.seek(0, { shouldLog: false, source: "engine" });
     entities.resetSlateEntities();
-    drawingsState.resetDrawings();
-    setSelectedDrawingIds([]);
+    annotationDrawingsState.resetDrawings();
+    motionDrawingsState.resetDrawings();
+    setSelectedAnnotationDrawingIds([]);
+    setSelectedMotionDrawingIds([]);
     setTextEditing(null);
     slateHistory.clearSlateHistory();
     fieldViewport.resetFieldViewport();
@@ -1368,11 +1517,12 @@ function Slate({
         units: "px",
         notes: "World coordinates are centered; +x right, +y down.",
       },
-      drawings: drawingsState.drawings,
+      annotationDrawings: annotationDrawingsState.drawings,
+      motionDrawings: motionDrawingsState.drawings,
       editorMode: drawingMode ? "drawing" : "keyframe",
     });
     return result;
-  }, [playName, advancedSettings, entities, fieldViewport, animationData, speedMultiplier, autoplayEnabled, drawingsState.drawings, drawingMode]);
+  }, [playName, advancedSettings, entities, fieldViewport, animationData, speedMultiplier, autoplayEnabled, annotationDrawingsState.drawings, motionDrawingsState.drawings, drawingMode]);
 
   /**
    * Persists the current play data to localStorage for crash recovery.
@@ -1494,7 +1644,8 @@ function Slate({
         units: "px",
         notes: "World coordinates are centered; +x right, +y down.",
       },
-      drawings: drawingsState.drawings,
+      annotationDrawings: annotationDrawingsState.drawings,
+      motionDrawings: motionDrawingsState.drawings,
       editorMode: drawingMode ? "drawing" : "keyframe",
     });
     const exportJson = JSON.stringify(exportPayload);
@@ -3195,8 +3346,25 @@ function Slate({
       currentTimeRef.current = 0;
       latestPosesRef.current = {};
       animationRendererRef.current?.clearPoses?.();
-      drawingsState.applyDrawings(play.drawings || []);
-      setSelectedDrawingIds([]);
+      // Accept v3 (separated arrays), v2 (combined `drawings`), or no
+      // drawings at all. v2 plays are migrated by `splitLegacyDrawingsArray`.
+      if (Array.isArray(play.annotationDrawings) || Array.isArray(play.motionDrawings)) {
+        annotationDrawingsState.applyDrawings(play.annotationDrawings || []);
+        motionDrawingsState.applyDrawings(play.motionDrawings || []);
+      } else if (Array.isArray(play.drawings)) {
+        const { annotationDrawings, motionDrawings } = splitLegacyDrawingsArray(
+          play.drawings,
+          { playersById: nextPlayers, ballsById: nextBallsById },
+          importedAnimation?.durationMs ?? 30000
+        );
+        annotationDrawingsState.applyDrawings(annotationDrawings);
+        motionDrawingsState.applyDrawings(motionDrawings);
+      } else {
+        annotationDrawingsState.applyDrawings([]);
+        motionDrawingsState.applyDrawings([]);
+      }
+      setSelectedAnnotationDrawingIds([]);
+      setSelectedMotionDrawingIds([]);
       logAnimDebug(`import ok duration=${importedAnimation.durationMs} tracks=${trackCount}`);
       logAction("play_imported", { playerCount: Object.keys(nextPlayers).length, trackCount });
       logPersistence("loadPlayFromImport complete", {
@@ -3395,10 +3563,15 @@ function Slate({
         return;
       }
 
-      // Ctrl/Cmd+A selects all drawings in pen+select mode
+      // Ctrl/Cmd+A selects all drawings in the active scope (pen+select mode
+      // = annotation; drawingMode+select = motion). Cross-scope select-all is
+      // intentionally disallowed.
       if ((e.ctrlKey || e.metaKey) && e.key === "a" && canvasTool === "pen" && drawSubTool === "select") {
         e.preventDefault();
-        setSelectedDrawingIds(drawingsState.drawings.map((d) => d.id));
+        const scopeDrawings = drawingMode
+          ? motionDrawingsState.drawings
+          : annotationDrawingsState.drawings;
+        setSelectedDrawingIds(scopeDrawings.map((d) => d.id));
         return;
       }
 
@@ -3429,10 +3602,15 @@ function Slate({
       const isDeleteKey = e.key === "Delete" || e.key === "Backspace";
       if (!isDeleteKey) return;
 
-      // Delete selected drawing elements
+      // Delete selected drawing elements — scope-aware so an annotation
+      // delete never touches motion drawings (and vice versa).
       if (selectedDrawingIds.length > 0 && canvasTool === "pen" && drawSubTool === "select") {
         e.preventDefault();
-        drawingsState.removeMultipleDrawings(selectedDrawingIds);
+        if (drawingMode) {
+          motionDrawingsState.removeMultipleDrawings(selectedDrawingIds);
+        } else {
+          annotationDrawingsState.removeMultipleDrawings(selectedDrawingIds);
+        }
         setSelectedDrawingIds([]);
         return;
       }
@@ -3449,7 +3627,9 @@ function Slate({
     selectedDrawingIds,
     canvasTool,
     drawSubTool,
-    drawingsState,
+    drawingMode,
+    annotationDrawingsState,
+    motionDrawingsState,
     exportModalOpen,
     isExporting,
     screenshotMode,
@@ -3574,7 +3754,12 @@ function Slate({
           advancedSettings={advancedSettings}
           animationRendererRef={animationRendererRef}
           onAnimationRendererReady={handleAnimationRendererReady}
-          drawings={drawingsState.drawings}
+          // Both scopes' arrays are passed in. Canvas renders both, but only
+          // the active-scope CRUD callbacks fire from pointer interactions.
+          drawings={combinedDrawings}
+          annotationDrawings={annotationDrawingsState.drawings}
+          motionDrawings={motionDrawingsState.drawings}
+          activeDrawingUi={activeDrawingUi}
           hideAllDrawings={hideAllDrawings}
           drawingsRevealProgress={drawingsRevealProgress}
           drawSubTool={drawingMode && animDrawSubTool ? animDrawSubTool : drawSubTool}
@@ -3592,12 +3777,12 @@ function Slate({
           drawShapeStrokeColor={drawShapeStrokeColor}
           drawShapeFill={drawShapeFill}
           onAddDrawing={addDrawingTagged}
-          onRemoveDrawing={drawingsState.removeDrawing}
-          onRemoveMultipleDrawings={drawingsState.removeMultipleDrawings}
-          onUpdateDrawing={drawingsState.updateDrawing}
+          onRemoveDrawing={drawingMode ? motionDrawingsState.removeDrawing : annotationDrawingsState.removeDrawing}
+          onRemoveMultipleDrawings={drawingMode ? motionDrawingsState.removeMultipleDrawings : annotationDrawingsState.removeMultipleDrawings}
+          onUpdateDrawing={drawingMode ? motionDrawingsState.updateDrawing : annotationDrawingsState.updateDrawing}
           selectedDrawingIds={selectedDrawingIds}
           onSelectedDrawingIdsChange={setSelectedDrawingIds}
-          onUpdateMultipleDrawingsNoHistory={drawingsState.updateMultipleDrawingsNoHistory}
+          onUpdateMultipleDrawingsNoHistory={drawingMode ? motionDrawingsState.updateMultipleDrawingsNoHistory : annotationDrawingsState.updateMultipleDrawingsNoHistory}
           historyApiRef={historyApiRef}
           drawingSelectionRef={drawingSelectionRef}
           textEditing={textEditing}
@@ -3850,12 +4035,21 @@ function Slate({
             getAuthoritativeTimeMs={getAuthoritativeTimeMs}
             onDragStateChange={handleTimelineDragStateChange}
             variant={testVariant ? "test" : "default"}
-            drawings={drawingMode ? drawingsState.drawings : undefined}
-            onUpdateDrawing={drawingMode ? drawingsState.updateDrawing : undefined}
-            onUpdateDrawingNoHistory={drawingMode ? drawingsState.updateDrawingNoHistory : undefined}
+            // Motion step lanes only render in drawing mode and only consume
+            // motion drawings — annotations never appear as step blocks.
+            drawings={drawingMode ? motionDrawingsState.drawings : undefined}
+            onUpdateDrawing={drawingMode ? motionDrawingsState.updateDrawing : undefined}
+            onUpdateDrawingNoHistory={drawingMode ? motionDrawingsState.updateDrawingNoHistory : undefined}
+            // Annotation visibility lanes render whenever annotations are
+            // selected, in any slate mode — including drawing mode.
+            annotationDrawings={annotationDrawingsState.drawings}
+            selectedAnnotationDrawingIds={selectedAnnotationDrawingIds}
+            onUpdateAnnotationDrawing={annotationDrawingsState.updateDrawing}
+            onUpdateAnnotationDrawingNoHistory={annotationDrawingsState.updateDrawingNoHistory}
+            activeDrawingUi={activeDrawingUi}
             onBeginHistoryGroup={drawingMode ? slateHistory.beginGroup : undefined}
             onEndHistoryGroup={drawingMode ? slateHistory.endGroup : undefined}
-            onAddStep={drawingMode ? () => setAnimDrawSubTool((prev) => prev ? null : "arrow") : undefined}
+            onAddStep={drawingMode ? () => setMotionDrawSubTool((prev) => prev ? null : "arrow") : undefined}
             selectedPlayerIds={drawingMode ? selectedDrawingModePlayerIds : undefined}
             playersById={drawingMode ? entities.playersById : undefined}
             drawingMode={drawingMode}
@@ -3970,6 +4164,9 @@ function Slate({
         onReflectX={() => handleReflectAxis("x")}
         onReflectY={() => handleReflectAxis("y")}
         canvasTool={canvasTool}
+        // Scope identity: drawing mode → motion, otherwise → annotation.
+        // RightPanel uses this to decide which palette/list sections to render.
+        activeDrawingUi={activeDrawingUi}
         animDrawSubTool={drawingMode ? animDrawSubTool : null}
         drawSubTool={drawingMode && animDrawSubTool ? animDrawSubTool : drawSubTool}
         drawColor={drawColor}
@@ -3990,14 +4187,22 @@ function Slate({
         onDrawArrowTipChange={setDrawArrowTip}
         selectedDrawing={selectedDrawing}
         selectedDrawings={selectedDrawings}
-        onUpdateDrawing={drawingsState.updateDrawing}
-        onUpdateMultipleDrawings={drawingsState.updateMultipleDrawings}
-        drawings={drawingsState.drawings}
+        // Scope-routed CRUD: only the active scope's hooks fire.
+        onUpdateDrawing={drawingMode ? motionDrawingsState.updateDrawing : annotationDrawingsState.updateDrawing}
+        onUpdateMultipleDrawings={drawingMode ? motionDrawingsState.updateMultipleDrawings : annotationDrawingsState.updateMultipleDrawings}
+        // Both scope arrays + selections, so the panel can show per-scope lists.
+        annotationDrawings={annotationDrawingsState.drawings}
+        motionDrawings={motionDrawingsState.drawings}
+        selectedAnnotationDrawingIds={selectedAnnotationDrawingIds}
+        selectedMotionDrawingIds={selectedMotionDrawingIds}
+        onSelectedAnnotationDrawingIdsChange={setSelectedAnnotationDrawingIds}
+        onSelectedMotionDrawingIdsChange={setSelectedMotionDrawingIds}
+        drawings={drawingMode ? motionDrawingsState.drawings : annotationDrawingsState.drawings}
         selectedDrawingIds={selectedDrawingIds}
         onSelectedDrawingIdsChange={setSelectedDrawingIds}
         onCanvasToolChange={handleToolChange}
         onDrawSubToolChange={handleRightPanelSubToolChange}
-        onRemoveDrawing={drawingsState.removeDrawing}
+        onRemoveDrawing={drawingMode ? motionDrawingsState.removeDrawing : annotationDrawingsState.removeDrawing}
         eraserSize={eraserSize}
         onEraserSizeChange={handleEraserSizeChange}
         drawShapeType={drawShapeType}
@@ -4032,7 +4237,9 @@ function Slate({
         onTogglePlayerHidden={entities.handleTogglePlayerHidden}
         onToggleColorHidden={entities.handleToggleColorHidden}
         onToggleBallHidden={entities.handleToggleBallHidden}
-        onToggleDrawingHidden={drawingsState.toggleDrawingHidden}
+        onToggleDrawingHidden={drawingMode ? motionDrawingsState.toggleDrawingHidden : annotationDrawingsState.toggleDrawingHidden}
+        onToggleAnnotationDrawingHidden={annotationDrawingsState.toggleDrawingHidden}
+        onToggleMotionDrawingHidden={motionDrawingsState.toggleDrawingHidden}
         hideAllDrawings={hideAllDrawings}
         onHideAllDrawingsChange={setHideAllDrawings}
         allPlayersDisplay={entities.allPlayersDisplay}

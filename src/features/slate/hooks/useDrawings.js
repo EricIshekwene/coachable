@@ -3,14 +3,21 @@ import { log as logDrawDebug } from "../../../canvas/drawDebugLogger";
 import { flipDrawing } from "../../../canvas/drawingGeometry";
 
 /**
- * Manages the drawings state array (static annotations on the canvas).
- * Provides CRUD operations and snapshot/restore for history integration.
+ * Manages a single drawing-scope state array (annotation or motion).
  *
- * Drawing shape: { id, type: "stroke"|"arrow"|"text", points, color, strokeWidth, text, fontSize, x, y }
+ * Each instance is bound to one `kind` ("annotation" or "motion"). New IDs are
+ * prefixed by kind so two instances can never collide on the same id.
+ * Legacy `drawing-{n}` ids from imported plays are preserved as-is — the id
+ * counter is bumped past the highest legacy id on apply.
+ *
+ * @param {object} args
+ * @param {object} args.historyApiRef - ref to history API for pushHistory()
+ * @param {"annotation"|"motion"} [args.kind] - drawing scope this instance owns
  */
-export function useDrawings({ historyApiRef }) {
+export function useDrawings({ historyApiRef, kind = "annotation" }) {
   const [drawings, setDrawings] = useState([]);
   const nextIdRef = useRef(1);
+  const idPrefix = kind === "motion" ? "mdraw" : "adraw";
 
   const summarizeDrawing = (drawing) => {
     if (!drawing) return "drawing=unknown";
@@ -27,7 +34,7 @@ export function useDrawings({ historyApiRef }) {
   };
 
   const generateId = () => {
-    const id = `drawing-${nextIdRef.current}`;
+    const id = `${idPrefix}-${nextIdRef.current}`;
     nextIdRef.current += 1;
     return id;
   };
@@ -35,11 +42,14 @@ export function useDrawings({ historyApiRef }) {
   const addDrawing = useCallback((data) => {
     historyApiRef.current?.pushHistory?.();
     const id = generateId();
-    const drawing = { id, ...data };
+    // Stamp `kind` on every drawing so downstream consumers can discriminate
+    // without re-running heuristics. Caller-provided kind wins so the schema
+    // helpers can override (e.g., when applying a migrated snapshot).
+    const drawing = { kind, id, ...data };
     setDrawings((prev) => [...prev, drawing]);
-    logDrawDebug(`addDrawing id=${id} ${summarizeDrawing(drawing)}`);
+    logDrawDebug(`addDrawing kind=${kind} id=${id} ${summarizeDrawing(drawing)}`);
     return id;
-  }, [historyApiRef]);
+  }, [historyApiRef, kind, idPrefix]);
 
   const removeDrawing = useCallback((id) => {
     historyApiRef.current?.pushHistory?.();
@@ -171,8 +181,8 @@ export function useDrawings({ historyApiRef }) {
   const resetDrawings = useCallback(() => {
     setDrawings([]);
     nextIdRef.current = 1;
-    logDrawDebug("resetDrawings");
-  }, []);
+    logDrawDebug(`resetDrawings kind=${kind}`);
+  }, [kind]);
 
   const snapshotDrawings = useCallback(() => {
     return drawings.map((d) => ({ ...d }));
@@ -180,15 +190,18 @@ export function useDrawings({ historyApiRef }) {
 
   const applyDrawings = useCallback((snapshot) => {
     setDrawings(snapshot || []);
+    // Scan every id format we might encounter — legacy `drawing-N`, the new
+    // per-kind `adraw-N` / `mdraw-N` — and bump the counter past the highest.
     const maxId = (snapshot || []).reduce((max, d) => {
-      const match = d.id?.match(/drawing-(\d+)/);
+      const match = d.id?.match(/(?:drawing|adraw|mdraw)-(\d+)/);
       return match ? Math.max(max, Number(match[1])) : max;
     }, 0);
     nextIdRef.current = maxId + 1;
-    logDrawDebug(`applyDrawings count=${(snapshot || []).length} nextId=${nextIdRef.current}`);
-  }, []);
+    logDrawDebug(`applyDrawings kind=${kind} count=${(snapshot || []).length} nextId=${nextIdRef.current}`);
+  }, [kind]);
 
   return {
+    kind,
     drawings,
     addDrawing,
     removeDrawing,
