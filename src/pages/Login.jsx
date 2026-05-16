@@ -76,7 +76,7 @@ export default function Login() {
             {sportSlug ? `Back to ${sportSlug.replace(/-/g, " ")} home` : "Back to home"}
           </Link>
 
-          <img src={logo} alt="Coachable" className="mb-10 h-7" />
+          <img src={logo} alt="Coachable" className="mb-10 block h-7 w-auto self-start object-contain" />
 
           <h1 className="font-Manrope text-2xl font-bold tracking-tight text-BrandBlack">
             Welcome back
@@ -140,7 +140,7 @@ export default function Login() {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/80" />
         <div className="relative z-10 flex h-full w-full flex-col items-start justify-end px-10 pb-16 lg:px-16 lg:pb-20">
-          <img src={whiteLogo} alt="Coachable" className="absolute left-10 top-10 h-7 opacity-70 lg:left-16 lg:top-14" />
+          <img src={whiteLogo} alt="Coachable" className="absolute left-10 top-10 block h-7 w-auto object-contain opacity-70 lg:left-16 lg:top-14" />
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-BrandOrange">
             The modern playbook
           </p>

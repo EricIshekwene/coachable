@@ -115,7 +115,7 @@ export default function Onboarding() {
               <FiArrowLeft className="text-sm" /> Back to home
             </Link>
 
-            <img src={logo} alt="Coachable" className="mb-10 h-7" />
+            <img src={logo} alt="Coachable" className="mb-10 block h-7 w-auto self-start object-contain" />
 
             <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-BrandOrange/10">
               <FaRegHandshake className="text-2xl text-BrandOrange" />
@@ -157,7 +157,7 @@ export default function Onboarding() {
           <img src={brandImage} alt="" className="absolute inset-0 h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/80" />
           <div className="relative z-10 flex h-full w-full flex-col items-start justify-end px-10 pb-16 lg:px-14 lg:pb-20">
-            <img src={whiteLogo} alt="Coachable" className="absolute left-10 top-10 h-7 opacity-70 lg:left-14 lg:top-14" />
+            <img src={whiteLogo} alt="Coachable" className="absolute left-10 top-10 block h-7 w-auto object-contain opacity-70 lg:left-14 lg:top-14" />
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-BrandOrange">
               Welcome to the team
             </p>
@@ -192,7 +192,7 @@ export default function Onboarding() {
             <FiArrowLeft className="text-sm" /> Back to home
           </Link>
 
-          <img src={logo} alt="Coachable" className="mb-10 h-7" />
+          <img src={logo} alt="Coachable" className="mb-10 block h-7 w-auto self-start object-contain" />
 
           <h1 className="font-Manrope text-2xl font-bold tracking-tight text-BrandBlack">
             Get started
@@ -357,7 +357,7 @@ export default function Onboarding() {
         <img src={brandImage} alt="" className="absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/80" />
         <div className="relative z-10 flex h-full w-full flex-col items-start justify-end px-10 pb-16 lg:px-14 lg:pb-20">
-          <img src={whiteLogo} alt="Coachable" className="absolute left-10 top-10 h-7 opacity-70 lg:left-14 lg:top-14" />
+          <img src={whiteLogo} alt="Coachable" className="absolute left-10 top-10 block h-7 w-auto object-contain opacity-70 lg:left-14 lg:top-14" />
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-BrandOrange">
             Set up your space
           </p>

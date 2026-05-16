@@ -8,7 +8,7 @@ export default function NotFound() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center overflow-y-auto bg-BrandBlack px-6 py-16 text-center">
       <Link to="/" className="mb-12">
-        <img src={logo} alt="Coachable" className="h-8 opacity-90" />
+        <img src={logo} alt="Coachable" className="block h-8 w-auto object-contain opacity-90" />
       </Link>
 
       <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-BrandOrange">

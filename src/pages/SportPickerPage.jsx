@@ -50,7 +50,7 @@ export default function SportPickerPage() {
           </Link>
 
           {/* Logo */}
-          <img src={whiteLogo} alt="Coachable" className="mb-8 h-6 self-start opacity-70" />
+          <img src={whiteLogo} alt="Coachable" className="mb-8 block h-6 w-auto self-start object-contain opacity-70" />
 
           {/* Header */}
           <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.25em] text-BrandOrange">

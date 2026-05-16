@@ -443,7 +443,7 @@ export default function Plays() {
     const isFolder = type === "folder";
     const play = !isFolder ? plays.find((p) => p.id === id) : null;
     return (
-      <div ref={menuRef} className="absolute right-0 bottom-full z-30 mb-1 w-48 rounded-lg border border-BrandGray2/20 bg-BrandBlack shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div ref={menuRef} className="absolute right-0 bottom-full z-50 mb-1 w-48 rounded-lg border border-BrandGray2/20 bg-BrandBlack shadow-xl" onClick={(e) => e.stopPropagation()}>
         {!isFolder && (<>
           <button onClick={() => navigate(`/app/plays/${id}`)} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiExternalLink className="text-sm" /> Open</button>
           <button onClick={() => { handleToggleFavorite(id); setMenuOpen(null); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiStar className={`text-sm ${play?.favorited ? "fill-BrandOrange text-BrandOrange" : ""}`} />{play?.favorited ? "Unfavorite" : "Favorite"}</button>
@@ -600,7 +600,7 @@ export default function Plays() {
       {recentlyEdited.length > 0 && (
         <div className="mt-6">
           <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-BrandGray2">Recently Edited</p>
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="hide-scroll flex gap-2 overflow-x-auto pb-1">
             {recentlyEdited.map((play) => (
               <button
                 key={play.id}
@@ -632,7 +632,9 @@ export default function Plays() {
                   onDragOver={(e) => handleDragOver(e, folder.id)}
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, folder.id)}
-                  className={`group relative cursor-pointer overflow-hidden rounded-2xl border transition ${
+                  className={`group relative cursor-pointer rounded-2xl border transition ${
+                    menuOpen === folder.id ? "z-20 overflow-visible" : "overflow-hidden"
+                  } ${
                     dragOverFolder === folder.id
                       ? "border-BrandOrange/60 bg-BrandOrange/8 shadow-[0_0_0_2px_rgba(255,122,24,0.18)]"
                       : "border-BrandGray2/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0)),rgba(24,26,31,0.96)] hover:border-BrandOrange/25 hover:bg-[linear-gradient(180deg,rgba(255,122,24,0.05),rgba(255,255,255,0.02)),rgba(24,26,31,0.98)]"
@@ -749,7 +751,9 @@ export default function Plays() {
               draggable={isCoach && !bulkMode}
               onDragStart={(e) => handleDragStart(e, play.id)}
               onDragEnd={handleDragEnd}
-              className={`group relative flex cursor-grab flex-col overflow-hidden rounded-2xl border transition active:cursor-grabbing ${
+              className={`group relative flex cursor-grab flex-col rounded-2xl border transition active:cursor-grabbing ${
+                menuOpen === play.id ? "z-20 overflow-visible" : "overflow-hidden"
+              } ${
                 bulkMode && bulkSelected.has(play.id)
                   ? "border-BrandOrange/50 bg-BrandOrange/6 shadow-[0_0_0_1px_rgba(255,122,24,0.16)]"
                   : "border-BrandGray2/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0)),rgba(24,26,31,0.96)] hover:border-BrandOrange/25 hover:shadow-[0_18px_50px_rgba(0,0,0,0.22)]"

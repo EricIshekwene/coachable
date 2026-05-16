@@ -134,7 +134,7 @@ export default function VerifyEmail() {
         }}
       >
         <div className="mx-auto flex min-h-full w-full max-w-md flex-col justify-start md:justify-center">
-          <img src={logo} alt="Coachable" className="mb-10 h-7" />
+          <img src={logo} alt="Coachable" className="mb-10 block h-7 w-auto self-start object-contain" />
 
           <h1 className="font-Manrope text-2xl font-bold tracking-tight text-BrandBlack">
             Check your email
@@ -190,7 +190,7 @@ export default function VerifyEmail() {
 
       {/* Right - Brand panel */}
       <div className="hidden flex-col items-center justify-center bg-BrandBlack md:flex md:w-1/2">
-        <img src={whiteLogo} alt="Coachable" className="mb-6 h-10 opacity-60" />
+        <img src={whiteLogo} alt="Coachable" className="mb-6 block h-10 w-auto object-contain opacity-60" />
         <p className="max-w-xs text-center text-sm leading-relaxed text-BrandGray2">
           The modern playbook platform for coaches and teams.
         </p>

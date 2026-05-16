@@ -519,7 +519,7 @@ export default function Landing({ sport = null }) {
       <footer className="bg-BrandBlack border-t border-BrandGray2/20 py-12 px-6 md:px-12 lg:px-20">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-10">
           <div className="md:col-span-1">
-            <img src={logo} alt="Coachable" className="h-7 mb-4" />
+            <img src={logo} alt="Coachable" className="mb-4 block h-7 w-auto object-contain" />
             <p className="text-BrandGray text-sm leading-relaxed">
               Elevating the world's most competitive teams through tactical digital innovation.
             </p>

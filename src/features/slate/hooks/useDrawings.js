@@ -82,6 +82,22 @@ export function useDrawings({ historyApiRef }) {
   }, [historyApiRef]);
 
   /**
+   * Update a single drawing without pushing history. Pair with explicit
+   * `historyApiRef.current.beginGroup()` / `endGroup()` (or a single
+   * `pushHistory()` at gesture start) when the caller manages history itself —
+   * e.g. timeline step-block drag, which fires many updates per pointer-move.
+   */
+  const updateDrawingNoHistory = useCallback((id, changes) => {
+    setDrawings((prev) => {
+      const index = prev.findIndex((d) => d.id === id);
+      if (index === -1) return prev;
+      const next = [...prev];
+      next[index] = { ...next[index], ...changes };
+      return next;
+    });
+  }, []);
+
+  /**
    * Update multiple drawings in a single setState call WITHOUT pushing history.
    * Used during drag/resize/rotate gestures where history was pushed at gesture start.
    * @param {Map<string, Object>|Object} idToChanges
@@ -165,6 +181,7 @@ export function useDrawings({ historyApiRef }) {
     removeDrawing,
     removeMultipleDrawings,
     updateDrawing,
+    updateDrawingNoHistory,
     updateMultipleDrawings,
     updateMultipleDrawingsNoHistory,
     toggleDrawingHidden,

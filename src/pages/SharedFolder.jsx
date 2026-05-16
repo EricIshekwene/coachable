@@ -114,7 +114,7 @@ export default function SharedFolder() {
       {/* Top bar */}
       <nav className="flex items-center justify-between px-6 py-4 md:px-12">
         <Link to="/">
-          <img src={logo} alt="Coachable" className="h-9 md:h-10" />
+          <img src={logo} alt="Coachable" className="block h-9 w-auto object-contain md:h-10" />
         </Link>
         {user ? (
           <div className="flex items-center gap-4">

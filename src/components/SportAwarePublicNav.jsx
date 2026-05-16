@@ -72,7 +72,7 @@ export default function SportAwarePublicNav({ sport = null, activePage = null })
         {/* Logo — links back to sport home or /home */}
         <div className="flex flex-1 items-center">
           <Link to={homeHref}>
-            <img src={logo} alt="Coachable" className="h-7 md:h-8" />
+            <img src={logo} alt="Coachable" className="block h-7 w-auto object-contain md:h-8" />
           </Link>
         </div>
 

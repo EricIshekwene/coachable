@@ -619,8 +619,13 @@ function Slate({
   const { logAction, actionLog } = useSlateActionLog();
 
   useEffect(() => {
-    historyApiRef.current = { pushHistory: slateHistory.pushHistory };
-  }, [slateHistory.pushHistory]);
+    historyApiRef.current = {
+      pushHistory: slateHistory.pushHistory,
+      beginGroup: slateHistory.beginGroup,
+      endGroup: slateHistory.endGroup,
+      withGroup: slateHistory.withGroup,
+    };
+  }, [slateHistory.pushHistory, slateHistory.beginGroup, slateHistory.endGroup, slateHistory.withGroup]);
 
   const setAnimationDataWithMeta = useCallback((updater) => {
     setAnimationData((prev) => {

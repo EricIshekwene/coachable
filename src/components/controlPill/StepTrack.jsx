@@ -22,22 +22,58 @@ const BODY_DRAG_THRESHOLD_PX = 5;
  *   durationMs: number,
  *   currentTimeMs: number,
  *   onUpdateDrawing: (id: string, patch: object) => void,
+ *   onUpdateDrawingNoHistory?: (id: string, patch: object) => void,
+ *   onBeginHistoryGroup?: () => void,
+ *   onEndHistoryGroup?: () => void,
  *   onSeek: (timeMs: number) => void,
  *   playersById: object,
  * }} props
  */
-export default function StepTrack({ drawings, durationMs, currentTimeMs = 0, onUpdateDrawing, onSeek, playersById }) {
+export default function StepTrack({
+  drawings,
+  durationMs,
+  currentTimeMs = 0,
+  onUpdateDrawing,
+  onUpdateDrawingNoHistory,
+  onBeginHistoryGroup,
+  onEndHistoryGroup,
+  onSeek,
+  playersById,
+}) {
   const steps = (drawings || [])
     .filter((d) => d.source === "coaching-draw" && d.attachedPlayerId)
     .sort((a, b) => (a.stepStartMs ?? 0) - (b.stepStartMs ?? 0));
 
   const containerRef = useRef(null);
-  // { id, pointerId, type: "left-edge"|"right-edge"|"body", offsetMs }
+  // { id, pointerId, type: "left-edge"|"right-edge"|"body", offsetMs, groupOpen }
   const dragRef = useRef(null);
   // { id, pointerId, startClientX, offsetMs } while deciding whether a body press is a click or a drag
   const bodyPressRef = useRef(null);
   // { pointerId } when scrubbing empty space
   const scrubRef = useRef(null);
+
+  /** Open a history group for the current drag if one is not already open. */
+  const ensureHistoryGroupOpen = useCallback(() => {
+    const drag = dragRef.current;
+    if (!drag || drag.groupOpen) return;
+    onBeginHistoryGroup?.();
+    drag.groupOpen = true;
+  }, [onBeginHistoryGroup]);
+
+  /** Close the history group if open. Called on pointer up / cancel. */
+  const closeHistoryGroupIfOpen = useCallback(() => {
+    const drag = dragRef.current;
+    if (drag?.groupOpen) {
+      onEndHistoryGroup?.();
+      drag.groupOpen = false;
+    }
+  }, [onEndHistoryGroup]);
+
+  /** Apply a step patch — uses no-history during drag, falls back to history-pushing update otherwise. */
+  const applyStepPatch = useCallback((id, patch) => {
+    const update = onUpdateDrawingNoHistory || onUpdateDrawing;
+    update?.(id, patch);
+  }, [onUpdateDrawing, onUpdateDrawingNoHistory]);
 
   /** Convert a clientX position into a timeline millisecond value. */
   const timeFromClientX = useCallback(
@@ -57,7 +93,7 @@ export default function StepTrack({ drawings, durationMs, currentTimeMs = 0, onU
   const startBodyDrag = useCallback((step, pointerId, clientX) => {
     const startMs = step.stepStartMs ?? 0;
     const offsetMs = timeFromClientX(clientX) - startMs;
-    dragRef.current = { id: step.id, pointerId, type: "body", offsetMs };
+    dragRef.current = { id: step.id, pointerId, type: "body", offsetMs, groupOpen: false };
     bodyPressRef.current = null;
   }, [timeFromClientX]);
 
@@ -74,7 +110,8 @@ export default function StepTrack({ drawings, durationMs, currentTimeMs = 0, onU
       dragRef.current = null;
       return;
     }
-    dragRef.current = { id: step.id, pointerId: e.pointerId, type, offsetMs: 0 };
+    // Edge-handle drags begin immediately — no click-vs-drag disambiguation.
+    dragRef.current = { id: step.id, pointerId: e.pointerId, type, offsetMs: 0, groupOpen: false };
     bodyPressRef.current = null;
   }, []);
 
@@ -101,31 +138,37 @@ export default function StepTrack({ drawings, durationMs, currentTimeMs = 0, onU
     const prevEnd = idx > 0 ? (steps[idx - 1].stepEndMs ?? durationMs) : 0;
     const nextStart = idx < steps.length - 1 ? (steps[idx + 1].stepStartMs ?? durationMs) : durationMs;
 
+    // Open the history group on the first actual update of this drag, so
+    // dozens of pointer-move emissions collapse into one undo entry.
+    ensureHistoryGroupOpen();
+
     if (drag.type === "right-edge") {
       const newEnd = Math.round(Math.min(nextStart, Math.max(startMs + MIN_STEP_MS, timeMs)));
-      onUpdateDrawing?.(step.id, { stepEndMs: newEnd });
+      applyStepPatch(step.id, { stepEndMs: newEnd });
     } else if (drag.type === "left-edge") {
       const newStart = Math.round(Math.max(prevEnd, Math.min(endMs - MIN_STEP_MS, timeMs)));
-      onUpdateDrawing?.(step.id, { stepStartMs: newStart });
+      applyStepPatch(step.id, { stepStartMs: newStart });
     } else if (drag.type === "body") {
       const newStart = Math.round(Math.max(prevEnd, Math.min(nextStart - spanMs, timeMs - drag.offsetMs)));
-      onUpdateDrawing?.(step.id, { stepStartMs: newStart, stepEndMs: newStart + spanMs });
+      applyStepPatch(step.id, { stepStartMs: newStart, stepEndMs: newStart + spanMs });
     }
-  }, [durationMs, timeFromClientX, onUpdateDrawing, startBodyDrag, steps]);
+  }, [durationMs, timeFromClientX, applyStepPatch, ensureHistoryGroupOpen, startBodyDrag, steps]);
 
   const handlePointerUp = useCallback((e, step) => {
     e.currentTarget.releasePointerCapture(e.pointerId);
     const bodyPress = bodyPressRef.current;
     if (bodyPress && bodyPress.id === step.id && bodyPress.pointerId === e.pointerId) {
       bodyPressRef.current = null;
+      closeHistoryGroupIfOpen();
       dragRef.current = null;
       onSeek?.(Math.round(timeFromClientX(e.clientX)));
       return;
     }
     if (!dragRef.current || dragRef.current.id !== step.id || dragRef.current.pointerId !== e.pointerId) return;
+    closeHistoryGroupIfOpen();
     dragRef.current = null;
     bodyPressRef.current = null;
-  }, [timeFromClientX, onSeek]);
+  }, [timeFromClientX, onSeek, closeHistoryGroupIfOpen]);
 
   // --- Empty-space scrub handlers ---
 

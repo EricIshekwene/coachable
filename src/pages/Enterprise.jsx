@@ -318,7 +318,7 @@ export default function Enterprise() {
       <footer className="border-t border-BrandGray2/10 bg-BrandBlack py-12">
         <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-20">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <img src={logo} alt="Coachable" className="h-7" />
+            <img src={logo} alt="Coachable" className="block h-7 w-auto object-contain" />
             <p className="text-sm text-BrandGray">© 2026 Coachable. All rights reserved.</p>
             <div className="flex gap-6 text-sm text-BrandGray">
               <Link to="/home" className="hover:text-white transition">Home</Link>
