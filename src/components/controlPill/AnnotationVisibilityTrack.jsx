@@ -187,19 +187,27 @@ export default function AnnotationVisibilityTrack({
 
   if (!lanes.length) return null;
 
+  // Stack lanes vertically so multi-select doesn't overlap. Each lane is
+  // LANE_HEIGHT tall with LANE_GAP between rows; the container grows to fit.
+  const LANE_HEIGHT = 18;
+  const LANE_GAP = 2;
+  const TOP_PADDING = 2;
+  const containerHeight = TOP_PADDING * 2 + lanes.length * LANE_HEIGHT + Math.max(0, lanes.length - 1) * LANE_GAP;
+
   return (
     <div
       ref={containerRef}
       className="relative w-full select-none touch-none"
-      style={{ height: 26, cursor: "pointer" }}
+      style={{ height: containerHeight, cursor: "pointer" }}
       onPointerDown={handleContainerPointerDown}
       onPointerMove={handleContainerPointerMove}
       onPointerUp={handleContainerPointerUp}
       onPointerCancel={handleContainerPointerUp}
     >
-      {lanes.map((lane) => {
+      {lanes.map((lane, rowIndex) => {
         const leftPct = TRACK_VISUAL_START_PERCENT + (lane.startMs / durationMs) * TRACK_VISUAL_SPAN_PERCENT;
         const widthPct = ((lane.endMs - lane.startMs) / durationMs) * TRACK_VISUAL_SPAN_PERCENT;
+        const top = TOP_PADDING + rowIndex * (LANE_HEIGHT + LANE_GAP);
         // Visually distinct from motion step blocks: cool/cyan vs warm/orange.
         const color = "#7AD3FF";
         const labelText = lane.drawing.type === "text"
@@ -217,8 +225,8 @@ export default function AnnotationVisibilityTrack({
             style={{
               left: `${leftPct}%`,
               width: `${Math.max(0, widthPct)}%`,
-              top: 2,
-              height: 18,
+              top,
+              height: LANE_HEIGHT,
               backgroundColor: color + "28",
               border: `1px dashed ${color}90`,
               borderRadius: 4,
