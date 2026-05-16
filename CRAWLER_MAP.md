@@ -62,7 +62,8 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 | "playback controls" (play/pause) | [src/components/controlPill/PlaybackControls.jsx](src/components/controlPill/PlaybackControls.jsx) |
 | "speed slider" | [src/components/controlPill/SpeedSlider.jsx](src/components/controlPill/SpeedSlider.jsx) |
 | "time pill" (current time chip) | [src/components/controlPill/TimePill.jsx](src/components/controlPill/TimePill.jsx) |
-| "step track" | [src/components/controlPill/StepTrack.jsx](src/components/controlPill/StepTrack.jsx) |
+| "step track" (motion steps) | [src/components/controlPill/StepTrack.jsx](src/components/controlPill/StepTrack.jsx) |
+| "annotation visibility track" (timeline window for annotations) | [src/components/controlPill/AnnotationVisibilityTrack.jsx](src/components/controlPill/AnnotationVisibilityTrack.jsx) |
 | "control pill dropdown" | [src/components/controlPill/DropdownMenu.jsx](src/components/controlPill/DropdownMenu.jsx) |
 | "control pill debug overlay" | [src/components/controlPill/DebugOverlay.jsx](src/components/controlPill/DebugOverlay.jsx) |
 

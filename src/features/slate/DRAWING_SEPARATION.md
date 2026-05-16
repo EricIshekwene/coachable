@@ -114,17 +114,40 @@ play: {
 - When importing or migrating legacy data, route it through `splitLegacyDrawingsArray` so attachment fields, ids, and timing defaults are resolved consistently.
 - When building palettes or right-panel sections, gate rendering on `activeDrawingUi` (or equivalently `!drawingMode` vs `drawingMode`) so only the relevant scope's UI appears.
 
-## What is intentionally deferred (still pending on this branch)
+## Additional changes that landed after the initial commits
 
-The original plan also called for these changes; they are scoped out of the initial commits and tracked as follow-up work. The architecture in this branch is the foundation they would build on — none of them require revisiting the data model.
+The items below were originally deferred and have since shipped on this same branch.
 
-1. **Right-panel scope routing.** `RightPanel.jsx` already receives `activeDrawingUi`, both selection sets, and both arrays. `DrawingStyleSection` and `DrawingObjectsList` still operate on a single combined list; they need to be split into annotation and motion variants (or made scope-aware) so the sections shown match the active scope and never display drawings from the other one.
-2. **Timeline visibility tracks.** Annotation drawings have `visibleStartMs` / `visibleEndMs` in the data model, but the timeline does not yet render visibility tracks for them. The plan calls for `RangeTrackLane.jsx` (generic single-lane draggable range block) and `AnnotationVisibilityTrack.jsx` (annotation-specific wrapper). `StepTrack.jsx` should be refactored to consume motion-only data through `RangeTrackLane`. `ControlPill.jsx` already accepts the new props (`annotationDrawings`, `selectedAnnotationDrawingIds`, `onUpdateAnnotationDrawing*`, `activeDrawingUi`) and is wired from `Slate.jsx` — it just doesn't render the annotation lane yet.
-3. **`SlateRecord.jsx` mirror.** Record mode still uses the unified `useDrawings` instance. It needs the same dual-state + scope-gate refactor as `Slate.jsx`. Until then, record mode is on the legacy single-array model.
-4. **`SlateDrawing.jsx` mirror.** This is a thin wrapper today; once SlateRecord is updated, double-check this one still passes through correctly.
-5. **`PlayPreviewCard.jsx`.** Preview currently reads `play.drawings`. It must be updated to read `play.annotationDrawings` + `play.motionDrawings`, animate poses from motion only, and filter annotation overlays through `isAnnotationDrawingVisibleAtTime(displayTimeMs, durationMs)`.
+### Right-panel scope routing
+`RightPanel.jsx` reads `activeDrawingUi` and gates both `DrawingStyleSection` and `DrawingObjectsList` on it.
 
-When you pick any of these up, follow the data-model and rules sections above — they are the long-term contract.
+- `DrawingObjectsList` accepts `drawingScope`. Annotation list is labeled **Annotations**; motion list is labeled **Motion Steps**. Motion entries are detected via `kind === "motion"` with the legacy source/entity fallback so v2 plays still display correctly.
+- `DrawingStyleSection` accepts `drawingScope`. Under motion scope, the text and shape style editors are suppressed even if `drawSubTool` somehow ends up holding `"text"` or `"shape"` — the editors can never appear out of scope.
+- When neither scope is active, both sections are hidden. The legacy "click a drawing in the list to silently activate pen mode" path was removed — users enter a drawing scope explicitly via the sidebar Draw button (annotation) or by activating a motion tool in `/admin/drawing` (motion).
+
+### Timeline visibility tracks
+- New `controlPill/AnnotationVisibilityTrack.jsx` renders one lane per selected annotation drawing, sized by `visibleStartMs` / `visibleEndMs`. Drag the body to move the window, drag the edges to resize. Minimum window is enforced by `MIN_DRAWING_WINDOW_MS`. The whole drag emits no-history updates wrapped in one `onBeginHistoryGroup` / `onEndHistoryGroup` pair so the gesture collapses into a single undo entry.
+- Visually distinct from motion `StepTrack` lanes: cool cyan with a dashed border vs warm orange with a solid border.
+- `ControlPill.jsx` renders annotation lanes whenever `activeDrawingUi === "annotation"` AND there is at least one selected annotation, regardless of `drawingMode`. Annotations are not bound to drawing mode.
+- `StepTrack.jsx` updated to consume v3 (`kind === "motion"`) entries in addition to legacy v2 entries, with `attachedEntityId` / `attachedPlayerId` fallback.
+
+### `SlateRecord.jsx` mirror
+Record mode is always annotation-scope (it has no `drawingMode` toggle), but it instantiates both buckets so imported v3/v2 plays with motion drawings still round-trip cleanly through save/reload.
+
+- Two `useDrawings` instances (annotation + motion); the back-compat `drawingsState` shim points at the annotation bucket.
+- Snapshot/apply write the v3 shape; v2 combined `drawings` snapshots are migrated through `splitLegacyDrawingsArray`.
+- `onReset` clears both buckets.
+- Play export writes `annotationDrawings` + `motionDrawings`. Play import accepts v3, v2, or no drawings.
+- `KonvaCanvasRoot` receives the combined `drawings` view for rendering plus typed `annotationDrawings` / `motionDrawings` props for scope-aware downstream behavior.
+
+### `PlayPreviewCard.jsx`
+- Reads `play.annotationDrawings` + `play.motionDrawings` (v3); falls back to splitting legacy `play.drawings` (v2) so older saved plays still render.
+- `drawingPathPoses` and `drawingPathBallRotation` read motion drawings only; annotations can never drive entity poses or ball rotation.
+- Camera bounds still consider every drawing (`allDrawings`) so a temporary annotation appearing/disappearing does not snap the camera.
+- Annotation drawings in the SVG render are filtered through `isAnnotationDrawingVisibleAtTime(displayTimeMs, durationMs)`. Motion drawings always render.
+
+### `SlateDrawing.jsx`
+Thin wrapper around `Slate` with `drawingMode={true}`. No further changes were needed — the Slate-level refactor covers it entirely.
 
 ## Migration notes for existing data
 
