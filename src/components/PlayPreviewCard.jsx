@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { normalizeAnimation, samplePosesAtTime, getDirectionAtTime } from "../animation";
 import { samplePathAtT } from "../canvas/drawingGeometry";
+import { isAnnotationDrawingVisibleAtTime } from "../features/slate/utils/drawingTiming";
 import RugbyField from "../assets/objects/Field Vectors/Rugby_Field.png";
 import SoccerField from "../assets/objects/Field Vectors/Soccer_Field.png";
 import FootballField from "../assets/objects/Field Vectors/Football_Field.png";
@@ -534,7 +535,35 @@ export default function PlayPreviewCard({
   );
 
   const entities = play?.entities || {};
-  const drawings = Array.isArray(play?.drawings) ? play.drawings : [];
+  // Drawings come from v3 separated arrays. Legacy v2 plays (combined
+  // `drawings`) get split here so preview rendering can stop branching on
+  // schema versions downstream.
+  const { annotationDrawings, motionDrawings, allDrawings } = useMemo(() => {
+    const ann = Array.isArray(play?.annotationDrawings) ? play.annotationDrawings : null;
+    const mot = Array.isArray(play?.motionDrawings) ? play.motionDrawings : null;
+    if (ann || mot) {
+      return {
+        annotationDrawings: ann || [],
+        motionDrawings: mot || [],
+        allDrawings: [...(ann || []), ...(mot || [])],
+      };
+    }
+    if (Array.isArray(play?.drawings)) {
+      const annOut = [];
+      const motOut = [];
+      for (const d of play.drawings) {
+        const isMotion =
+          d?.kind === "motion" ||
+          d?.source === "coaching-draw" ||
+          d?.attachedEntityId ||
+          d?.attachedPlayerId;
+        if (isMotion) motOut.push(d);
+        else annOut.push(d);
+      }
+      return { annotationDrawings: annOut, motionDrawings: motOut, allDrawings: play.drawings };
+    }
+    return { annotationDrawings: [], motionDrawings: [], allDrawings: [] };
+  }, [play?.annotationDrawings, play?.motionDrawings, play?.drawings]);
   const settings = play?.settings || {};
   const pitchSettings = settings?.advancedSettings?.pitch || {};
   const playersSettings = settings?.advancedSettings?.players || {};
@@ -596,20 +625,22 @@ export default function PlayPreviewCard({
     [animation, displayTimeMs, fallbackPoses, entityIds]
   );
 
-  // Drawing-mode plays: animate players/balls along their coaching-draw paths.
-  // Mirrors the override logic in Slate's renderPoseAtTime so previews match the editor.
+  // Drawing-mode plays: animate players/balls along their motion paths only.
+  // Annotation drawings cannot drive poses — they're overlays. Mirrors the
+  // override logic in Slate's renderPoseAtTime so previews match the editor.
   const drawingPathPoses = useMemo(() => {
-    if (!drawings.length) return null;
+    if (!motionDrawings.length) return null;
     const fullDurationMs = animation?.durationMs || DEFAULT_DURATION_MS;
     const activeStepByItemId = new Map();
 
-    for (const d of drawings) {
-      if (d.source !== "coaching-draw" || !d.attachedPlayerId || !d.points?.length) continue;
+    for (const d of motionDrawings) {
+      const entityId = d.attachedEntityId || d.attachedPlayerId;
+      if (!entityId || !d.points?.length) continue;
       const stepStartMs = d.stepStartMs ?? 0;
       if (displayTimeMs < stepStartMs) continue;
-      const existing = activeStepByItemId.get(d.attachedPlayerId);
+      const existing = activeStepByItemId.get(entityId);
       if (!existing || stepStartMs >= existing.stepStartMs) {
-        activeStepByItemId.set(d.attachedPlayerId, { drawing: d, stepStartMs });
+        activeStepByItemId.set(entityId, { drawing: d, stepStartMs });
       }
     }
 
@@ -627,22 +658,23 @@ export default function PlayPreviewCard({
       if (pos) overrides[itemId] = { x: pos.x, y: pos.y, r: 0 };
     }
     return overrides;
-  }, [drawings, displayTimeMs, animation?.durationMs]);
+  }, [motionDrawings, displayTimeMs, animation?.durationMs]);
 
   const effectivePoses = useMemo(() => {
     if (!drawingPathPoses) return poses;
     return { ...poses, ...drawingPathPoses };
   }, [poses, drawingPathPoses]);
 
-  // Rotation override for oblong balls being driven by coaching-draw paths:
-  // derive direction from the path tangent at the current sample point.
+  // Rotation override for oblong balls being driven by motion paths: derive
+  // direction from the path tangent at the current sample point. Reads
+  // motionDrawings only — annotations don't drive ball rotation.
   const drawingPathBallRotation = useMemo(() => {
     if (!drawingPathPoses) return null;
     const out = {};
     for (const [id] of Object.entries(drawingPathPoses)) {
       if (!ballsById?.[id]) continue;
-      const drawing = drawings.find(
-        (d) => d.source === "coaching-draw" && d.attachedPlayerId === id && d.points?.length >= 2
+      const drawing = motionDrawings.find(
+        (d) => (d.attachedEntityId || d.attachedPlayerId) === id && d.points?.length >= 2
       );
       if (!drawing) continue;
       const stepStartMs = drawing.stepStartMs ?? 0;
@@ -662,7 +694,7 @@ export default function PlayPreviewCard({
       }
     }
     return Object.keys(out).length ? out : null;
-  }, [drawingPathPoses, drawings, displayTimeMs, animation?.durationMs, ballsById]);
+  }, [drawingPathPoses, motionDrawings, displayTimeMs, animation?.durationMs, ballsById]);
 
   // Reset animation when the play identity changes (not just object reference).
   // Use entity IDs + duration as a stable fingerprint to avoid resetting on every
@@ -748,7 +780,10 @@ export default function PlayPreviewCard({
         points.push({ x: toFiniteNumber(keyframe?.x, 0), y: toFiniteNumber(keyframe?.y, 0) });
       });
     });
-    drawings.forEach((d) => {
+    // Camera bounds consider every drawing — temporary annotations appearing
+    // or disappearing should not snap the camera, so we include them at all
+    // times here even if they're filtered out of the SVG render below.
+    allDrawings.forEach((d) => {
       if (d.points?.length >= 2) {
         for (let i = 0; i + 1 < d.points.length; i += 2) {
           points.push({ x: toFiniteNumber(d.points[i], 0), y: toFiniteNumber(d.points[i + 1], 0) });
@@ -764,7 +799,7 @@ export default function PlayPreviewCard({
     const withMin = ensureMinimumSpan(padded, minSpanPx);
     const withAspect = isFill ? withMin : fitBoundsToAspect(withMin, targetAspect);
     return withAspect;
-  }, [animation?.tracks, background, cameraMode, drawings, fallbackPoses, fieldBounds, isFill, minSpanPx, paddingPx, targetAspect]);
+  }, [animation?.tracks, background, cameraMode, allDrawings, fallbackPoses, fieldBounds, isFill, minSpanPx, paddingPx, targetAspect]);
 
   const playerSizePercent = clamp(toFiniteNumber(allPlayersDisplay?.sizePercent, 100), 10, 400);
   const playerBasePx = Math.max(6, toFiniteNumber(playersSettings?.baseSizePx, 30));
@@ -827,7 +862,15 @@ export default function PlayPreviewCard({
             />
           ) : null}
 
-          {drawings.map((d, idx) => renderSVGDrawing(d, d.id || idx))}
+          {/*
+            Render motion drawings always; render annotation drawings only
+            during their visibility window so temporary callouts (a coaching
+            note that appears at 5s and clears at 10s) match the editor.
+          */}
+          {motionDrawings.map((d, idx) => renderSVGDrawing(d, d.id || `motion-${idx}`))}
+          {annotationDrawings
+            .filter((d) => isAnnotationDrawingVisibleAtTime(d, displayTimeMs, animation?.durationMs ?? DEFAULT_DURATION_MS))
+            .map((d, idx) => renderSVGDrawing(d, d.id || `ann-${idx}`))}
 
           {/* Cones — rendered first so players and balls appear on top */}
           {Object.entries(ballsById).filter(([, entity]) => entity?.objectType === "cone").map(([id, entity]) => {
