@@ -3783,6 +3783,12 @@ function Slate({
           annotationDrawings={annotationDrawingsState.drawings}
           motionDrawings={motionDrawingsState.drawings}
           activeDrawingUi={activeDrawingUi}
+          // For annotation visibility-window filtering. Canvas hides any
+          // annotation whose window doesn't contain currentTimeMs, unless
+          // the annotation is in selectedAnnotationDrawingIds.
+          currentTimeMs={timelineDisplayTimeMs}
+          durationMs={animationData?.durationMs ?? 30000}
+          selectedAnnotationDrawingIds={selectedAnnotationDrawingIds}
           hideAllDrawings={hideAllDrawings}
           drawingsRevealProgress={drawingsRevealProgress}
           drawSubTool={isMotionScopeActive && animDrawSubTool ? animDrawSubTool : drawSubTool}

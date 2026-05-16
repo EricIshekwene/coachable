@@ -5,6 +5,10 @@ import { Stage, Layer, Group, Circle, Text, Image as KonvaImage, Rect, Line, Arr
 import Konva from "konva";
 import BoardViewport from "./BoardViewport";
 import { useCanvasDrawing } from "./hooks/useCanvasDrawing";
+import {
+  isAnnotationDrawing,
+  isAnnotationDrawingVisibleAtTime,
+} from "../features/slate/utils/drawingTiming";
 import { useDrawingSelection } from "./hooks/useDrawingSelection";
 import {
   getDrawingWorldBounds,
@@ -134,6 +138,13 @@ function KonvaCanvasRoot({
   animationRendererRef,
   onAnimationRendererReady,
   drawings = [],
+  // For annotation visibility filtering at render time. `currentTimeMs` and
+  // `durationMs` decide whether each annotation is inside its window; a
+  // selected annotation always renders so it stays editable even when the
+  // playhead is outside its window.
+  currentTimeMs = 0,
+  durationMs = 30000,
+  selectedAnnotationDrawingIds = [],
   hideAllDrawings = false,
   drawingsRevealProgress = 1,
   drawSubTool,
@@ -1924,7 +1935,19 @@ function KonvaCanvasRoot({
           {/* Drawings layer: renders below players/ball */}
           <Layer listening={false} name="drawingsLayer">
             <Group x={worldOrigin.x} y={worldOrigin.y} scaleX={worldOrigin.scale} scaleY={worldOrigin.scale}>
-              {!hideAllDrawings && drawingsRevealProgress > 0 && drawings.map((d) => d.hidden ? null : renderDrawingNode(d, d.id, drawingsRevealProgress))}
+              {!hideAllDrawings && drawingsRevealProgress > 0 && drawings.map((d) => {
+                if (!d || d.hidden) return null;
+                // Annotations are gated by their visibility window UNLESS the
+                // user has them selected — keeping selected items visible is
+                // critical so the user can edit a window that doesn't include
+                // the current playhead time. Motion drawings always render.
+                if (isAnnotationDrawing(d)) {
+                  const isSelected = selectedAnnotationDrawingIds.includes(d.id);
+                  const inWindow = isAnnotationDrawingVisibleAtTime(d, currentTimeMs, durationMs);
+                  if (!isSelected && !inWindow) return null;
+                }
+                return renderDrawingNode(d, d.id, drawingsRevealProgress);
+              })}
               {canvasDrawing.activeDrawing && renderDrawingNode(canvasDrawing.activeDrawing, "active-preview")}
               {/* Custom shape preview line (from last point to cursor) */}
               {canvasDrawing.customPreviewLine && (() => {

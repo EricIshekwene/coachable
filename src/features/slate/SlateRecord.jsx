@@ -3118,6 +3118,10 @@ function SlateRecord({
           annotationDrawings={annotationDrawingsState.drawings}
           motionDrawings={motionDrawingsState.drawings}
           activeDrawingUi={canvasTool === "pen" ? "annotation" : "none"}
+          // Annotation visibility filtering — same contract as Slate.
+          currentTimeMs={timelineDisplayTimeMs}
+          durationMs={animationData?.durationMs ?? 30000}
+          selectedAnnotationDrawingIds={selectedDrawingIds}
           hideAllDrawings={hideAllDrawings}
           drawSubTool={drawSubTool}
           drawColor={drawColor}
