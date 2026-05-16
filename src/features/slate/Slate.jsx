@@ -3826,19 +3826,26 @@ function Slate({
             onCancel={handleScreenshotCancel}
           />
         )}
-        {!viewOnly && canvasTool === "pen" && !screenshotMode && (
+        {/*
+          Floating drawing palettes — exactly one may be visible at a time.
+          Mutual exclusion is structural: DrawToolsPill (annotation) only
+          renders outside drawing-mode; AnimationDrawingTools (motion) only
+          renders inside drawing-mode. The conditions cannot overlap.
+        */}
+        {!viewOnly && !drawingMode && canvasTool === "pen" && !screenshotMode && (
           <DrawToolsPill
-            activeSubTool={drawSubTool}
+            activeSubTool={annotationDrawSubTool}
             onSubToolChange={handleDrawSubToolChange}
             onClose={() => handleToolChange("pen")}
           />
         )}
         {!viewOnly && drawingMode && !screenshotMode && (
           <AnimationDrawingTools
-            activeSubTool={animDrawSubTool}
+            activeSubTool={motionDrawSubTool}
             onSubToolChange={(id) => {
-              // Toggle the sub-tool on/off; canvasTool stays "select" always in drawing mode
-              setAnimDrawSubTool((prev) => (prev === id ? null : id));
+              // Toggle the motion sub-tool on/off. Annotation sub-tool state
+              // is independent and unaffected.
+              setMotionDrawSubTool((prev) => (prev === id ? null : id));
             }}
             hideDrawings={drawingsHidden}
             onToggleHideDrawings={() => {

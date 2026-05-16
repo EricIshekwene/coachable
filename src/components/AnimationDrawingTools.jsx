@@ -2,7 +2,18 @@ import { createElement } from "react";
 import { PiPenNib, PiEraserFill, PiCursorFill } from "react-icons/pi";
 import { FaArrowUpLong } from "react-icons/fa6";
 import { FiEye, FiEyeOff } from "react-icons/fi";
+import FloatingToolPillShell from "./toolPills/FloatingToolPillShell";
 
+/**
+ * Motion drawing palette — the floating tool pill that appears in drawing-mode
+ * slate. Lets coaches arrow / draw / erase motion paths attached to players
+ * and balls.
+ *
+ * This palette is motion-only. It never appears at the same time as
+ * `DrawToolsPill` because `Slate.jsx` gates rendering on `drawingMode`.
+ * Tool selections only mutate motion subtool state; annotation subtool state
+ * is entirely independent.
+ */
 const TOOLS = [
   { id: "arrow", label: "Arrow", Icon: FaArrowUpLong, iconStyle: { transform: "rotate(45deg)" } },
   { id: "draw",  label: "Draw",  Icon: PiPenNib,      iconStyle: { transform: "rotate(90deg)" } },
@@ -10,9 +21,6 @@ const TOOLS = [
 ];
 
 /**
- * Permanent animation drawing tool palette for coaching mode.
- * Always visible — shows Arrow, Draw, and Erase tools plus a hide-drawings toggle.
- *
  * @param {{
  *   activeSubTool: string,
  *   onSubToolChange: (id: string) => void,
@@ -22,7 +30,7 @@ const TOOLS = [
  */
 export default function AnimationDrawingTools({ activeSubTool, onSubToolChange, hideDrawings = false, onToggleHideDrawings }) {
   return (
-    <div className="absolute top-17 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 select-none rounded-full border border-white/10 bg-[rgba(18,18,18,0.92)] px-1.5 py-1.5 shadow-[0_1px_4px_rgba(0,0,0,0.08)] backdrop-blur-sm">
+    <FloatingToolPillShell testId="motion-tool-pill" ariaLabel="Motion drawing tools">
       {TOOLS.map(({ id, label, Icon, iconStyle }) => {
         const isActive = activeSubTool === id;
         return (
@@ -41,24 +49,18 @@ export default function AnimationDrawingTools({ activeSubTool, onSubToolChange, 
             <span
               className={[
                 "flex h-5 w-5 items-center justify-center rounded-full transition-colors",
-                isActive
-                  ? "text-BrandBlack"
-                  : "text-BrandOrange/95 group-hover:text-BrandOrange",
+                isActive ? "text-BrandBlack" : "text-BrandOrange/95 group-hover:text-BrandOrange",
               ].join(" ")}
             >
               {createElement(Icon, { className: "text-[13px]", style: iconStyle })}
             </span>
-            <span className={isActive ? "text-BrandBlack" : "text-white/84"}>
-              {label}
-            </span>
+            <span className={isActive ? "text-BrandBlack" : "text-white/84"}>{label}</span>
           </button>
         );
       })}
 
-      {/* Divider */}
       <div className="w-px h-5 bg-white/10 mx-0.5" />
 
-      {/* Select tool */}
       {(() => {
         const isActive = activeSubTool === "select";
         return (
@@ -81,7 +83,6 @@ export default function AnimationDrawingTools({ activeSubTool, onSubToolChange, 
         );
       })()}
 
-      {/* Hide/show drawings toggle */}
       <button
         type="button"
         aria-pressed={hideDrawings}
@@ -97,17 +98,12 @@ export default function AnimationDrawingTools({ activeSubTool, onSubToolChange, 
         <span
           className={[
             "flex h-5 w-5 items-center justify-center rounded-full transition-colors",
-            hideDrawings
-              ? "text-BrandBlack"
-              : "text-BrandOrange/95 group-hover:text-BrandOrange",
+            hideDrawings ? "text-BrandBlack" : "text-BrandOrange/95 group-hover:text-BrandOrange",
           ].join(" ")}
         >
-          {hideDrawings
-            ? <FiEyeOff className="text-[13px]" />
-            : <FiEye className="text-[13px]" />
-          }
+          {hideDrawings ? <FiEyeOff className="text-[13px]" /> : <FiEye className="text-[13px]" />}
         </span>
       </button>
-    </div>
+    </FloatingToolPillShell>
   );
 }

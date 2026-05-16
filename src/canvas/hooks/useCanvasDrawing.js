@@ -51,6 +51,46 @@ function chaikinSmooth(points, iterations = 3) {
 const round2 = (value) => (Number.isFinite(value) ? Number(value).toFixed(2) : "nan");
 
 /**
+ * Returns the subset of `drawings` that belongs to the active drawing scope.
+ *
+ * When `motionScope` is true the result contains only motion drawings
+ * (kind === "motion" or any legacy marker that identifies a motion path).
+ * When `motionScope` is false the result contains only annotation drawings
+ * (kind === "annotation" or untagged drawings with no motion fields).
+ *
+ * This is the canvas-side enforcement of the cross-scope-isolation rule:
+ * eraser hit-tests, selection, and other scope-bound operations must never
+ * be able to reach across into the other scope's drawings.
+ */
+function filterDrawingsByScope(drawings, motionScope) {
+  if (!Array.isArray(drawings)) return [];
+  if (motionScope) {
+    return drawings.filter((d) => {
+      if (d?.kind === "motion") return true;
+      if (d?.kind === "annotation") return false;
+      return Boolean(
+        d?.source === "coaching-draw" ||
+          d?.attachedEntityId ||
+          d?.attachedPlayerId ||
+          d?.stepStartMs != null ||
+          d?.stepEndMs != null
+      );
+    });
+  }
+  return drawings.filter((d) => {
+    if (d?.kind === "annotation") return true;
+    if (d?.kind === "motion") return false;
+    return !(
+      d?.source === "coaching-draw" ||
+        d?.attachedEntityId ||
+        d?.attachedPlayerId ||
+        d?.stepStartMs != null ||
+        d?.stepEndMs != null
+    );
+  });
+}
+
+/**
  * useCanvasDrawing
  *
  * Handles pointer events for the drawing sub-tools (draw, arrow, text, shape, erase).
@@ -298,24 +338,36 @@ export function useCanvasDrawing({
     let bestTip = null;
     let bestTipDist = PATH_TIP_SNAP_RADIUS;
     if (drawingModeSnap) {
-      const coachingDrawings = (drawings || []).filter(
-        (d) => d.source === "coaching-draw" && d.attachedPlayerId && d.points?.length >= 2
-      );
-      // Keep only the highest-stepIndex drawing per player
-      const lastStepByPlayer = new Map();
-      for (const d of coachingDrawings) {
-        const existing = lastStepByPlayer.get(d.attachedPlayerId);
+      // Motion-only: snap targets must come from motion drawings. Annotations
+      // (kind: "annotation") are not eligible regardless of how the user drew
+      // them. Legacy data without `kind` is matched on `source === "coaching-draw"`
+      // or the presence of `attachedPlayerId` / `attachedEntityId`.
+      const motionPaths = (drawings || []).filter((d) => {
+        if (d?.kind === "annotation") return false;
+        const isMotion =
+          d?.kind === "motion" ||
+          d?.source === "coaching-draw" ||
+          d?.attachedEntityId ||
+          d?.attachedPlayerId;
+        return isMotion && (d.attachedEntityId || d.attachedPlayerId) && d.points?.length >= 2;
+      });
+      // Keep only the highest-stepIndex drawing per entity.
+      const lastStepByEntity = new Map();
+      for (const d of motionPaths) {
+        const entityId = d.attachedEntityId || d.attachedPlayerId;
+        const existing = lastStepByEntity.get(entityId);
         if (!existing || (d.stepIndex ?? 0) > (existing.stepIndex ?? 0)) {
-          lastStepByPlayer.set(d.attachedPlayerId, d);
+          lastStepByEntity.set(entityId, d);
         }
       }
-      for (const d of lastStepByPlayer.values()) {
+      for (const d of lastStepByEntity.values()) {
+        const entityId = d.attachedEntityId || d.attachedPlayerId;
         const tx = d.points[d.points.length - 2];
         const ty = d.points[d.points.length - 1];
         const dist = Math.sqrt((tx - wx) ** 2 + (ty - wy) ** 2);
         if (dist < bestTipDist) {
           bestTipDist = dist;
-          bestTip = { x: tx, y: ty, id: d.attachedPlayerId, type: "pathTip", continuedFromDrawingId: d.id };
+          bestTip = { x: tx, y: ty, id: entityId, type: "pathTip", continuedFromDrawingId: d.id };
         }
       }
     }
@@ -539,7 +591,11 @@ export function useCanvasDrawing({
 
       if (subTool === "erase") {
         const newSet = new Set();
-        const hitId = hitTestDrawings(drawings, world, eraserSize);
+        // Erase is scope-local: in motion mode the eraser can only delete
+        // motion drawings; in annotation mode it can only delete annotation
+        // drawings. Cross-scope hits are silently ignored.
+        const scopedDrawings = filterDrawingsByScope(drawings, drawingModeSnap);
+        const hitId = hitTestDrawings(scopedDrawings, world, eraserSize);
         if (hitId) {
           newSet.add(hitId);
         } else {
@@ -595,13 +651,14 @@ export function useCanvasDrawing({
 
   const handlePointerMove = useCallback(
     () => {
-      // Erase drag: continuously hit-test.
+      // Erase drag: continuously hit-test against scope-local drawings only.
       if (eraseRef.current.active) {
         const stage = stageRef.current;
         const pointer = stage?.getPointerPosition?.();
         if (!pointer) return false;
         const world = toWorldCoords(pointer);
-        const hitId = hitTestDrawings(drawings, world, eraserSize, eraseRef.current.removedIds);
+        const scopedDrawings = filterDrawingsByScope(drawings, drawingModeSnap);
+        const hitId = hitTestDrawings(scopedDrawings, world, eraserSize, eraseRef.current.removedIds);
         if (hitId) {
           eraseRef.current.removedIds.add(hitId);
           setErasingIds(new Set(eraseRef.current.removedIds));
