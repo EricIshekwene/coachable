@@ -15,8 +15,10 @@ import { FiX } from "react-icons/fi";
  * `AnimationDrawingTools` because `Slate.jsx` gates them on mutually
  * exclusive conditions (pen tool vs motion subtool).
  */
+// Authoring tools, in display order. `select` is rendered separately on the
+// other side of a divider to mirror the AnimationDrawingTools layout
+// (authoring on the left, mode tools on the right).
 const TOOLS = [
-  { id: "select", label: "Select", Icon: PiCursorFill },
   { id: "text",   label: "Text",   Icon: PiTextTBold },
   { id: "draw",   label: "Draw",   Icon: PiPenNib, iconStyle: { transform: "rotate(90deg)" } },
   { id: "arrow",  label: "Arrow",  Icon: FaArrowUpLong, iconStyle: { transform: "rotate(45deg)" } },
@@ -67,6 +69,34 @@ export default function DrawToolsPill({ activeSubTool, onSubToolChange, onClose 
       })}
 
       <div className="w-px h-5 bg-white/10 mx-0.5" />
+
+      {/* Select tool — sits across the divider, same convention as AnimationDrawingTools */}
+      {(() => {
+        const isActive = activeSubTool === "select";
+        return (
+          <button
+            type="button"
+            aria-pressed={isActive}
+            onClick={() => onSubToolChange?.("select")}
+            className={[
+              "group flex items-center justify-center gap-2 rounded-full px-3.5 py-2 text-xs font-DmSans font-medium tracking-[0.01em] transition-all duration-150",
+              isActive
+                ? "border border-BrandOrange/55 bg-BrandOrange text-BrandBlack"
+                : "border border-transparent bg-white/2 text-white/82 hover:bg-white/4 active:scale-[0.98]",
+            ].join(" ")}
+          >
+            <span
+              className={[
+                "flex h-5 w-5 items-center justify-center rounded-full transition-colors",
+                isActive ? "text-BrandBlack" : "text-BrandOrange/95 group-hover:text-BrandOrange",
+              ].join(" ")}
+            >
+              <PiCursorFill className="text-[13px]" />
+            </span>
+            <span className={isActive ? "text-BrandBlack" : "text-white/84"}>Select</span>
+          </button>
+        );
+      })()}
 
       <button
         type="button"
