@@ -285,53 +285,64 @@ function Slate({
   const [motionEraserSize, setMotionEraserSize] = useState(10);
   const [selectedMotionDrawingIds, setSelectedMotionDrawingIds] = useState([]);
 
-  // ─── Active-scope shims ───
-  // `drawingMode` is the sole gate: drawing-mode → motion only; otherwise → annotation only.
-  // The two scopes cannot coexist by construction.
-  const activeDrawingUi = drawingMode
-    ? (motionDrawSubTool ? "motion" : "none")
-    : (canvasTool === "pen" ? "annotation" : "none");
+  // ─── Active-scope derivation ───
+  // Rules:
+  //   - `canvasTool === "pen"` ⇒ annotation scope is active (regardless of
+  //     drawingMode). This lets coaches drop text/shapes/free strokes on top
+  //     of a motion play in /admin/drawing.
+  //   - else `drawingMode && motionDrawSubTool` ⇒ motion scope is active.
+  //   - else no scope.
+  // Mutual exclusion is enforced by the tool-change handlers: turning on pen
+  // clears the motion subtool, and turning on a motion subtool clears pen.
+  const activeDrawingUi =
+    canvasTool === "pen"
+      ? "annotation"
+      : drawingMode && motionDrawSubTool
+        ? "motion"
+        : "none";
+  const isMotionScopeActive = activeDrawingUi === "motion";
 
-  // Back-compat aliases — many handlers still use the old single-bucket names.
-  // These point at whichever scope is currently active so the existing logic
-  // keeps working until those call sites are updated to be explicit.
-  const drawSubTool = drawingMode
+  // Back-compat aliases. The old single-bucket names (`drawSubTool`,
+  // `drawColor`, `selectedDrawingIds`, etc.) point at whichever scope is
+  // currently active. New code should reach into the typed buckets directly.
+  const drawSubTool = isMotionScopeActive
     ? (motionDrawSubTool || "draw")
     : annotationDrawSubTool;
-  const setDrawSubTool = drawingMode ? setMotionDrawSubTool : setAnnotationDrawSubTool;
+  const setDrawSubTool = isMotionScopeActive ? setMotionDrawSubTool : setAnnotationDrawSubTool;
   const animDrawSubTool = motionDrawSubTool;
   const setAnimDrawSubTool = setMotionDrawSubTool;
-  const drawColor = drawingMode ? motionDrawColor : annotationDrawColor;
-  const setDrawColor = drawingMode ? setMotionDrawColor : setAnnotationDrawColor;
-  const drawOpacity = drawingMode ? motionDrawOpacity : annotationDrawOpacity;
-  const setDrawOpacity = drawingMode ? setMotionDrawOpacity : setAnnotationDrawOpacity;
-  const drawStrokeWidth = drawingMode ? motionDrawStrokeWidth : annotationDrawStrokeWidth;
-  const setDrawStrokeWidth = drawingMode ? setMotionDrawStrokeWidth : setAnnotationDrawStrokeWidth;
-  const drawSmoothing = drawingMode ? motionDrawSmoothing : annotationDrawSmoothing;
-  const setDrawSmoothing = drawingMode ? setMotionDrawSmoothing : setAnnotationDrawSmoothing;
+  const drawColor = isMotionScopeActive ? motionDrawColor : annotationDrawColor;
+  const setDrawColor = isMotionScopeActive ? setMotionDrawColor : setAnnotationDrawColor;
+  const drawOpacity = isMotionScopeActive ? motionDrawOpacity : annotationDrawOpacity;
+  const setDrawOpacity = isMotionScopeActive ? setMotionDrawOpacity : setAnnotationDrawOpacity;
+  const drawStrokeWidth = isMotionScopeActive ? motionDrawStrokeWidth : annotationDrawStrokeWidth;
+  const setDrawStrokeWidth = isMotionScopeActive ? setMotionDrawStrokeWidth : setAnnotationDrawStrokeWidth;
+  const drawSmoothing = isMotionScopeActive ? motionDrawSmoothing : annotationDrawSmoothing;
+  const setDrawSmoothing = isMotionScopeActive ? setMotionDrawSmoothing : setAnnotationDrawSmoothing;
   const drawTension = drawSmoothing / 100;       // 0-1 for Konva line tension
   const drawStabilization = drawSmoothing;        // 0-100 for pull-string algorithm
   const drawFontSize = annotationDrawFontSize;    // motion has no text tool
   const setDrawFontSize = setAnnotationDrawFontSize;
   const drawTextAlign = annotationDrawTextAlign;
   const setDrawTextAlign = setAnnotationDrawTextAlign;
-  const drawArrowHeadType = drawingMode ? motionDrawArrowHeadType : annotationDrawArrowHeadType;
-  const setDrawArrowHeadType = drawingMode ? setMotionDrawArrowHeadType : setAnnotationDrawArrowHeadType;
-  const drawArrowTip = drawingMode ? motionDrawArrowTip : annotationDrawArrowTip;
-  const setDrawArrowTip = drawingMode ? setMotionDrawArrowTip : setAnnotationDrawArrowTip;
-  const eraserSize = drawingMode ? motionEraserSize : annotationEraserSize;
-  const setEraserSize = drawingMode ? setMotionEraserSize : setAnnotationEraserSize;
+  const drawArrowHeadType = isMotionScopeActive ? motionDrawArrowHeadType : annotationDrawArrowHeadType;
+  const setDrawArrowHeadType = isMotionScopeActive ? setMotionDrawArrowHeadType : setAnnotationDrawArrowHeadType;
+  const drawArrowTip = isMotionScopeActive ? motionDrawArrowTip : annotationDrawArrowTip;
+  const setDrawArrowTip = isMotionScopeActive ? setMotionDrawArrowTip : setAnnotationDrawArrowTip;
+  const eraserSize = isMotionScopeActive ? motionEraserSize : annotationEraserSize;
+  const setEraserSize = isMotionScopeActive ? setMotionEraserSize : setAnnotationEraserSize;
   const drawShapeType = annotationDrawShapeType;  // motion has no shape tool
   const setDrawShapeType = setAnnotationDrawShapeType;
   const drawShapeStrokeColor = annotationDrawShapeStrokeColor;
   const setDrawShapeStrokeColor = setAnnotationDrawShapeStrokeColor;
   const drawShapeFill = annotationDrawShapeFill;
   const setDrawShapeFill = setAnnotationDrawShapeFill;
-  // Selection follows active scope: drawing-mode reads motion, otherwise annotation.
-  const selectedDrawingIds = drawingMode
+  // Selection follows the active scope. When neither is active we still need
+  // a stable target for back-compat selection reads; default to annotation.
+  const selectedDrawingIds = isMotionScopeActive
     ? selectedMotionDrawingIds
     : selectedAnnotationDrawingIds;
-  const setSelectedDrawingIds = drawingMode
+  const setSelectedDrawingIds = isMotionScopeActive
     ? setSelectedMotionDrawingIds
     : setSelectedAnnotationDrawingIds;
   const [hideAllDrawings, setHideAllDrawings] = useState(false);
@@ -549,8 +560,9 @@ function Slate({
   // Back-compat: `drawingsState` previously referred to whichever bucket the
   // current mode was operating on. Keep that shim alive until every call site
   // becomes explicit about its scope. New code should reach into the typed
-  // buckets directly.
-  const drawingsState = drawingMode ? motionDrawingsState : annotationDrawingsState;
+  // buckets directly. Routing follows the active scope, NOT just drawingMode —
+  // pen tool inside /admin/drawing must reach the annotation bucket.
+  const drawingsState = isMotionScopeActive ? motionDrawingsState : annotationDrawingsState;
   // Read-only combined view for the few places that need to render or export
   // both buckets at once (canvas rendering, export payload, flip play, reset).
   const combinedDrawings = useMemo(
@@ -610,10 +622,13 @@ function Slate({
   }, []);
 
   const addDrawingTagged = useCallback((data) => {
-    // Outside drawing-mode: pure annotation. Annotations can never carry
-    // motion metadata — strip any motion-only fields defensively before
-    // forwarding to the annotation bucket.
-    if (!drawingMode) {
+    // Route by the *active* scope, not by drawingMode. In /admin/drawing the
+    // user can activate the pen tool to drop annotations on top of a motion
+    // play; those drawings must land in the annotation bucket.
+    const isMotionPath = drawingMode && canvasTool !== "pen";
+    // Pure annotation path. Annotations can never carry motion metadata —
+    // strip any motion-only fields defensively before forwarding.
+    if (!isMotionPath) {
       const {
         attachedPlayerId: _ann1,
         attachedEntityId: _ann2,
@@ -726,17 +741,17 @@ function Slate({
 
     const withGroup = historyApiRef.current?.withGroup;
     return typeof withGroup === "function" ? withGroup(run) : run();
-  }, [annotationDrawingsState.addDrawing, motionDrawingsState.addDrawing, motionDrawingsState.removeDrawing, motionDrawingsState.removeMultipleDrawings, motionDrawingsState.updateDrawing, motionDrawingsState.drawings, drawingMode, entities.handleSelectItem, entities.playersById, entities.ballsById, onShowMessage]);
+  }, [annotationDrawingsState.addDrawing, motionDrawingsState.addDrawing, motionDrawingsState.removeDrawing, motionDrawingsState.removeMultipleDrawings, motionDrawingsState.updateDrawing, motionDrawingsState.drawings, drawingMode, canvasTool, entities.handleSelectItem, entities.playersById, entities.ballsById, onShowMessage]);
 
   // Selected drawings are sourced from the active scope only. Cross-scope
   // selection is forbidden — selecting an annotation does not deselect motion
   // drawings (they live in their own selection set) and vice versa.
   const selectedDrawings = useMemo(
     () =>
-      drawingMode
+      isMotionScopeActive
         ? motionDrawingsState.drawings.filter((d) => selectedMotionDrawingIds.includes(d.id))
         : annotationDrawingsState.drawings.filter((d) => selectedAnnotationDrawingIds.includes(d.id)),
-    [drawingMode, motionDrawingsState.drawings, selectedMotionDrawingIds, annotationDrawingsState.drawings, selectedAnnotationDrawingIds]
+    [isMotionScopeActive, motionDrawingsState.drawings, selectedMotionDrawingIds, annotationDrawingsState.drawings, selectedAnnotationDrawingIds]
   );
   const selectedDrawing = selectedDrawings.length === 1 ? selectedDrawings[0] : null;
 
@@ -2084,14 +2099,15 @@ function Slate({
   }, []);
 
   // Routes subtool changes from the right panel to the correct state bucket
-  // (animDraw has its own subtool state, separate from pen's drawSubTool)
+  // by active scope: motion scope → motion subtool, otherwise → annotation
+  // subtool (which is what handleDrawSubToolChange owns).
   const handleRightPanelSubToolChange = useCallback((nextSubTool, opts) => {
-    if (drawingMode && animDrawSubTool) {
+    if (isMotionScopeActive && animDrawSubTool) {
       setAnimDrawSubTool(nextSubTool);
     } else {
       handleDrawSubToolChange(nextSubTool, opts);
     }
-  }, [drawingMode, animDrawSubTool, handleDrawSubToolChange]);
+  }, [isMotionScopeActive, animDrawSubTool, setAnimDrawSubTool, handleDrawSubToolChange]);
 
   const handleDrawColorChange = useCallback((nextColor) => {
     setDrawColor((prevColor) => {
@@ -2185,6 +2201,13 @@ function Slate({
     logDrawDebug(`toolChange request=${tool}`);
     logKeyToolDebug(`toolChange request=${tool}`);
     if (tool === "hand" || tool === "select" || tool === "pen" || tool === "animDraw" || tool === "addPlayer" || tool === "addBall" || tool === "addCone" || tool === "color" || tool === "prefab") {
+      // Activating pen tool inside /admin/drawing means the user wants
+      // annotation scope to take over from motion. Clear the motion subtool
+      // so the AnimationDrawingTools palette unmounts cleanly and the canvas
+      // pointer handler stops routing to motion.
+      if (tool === "pen" && motionDrawSubTool) {
+        setMotionDrawSubTool(null);
+      }
       setCanvasTool((prev) => {
         if (prev === tool) {
           // Pen/animDraw toggle off back to select; all other tools are no-ops when re-selected
@@ -2212,7 +2235,7 @@ function Slate({
     }
     logDrawDebug(`toolChange ignored invalidTool=${tool}`);
     logKeyToolDebug(`toolChange ignored invalidTool=${tool}`);
-  }, [mobileLayout, canvasTool, entities.handleSelectItem]);
+  }, [mobileLayout, canvasTool, motionDrawSubTool, entities.handleSelectItem]);
 
   const getAuthoritativeTimeMs = useCallback(() => {
     return engineRef.current.getTime();
@@ -3563,12 +3586,12 @@ function Slate({
         return;
       }
 
-      // Ctrl/Cmd+A selects all drawings in the active scope (pen+select mode
-      // = annotation; drawingMode+select = motion). Cross-scope select-all is
-      // intentionally disallowed.
+      // Ctrl/Cmd+A selects all drawings in the active scope. Cross-scope
+      // select-all is intentionally disallowed — annotations and motion
+      // drawings live in independent selection sets.
       if ((e.ctrlKey || e.metaKey) && e.key === "a" && canvasTool === "pen" && drawSubTool === "select") {
         e.preventDefault();
-        const scopeDrawings = drawingMode
+        const scopeDrawings = isMotionScopeActive
           ? motionDrawingsState.drawings
           : annotationDrawingsState.drawings;
         setSelectedDrawingIds(scopeDrawings.map((d) => d.id));
@@ -3606,7 +3629,7 @@ function Slate({
       // delete never touches motion drawings (and vice versa).
       if (selectedDrawingIds.length > 0 && canvasTool === "pen" && drawSubTool === "select") {
         e.preventDefault();
-        if (drawingMode) {
+        if (isMotionScopeActive) {
           motionDrawingsState.removeMultipleDrawings(selectedDrawingIds);
         } else {
           annotationDrawingsState.removeMultipleDrawings(selectedDrawingIds);
@@ -3627,7 +3650,7 @@ function Slate({
     selectedDrawingIds,
     canvasTool,
     drawSubTool,
-    drawingMode,
+    isMotionScopeActive,
     annotationDrawingsState,
     motionDrawingsState,
     exportModalOpen,
@@ -3762,7 +3785,7 @@ function Slate({
           activeDrawingUi={activeDrawingUi}
           hideAllDrawings={hideAllDrawings}
           drawingsRevealProgress={drawingsRevealProgress}
-          drawSubTool={drawingMode && animDrawSubTool ? animDrawSubTool : drawSubTool}
+          drawSubTool={isMotionScopeActive && animDrawSubTool ? animDrawSubTool : drawSubTool}
           drawColor={drawColor}
           drawOpacity={drawOpacity}
           drawStrokeWidth={drawStrokeWidth}
@@ -3777,12 +3800,12 @@ function Slate({
           drawShapeStrokeColor={drawShapeStrokeColor}
           drawShapeFill={drawShapeFill}
           onAddDrawing={addDrawingTagged}
-          onRemoveDrawing={drawingMode ? motionDrawingsState.removeDrawing : annotationDrawingsState.removeDrawing}
-          onRemoveMultipleDrawings={drawingMode ? motionDrawingsState.removeMultipleDrawings : annotationDrawingsState.removeMultipleDrawings}
-          onUpdateDrawing={drawingMode ? motionDrawingsState.updateDrawing : annotationDrawingsState.updateDrawing}
+          onRemoveDrawing={isMotionScopeActive ? motionDrawingsState.removeDrawing : annotationDrawingsState.removeDrawing}
+          onRemoveMultipleDrawings={isMotionScopeActive ? motionDrawingsState.removeMultipleDrawings : annotationDrawingsState.removeMultipleDrawings}
+          onUpdateDrawing={isMotionScopeActive ? motionDrawingsState.updateDrawing : annotationDrawingsState.updateDrawing}
           selectedDrawingIds={selectedDrawingIds}
           onSelectedDrawingIdsChange={setSelectedDrawingIds}
-          onUpdateMultipleDrawingsNoHistory={drawingMode ? motionDrawingsState.updateMultipleDrawingsNoHistory : annotationDrawingsState.updateMultipleDrawingsNoHistory}
+          onUpdateMultipleDrawingsNoHistory={isMotionScopeActive ? motionDrawingsState.updateMultipleDrawingsNoHistory : annotationDrawingsState.updateMultipleDrawingsNoHistory}
           historyApiRef={historyApiRef}
           drawingSelectionRef={drawingSelectionRef}
           textEditing={textEditing}
@@ -3798,14 +3821,18 @@ function Slate({
           onAssetsLoaded={handleAssetsLoaded}
           onFieldBoundsChange={setFieldBounds}
           adminMode={adminMode}
-          drawingModeSnap={drawingMode && !!animDrawSubTool}
+          // Motion-scope flag for the canvas: enables entity snap and path-tip
+          // continuation. False when the user has switched to pen tool inside
+          // drawing-mode (annotation scope) so the eraser/snap stop targeting
+          // motion drawings.
+          drawingModeSnap={isMotionScopeActive}
           drawingMode={drawingMode}
           onEditPlayer={entities.handleEditPlayer}
           onTogglePlayerHidden={entities.handleTogglePlayerHidden}
           onToggleBallHidden={entities.handleToggleBallHidden}
           onTogglePlayerLocked={handleLockPlayer}
           onToggleBallLocked={handleLockBall}
-          animDrawSubTool={drawingMode ? animDrawSubTool : null}
+          animDrawSubTool={isMotionScopeActive ? animDrawSubTool : null}
         />
         {/* Text editing is now handled via right panel textarea */}
         {!viewOnly && recording.countdownValue != null && (
@@ -3828,24 +3855,27 @@ function Slate({
         )}
         {/*
           Floating drawing palettes — exactly one may be visible at a time.
-          Mutual exclusion is structural: DrawToolsPill (annotation) only
-          renders outside drawing-mode; AnimationDrawingTools (motion) only
-          renders inside drawing-mode. The conditions cannot overlap.
+          Mutual exclusion comes from the conditions: pen tool wins over the
+          motion palette, so inside /admin/drawing the user can click the
+          sidebar Draw button to swap motion → annotation tools.
         */}
-        {!viewOnly && !drawingMode && canvasTool === "pen" && !screenshotMode && (
+        {!viewOnly && canvasTool === "pen" && !screenshotMode && (
           <DrawToolsPill
             activeSubTool={annotationDrawSubTool}
             onSubToolChange={handleDrawSubToolChange}
-            onClose={() => handleToolChange("pen")}
+            onClose={() => handleToolChange("select")}
           />
         )}
-        {!viewOnly && drawingMode && !screenshotMode && (
+        {!viewOnly && drawingMode && canvasTool !== "pen" && !screenshotMode && (
           <AnimationDrawingTools
             activeSubTool={motionDrawSubTool}
             onSubToolChange={(id) => {
-              // Toggle the motion sub-tool on/off. Annotation sub-tool state
-              // is independent and unaffected.
+              // Toggling a motion sub-tool also clears the pen tool (defense
+              // in depth — pen and motion can never be on simultaneously).
               setMotionDrawSubTool((prev) => (prev === id ? null : id));
+              if (canvasTool === "pen") {
+                setCanvasTool("select");
+              }
             }}
             hideDrawings={drawingsHidden}
             onToggleHideDrawings={() => {
@@ -4171,11 +4201,12 @@ function Slate({
         onReflectX={() => handleReflectAxis("x")}
         onReflectY={() => handleReflectAxis("y")}
         canvasTool={canvasTool}
-        // Scope identity: drawing mode → motion, otherwise → annotation.
-        // RightPanel uses this to decide which palette/list sections to render.
+        // Scope identity: pen tool wins (annotation), otherwise drawingMode
+        // with an active motion subtool wins (motion). RightPanel uses this
+        // to decide which palette/list sections to render.
         activeDrawingUi={activeDrawingUi}
-        animDrawSubTool={drawingMode ? animDrawSubTool : null}
-        drawSubTool={drawingMode && animDrawSubTool ? animDrawSubTool : drawSubTool}
+        animDrawSubTool={isMotionScopeActive ? animDrawSubTool : null}
+        drawSubTool={isMotionScopeActive && animDrawSubTool ? animDrawSubTool : drawSubTool}
         drawColor={drawColor}
         drawOpacity={drawOpacity}
         drawStrokeWidth={drawStrokeWidth}
@@ -4195,8 +4226,8 @@ function Slate({
         selectedDrawing={selectedDrawing}
         selectedDrawings={selectedDrawings}
         // Scope-routed CRUD: only the active scope's hooks fire.
-        onUpdateDrawing={drawingMode ? motionDrawingsState.updateDrawing : annotationDrawingsState.updateDrawing}
-        onUpdateMultipleDrawings={drawingMode ? motionDrawingsState.updateMultipleDrawings : annotationDrawingsState.updateMultipleDrawings}
+        onUpdateDrawing={isMotionScopeActive ? motionDrawingsState.updateDrawing : annotationDrawingsState.updateDrawing}
+        onUpdateMultipleDrawings={isMotionScopeActive ? motionDrawingsState.updateMultipleDrawings : annotationDrawingsState.updateMultipleDrawings}
         // Both scope arrays + selections, so the panel can show per-scope lists.
         annotationDrawings={annotationDrawingsState.drawings}
         motionDrawings={motionDrawingsState.drawings}
@@ -4204,12 +4235,12 @@ function Slate({
         selectedMotionDrawingIds={selectedMotionDrawingIds}
         onSelectedAnnotationDrawingIdsChange={setSelectedAnnotationDrawingIds}
         onSelectedMotionDrawingIdsChange={setSelectedMotionDrawingIds}
-        drawings={drawingMode ? motionDrawingsState.drawings : annotationDrawingsState.drawings}
+        drawings={isMotionScopeActive ? motionDrawingsState.drawings : annotationDrawingsState.drawings}
         selectedDrawingIds={selectedDrawingIds}
         onSelectedDrawingIdsChange={setSelectedDrawingIds}
         onCanvasToolChange={handleToolChange}
         onDrawSubToolChange={handleRightPanelSubToolChange}
-        onRemoveDrawing={drawingMode ? motionDrawingsState.removeDrawing : annotationDrawingsState.removeDrawing}
+        onRemoveDrawing={isMotionScopeActive ? motionDrawingsState.removeDrawing : annotationDrawingsState.removeDrawing}
         eraserSize={eraserSize}
         onEraserSizeChange={handleEraserSizeChange}
         drawShapeType={drawShapeType}
@@ -4244,7 +4275,7 @@ function Slate({
         onTogglePlayerHidden={entities.handleTogglePlayerHidden}
         onToggleColorHidden={entities.handleToggleColorHidden}
         onToggleBallHidden={entities.handleToggleBallHidden}
-        onToggleDrawingHidden={drawingMode ? motionDrawingsState.toggleDrawingHidden : annotationDrawingsState.toggleDrawingHidden}
+        onToggleDrawingHidden={isMotionScopeActive ? motionDrawingsState.toggleDrawingHidden : annotationDrawingsState.toggleDrawingHidden}
         onToggleAnnotationDrawingHidden={annotationDrawingsState.toggleDrawingHidden}
         onToggleMotionDrawingHidden={motionDrawingsState.toggleDrawingHidden}
         hideAllDrawings={hideAllDrawings}
