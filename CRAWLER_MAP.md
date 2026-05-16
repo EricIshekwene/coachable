@@ -25,14 +25,19 @@ A lookup table for finding code by feature or by file. Use this when the user sa
 | "multi-select popup" | [src/canvas/MultiSelectActionPopup.jsx](src/canvas/MultiSelectActionPopup.jsx) | |
 
 ### Drawings (pen / arrow / text / erase)
+Drawings are split into two scopes: **annotation** (overlays) and **motion** (entity-attached paths). See [src/features/slate/DRAWING_SEPARATION.md](src/features/slate/DRAWING_SEPARATION.md) for the architecture, data model, and which scope owns what.
 | User says... | Primary file(s) |
 |---|---|
 | "drawing tool", "pen tool", "draw mode" | [src/canvas/hooks/useCanvasDrawing.js](src/canvas/hooks/useCanvasDrawing.js) |
 | "drawing geometry", "hit-test", "bounds", "resize math" | [src/canvas/drawingGeometry.js](src/canvas/drawingGeometry.js) |
 | "drawing selection", "drag/resize/rotate drawings" | [src/canvas/hooks/useDrawingSelection.js](src/canvas/hooks/useDrawingSelection.js) |
-| "drawings state in slate" | [src/features/slate/hooks/useDrawings.js](src/features/slate/hooks/useDrawings.js) |
-| "draw tools pill" (floating UI) | [src/components/DrawToolsPill.jsx](src/components/DrawToolsPill.jsx) |
-| "animation drawing tools" | [src/components/AnimationDrawingTools.jsx](src/components/AnimationDrawingTools.jsx) |
+| "drawings state in slate" (per-scope hook) | [src/features/slate/hooks/useDrawings.js](src/features/slate/hooks/useDrawings.js) |
+| "annotation/motion split", "drawing schema", "v2 → v3 migration" | [src/features/slate/utils/drawingSchema.js](src/features/slate/utils/drawingSchema.js) |
+| "annotation visibility window math" | [src/features/slate/utils/drawingTiming.js](src/features/slate/utils/drawingTiming.js) |
+| "drawing scope config", "what a scope is allowed to do" | [src/canvas/drawingScopeConfig.js](src/canvas/drawingScopeConfig.js) |
+| "draw tools pill" (annotation palette) | [src/components/DrawToolsPill.jsx](src/components/DrawToolsPill.jsx) |
+| "animation drawing tools" (motion palette) | [src/components/AnimationDrawingTools.jsx](src/components/AnimationDrawingTools.jsx) |
+| "floating tool pill shell" (shared palette container) | [src/components/toolPills/FloatingToolPillShell.jsx](src/components/toolPills/FloatingToolPillShell.jsx) |
 | "flip / reflect drawings" | [src/components/rightPanel/ReflectPlaySection.jsx](src/components/rightPanel/ReflectPlaySection.jsx) |
 | "drawing style" (color/width) | [src/components/rightPanel/DrawingStyleSection.jsx](src/components/rightPanel/DrawingStyleSection.jsx) |
 | "drawing objects list" | [src/components/rightPanel/DrawingObjectsList.jsx](src/components/rightPanel/DrawingObjectsList.jsx) |
@@ -302,7 +307,7 @@ All run via Vitest. One file per feature; create new ones here when adding tests
 - Auth/account: `forgotPassword.test.js`, `accountDeletedEmail.test.js`, `onboarding.test.js`
 - Admin shell: `adminBtn.test.js`, `adminModal.test.js`, `adminNav.test.js`, `adminShell.test.js`, `adminDangerMode.test.js`, `analyticsDashboard.test.js`, `usersHideFilters.test.js`
 - Plays/folders/playbooks: `localStorageAutosave.test.js`, `platformPlays.test.js`, `playbookFolderBrowse.test.js`, `playbookSections.test.js`, `landingPlaybooksNav.test.js`, `playPreviewCardCones.test.js`, `playPreviewPlayer.test.js`, `playCopyAnalytics.test.js`, `sportPresets.test.js`, `presetBallCycle.test.js`, `hideFromPlayers.test.js`, `sportNavContext.test.js`, `syncSports.test.js`
-- Drawing/keyframe: `keyframeStyling.test.js`, `drawingModePreviewAnimation.test.js`, `drawingFlipReflect.test.js`, `drawingModeUndoRedo.test.js`
+- Drawing/keyframe: `keyframeStyling.test.js`, `drawingModePreviewAnimation.test.js`, `drawingFlipReflect.test.js`, `drawingModeUndoRedo.test.js`, `drawingScopeSeparation.test.js`, `annotationDrawingVisibility.test.js`, `drawingExportV3Migration.test.js`
 - Misc: `videoEncoder.test.js`, `errorReporter.test.js`, `demoVideos.test.js`
 
 In-source unit suite for canvas geometry: [src/canvas/__tests__/drawingGeometry.test.js](src/canvas/__tests__/drawingGeometry.test.js).
@@ -326,6 +331,7 @@ Suites used by the admin test runner: [src/testing/suites/](src/testing/suites/)
 
 ## Feature docs (read these when touching the feature)
 - [src/features/slate/README.md](src/features/slate/README.md) — slate architecture overview
+- [src/features/slate/DRAWING_SEPARATION.md](src/features/slate/DRAWING_SEPARATION.md) — annotation/motion drawing split (read before touching drawings, palettes, eraser scope, or the v3 import/export pipeline)
 - [src/features/slate/DRAWING_MODE_UNDO_REDO.md](src/features/slate/DRAWING_MODE_UNDO_REDO.md)
 - [src/features/slate/KEYFRAME_HIGHLIGHT_EDIT_FIX.md](src/features/slate/KEYFRAME_HIGHLIGHT_EDIT_FIX.md)
 - [src/features/slate/LOCALSTORAGE_AUTOSAVE.md](src/features/slate/LOCALSTORAGE_AUTOSAVE.md)
