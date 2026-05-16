@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { FiChevronDown, FiArrowRight, FiPlay, FiClock } from "react-icons/fi";
 import SportAwarePublicNav from "../components/SportAwarePublicNav";
+import usePageMeta from "../utils/usePageMeta";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
@@ -215,6 +216,13 @@ function FAQItem({ q, a }) {
  * Matches the Landing page visual language (dark theme, BrandOrange accents).
  */
 export default function Resources() {
+  usePageMeta({
+    title: "Coaching Resources & Tutorials — Coachable",
+    description:
+      "Coaching guides, tutorial videos, and walkthroughs for building digital playbooks and animated plays with Coachable.",
+    canonical: "https://coachableplays.com/resources",
+  });
+
   const [videos, setVideos] = useState([]);
   const [activeYtId, setActiveYtId] = useState(null);
   const [searchParams] = useSearchParams();

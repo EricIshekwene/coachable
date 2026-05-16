@@ -1,0 +1,38 @@
+# Coachable
+
+> Digital playbook and animated play designer for sports coaches. Design animated plays, share digital playbooks, and manage your team's strategy across rugby, football, soccer, lacrosse, basketball, field hockey, ice hockey, and more.
+
+Coachable is a web app built for coaches who need to communicate movement, not just position. Where traditional tools render static X's and O's, Coachable lets coaches animate every player on a real field, scrub through the play frame-by-frame, and share the result as a link any player can open on their phone. Plays are organized into team playbooks, and the same canvas supports drawing, multi-step paths, and per-player recording. Available at https://coachableplays.com.
+
+## Product
+
+- [Home](https://coachableplays.com/): Product overview, animated play examples, and signup. The fastest way to understand what Coachable does.
+- [Resources](https://coachableplays.com/resources): Coaching guides, tutorial videos, and walkthroughs for getting started with digital playbooks.
+- [Enterprise](https://coachableplays.com/enterprise): Information for clubs, schools, and organizations adopting Coachable across multiple teams.
+
+## Sport landing pages
+
+- [Rugby](https://coachableplays.com/rugby): Rugby-specific play designer, with rugby field, positions, and example plays.
+- [Football](https://coachableplays.com/football): American football play designer with gridiron field and football-specific tooling.
+- [Soccer](https://coachableplays.com/soccer): Soccer play designer with a full pitch and position presets.
+- [Lacrosse](https://coachableplays.com/lacrosse): Men's lacrosse play designer with field markings and standard positions.
+- [Women's Lacrosse](https://coachableplays.com/womens-lacrosse): Women's lacrosse play designer with appropriate field and positions.
+- [Basketball](https://coachableplays.com/basketball): Basketball play designer with a half-court and full-court layout.
+- [Field Hockey](https://coachableplays.com/field-hockey): Field hockey play designer with regulation pitch.
+- [Ice Hockey](https://coachableplays.com/ice-hockey): Ice hockey play designer with rink markings and standard skater/goalie positions.
+
+## Public playbooks
+
+- [Rugby playbooks](https://coachableplays.com/rugby/playbooks): Public, browsable rugby plays contributed by coaches.
+- [Football playbooks](https://coachableplays.com/football/playbooks): Public American football plays.
+- [Soccer playbooks](https://coachableplays.com/soccer/playbooks): Public soccer plays.
+- [Lacrosse playbooks](https://coachableplays.com/lacrosse/playbooks): Public men's lacrosse plays.
+- [Women's Lacrosse playbooks](https://coachableplays.com/womens-lacrosse/playbooks): Public women's lacrosse plays.
+- [Basketball playbooks](https://coachableplays.com/basketball/playbooks): Public basketball plays.
+- [Field Hockey playbooks](https://coachableplays.com/field-hockey/playbooks): Public field hockey plays.
+- [Ice Hockey playbooks](https://coachableplays.com/ice-hockey/playbooks): Public ice hockey plays.
+
+## Optional
+
+- [Sign up](https://coachableplays.com/signup): Create a free Coachable account.
+- [Log in](https://coachableplays.com/login): Sign in to an existing account.

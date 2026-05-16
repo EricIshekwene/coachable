@@ -4,6 +4,8 @@ import logo from "../assets/logos/White_Full_Coachable.png";
 import PlayPreviewCard from "../components/PlayPreviewCard";
 import { FiArrowRight, FiChevronRight, FiLayout, FiTag, FiBookOpen } from "react-icons/fi";
 import SportAwarePublicNav from "../components/SportAwarePublicNav";
+import usePageMeta from "../utils/usePageMeta";
+import { getPlaybooksMeta } from "../utils/sportSeo";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
@@ -145,6 +147,8 @@ function PlaybookTabs({ activeTab, onChange, hasCommunity }) {
  * @param {string} props.sport - Sport slug used to look up the correct label and fetch plays (e.g. "rugby").
  */
 export default function PublicPlaybooksPage({ sport }) {
+  usePageMeta(getPlaybooksMeta(sport) || undefined);
+
   const [plays, setPlays] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);

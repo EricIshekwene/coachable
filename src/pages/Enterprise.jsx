@@ -11,6 +11,7 @@ import {
   FiLayers,
   FiShare2,
 } from "react-icons/fi";
+import usePageMeta from "../utils/usePageMeta";
 
 const PROBLEMS = [
   {
@@ -65,6 +66,13 @@ const TAGS = [
  * Linked from the main nav at /enterprise.
  */
 export default function Enterprise() {
+  usePageMeta({
+    title: "Coachable for Clubs & Organizations — Enterprise Playbook Platform",
+    description:
+      "Coachable for enterprise: deploy animated playbooks across clubs, schools, and multi-team organizations. Shared resources, centralized administration, and team-level controls.",
+    canonical: "https://coachableplays.com/enterprise",
+  });
+
   const [searchParams] = useSearchParams();
   const sport = searchParams.get("sport") || null;
 

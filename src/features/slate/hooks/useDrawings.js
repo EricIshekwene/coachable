@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { log as logDrawDebug } from "../../../canvas/drawDebugLogger";
+import { flipDrawing } from "../../../canvas/drawingGeometry";
 
 /**
  * Manages the drawings state array (static annotations on the canvas).
@@ -150,6 +151,18 @@ export function useDrawings({ historyApiRef }) {
     });
   }, []);
 
+  /**
+   * Reflects every drawing across the given axis. Caller is responsible for
+   * pushing history before invoking (the Reflect Play handler in Slate does
+   * a single pushHistory for the whole reflect operation).
+   * @param {"x"|"y"} axis - "x" flips vertically, "y" flips horizontally.
+   */
+  const flipAllDrawings = useCallback((axis) => {
+    if (axis !== "x" && axis !== "y") return;
+    setDrawings((prev) => prev.map((d) => flipDrawing(d, axis)));
+    logDrawDebug(`flipAllDrawings axis=${axis}`);
+  }, []);
+
   const clearDrawings = useCallback(() => {
     setDrawings([]);
     logDrawDebug("clearDrawings");
@@ -185,6 +198,7 @@ export function useDrawings({ historyApiRef }) {
     updateMultipleDrawings,
     updateMultipleDrawingsNoHistory,
     toggleDrawingHidden,
+    flipAllDrawings,
     clearDrawings,
     resetDrawings,
     snapshotDrawings,

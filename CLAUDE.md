@@ -1,5 +1,9 @@
 # Project Instructions
 
+## Crawler Map
+- **Before searching for a file** when the user references a feature/UI area ("the control pill", "drawing tool", "right panel", etc.), consult [CRAWLER_MAP.md](CRAWLER_MAP.md) — it maps user-facing features → files and lists every page, route, server route, DB table, and test.
+- When you rename, move, add, or delete a feature/file, update `CRAWLER_MAP.md` in the same change. Stale entries are worse than no map.
+
 ## Clarification
 - If there is any slight ambiguity in a request, always ask clarifying questions before proceeding.
 

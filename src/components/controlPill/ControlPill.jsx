@@ -39,6 +39,9 @@ export default function ControlPill({
   // Step track / drawing mode
   drawings,
   onUpdateDrawing,
+  onUpdateDrawingNoHistory,
+  onBeginHistoryGroup,
+  onEndHistoryGroup,
   onAddStep,
   selectedPlayerIds,
   playersById,
@@ -219,6 +222,9 @@ export default function ControlPill({
                 durationMs={timelineDurationMs}
                 currentTimeMs={clampedTimeMs}
                 onUpdateDrawing={onUpdateDrawing}
+                onUpdateDrawingNoHistory={onUpdateDrawingNoHistory}
+                onBeginHistoryGroup={onBeginHistoryGroup}
+                onEndHistoryGroup={onEndHistoryGroup}
                 onSeek={handleSeek}
                 playersById={playersById}
               />

@@ -387,6 +387,82 @@ export function computeResizedBounds(handlePos, startBounds, dragDelta, options 
   return { x, y, width, height };
 }
 
+// ─── Reflect / Flip ─────────────────────────────────────────────────────────
+
+/**
+ * Reflects a drawing across the x-axis (axis="x", y → -y) or the y-axis
+ * (axis="y", x → -x). Returns a new drawing object — does NOT mutate.
+ *
+ * Geometry is mirrored about the world origin so the result lines up with
+ * the player/ball/keyframe flip handled in Slate.handleReflectAxis. For
+ * text and rect/ellipse/triangle shapes (anchored by top-left + dimensions),
+ * the anchor is shifted so the visual bounding box ends up at the mirrored
+ * location. Text is kept readable: characters aren't mirrored — instead the
+ * left/right alignment is swapped on a y-axis flip, and the rotation is
+ * negated on either axis.
+ *
+ * @param {Object} d - Drawing object.
+ * @param {"x"|"y"} axis - "x" flips vertically, "y" flips horizontally.
+ * @returns {Object} New drawing with flipped geometry.
+ */
+export function flipDrawing(d, axis) {
+  if (!d || (axis !== "x" && axis !== "y")) return d;
+
+  const flipPoints = (points) => {
+    if (!points || points.length === 0) return points;
+    const out = new Array(points.length);
+    for (let i = 0; i < points.length; i += 2) {
+      out[i] = axis === "y" ? -points[i] : points[i];
+      out[i + 1] = axis === "x" ? -points[i + 1] : points[i + 1];
+    }
+    return out;
+  };
+
+  const negRotation = (r) => (r ? -r : r);
+
+  if (d.type === "stroke" || d.type === "arrow") {
+    const next = { ...d, points: flipPoints(d.points) };
+    if (d.rotation) next.rotation = negRotation(d.rotation);
+    return next;
+  }
+
+  if (d.type === "text") {
+    const layout = getTextDrawingLayout(d);
+    const next = { ...d };
+    if (axis === "y") {
+      // Mirror x. Swap left↔right alignment so the visible bounds end up at
+      // the mirrored location with the text still reading left-to-right.
+      next.x = -d.x;
+      if (d.align === "left") next.align = "right";
+      else if (d.align === "right") next.align = "left";
+    } else {
+      // Mirror y. Text extends downward from its anchor by `layout.height`,
+      // so the new anchor must sit `height` above the negated original y to
+      // keep the bounding box visually mirrored.
+      next.y = -d.y - layout.height;
+    }
+    if (d.rotation) next.rotation = negRotation(d.rotation);
+    return next;
+  }
+
+  if (d.type === "shape") {
+    const next = { ...d };
+    if (d.shapeType === "custom" && d.points?.length >= 4) {
+      // Custom shapes are rendered straight from points; x/y aren't used.
+      next.points = flipPoints(d.points);
+    } else {
+      // rect / ellipse / triangle anchor at top-left + width/height. Mirror
+      // the rect by shifting the anchor by the dimension along the axis.
+      if (axis === "y") next.x = -(d.x || 0) - (d.width || 0);
+      else next.y = -(d.y || 0) - (d.height || 0);
+    }
+    if (d.rotation) next.rotation = negRotation(d.rotation);
+    return next;
+  }
+
+  return d;
+}
+
 // ─── Transform: Apply ───────────────────────────────────────────────────────
 
 /**

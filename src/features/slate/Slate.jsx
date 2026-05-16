@@ -484,14 +484,27 @@ function Slate({
    * Enforces one animation drawing per player — if a coaching-draw already exists
    * for the same attachedPlayerId, it is removed before the new one is added.
    */
-  /** Deletes a player and removes any coaching-draw drawing attached to them. */
+  /**
+   * Deletes a player and removes any coaching-draw drawing attached to them.
+   * Wrapped in a history group so the removal + deletion collapse into one
+   * undo entry (otherwise each inner mutation would push its own snapshot).
+   */
   const handleDeletePlayer = useCallback((id) => {
-    const attached = drawingsState.drawings.find(
+    const attached = drawingsState.drawings.filter(
       (d) => d.source === "coaching-draw" && d.attachedPlayerId === id
     );
-    if (attached) drawingsState.removeDrawing(attached.id);
-    entities.handleDeletePlayer(id);
-  }, [entities.handleDeletePlayer, drawingsState.drawings, drawingsState.removeDrawing]);
+    const run = () => {
+      if (attached.length === 1) {
+        drawingsState.removeDrawing(attached[0].id);
+      } else if (attached.length > 1) {
+        drawingsState.removeMultipleDrawings(attached.map((d) => d.id));
+      }
+      entities.handleDeletePlayer(id);
+    };
+    const withGroup = historyApiRef.current?.withGroup;
+    if (typeof withGroup === "function") withGroup(run);
+    else run();
+  }, [entities.handleDeletePlayer, drawingsState.drawings, drawingsState.removeDrawing, drawingsState.removeMultipleDrawings]);
 
   const animateDrawingsTo = useCallback((target) => {
     if (drawingsAnimFrameRef.current) cancelAnimationFrame(drawingsAnimFrameRef.current);
@@ -524,66 +537,78 @@ function Slate({
     const durationMs = animationDataRef.current?.durationMs ?? 30000;
     const MIN_STEP_MS = 500;
 
-    // Fresh draw on a player/ball: remove ALL existing coaching-draw steps for that entity
-    if (!isContinuation && data.attachedPlayerId) {
-      const existing = drawingsState.drawings.filter(
-        (d) => d.source === "coaching-draw" && d.attachedPlayerId === data.attachedPlayerId
-      );
-      existing.forEach((d) => drawingsState.removeDrawing(d.id));
-    }
-
-    // Compute step index and time window
-    let stepStartMs = 0;
-    let stepIndex = 0;
-    if (isContinuation) {
-      const parent = drawingsState.drawings.find((d) => d.id === data.continuedFromDrawingId);
-      const parentStartMs = parent?.stepStartMs ?? 0;
-      const parentEndMs = parent?.stepEndMs ?? 0;
-      stepStartMs = parentEndMs;
-
-      // If the last step already reaches the end of the track, split that step in half
-      // and let the new continuation occupy the freed second half.
-      if (stepStartMs >= durationMs * 0.95 && parent) {
-        const parentSpanMs = Math.max(0, parentEndMs - parentStartMs);
-        if (parentSpanMs < MIN_STEP_MS * 2) {
-          onShowMessage?.(
-            "No room for another step",
-            "The last step is already too short to split again.",
-            "error"
-          );
-          return null;
+    // The body below mutates the drawings array multiple times (replace existing
+    // step + split parent on continuation + add new step). Wrap in a history
+    // group so undo collapses the whole sequence into one entry.
+    const run = () => {
+      // Fresh draw on a player/ball: remove ALL existing coaching-draw steps for that entity
+      if (!isContinuation && data.attachedPlayerId) {
+        const existing = drawingsState.drawings.filter(
+          (d) => d.source === "coaching-draw" && d.attachedPlayerId === data.attachedPlayerId
+        );
+        if (existing.length === 1) {
+          drawingsState.removeDrawing(existing[0].id);
+        } else if (existing.length > 1) {
+          drawingsState.removeMultipleDrawings(existing.map((d) => d.id));
         }
-        const splitMs = Math.round(parentStartMs + parentSpanMs / 2);
-        drawingsState.updateDrawing(parent.id, { stepEndMs: splitMs });
-        stepStartMs = splitMs;
       }
-      stepIndex = drawingsState.drawings.filter(
-        (d) => d.source === "coaching-draw" && d.attachedPlayerId === data.attachedPlayerId
-      ).length;
-    }
 
-    // Derive step color from the player/ball's base color
-    const baseColor =
-      entities.playersById?.[data.attachedPlayerId]?.color ??
-      (entities.ballsById?.[data.attachedPlayerId] ? "#FF7A18" : "#ef4444");
-    const stepColor = getStepColor(baseColor, stepIndex);
+      // Compute step index and time window
+      let stepStartMs = 0;
+      let stepIndex = 0;
+      if (isContinuation) {
+        const parent = drawingsState.drawings.find((d) => d.id === data.continuedFromDrawingId);
+        const parentStartMs = parent?.stepStartMs ?? 0;
+        const parentEndMs = parent?.stepEndMs ?? 0;
+        stepStartMs = parentEndMs;
 
-    const { continuedFromDrawingId: _drop, ...drawingData } = data;
-    const result = drawingsState.addDrawing({
-      ...drawingData,
-      color: stepColor,
-      source: "coaching-draw",
-      stepStartMs,
-      stepEndMs: durationMs,
-      stepIndex,
-    });
+        // If the last step already reaches the end of the track, split that step in half
+        // and let the new continuation occupy the freed second half.
+        if (stepStartMs >= durationMs * 0.95 && parent) {
+          const parentSpanMs = Math.max(0, parentEndMs - parentStartMs);
+          if (parentSpanMs < MIN_STEP_MS * 2) {
+            onShowMessage?.(
+              "No room for another step",
+              "The last step is already too short to split again.",
+              "error"
+            );
+            return null;
+          }
+          const splitMs = Math.round(parentStartMs + parentSpanMs / 2);
+          drawingsState.updateDrawing(parent.id, { stepEndMs: splitMs });
+          stepStartMs = splitMs;
+        }
+        stepIndex = drawingsState.drawings.filter(
+          (d) => d.source === "coaching-draw" && d.attachedPlayerId === data.attachedPlayerId
+        ).length;
+      }
 
-    if (data.attachedPlayerId) {
-      const attachedItemType = entities.ballsById?.[data.attachedPlayerId] ? "ball" : "player";
-      entities.handleSelectItem(data.attachedPlayerId, attachedItemType, { mode: "set" });
-    }
-    return result;
-  }, [drawingsState.addDrawing, drawingsState.removeDrawing, drawingsState.drawings, drawingMode, entities.handleSelectItem, entities.playersById, entities.ballsById, onShowMessage]);
+      // Derive step color from the player/ball's base color
+      const baseColor =
+        entities.playersById?.[data.attachedPlayerId]?.color ??
+        (entities.ballsById?.[data.attachedPlayerId] ? "#FF7A18" : "#ef4444");
+      const stepColor = getStepColor(baseColor, stepIndex);
+
+      const { continuedFromDrawingId: _drop, ...drawingData } = data;
+      const newId = drawingsState.addDrawing({
+        ...drawingData,
+        color: stepColor,
+        source: "coaching-draw",
+        stepStartMs,
+        stepEndMs: durationMs,
+        stepIndex,
+      });
+
+      if (data.attachedPlayerId) {
+        const attachedItemType = entities.ballsById?.[data.attachedPlayerId] ? "ball" : "player";
+        entities.handleSelectItem(data.attachedPlayerId, attachedItemType, { mode: "set" });
+      }
+      return newId;
+    };
+
+    const withGroup = historyApiRef.current?.withGroup;
+    return typeof withGroup === "function" ? withGroup(run) : run();
+  }, [drawingsState.addDrawing, drawingsState.removeDrawing, drawingsState.removeMultipleDrawings, drawingsState.updateDrawing, drawingsState.drawings, drawingMode, entities.handleSelectItem, entities.playersById, entities.ballsById, onShowMessage]);
 
   const selectedDrawings = useMemo(
     () => drawingsState.drawings.filter((d) => selectedDrawingIds.includes(d.id)),
@@ -1256,14 +1281,23 @@ function Slate({
         const nextKeyframes = (track.keyframes || []).map((kf) => {
           const { x, y } = flip(kf.x ?? 0, kf.y ?? 0);
           changed = true;
-          return { ...kf, x, y };
+          // Reflecting across either axis inverts rotation so a sprite's
+          // facing direction mirrors with the rest of the scene.
+          const nextKf = { ...kf, x, y };
+          if (kf.r !== undefined && kf.r !== null) nextKf.r = -kf.r;
+          return nextKf;
         });
         nextTracks[trackId] = { ...track, keyframes: nextKeyframes };
       }
       if (!changed) return null;
       return { ...base, tracks: nextTracks };
     });
-  }, [entities.setPlayersById, entities.setBallsById, setAnimationDataWithMeta]);
+
+    // Drawing-mode geometry (strokes, arrows, text, shapes) lives outside the
+    // animation tracks and needs an explicit flip so it stays aligned with
+    // the players/ball after a reflect.
+    drawingsState.flipAllDrawings(axis);
+  }, [entities.setPlayersById, entities.setBallsById, setAnimationDataWithMeta, drawingsState.flipAllDrawings]);
 
   const handleRotateLeft = useCallback(() => {
     rotateEntitiesByDelta(-90);
@@ -3493,8 +3527,8 @@ function Slate({
           <WideSidebar
             activeTool={canvasTool}
             onToolChange={handleToolChange}
-            onUndo={drawingMode ? undefined : slateHistory.onUndo}
-            onRedo={drawingMode ? undefined : slateHistory.onRedo}
+            onUndo={slateHistory.onUndo}
+            onRedo={slateHistory.onRedo}
             onReset={onReset}
             onAddPlayer={handleAddPlayerLogged}
             onPlayerColorChange={entities.handlePlayerColorChange}
@@ -3818,6 +3852,9 @@ function Slate({
             variant={testVariant ? "test" : "default"}
             drawings={drawingMode ? drawingsState.drawings : undefined}
             onUpdateDrawing={drawingMode ? drawingsState.updateDrawing : undefined}
+            onUpdateDrawingNoHistory={drawingMode ? drawingsState.updateDrawingNoHistory : undefined}
+            onBeginHistoryGroup={drawingMode ? slateHistory.beginGroup : undefined}
+            onEndHistoryGroup={drawingMode ? slateHistory.endGroup : undefined}
             onAddStep={drawingMode ? () => setAnimDrawSubTool((prev) => prev ? null : "arrow") : undefined}
             selectedPlayerIds={drawingMode ? selectedDrawingModePlayerIds : undefined}
             playersById={drawingMode ? entities.playersById : undefined}

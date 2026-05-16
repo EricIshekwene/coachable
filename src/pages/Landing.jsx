@@ -8,6 +8,8 @@ import { FiArrowRight, FiPlay, FiUsers, FiLayers, FiPlus, FiCheck } from "react-
 import { createPlay } from "../utils/apiPlays";
 import PlayPreviewCard from "../components/PlayPreviewCard";
 import SportAwarePublicNav from "../components/SportAwarePublicNav";
+import usePageMeta from "../utils/usePageMeta";
+import { getLandingMeta } from "../utils/sportSeo";
 
 // Local photography assets
 import filmSessionLong from "../assets/pictures/film_session_long.png";
@@ -41,6 +43,8 @@ const SPORT_LABELS = {
  */
 export default function Landing({ sport = null }) {
   const { user } = useAuth();
+
+  usePageMeta(getLandingMeta(sport) || undefined);
 
   const [featuredPlays, setFeaturedPlays] = useState([]);
   const [addingPlay, setAddingPlay] = useState(null);
