@@ -1,8 +1,18 @@
 import { FiTrash2, FiEye, FiEyeOff } from "react-icons/fi";
 import { PiPenNib } from "react-icons/pi";
 
+function isMotionEntry(drawing) {
+  if (drawing?.kind === "motion") return true;
+  if (drawing?.kind === "annotation") return false;
+  return Boolean(
+    drawing?.source === "coaching-draw" ||
+      drawing?.attachedEntityId ||
+      drawing?.attachedPlayerId
+  );
+}
+
 function getDrawingLabel(drawing, index, drawings) {
-  if (drawing.source === "coaching-draw") {
+  if (isMotionEntry(drawing)) {
     const stepNum = (drawing.stepIndex ?? 0) + 1;
     return `Step ${stepNum}`;
   }
@@ -35,7 +45,20 @@ function getTypeIcon(drawing) {
   return "\u25CF";
 }
 
+/**
+ * @param {{
+ *   drawingScope?: "annotation" | "motion",
+ *   drawings: object[],
+ *   selectedDrawingIds: string[],
+ *   onSelectedDrawingIdsChange: (ids: string[]) => void,
+ *   onRemoveDrawing: (id: string) => void,
+ *   onToggleDrawingHidden: (id: string) => void,
+ *   hideAllDrawings: boolean,
+ *   onHideAllDrawingsChange: (next: boolean) => void,
+ * }} props
+ */
 export default function DrawingObjectsList({
+  drawingScope = "annotation",
   drawings = [],
   selectedDrawingIds = [],
   onSelectedDrawingIdsChange,
@@ -47,12 +70,13 @@ export default function DrawingObjectsList({
   if (drawings.length === 0) return null;
 
   const selectedSet = new Set(selectedDrawingIds);
+  const sectionTitle = drawingScope === "motion" ? "Motion Steps" : "Annotations";
 
   return (
     <div className="flex flex-col border-b border-BrandGray2 pb-1.5 sm:pb-2 items-start justify-center gap-0.5">
       <div className="flex items-center justify-between w-full mb-0.5">
         <div className="text-BrandOrange text-xs sm:text-sm md:text-base font-DmSans font-bold">
-          Drawings
+          {sectionTitle}
         </div>
         <button
           onClick={() => onHideAllDrawingsChange?.(!hideAllDrawings)}
@@ -65,7 +89,7 @@ export default function DrawingObjectsList({
       <div className={`flex flex-col w-full gap-0.5 max-h-32 overflow-y-auto hide-scroll transition-opacity ${hideAllDrawings ? "opacity-40" : ""}`}>
         {drawings.map((d, i) => {
           const isSelected = selectedSet.has(d.id);
-          const isAnimDraw = d.source === "coaching-draw";
+          const isAnimDraw = isMotionEntry(d);
           const stepColor = isAnimDraw ? (d.color ?? "#FF7A18") : null;
           return (
             <div

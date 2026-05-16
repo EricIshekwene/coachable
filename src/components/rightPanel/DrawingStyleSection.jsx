@@ -816,7 +816,19 @@ function MultiSelectedStyle({ selectedDrawings, onUpdateMultipleDrawings }) {
   );
 }
 
+/**
+ * @param {{
+ *   drawingScope?: "annotation" | "motion",
+ *   ...
+ * }} props
+ *
+ * `drawingScope` tells the section which scope is active. Text and shape
+ * sub-tools are annotation-only — when scope === "motion", any
+ * `drawSubTool === "text"` or `"shape"` is treated as a stale tool and the
+ * matching style block is suppressed.
+ */
 export default function DrawingStyleSection({
+  drawingScope = "annotation",
   drawSubTool,
   drawColor,
   drawOpacity = 1,
@@ -849,6 +861,10 @@ export default function DrawingStyleSection({
 }) {
   const multiSelected = selectedDrawings.length > 1;
   const showSelectedStyle = drawSubTool === "select" && selectedDrawing && !multiSelected;
+  const isMotionScope = drawingScope === "motion";
+  // Annotation-only sub-tools. Motion never gets a text or shape editor.
+  const showTextStyle = !isMotionScope && drawSubTool === "text";
+  const showShapeStyle = !isMotionScope && drawSubTool === "shape";
 
   let title = "Drawing Style";
   if (drawSubTool === "draw") title = "Brush";
@@ -910,7 +926,7 @@ export default function DrawingStyleSection({
         />
       )}
 
-      {drawSubTool === "shape" && (
+      {showShapeStyle && (
         <ShapeSubToolStyle
           drawShapeStrokeColor={drawShapeStrokeColor}
           drawOpacity={drawOpacity}
@@ -925,7 +941,7 @@ export default function DrawingStyleSection({
         />
       )}
 
-      {drawSubTool === "text" && (
+      {showTextStyle && (
         <TextSubToolStyle
           drawColor={drawColor}
           drawOpacity={drawOpacity}

@@ -55,6 +55,11 @@ export default function RightPanel({
 
   // Drawing style props
   canvasTool,
+  // Active drawing scope identity. Set by Slate.jsx based on the resolution
+  // rule: pen tool wins (annotation), otherwise drawingMode + motion subtool
+  // wins (motion). Anything else is "none" — in which case the right panel
+  // hides BOTH drawing sections per the cross-scope-isolation contract.
+  activeDrawingUi = "none",
   animDrawSubTool,
   drawSubTool,
   drawColor,
@@ -78,9 +83,20 @@ export default function RightPanel({
   textSelectAllTrigger,
   onUpdateDrawing,
   onUpdateMultipleDrawings,
-  // Drawing objects list props
+  // Drawing objects list props.
+  // `drawings` / `selectedDrawingIds` are the ACTIVE-scope view, kept for
+  // back-compat. Slate.jsx also passes the typed scope props below so the
+  // panel can render the correct list when needed.
   drawings,
   selectedDrawingIds,
+  annotationDrawings = [],
+  motionDrawings = [],
+  selectedAnnotationDrawingIds = [],
+  selectedMotionDrawingIds = [],
+  onSelectedAnnotationDrawingIdsChange,
+  onSelectedMotionDrawingIdsChange,
+  onToggleAnnotationDrawingHidden,
+  onToggleMotionDrawingHidden,
   onSelectedDrawingIdsChange,
   onCanvasToolChange,
   onDrawSubToolChange,
@@ -157,8 +173,14 @@ export default function RightPanel({
             onReset={onReset}
           />
 
-          {(canvasTool === "pen" || canvasTool === "animDraw" || !!animDrawSubTool) && (
+          {/*
+            Style section renders only when a drawing scope is active. Scope
+            identity ("annotation" vs "motion") is forwarded so the section
+            can hide tools that don't apply (e.g. text/shape under motion).
+          */}
+          {activeDrawingUi !== "none" && (
             <DrawingStyleSection
+              drawingScope={activeDrawingUi}
               drawSubTool={drawSubTool}
               drawColor={drawColor}
               drawOpacity={drawOpacity}
@@ -221,13 +243,31 @@ export default function RightPanel({
             />
           )}
 
-          {(canvasTool === "pen" || canvasTool === "animDraw" || !!animDrawSubTool) && (
+          {/*
+            Objects list renders only for the active scope. Cross-scope
+            visibility is forbidden — annotations and motion drawings are
+            authored, selected, and edited in independent lists.
+          */}
+          {activeDrawingUi === "annotation" && (
             <DrawingObjectsList
-              drawings={drawings}
-              selectedDrawingIds={selectedDrawingIds}
-              onSelectedDrawingIdsChange={onSelectedDrawingIdsChange}
+              drawingScope="annotation"
+              drawings={annotationDrawings}
+              selectedDrawingIds={selectedAnnotationDrawingIds}
+              onSelectedDrawingIdsChange={onSelectedAnnotationDrawingIdsChange || onSelectedDrawingIdsChange}
               onRemoveDrawing={onRemoveDrawing}
-              onToggleDrawingHidden={onToggleDrawingHidden}
+              onToggleDrawingHidden={onToggleAnnotationDrawingHidden || onToggleDrawingHidden}
+              hideAllDrawings={hideAllDrawings}
+              onHideAllDrawingsChange={onHideAllDrawingsChange}
+            />
+          )}
+          {activeDrawingUi === "motion" && (
+            <DrawingObjectsList
+              drawingScope="motion"
+              drawings={motionDrawings}
+              selectedDrawingIds={selectedMotionDrawingIds}
+              onSelectedDrawingIdsChange={onSelectedMotionDrawingIdsChange || onSelectedDrawingIdsChange}
+              onRemoveDrawing={onRemoveDrawing}
+              onToggleDrawingHidden={onToggleMotionDrawingHidden || onToggleDrawingHidden}
               hideAllDrawings={hideAllDrawings}
               onHideAllDrawingsChange={onHideAllDrawingsChange}
             />
@@ -254,21 +294,15 @@ export default function RightPanel({
             />
           )}
 
-          {canvasTool !== "pen" && canvasTool !== "animDraw" && (
-            <DrawingObjectsList
-              drawings={drawings}
-              selectedDrawingIds={selectedDrawingIds}
-              onSelectedDrawingIdsChange={(ids) => {
-                onCanvasToolChange?.("pen");
-                onDrawSubToolChange?.("select");
-                onSelectedDrawingIdsChange?.(ids);
-              }}
-              onRemoveDrawing={onRemoveDrawing}
-              onToggleDrawingHidden={onToggleDrawingHidden}
-              hideAllDrawings={hideAllDrawings}
-              onHideAllDrawingsChange={onHideAllDrawingsChange}
-            />
-          )}
+          {/*
+            Previously a passive DrawingObjectsList rendered here when no
+            drawing scope was active, and clicking an item would silently
+            activate pen mode. That was the same coupling the refactor sets
+            out to remove — when no scope is active, the panel intentionally
+            shows nothing here. Users enter a drawing scope explicitly via
+            the sidebar Draw button (annotation) or by activating a motion
+            tool in /admin/drawing (motion).
+          */}
 
           {selectedItemIds?.length === 1 && (() => {
             const itemId = selectedItemIds[0];
