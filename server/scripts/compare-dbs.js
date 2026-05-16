@@ -1,16 +1,24 @@
 import pg from "pg";
 const { Pool } = pg;
 
+// Connection URLs come from env vars — never hardcode credentials here.
+// Set COMPARE_DB_URL_A and COMPARE_DB_URL_B before running this script,
+// e.g. via `railway run` or a local .env that's gitignored.
 const dbs = [
   {
-    label: "Postgres (used by API — postgres.railway.internal)",
-    url: "postgresql://postgres:03a5ddeb93ddb695fdc14b21e112a91e39e667f4c4d25c88@crossover.proxy.rlwy.net:39355/railway",
+    label: process.env.COMPARE_DB_LABEL_A || "DB A",
+    url: process.env.COMPARE_DB_URL_A,
   },
   {
-    label: "Postgres-y9Ne (postgres-y9ne.railway.internal)",
-    url: "postgresql://postgres:OqtADkabeXbIEGPxdgTQzlUjDOlHJcYF@yamanote.proxy.rlwy.net:27422/railway",
+    label: process.env.COMPARE_DB_LABEL_B || "DB B",
+    url: process.env.COMPARE_DB_URL_B,
   },
-];
+].filter((db) => db.url);
+
+if (dbs.length === 0) {
+  console.error("Set COMPARE_DB_URL_A and/or COMPARE_DB_URL_B to run this script.");
+  process.exit(1);
+}
 
 for (const db of dbs) {
   console.log(`\n=== ${db.label} ===`);
