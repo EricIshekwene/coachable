@@ -1937,14 +1937,18 @@ function KonvaCanvasRoot({
             <Group x={worldOrigin.x} y={worldOrigin.y} scaleX={worldOrigin.scale} scaleY={worldOrigin.scale}>
               {!hideAllDrawings && drawingsRevealProgress > 0 && drawings.map((d) => {
                 if (!d || d.hidden) return null;
-                // Annotations are gated by their visibility window UNLESS the
-                // user has them selected — keeping selected items visible is
-                // critical so the user can edit a window that doesn't include
-                // the current playhead time. Motion drawings always render.
+                // Annotations are gated strictly by their visibility window
+                // against the current playhead — even when selected. This is
+                // what gives the user real-time feedback while dragging the
+                // lane: shorten the window past the playhead and the
+                // annotation disappears immediately. Editing remains possible
+                // because the lane stays in the timeline (selection drives
+                // that, not canvas presence) and the right panel still shows
+                // the style controls. Motion drawings always render.
                 if (isAnnotationDrawing(d)) {
-                  const isSelected = selectedAnnotationDrawingIds.includes(d.id);
-                  const inWindow = isAnnotationDrawingVisibleAtTime(d, currentTimeMs, durationMs);
-                  if (!isSelected && !inWindow) return null;
+                  if (!isAnnotationDrawingVisibleAtTime(d, currentTimeMs, durationMs)) {
+                    return null;
+                  }
                 }
                 return renderDrawingNode(d, d.id, drawingsRevealProgress);
               })}
