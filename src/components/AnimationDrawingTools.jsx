@@ -2,7 +2,6 @@ import { createElement } from "react";
 import { PiPenNib, PiEraserFill, PiCursorFill } from "react-icons/pi";
 import { FaArrowUpLong } from "react-icons/fa6";
 import { FiEye, FiEyeOff } from "react-icons/fi";
-import FloatingToolPillShell from "./toolPills/FloatingToolPillShell";
 
 /**
  * Motion drawing palette — the floating tool pill that appears in drawing-mode
@@ -13,6 +12,9 @@ import FloatingToolPillShell from "./toolPills/FloatingToolPillShell";
  * `DrawToolsPill` because `Slate.jsx` gates rendering on `drawingMode`.
  * Tool selections only mutate motion subtool state; annotation subtool state
  * is entirely independent.
+ *
+ * Outer container uses its own pill styling (rounded-full) instead of the
+ * shared FloatingToolPillShell so the motion palette keeps its original look.
  */
 const TOOLS = [
   { id: "arrow", label: "Arrow", Icon: FaArrowUpLong, iconStyle: { transform: "rotate(45deg)" } },
@@ -30,7 +32,11 @@ const TOOLS = [
  */
 export default function AnimationDrawingTools({ activeSubTool, onSubToolChange, hideDrawings = false, onToggleHideDrawings }) {
   return (
-    <FloatingToolPillShell testId="motion-tool-pill" ariaLabel="Motion drawing tools">
+    <div
+      data-testid="motion-tool-pill"
+      aria-label="Motion drawing tools"
+      className="absolute top-17 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 select-none rounded-full border border-white/10 bg-[rgba(18,18,18,0.92)] px-1.5 py-1.5 shadow-[0_1px_4px_rgba(0,0,0,0.08)] backdrop-blur-sm"
+    >
       {TOOLS.map(({ id, label, Icon, iconStyle }) => {
         const isActive = activeSubTool === id;
         return (
@@ -104,6 +110,6 @@ export default function AnimationDrawingTools({ activeSubTool, onSubToolChange, 
           {hideDrawings ? <FiEyeOff className="text-[13px]" /> : <FiEye className="text-[13px]" />}
         </span>
       </button>
-    </FloatingToolPillShell>
+    </div>
   );
 }
