@@ -103,6 +103,14 @@ export default function RightPanel({
   onRemoveDrawing,
   hideAllDrawings,
   onHideAllDrawingsChange,
+  // Scope-specific hide-all toggles. Annotation defaults to the legacy
+  // hideAllDrawings flag. Motion uses its own state so the right-panel
+  // Motion Steps hide button mirrors the AnimationDrawingTools toolbar
+  // hide button — toggling one updates the other.
+  annotationHideAll,
+  onAnnotationHideAllChange,
+  motionHideAll,
+  onMotionHideAllChange,
   eraserSize,
   onEraserSizeChange,
   drawShapeType,
@@ -256,8 +264,8 @@ export default function RightPanel({
               onSelectedDrawingIdsChange={onSelectedAnnotationDrawingIdsChange || onSelectedDrawingIdsChange}
               onRemoveDrawing={onRemoveDrawing}
               onToggleDrawingHidden={onToggleAnnotationDrawingHidden || onToggleDrawingHidden}
-              hideAllDrawings={hideAllDrawings}
-              onHideAllDrawingsChange={onHideAllDrawingsChange}
+              hideAllDrawings={annotationHideAll ?? hideAllDrawings}
+              onHideAllDrawingsChange={onAnnotationHideAllChange || onHideAllDrawingsChange}
             />
           )}
           {activeDrawingUi === "motion" && (
@@ -268,8 +276,14 @@ export default function RightPanel({
               onSelectedDrawingIdsChange={onSelectedMotionDrawingIdsChange || onSelectedDrawingIdsChange}
               onRemoveDrawing={onRemoveDrawing}
               onToggleDrawingHidden={onToggleMotionDrawingHidden || onToggleDrawingHidden}
-              hideAllDrawings={hideAllDrawings}
-              onHideAllDrawingsChange={onHideAllDrawingsChange}
+              // Linked to the AnimationDrawingTools toolbar hide button
+              // through motionHideAll / onMotionHideAllChange.
+              hideAllDrawings={motionHideAll ?? hideAllDrawings}
+              onHideAllDrawingsChange={
+                onMotionHideAllChange
+                  ? () => onMotionHideAllChange()
+                  : onHideAllDrawingsChange
+              }
             />
           )}
 

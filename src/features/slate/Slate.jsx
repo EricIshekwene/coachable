@@ -621,6 +621,19 @@ function Slate({
     drawingsAnimFrameRef.current = requestAnimationFrame(tick);
   }, []);
 
+  /**
+   * Toggle hide-state for motion drawings with the retrace animation. Shared
+   * between the AnimationDrawingTools toolbar button and the right-panel
+   * Motion Steps list hide button so the two controls stay in sync.
+   */
+  const handleToggleMotionDrawingsHidden = useCallback(() => {
+    setDrawingsHidden((prev) => {
+      const next = !prev;
+      animateDrawingsTo(next ? 0 : 1);
+      return next;
+    });
+  }, [animateDrawingsTo]);
+
   const addDrawingTagged = useCallback((data) => {
     // Route by the *active* scope, not by drawingMode. In /admin/drawing the
     // user can activate the pen tool to drop annotations on top of a motion
@@ -3884,11 +3897,7 @@ function Slate({
               }
             }}
             hideDrawings={drawingsHidden}
-            onToggleHideDrawings={() => {
-              const newHidden = !drawingsHidden;
-              setDrawingsHidden(newHidden);
-              animateDrawingsTo(newHidden ? 0 : 1);
-            }}
+            onToggleHideDrawings={handleToggleMotionDrawingsHidden}
           />
         )}
         {/* ── Mobile context pill — one unified pill for all placement/selection states ── */}
@@ -4284,8 +4293,16 @@ function Slate({
         onToggleDrawingHidden={isMotionScopeActive ? motionDrawingsState.toggleDrawingHidden : annotationDrawingsState.toggleDrawingHidden}
         onToggleAnnotationDrawingHidden={annotationDrawingsState.toggleDrawingHidden}
         onToggleMotionDrawingHidden={motionDrawingsState.toggleDrawingHidden}
+        // Annotation list = hideAllDrawings (the legacy single-toggle flag).
+        // Motion list shares state with the AnimationDrawingTools toolbar
+        // hide button via drawingsHidden + handleToggleMotionDrawingsHidden
+        // so the toolbar and the right-panel control stay in lockstep.
         hideAllDrawings={hideAllDrawings}
         onHideAllDrawingsChange={setHideAllDrawings}
+        annotationHideAll={hideAllDrawings}
+        onAnnotationHideAllChange={setHideAllDrawings}
+        motionHideAll={drawingsHidden}
+        onMotionHideAllChange={handleToggleMotionDrawingsHidden}
         allPlayersDisplay={entities.allPlayersDisplay}
         onAllPlayersDisplayChange={entities.setAllPlayersDisplay}
         onSelectedPlayersColorChange={entities.handleSelectedPlayersColorChange}
