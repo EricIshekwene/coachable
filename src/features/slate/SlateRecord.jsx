@@ -52,6 +52,7 @@ import {
   summarizePlayData as summarizePersistedPlayData,
 } from "../../utils/playPersistenceDebugLogger";
 import { useDrawings } from "./hooks/useDrawings";
+import { splitLegacyDrawingsArray } from "./utils/drawingSchema";
 import { useRecordingMode } from "./hooks/useRecordingMode";
 import RecordingTimelinePill from "../../components/RecordingTimelinePill";
 import RecordingCountdown from "../../components/RecordingCountdown";
@@ -398,7 +399,14 @@ function SlateRecord({
     }
   }, [entities.playerEditor.open]);
 
-  const drawingsState = useDrawings({ historyApiRef });
+  // Record-mode is always annotation-scope (it has no `drawingMode` toggle),
+  // but we instantiate both buckets so imported v3/v2 plays with motion
+  // drawings still round-trip cleanly through save/reload.
+  const annotationDrawingsState = useDrawings({ historyApiRef, kind: "annotation" });
+  const motionDrawingsState = useDrawings({ historyApiRef, kind: "motion" });
+  // Back-compat shim: `drawingsState` references downstream point at the
+  // annotation bucket since that is the only scope authorable here.
+  const drawingsState = annotationDrawingsState;
 
   const selectedDrawings = useMemo(
     () => drawingsState.drawings.filter((d) => selectedDrawingIds.includes(d.id)),
@@ -412,13 +420,30 @@ function SlateRecord({
 
   const compositeSnapshotSlate = useCallback(() => ({
     ...entities.snapshotSlate(),
-    drawings: drawingsState.snapshotDrawings(),
-  }), [entities.snapshotSlate, drawingsState.snapshotDrawings]);
+    annotationDrawings: annotationDrawingsState.snapshotDrawings(),
+    motionDrawings: motionDrawingsState.snapshotDrawings(),
+  }), [entities.snapshotSlate, annotationDrawingsState.snapshotDrawings, motionDrawingsState.snapshotDrawings]);
 
   const compositeApplySlate = useCallback((snapshot) => {
     entities.applySlate(snapshot);
-    drawingsState.applyDrawings(snapshot.drawings);
-  }, [entities.applySlate, drawingsState.applyDrawings]);
+    // Accept v3 (separated) and v2 (combined) snapshots so undo history
+    // stamped before this refactor still restores correctly.
+    if (snapshot.annotationDrawings || snapshot.motionDrawings) {
+      annotationDrawingsState.applyDrawings(snapshot.annotationDrawings || []);
+      motionDrawingsState.applyDrawings(snapshot.motionDrawings || []);
+    } else if (snapshot.drawings) {
+      const { annotationDrawings, motionDrawings } = splitLegacyDrawingsArray(
+        snapshot.drawings,
+        { playersById: entities.playersById, ballsById: entities.ballsById },
+        snapshot.animationData?.durationMs ?? 30000
+      );
+      annotationDrawingsState.applyDrawings(annotationDrawings);
+      motionDrawingsState.applyDrawings(motionDrawings);
+    } else {
+      annotationDrawingsState.applyDrawings([]);
+      motionDrawingsState.applyDrawings([]);
+    }
+  }, [entities.applySlate, entities.playersById, entities.ballsById, annotationDrawingsState.applyDrawings, motionDrawingsState.applyDrawings]);
 
   const slateHistory = useSlateHistory({
     snapshotSlate: compositeSnapshotSlate,
@@ -1019,7 +1044,8 @@ function SlateRecord({
     engineRef.current.pause({ shouldLog: false });
     engineRef.current.seek(0, { shouldLog: false, source: "engine" });
     entities.resetSlateEntities();
-    drawingsState.resetDrawings();
+    annotationDrawingsState.resetDrawings();
+    motionDrawingsState.resetDrawings();
     setSelectedDrawingIds([]);
     setTextEditing(null);
     slateHistory.clearSlateHistory();
@@ -1057,10 +1083,11 @@ function SlateRecord({
         units: "px",
         notes: "World coordinates are centered; +x right, +y down.",
       },
-      drawings: drawingsState.drawings,
+      annotationDrawings: annotationDrawingsState.drawings,
+      motionDrawings: motionDrawingsState.drawings,
     });
     return result;
-  }, [playName, advancedSettings, entities, fieldViewport, animationData, speedMultiplier, autoplayEnabled, drawingsState.drawings]);
+  }, [playName, advancedSettings, entities, fieldViewport, animationData, speedMultiplier, autoplayEnabled, annotationDrawingsState.drawings, motionDrawingsState.drawings]);
 
   /**
    * Persists the current play data to localStorage for crash recovery.
@@ -1182,7 +1209,8 @@ function SlateRecord({
         units: "px",
         notes: "World coordinates are centered; +x right, +y down.",
       },
-      drawings: drawingsState.drawings,
+      annotationDrawings: annotationDrawingsState.drawings,
+      motionDrawings: motionDrawingsState.drawings,
     });
     const exportJson = JSON.stringify(exportPayload);
     const exportBytes = new TextEncoder().encode(exportJson).length;
@@ -2719,7 +2747,22 @@ function SlateRecord({
       currentTimeRef.current = 0;
       latestPosesRef.current = {};
       animationRendererRef.current?.clearPoses?.();
-      drawingsState.applyDrawings(play.drawings || []);
+      // Accept v3 (separated arrays), v2 (combined `drawings`), or no drawings.
+      if (Array.isArray(play.annotationDrawings) || Array.isArray(play.motionDrawings)) {
+        annotationDrawingsState.applyDrawings(play.annotationDrawings || []);
+        motionDrawingsState.applyDrawings(play.motionDrawings || []);
+      } else if (Array.isArray(play.drawings)) {
+        const { annotationDrawings, motionDrawings } = splitLegacyDrawingsArray(
+          play.drawings,
+          { playersById: nextPlayers, ballsById: nextBallsById },
+          importedAnimation?.durationMs ?? 30000
+        );
+        annotationDrawingsState.applyDrawings(annotationDrawings);
+        motionDrawingsState.applyDrawings(motionDrawings);
+      } else {
+        annotationDrawingsState.applyDrawings([]);
+        motionDrawingsState.applyDrawings([]);
+      }
       setSelectedDrawingIds([]);
       logAnimDebug(`import ok duration=${importedAnimation.durationMs} tracks=${trackCount}`);
       logAction("play_imported", { playerCount: Object.keys(nextPlayers).length, trackCount });
@@ -3068,7 +3111,13 @@ function SlateRecord({
           advancedSettings={advancedSettings}
           animationRendererRef={animationRendererRef}
           onAnimationRendererReady={handleAnimationRendererReady}
-          drawings={drawingsState.drawings}
+          // Render both scopes' drawings; the canvas pointer handlers will
+          // only route to the annotation bucket because record mode has no
+          // motion authoring UI.
+          drawings={[...annotationDrawingsState.drawings, ...motionDrawingsState.drawings]}
+          annotationDrawings={annotationDrawingsState.drawings}
+          motionDrawings={motionDrawingsState.drawings}
+          activeDrawingUi={canvasTool === "pen" ? "annotation" : "none"}
           hideAllDrawings={hideAllDrawings}
           drawSubTool={drawSubTool}
           drawColor={drawColor}
