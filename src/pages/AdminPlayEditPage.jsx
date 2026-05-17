@@ -4,6 +4,8 @@ import Slate from "../features/slate/Slate";
 import MessagePopup from "../components/MessagePopup/MessagePopup";
 import { useMessagePopup } from "../components/messaging/useMessagePopup";
 import { useAdmin } from "../admin/AdminContext";
+import { adminPath } from "../admin/adminNav";
+import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
 import useThemeColor from "../utils/useThemeColor";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -18,7 +20,7 @@ const LS_PREFIX = "coachable_play_";
  */
 async function adminFetchPlay(session, id) {
   const res = await fetch(`${API_URL}/admin/plays/${id}`, {
-    headers: { "x-admin-session": session },
+    ...adminFetchOptions(),
   });
   if (!res.ok) throw new Error("Failed to load play");
   const data = await res.json();
@@ -33,12 +35,10 @@ async function adminFetchPlay(session, id) {
  */
 async function adminCreatePlay(session, payload) {
   const res = await fetch(`${API_URL}/admin/plays`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-admin-session": session,
-    },
-    body: JSON.stringify(payload),
+    ...adminFetchOptions({
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   });
   if (!res.ok) throw new Error("Failed to create play");
   const data = await res.json();
@@ -54,12 +54,10 @@ async function adminCreatePlay(session, payload) {
  */
 async function adminUpdatePlay(session, id, payload) {
   const res = await fetch(`${API_URL}/admin/plays/${id}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      "x-admin-session": session,
-    },
-    body: JSON.stringify(payload),
+    ...adminFetchOptions({
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
   });
   if (!res.ok) throw new Error("Failed to save play");
   const data = await res.json();
@@ -102,14 +100,14 @@ export default function AdminPlayEditPage() {
   const { playId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { theme } = useAdmin();
+  const { theme, basePath } = useAdmin();
   const initialSport = location.state?.sport || null;
   const initialFolderId = location.state?.folderId || null;
   const initialPresetPlayData = location.state?.presetPlayData || null;
   const initialModeFromState = location.state?.mode || "keyframe";
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
   const [ready, setReady] = useState(false);
-  const [loadingPlay, setLoadingPlay] = useState(() => playId !== "new" && !!sessionStorage.getItem(SESSION_KEY));
+  const [loadingPlay, setLoadingPlay] = useState(() => playId !== "new");
   const [existingPlay, setExistingPlay] = useState(null);
   const [recoveredData, setRecoveredData] = useState(undefined);
   // Reactive persisted ID — starts as null for "new" plays, updates to UUID after first DB save.
@@ -120,11 +118,11 @@ export default function AdminPlayEditPage() {
 
   useThemeColor(theme === "light" ? "#f3f6fb" : "#121212");
 
-  const session = sessionStorage.getItem(SESSION_KEY);
+  const session = readAdminSession();
 
   // Load play data if editing an existing play
   useEffect(() => {
-    if (isNew || !session) return;
+    if (isNew || (!session && basePath === "/admin")) return;
     setLoadingPlay(true);
     adminFetchPlay(session, playId)
       .then((p) => {
@@ -140,7 +138,7 @@ export default function AdminPlayEditPage() {
         setRecoveredData(recoverFromLocalStorage(playId));
       })
       .finally(() => setLoadingPlay(false));
-  }, [playId, isNew, session]);
+  }, [playId, isNew, session, basePath]);
 
   /**
    * Called by Slate's flushToDatabase to persist play data to the server.
@@ -150,7 +148,7 @@ export default function AdminPlayEditPage() {
    */
   const handlePlayDataChange = useCallback(
     async (playData, playName) => {
-      if (!session) return;
+      if (!session && basePath === "/admin") return;
       try {
         const title = playName?.trim() || "Untitled";
         if (!persistedId) {
@@ -179,20 +177,20 @@ export default function AdminPlayEditPage() {
         showMessage("Failed to save play", "", "error");
       }
     },
-    [session, persistedId, showMessage, initialSport, initialFolderId]
+    [session, persistedId, showMessage, initialSport, initialFolderId, basePath]
   );
 
   /** Handle thumbnail saves separately (called by Slate export/screenshot). */
   const handleThumbnailSave = useCallback(
     async (thumbnail) => {
-      if (!session || !persistedId) return;
+      if ((!session && basePath === "/admin") || !persistedId) return;
       try {
         await adminUpdatePlay(session, persistedId, { thumbnail });
       } catch {
         // Non-critical — silently ignore thumbnail save failures
       }
     },
-    [session, persistedId]
+    [session, persistedId, basePath]
   );
 
   // Flush to DB on page unload and visibility change
@@ -213,7 +211,7 @@ export default function AdminPlayEditPage() {
 
   const handleNavigateHome = useCallback(async () => {
     await flushRef.current?.();
-    navigate("/admin/app", { state: { folderId: initialFolderId } });
+    navigate(adminPath(basePath, "/app"), { state: { folderId: initialFolderId } });
   }, [navigate, initialFolderId]);
 
   if (loadingPlay) {

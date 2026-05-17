@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import PlayPreviewCard from "../components/PlayPreviewCard";
 import { useAdmin } from "../admin/AdminContext";
 import { adminPath } from "../admin/adminNav";
+import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
 import { AdminShell, AdminHeader, AdminPage, AdminBtn, AdminSpinner } from "../admin/components";
 
 const SESSION_KEY = "coachable_admin_session";
@@ -112,9 +113,9 @@ function StatCard({ label, value, valueStyle }) {
 }
 
 export default function AdminUserActivity() {
-  const { basePath } = useAdmin();
+  const { basePath, isOwner } = useAdmin();
   const { userId } = useParams();
-  const [session] = useState(() => sessionStorage.getItem(SESSION_KEY) || "");
+  const [session] = useState(() => readAdminSession() || "");
   const [payload, setPayload] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -124,18 +125,16 @@ export default function AdminUserActivity() {
   const [deletedTeamsError, setDeletedTeamsError] = useState("");
   const [restoringId, setRestoringId] = useState(null);
 
-  const authed = Boolean(session);
+  const authed = basePath === "/staff" || Boolean(session);
 
   const adminFetch = useCallback(
     async (path, options = {}) => {
       const { method = "GET", body } = options;
       const res = await fetch(`${API_URL}${path}`, {
-        method,
-        headers: {
-          "x-admin-session": session,
-          ...(body ? { "Content-Type": "application/json" } : {}),
-        },
-        ...(body ? { body: JSON.stringify(body) } : {}),
+        ...adminFetchOptions({
+          method,
+          ...(body ? { body: JSON.stringify(body) } : {}),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -326,48 +325,49 @@ export default function AdminUserActivity() {
               )}
             </section>
 
-            {/* Restore deleted teams */}
-            <section className="p-6" style={card}>
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="font-Manrope text-lg font-bold" style={{ color: "var(--adm-text)" }}>Restore Deleted Teams</h2>
-                  <p className="mt-1 text-sm" style={{ color: "var(--adm-muted)" }}>Teams deleted by this user, recoverable within 30 days.</p>
+            {isOwner && (
+              <section className="p-6" style={card}>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h2 className="font-Manrope text-lg font-bold" style={{ color: "var(--adm-text)" }}>Restore Deleted Teams</h2>
+                    <p className="mt-1 text-sm" style={{ color: "var(--adm-muted)" }}>Teams deleted by this user, recoverable within 30 days.</p>
+                  </div>
+                  <AdminBtn variant="secondary" size="sm" onClick={handleToggleRestoreDeleted}>
+                    {showRestoreDeleted ? "Hide" : "Show Deleted"}
+                  </AdminBtn>
                 </div>
-                <AdminBtn variant="secondary" size="sm" onClick={handleToggleRestoreDeleted}>
-                  {showRestoreDeleted ? "Hide" : "Show Deleted"}
-                </AdminBtn>
-              </div>
-              {showRestoreDeleted && (
-                <div className="mt-4">
-                  {deletedTeamsError && <div className="mb-3 rounded-[var(--adm-radius-sm)] px-4 py-3 text-sm" style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}>{deletedTeamsError}</div>}
-                  {deletedTeamsLoading ? (
-                    <div className="flex justify-center py-8"><AdminSpinner /></div>
-                  ) : deletedTeams.length === 0 ? (
-                    <div className="px-4 py-6 text-sm" style={{ ...innerCard, color: "var(--adm-muted)" }}>No deleted teams found for this user.</div>
-                  ) : (
-                    <div className="grid gap-3 lg:grid-cols-2">
-                      {deletedTeams.map((team) => {
-                        const daysLeft = Math.ceil((new Date(team.deleted_at).getTime() + 30 * 86400000 - Date.now()) / 86400000);
-                        return (
-                          <div key={team.id} className="flex items-center justify-between gap-3 px-4 py-4" style={innerCard}>
-                            <div className="min-w-0">
-                              <p className="truncate font-semibold" style={{ color: "var(--adm-text)" }}>{team.name}</p>
-                              <p className="mt-1 text-sm" style={{ color: "var(--adm-muted)" }}>{team.sport || "No sport"} | Deleted {formatTime(team.deleted_at)}</p>
-                              <p className="mt-1 text-xs" style={{ color: daysLeft <= 5 ? "var(--adm-danger)" : "var(--adm-muted)" }}>
-                                {daysLeft > 0 ? `${daysLeft}d until permanent deletion` : "Expires today"}
-                              </p>
+                {showRestoreDeleted && (
+                  <div className="mt-4">
+                    {deletedTeamsError && <div className="mb-3 rounded-[var(--adm-radius-sm)] px-4 py-3 text-sm" style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}>{deletedTeamsError}</div>}
+                    {deletedTeamsLoading ? (
+                      <div className="flex justify-center py-8"><AdminSpinner /></div>
+                    ) : deletedTeams.length === 0 ? (
+                      <div className="px-4 py-6 text-sm" style={{ ...innerCard, color: "var(--adm-muted)" }}>No deleted teams found for this user.</div>
+                    ) : (
+                      <div className="grid gap-3 lg:grid-cols-2">
+                        {deletedTeams.map((team) => {
+                          const daysLeft = Math.ceil((new Date(team.deleted_at).getTime() + 30 * 86400000 - Date.now()) / 86400000);
+                          return (
+                            <div key={team.id} className="flex items-center justify-between gap-3 px-4 py-4" style={innerCard}>
+                              <div className="min-w-0">
+                                <p className="truncate font-semibold" style={{ color: "var(--adm-text)" }}>{team.name}</p>
+                                <p className="mt-1 text-sm" style={{ color: "var(--adm-muted)" }}>{team.sport || "No sport"} | Deleted {formatTime(team.deleted_at)}</p>
+                                <p className="mt-1 text-xs" style={{ color: daysLeft <= 5 ? "var(--adm-danger)" : "var(--adm-muted)" }}>
+                                  {daysLeft > 0 ? `${daysLeft}d until permanent deletion` : "Expires today"}
+                                </p>
+                              </div>
+                              <AdminBtn variant="secondary" size="sm" onClick={() => handleRestoreTeam(team.id)} disabled={restoringId === team.id}>
+                                {restoringId === team.id ? "Restoring…" : "Restore"}
+                              </AdminBtn>
                             </div>
-                            <AdminBtn variant="secondary" size="sm" onClick={() => handleRestoreTeam(team.id)} disabled={restoringId === team.id}>
-                              {restoringId === team.id ? "Restoring…" : "Restore"}
-                            </AdminBtn>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-            </section>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </section>
+            )}
 
             {/* Plays + Activity */}
             <div className="grid gap-6 xl:grid-cols-[1.1fr,1.4fr]">

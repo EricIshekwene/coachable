@@ -23,6 +23,17 @@ function PlaysIcon() {
   );
 }
 
+function UsersIcon() {
+  return (
+    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
 function OnePageIcon() {
   return (
     <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -64,6 +75,14 @@ function TestsIcon() {
   );
 }
 
+function StaffIcon() {
+  return (
+    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+    </svg>
+  );
+}
+
 function SunIcon() {
   return (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -82,20 +101,36 @@ function MoonIcon() {
 }
 
 const NAV_ITEMS = [
-  { label: "Dashboard", path: "", icon: <DashboardIcon /> },
-  { label: "Plays", path: "/app", icon: <PlaysIcon /> },
-  { label: "Errors", path: "/errors", icon: <ErrorsIcon /> },
-  { label: "Issues", path: "/user-issues", icon: <IssuesIcon /> },
-  { label: "Videos", path: "/demo-videos", icon: <VideosIcon /> },
-  { label: "Tests", path: "/tests", icon: <TestsIcon /> },
+  { label: "Dashboard", path: "", icon: <DashboardIcon />, perm: "dashboard.viewAnalytics" },
+  { label: "Plays", path: "/app", icon: <PlaysIcon />, anyOf: ["plays.viewFolders", "pageSections.manage", "playbooks.view", "presets.create", "presets.edit", "prefabs.manage"] },
+  { label: "Users", path: "/users", icon: <UsersIcon />, perm: "users.viewTable" },
+  { label: "One Page", path: "/one-page", icon: <OnePageIcon />, perm: "pageSections.manage" },
+  { label: "Errors", path: "/errors", icon: <ErrorsIcon />, perm: "errors.viewReports" },
+  { label: "Issues", path: "/user-issues", icon: <IssuesIcon />, perm: "issues.view" },
+  { label: "Videos", path: "/demo-videos", icon: <VideosIcon />, perm: "videos.addDemo" },
+  { label: "Tests", path: "/tests", icon: <TestsIcon />, perm: "tests.run" },
+  { label: "Staff", path: "/staff", icon: <StaffIcon />, ownerOnly: true },
 ];
 
 /**
  * Persistent vertical sidebar for the admin panel.
  * Collapses into an off-canvas drawer on smaller screens.
+ *
+ * Items are filtered by the caller's permissions. While the staff session
+ * is still loading (mode="staff"), nav items are hidden to avoid flashing
+ * forbidden links.
  */
 export default function AdminSidebar({ mobileOpen = false, onClose }) {
-  const { basePath, theme, setTheme } = useAdmin();
+  const { basePath, theme, setTheme, hasPerm, isOwner, sessionLoaded } = useAdmin();
+  const visibleItems = sessionLoaded
+    ? NAV_ITEMS.filter((item) => {
+        if (item.ownerOnly) return isOwner;
+        if (isOwner) return true;
+        if (item.perm) return hasPerm(item.perm);
+        if (Array.isArray(item.anyOf)) return item.anyOf.some((path) => hasPerm(path));
+        return true;
+      })
+    : [];
 
   return (
     <>
@@ -132,7 +167,7 @@ export default function AdminSidebar({ mobileOpen = false, onClose }) {
 
         {/* Nav items */}
         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
-          {NAV_ITEMS.map(({ label, path, icon }) => (
+          {visibleItems.map(({ label, path, icon }) => (
             <NavLink
               key={path}
               to={adminPath(basePath, path)}

@@ -33,6 +33,36 @@ export function clearSessionCookie(res) {
   });
 }
 
+/**
+ * Verify a session token and return the user id, or null if invalid.
+ * Used by staff-auth middleware that needs to compose JWT verification
+ * with other auth paths without throwing.
+ * @param {string} token
+ * @returns {string | null}
+ */
+export function verifySessionToken(token) {
+  if (!token) return null;
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    return payload.sub || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Read the JWT session token off a request (Bearer header or session cookie),
+ * or null if neither is present.
+ * @param {import('express').Request} req
+ * @returns {string | null}
+ */
+export function readSessionToken(req) {
+  const header = req.headers.authorization;
+  if (header?.startsWith("Bearer ")) return header.slice(7);
+  if (req.cookies?.[COOKIE_NAME]) return req.cookies[COOKIE_NAME];
+  return null;
+}
+
 /** Express middleware — attaches req.userId or returns 401. */
 export function requireAuth(req, res, next) {
   // Try Bearer header first, then fall back to session cookie

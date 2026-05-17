@@ -23,8 +23,9 @@ import {
 import { useFieldViewport } from "./hooks/useFieldViewport";
 import { INITIAL_BALL, useSlateEntities, getNextPlayerId } from "./hooks/useSlateEntities";
 import SavePrefabModal from "../../components/SavePrefabModal";
-import { buildCustomPrefab } from "../../utils/customPrefabs";
-import { fetchPrefabs, savePrefabToServer, deletePrefabFromServer } from "../../utils/prefabsApi";
+import { buildCustomPrefab, buildPrefabPresetPayload } from "../../utils/customPrefabs";
+import { fetchPrefabs, savePrefabToServer, deletePrefabFromServer, fetchSportPrefabPresets } from "../../utils/prefabsApi";
+import { mapSportPrefabPresetToSidebarPrefab } from "../../utils/sportPrefabPresets";
 import { useSlateHistory } from "./hooks/useSlateHistory";
 import { useSlateActionLog } from "./hooks/useSlateActionLog";
 import {
@@ -204,7 +205,19 @@ function Slate({
   mobileLayout = false,
   testVariant = false,
   drawingMode = false,
+  /**
+   * Admin-only callback for the prefab-preset editor. When provided, save in
+   * Slate emits the selected-entity prefab payload to the host page instead
+   * of writing a full play. Signature: `(prefabData|null, name) => void`. The
+   * page is responsible for persisting via the admin sport-prefab-presets API.
+   */
+  onPrefabPresetChange = null,
 }) {
+  // When the host page provides `onPrefabPresetChange`, the prefab editor is
+  // the entire flow — its autosave persists everything automatically. Hide
+  // the user-custom-prefab "Save Group" UI in this mode so it doesn't double
+  // up with the autosave status pill or fire its own redundant success toast.
+  const prefabPresetMode = typeof onPrefabPresetChange === "function";
   const [viewOnlyLocal, setViewOnlyLocal] = useState(viewOnlyProp);
   const viewOnly = viewOnlyProp || viewOnlyLocal;
 
@@ -371,6 +384,10 @@ function Slate({
     return normalizedInitialPlayName || DEFAULT_PLAY_NAME;
   });
   const [customPrefabs, setCustomPrefabs] = useState([]);
+  // Sport-specific, admin-published prefab presets. Fetched alongside personal
+  // prefabs whenever the sport or field type changes. Merged into the sidebar
+  // alongside `customPrefabs` but flagged as `readOnly` (no delete button).
+  const [publishedPrefabs, setPublishedPrefabs] = useState([]);
 
   // Load prefabs from server on mount; migrate any localStorage prefabs for non-admin users.
   useEffect(() => {
@@ -533,6 +550,27 @@ function Slate({
   const currentFieldType = advancedSettings?.pitch?.fieldType ?? "Rugby";
   const currentFieldTypeRef = useRef(currentFieldType);
   useEffect(() => { currentFieldTypeRef.current = currentFieldType; }, [currentFieldType]);
+
+  // Fetch admin-published prefab presets for the current sport. Re-runs when the
+  // field type changes (e.g. user switches a play from Rugby to Soccer in
+  // advanced settings) so the sidebar always shows presets for the active sport.
+  // We treat "Blank" as no sport and skip the fetch entirely.
+  useEffect(() => {
+    let cancelled = false;
+    const sportForFetch = sportProp || currentFieldType;
+    if (!sportForFetch || sportForFetch === "Blank") {
+      setPublishedPrefabs([]);
+      return;
+    }
+    fetchSportPrefabPresets(sportForFetch).then((records) => {
+      if (cancelled) return;
+      const mapped = records
+        .map(mapSportPrefabPresetToSidebarPrefab)
+        .filter(Boolean);
+      setPublishedPrefabs(mapped);
+    });
+    return () => { cancelled = true; };
+  }, [sportProp, currentFieldType]);
 
   // Field types whose balls are oblong (football/rugby) and should rotate toward movement direction.
   // Round-ball sports are excluded.
@@ -2599,7 +2637,8 @@ function Slate({
 
   const handleCanvasPlacePrefab = useCallback(({ x, y }) => {
     const prefab = pendingPrefabRef.current;
-    if (!prefab?.players?.length && !prefab?.ball) return;
+    const hasObjects = Array.isArray(prefab?.objects) && prefab.objects.length > 0;
+    if (!prefab?.players?.length && !prefab?.ball && !hasObjects) return;
 
     const sportCfg = SPORT_DEFAULTS[currentFieldType] || {};
     const usePositionLabels = Boolean(sportCfg.usePositionLabels);
@@ -2614,25 +2653,6 @@ function Slate({
     let currentRepresented = [...(entities.representedPlayerIds || [])];
     const newIds = [];
 
-    // Build a set of taken numbers per color for dedup
-    const takenByColor = {};
-    Object.values(currentById).forEach((p) => {
-      const c = (p.color ?? "#ef4444").toLowerCase();
-      if (!takenByColor[c]) takenByColor[c] = new Set();
-      const n = Number(p.number);
-      if (!Number.isNaN(n)) takenByColor[c].add(n);
-    });
-
-    const getNextAvailableNumber = (color, desiredNumber) => {
-      const c = (color ?? "#ef4444").toLowerCase();
-      if (!takenByColor[c]) takenByColor[c] = new Set();
-      let num = Number(desiredNumber);
-      if (Number.isNaN(num)) num = 1;
-      while (takenByColor[c].has(num)) num++;
-      takenByColor[c].add(num);
-      return num;
-    };
-
     (prefab.players || []).forEach((p) => {
       const newId = getNextPlayerId(currentById);
       const color = p.color ?? "#ef4444";
@@ -2640,7 +2660,11 @@ function Slate({
         id: newId,
         x: x + (p.dx ?? 0),
         y: y + (p.dy ?? 0),
-        number: usePositionLabels ? (p.number ?? "") : getNextAvailableNumber(color, p.number),
+        // Prefab labels are preserved verbatim — placing a 3-player
+        // prefab saved as 1/2/3 keeps those numbers even when the slate
+        // already has a 1/2/3. Duplicate numbers are acceptable; this
+        // matches the saved layout instead of silently renumbering.
+        number: p.number ?? "",
         name: usePositionLabels ? "" : (p.name ?? ""),
         color,
       };
@@ -2654,8 +2678,28 @@ function Slate({
     entities.setPlayersById(currentById);
     entities.setRepresentedPlayerIds(currentRepresented);
 
-    // Place ball if prefab includes one
-    if (prefab.ball) {
+    // Prefab-preset shape: an `objects` array carries every ball and cone
+    // captured at save time. Each object's dx/dy is relative to the player
+    // centroid, so placement is just click-point + offset for each.
+    if (Array.isArray(prefab.objects) && prefab.objects.length > 0) {
+      prefab.objects.forEach((obj) => {
+        const createdObj = entities.handleAddBall({
+          x: x + (obj.dx ?? 0),
+          y: y + (obj.dy ?? 0),
+          objectType: obj.objectType === "cone" ? "cone" : "ball",
+          select: false,
+          source: "prefab",
+        });
+        if (createdObj?.id) newIds.push(createdObj.id);
+        logPlaceBallDebug(
+          `prefabPlace objectAdded id=${createdObj?.id || "unknown"} type=${obj.objectType || "ball"} x=${Math.round(
+            createdObj?.x ?? (x + (obj.dx ?? 0))
+          )} y=${Math.round(createdObj?.y ?? (y + (obj.dy ?? 0)))}`
+        );
+      });
+    } else if (prefab.ball) {
+      // Legacy custom-prefab shape — a single ball. Kept for backward compat
+      // with prefabs saved before the `objects` array existed.
       const createdBall = entities.handleAddBall({
         x: x + (prefab.ball.dx ?? 0),
         y: y + (prefab.ball.dy ?? 0),
@@ -2729,6 +2773,67 @@ function Slate({
     const ok = await deletePrefabFromServer(id, adminMode);
     if (ok) setCustomPrefabs((prev) => prev.filter((p) => p.id !== id));
   }, [adminMode]);
+
+  /**
+   * Build a prefab payload from ALL objects currently on the field — every
+   * represented player plus the first ball if one exists. This is the
+   * autosave model for the admin prefab-preset editor: whatever the admin
+   * drags onto the canvas IS the prefab, no selection step.
+   *
+   * Returns null when the field is empty (no players, no ball) so the
+   * editor can skip writing nonsense to the server.
+   *
+   * @param {string} name - Display name for the prefab preset (Slate play name)
+   * @returns {Object|null} `{ id, label, mode, players: [{dx, dy, ...}], ball?, createdAt }`
+   */
+  const extractFieldPrefabPayload = useCallback((name) => {
+    const representedIds = entities.representedPlayerIds || [];
+    // Prefab presets are still frames — there is no animation track. We
+    // intentionally do NOT go through `resolveTrackPose` here: right after
+    // an initial-load (admin reopens an existing prefab), the Konva renderer
+    // can still hold its pre-load pose for a frame or two, so reading from
+    // the renderer would briefly emit the DEFAULT ball position (40, 0) and
+    // a subsequent autosave would overwrite the just-loaded ball with
+    // default — exactly the "ball snaps to default on reopen" symptom.
+    // The raw entity maps are React state, so they're authoritative.
+    const fieldPlayers = representedIds
+      .map((id) => entities.playersById?.[id])
+      .filter(Boolean);
+    // Capture EVERY ball and cone on the field — `ballsById` holds both.
+    // For a prefab preset the admin's authored field is the prefab, so we
+    // don't second-guess which objects to include.
+    const fieldObjects = Object.values(entities.ballsById || {}).filter(Boolean);
+    if (fieldPlayers.length === 0 && fieldObjects.length === 0) return null;
+    const payload = buildPrefabPresetPayload(
+      String(name ?? "").trim() || "Prefab",
+      fieldPlayers,
+      fieldObjects
+    );
+    if (!payload) return null;
+    // Capture the editor's live player-size knobs so they round-trip into the
+    // prefab record. Without this, a prefab authored with shrunk players would
+    // render at default size in the preset list preview and on reopen.
+    payload._settings = {
+      baseSizePx: advancedSettings?.players?.baseSizePx ?? 30,
+      sizePercent: entities.allPlayersDisplay?.sizePercent ?? 100,
+    };
+    return payload;
+  }, [
+    entities.representedPlayerIds,
+    entities.playersById,
+    entities.ballsById,
+    entities.allPlayersDisplay,
+    advancedSettings?.players?.baseSizePx,
+  ]);
+
+  // Notify the host page (admin prefab-preset editor) whenever the field state
+  // changes. The page uses this for debounced autosave — there's no Save button.
+  // Mounted only when `onPrefabPresetChange` is provided.
+  useEffect(() => {
+    if (typeof onPrefabPresetChange !== "function") return;
+    const payload = extractFieldPrefabPayload(playName);
+    onPrefabPresetChange(payload, playName);
+  }, [onPrefabPresetChange, extractFieldPrefabPayload, playName]);
 
   const seekTimeline = useCallback((timeMs, meta = {}) => {
     const source = typeof meta?.source === "string" ? meta.source : "engine";
@@ -3771,6 +3876,7 @@ function Slate({
             onPrefabSelect={handlePrefabSelect}
             onDeleteCustomPrefab={handleDeleteCustomPrefab}
             customPrefabs={customPrefabs}
+            publishedPrefabs={publishedPrefabs}
             playName={playName}
             onCollapse={() => setViewOnlyLocal(true)}
             onNavigateHome={onNavigateHome}
@@ -4025,7 +4131,7 @@ function Slate({
                   );
                 })}
                 {divider}
-                {!isSingle && (
+                {!isSingle && !prefabPresetMode && (
                   <button onClick={() => setSavePrefabModalOpen(true)} className="text-xs text-BrandOrange font-DmSans whitespace-nowrap shrink-0 active:opacity-70">Save Group</button>
                 )}
                 <button onClick={handleDeleteSelectedLogged} className="text-xs text-red-400 font-DmSans whitespace-nowrap shrink-0 active:opacity-70">Delete</button>
@@ -4205,8 +4311,9 @@ function Slate({
           onCloseEditPlayer={entities.handleCloseEditPlayer}
           onTogglePlayerHidden={entities.handleTogglePlayerHidden}
           selectedItemIds={entities.selectedItemIds}
-          onSavePrefab={() => setSavePrefabModalOpen(true)}
+          onSavePrefab={prefabPresetMode ? null : () => setSavePrefabModalOpen(true)}
           customPrefabs={customPrefabs}
+          publishedPrefabs={publishedPrefabs}
           onPrefabSelect={handlePrefabSelect}
           onDeleteCustomPrefab={handleDeleteCustomPrefab}
           allPlayersDisplay={entities.allPlayersDisplay}

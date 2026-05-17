@@ -1,6 +1,7 @@
 import { Router } from "express";
 import pool from "../db/pool.js";
-import { requireAdmin, requireElevated } from "./admin.js";
+import { requireElevated } from "./admin.js";
+import { requireAdminOrStaff, requirePerm } from "../middleware/staffAuth.js";
 
 const router = Router();
 
@@ -45,7 +46,7 @@ router.get("/", async (_req, res, next) => {
  * @body {boolean} [done]
  * @body {number} [sortOrder]
  */
-router.post("/", requireAdmin, async (req, res, next) => {
+router.post("/", requireAdminOrStaff, requirePerm("videos.addDemo"), async (req, res, next) => {
   try {
     const { title, youtubeUrl, keywords = "", done = false, sortOrder } = req.body;
     if (!title?.trim()) return res.status(400).json({ error: "Title is required" });
@@ -76,7 +77,7 @@ router.post("/", requireAdmin, async (req, res, next) => {
  * @body {boolean} [done]
  * @body {number} [sortOrder]
  */
-router.patch("/:id", requireAdmin, async (req, res, next) => {
+router.patch("/:id", requireAdminOrStaff, requirePerm("videos.addDemo"), async (req, res, next) => {
   try {
     const { rows: existing } = await pool.query(
       "SELECT * FROM demo_videos WHERE id = $1",

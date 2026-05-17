@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 import ConfirmModal from "../components/subcomponents/ConfirmModal";
 import { useAdmin } from "../admin/AdminContext";
 import { adminPath } from "../admin/adminNav";
+import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
 import {
   AdminShell, AdminHeader, AdminPage, AdminCard, AdminSection,
   AdminBtn, AdminSelect, AdminBadge, AdminEmptyState, AdminSpinner,
@@ -39,8 +40,8 @@ function formatTime(ts) {
  * Admin dashboard for user-reported issues submitted by beta testers.
  */
 export default function AdminUserIssues() {
-  const { basePath } = useAdmin();
-  const [session] = useState(() => sessionStorage.getItem(SESSION_KEY) || "");
+  const { basePath, hasPerm, isOwner } = useAdmin();
+  const [session] = useState(() => readAdminSession() || "");
   const [issues, setIssues] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -51,7 +52,8 @@ export default function AdminUserIssues() {
   const [confirmModal, setConfirmModal] = useState({ open: false });
   const confirmResolveRef = useRef(null);
 
-  const authed = Boolean(session);
+  const authed = basePath === "/staff" || Boolean(session);
+  const canResolveIssues = isOwner || hasPerm("issues.resolve");
 
   /** Open a confirmation modal and return a promise resolving to true/false. */
   const openConfirm = useCallback((opts) => {
@@ -81,7 +83,7 @@ export default function AdminUserIssues() {
         offset: String(page * PAGE_SIZE),
       });
       const res = await fetch(`${API_URL}/admin/user-issues?${params}`, {
-        headers: { "x-admin-session": session },
+        ...adminFetchOptions(),
       });
       if (!res.ok) throw new Error("Failed to fetch issues");
       const data = await res.json();
@@ -100,14 +102,13 @@ export default function AdminUserIssues() {
 
   /** Update the status of a single issue. */
   const handleStatusChange = async (issue, newStatus) => {
+    if (!canResolveIssues) return;
     try {
       const res = await fetch(`${API_URL}/admin/user-issues/${issue.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-session": session,
-        },
-        body: JSON.stringify({ status: newStatus }),
+        ...adminFetchOptions({
+          method: "PATCH",
+          body: JSON.stringify({ status: newStatus }),
+        }),
       });
       if (!res.ok) throw new Error("Failed to update status");
       setIssues((prev) =>
@@ -120,6 +121,7 @@ export default function AdminUserIssues() {
 
   /** Delete a single issue after confirmation. */
   const handleDelete = async (id) => {
+    if (!isOwner) return;
     const ok = await openConfirm({
       message: "Delete this issue report?",
       subtitle: "This cannot be undone.",
@@ -129,8 +131,7 @@ export default function AdminUserIssues() {
     if (!ok) return;
     try {
       await fetch(`${API_URL}/admin/user-issues/${id}`, {
-        method: "DELETE",
-        headers: { "x-admin-session": session },
+        ...adminFetchOptions({ method: "DELETE" }),
       });
       setIssues((prev) => prev.filter((i) => i.id !== id));
       setTotal((t) => t - 1);
@@ -214,20 +215,26 @@ export default function AdminUserIssues() {
                         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-[10px] font-semibold uppercase" style={{ color: "var(--adm-muted)" }}>Status:</span>
-                            <AdminSelect
-                              value={issue.status}
-                              onChange={(e) => handleStatusChange(issue, e.target.value)}
-                            >
-                              <option value="open">Open</option>
-                              <option value="in_progress">In Progress</option>
-                              <option value="resolved">Resolved</option>
-                            </AdminSelect>
+                            {canResolveIssues ? (
+                              <AdminSelect
+                                value={issue.status}
+                                onChange={(e) => handleStatusChange(issue, e.target.value)}
+                              >
+                                <option value="open">Open</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="resolved">Resolved</option>
+                              </AdminSelect>
+                            ) : (
+                              <AdminBadge status={issue.status}>{issue.status.replace("_", " ")}</AdminBadge>
+                            )}
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-[10px]" style={{ color: "var(--adm-muted)" }}>
                               {new Date(issue.created_at).toLocaleString()}
                             </span>
-                            <AdminBtn variant="danger" size="sm" onClick={() => handleDelete(issue.id)}>Delete</AdminBtn>
+                            {isOwner && (
+                              <AdminBtn variant="danger" size="sm" onClick={() => handleDelete(issue.id)}>Delete</AdminBtn>
+                            )}
                           </div>
                         </div>
                       </div>

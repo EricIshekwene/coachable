@@ -1,9 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { Navigate, useParams, useNavigate } from "react-router-dom";
 import Slate from "../features/slate/Slate";
 import MessagePopup from "../components/MessagePopup/MessagePopup";
 import { useMessagePopup } from "../components/messaging/useMessagePopup";
 import { useAdmin } from "../admin/AdminContext";
+import { adminPath } from "../admin/adminNav";
+import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
 import useThemeColor from "../utils/useThemeColor";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -20,7 +22,7 @@ const LS_PREFIX = "coachable_preset_";
 async function adminFetchPreset(session, sport, id) {
   const res = await fetch(
     `${API_URL}/admin/sport-presets/${encodeURIComponent(sport)}/${id}`,
-    { headers: { "x-admin-session": session } }
+    adminFetchOptions()
   );
   if (!res.ok) return null;
   return (await res.json()).preset ?? null;
@@ -37,11 +39,10 @@ async function adminFetchPreset(session, sport, id) {
 async function adminCreatePreset(session, sport, name, playData) {
   const res = await fetch(
     `${API_URL}/admin/sport-presets/${encodeURIComponent(sport)}`,
-    {
+    adminFetchOptions({
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-admin-session": session },
       body: JSON.stringify({ name, playData }),
-    }
+    })
   );
   if (!res.ok) throw new Error("Failed to create preset");
   return (await res.json()).preset;
@@ -59,11 +60,10 @@ async function adminCreatePreset(session, sport, name, playData) {
 async function adminUpdatePreset(session, sport, id, name, playData) {
   const res = await fetch(
     `${API_URL}/admin/sport-presets/${encodeURIComponent(sport)}/${id}`,
-    {
+    adminFetchOptions({
       method: "PATCH",
-      headers: { "Content-Type": "application/json", "x-admin-session": session },
       body: JSON.stringify({ name, playData }),
-    }
+    })
   );
   if (!res.ok) throw new Error("Failed to save preset");
   return (await res.json()).preset;
@@ -99,10 +99,10 @@ function clearLocalStorageCache(cacheKey) {
 export default function AdminPresetEditPage() {
   const { sport, presetId } = useParams();
   const navigate = useNavigate();
-  const { theme } = useAdmin();
+  const { theme, basePath, hasPerm, hasSportScope, isOwner, sessionLoaded } = useAdmin();
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
   const [ready, setReady] = useState(false);
-  const [loadingPreset, setLoadingPreset] = useState(() => presetId !== "new" && !!sessionStorage.getItem(SESSION_KEY));
+  const [loadingPreset, setLoadingPreset] = useState(() => presetId !== "new");
   const [existingPreset, setExistingPreset] = useState(null);
   const [loadFailed, setLoadFailed] = useState(false);
   // Tracks the persisted UUID (null until first save for new presets)
@@ -111,14 +111,19 @@ export default function AdminPresetEditPage() {
 
   useThemeColor(theme === "light" ? "#f3f6fb" : "#121212");
 
-  const session = sessionStorage.getItem(SESSION_KEY);
+  const session = readAdminSession();
   const decodedSport = decodeURIComponent(sport);
   const isNew = presetId === "new";
   const cacheKey = isNew ? `${decodedSport}-new` : `${decodedSport}-${presetId}`;
+  const requiredPerm = isNew ? "presets.create" : "presets.edit";
+  const canAccessEditor = isOwner || (
+    hasPerm(requiredPerm) &&
+    hasSportScope("presets.sportScope", decodedSport)
+  );
 
   // Load existing preset on mount (skip for new)
   useEffect(() => {
-    if (isNew || !session) return;
+    if (isNew || (!session && basePath === "/admin")) return;
     setLoadingPreset(true);
     adminFetchPreset(session, decodedSport, presetId)
       .then((preset) => {
@@ -130,7 +135,7 @@ export default function AdminPresetEditPage() {
       })
       .catch(() => setLoadFailed(true))
       .finally(() => setLoadingPreset(false));
-  }, [isNew, decodedSport, presetId, session]);
+  }, [isNew, decodedSport, presetId, session, basePath]);
 
   /**
    * Called by Slate on every auto-save tick.
@@ -141,7 +146,7 @@ export default function AdminPresetEditPage() {
    */
   const handlePlayDataChange = useCallback(
     async (playData, playName) => {
-      if (!session) return;
+      if (!session && basePath === "/admin") return;
       // Never overwrite an existing preset that failed to load — the editor
       // would be showing default data and would destroy the real preset.
       if (!isNew && loadFailed) return;
@@ -170,13 +175,13 @@ export default function AdminPresetEditPage() {
         showMessage("Failed to save preset", "", "error");
       }
     },
-    [session, decodedSport, persistedId, showMessage, isNew, loadFailed]
+    [session, decodedSport, persistedId, showMessage, isNew, loadFailed, basePath]
   );
 
   /** Flush and navigate back to the sport's preset list. */
   const handleNavigateHome = useCallback(async () => {
     await flushRef.current?.();
-    navigate(`/admin/presets/${encodeURIComponent(decodedSport)}`);
+    navigate(adminPath(basePath, `/presets/${encodeURIComponent(decodedSport)}`));
   }, [navigate, decodedSport]);
 
   // Flush on page unload and tab hide
@@ -190,6 +195,10 @@ export default function AdminPresetEditPage() {
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, []);
+
+  if (basePath === "/staff" && sessionLoaded && !canAccessEditor) {
+    return <Navigate to={basePath} replace />;
+  }
 
   if (loadingPreset) {
     return (
@@ -218,7 +227,7 @@ export default function AdminPresetEditPage() {
       >
         <p className="text-sm font-DmSans" style={{ color: "var(--adm-danger)" }}>Could not load preset — it may have been deleted or the ID is invalid.</p>
         <button
-          onClick={() => navigate(`/admin/presets/${encodeURIComponent(decodedSport)}`)}
+          onClick={() => navigate(adminPath(basePath, `/presets/${encodeURIComponent(decodedSport)}`))}
           className="rounded-lg border px-4 py-2 text-xs font-semibold transition hover:opacity-85"
           style={{
             borderColor: "var(--adm-border2)",

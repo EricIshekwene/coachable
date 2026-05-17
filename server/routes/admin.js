@@ -3,6 +3,103 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import pool from "../db/pool.js";
 import { generateCode, sendDangerModeEmail, sendAccountDeletedEmail } from "../lib/email.js";
+import {
+  requireAdminOrStaff,
+  requireOwnerOrLegacyAdmin,
+  requirePerm,
+  requireAnyPerm,
+  requireSportScope,
+  redactByPerm,
+  actorHasPerm,
+  actorHasSportScope,
+  mergeStaffPermissions,
+  writeAudit,
+} from "../middleware/staffAuth.js";
+
+// ── Sport resolvers (for requireSportScope on platform play / preset routes) ─
+
+/**
+ * Resolve the sport of a platform play by id (req.params.id).
+ * Joins through platform_play_folders for plays inside a sport folder; falls
+ * back to platform_plays.sport for plays not inside a folder.
+ * @param {import('express').Request} req
+ * @returns {Promise<string | null>}
+ */
+async function resolveSportForPlatformPlay(req) {
+  const playId = req.params.id;
+  if (!playId) return null;
+  const { rows } = await pool.query(
+    `SELECT COALESCE(f.sport, p.sport) AS sport
+       FROM platform_plays p
+       LEFT JOIN platform_play_folders f ON p.folder_id = f.id
+      WHERE p.id = $1`,
+    [playId]
+  );
+  return rows[0]?.sport || null;
+}
+
+/**
+ * Resolve the sport for a play being created from req.body. Prefers the
+ * folder's sport (when folderId is set and the folder is a sport folder),
+ * otherwise uses body.sport. Returns null if neither is present — caller
+ * should treat that as "no scope constraint applicable" only when the actor
+ * is the owner; staff create-play without an inferable sport is denied.
+ * @param {import('express').Request} req
+ * @returns {Promise<string | null>}
+ */
+async function resolveSportFromPlayBody(req) {
+  const { folderId, sport } = req.body || {};
+  if (folderId) {
+    const { rows } = await pool.query(
+      `SELECT sport, is_sport_folder FROM platform_play_folders WHERE id = $1`,
+      [folderId]
+    );
+    if (rows[0]?.is_sport_folder && rows[0]?.sport) return rows[0].sport;
+  }
+  return sport?.trim() || null;
+}
+
+function isPermissionObject(value) {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function normalizePermissionObject(value) {
+  return isPermissionObject(value) ? value : {};
+}
+
+async function loadStaffRole(roleId) {
+  if (!roleId) return null;
+  const { rows } = await pool.query(
+    `SELECT id, name, description, permissions, created_at, updated_at
+       FROM staff_admin_roles
+      WHERE id = $1`,
+    [roleId]
+  );
+  return rows[0] || null;
+}
+
+async function requireExistingStaffRole(roleId) {
+  if (!roleId) return null;
+  const role = await loadStaffRole(roleId);
+  if (!role) {
+    const err = new Error("Staff role not found");
+    err.statusCode = 400;
+    throw err;
+  }
+  return role;
+}
+
+function buildStaffRolePayload(role) {
+  if (!role) return null;
+  return {
+    id: role.id,
+    name: role.name,
+    description: role.description || "",
+    permissions: normalizePermissionObject(role.permissions),
+    created_at: role.created_at,
+    updated_at: role.updated_at,
+  };
+}
 
 const router = Router();
 const COACHING_ROLES = ["owner", "coach", "assistant_coach"];
@@ -35,6 +132,24 @@ const COOKIE_OPTS = {
 /** Resolve session ID from header (preferred) or cookie fallback. */
 function resolveSessionId(req) {
   return req.headers["x-admin-session"] || req.cookies?.[COOKIE_NAME];
+}
+
+/**
+ * Returns true if the request carries a valid, non-expired legacy admin
+ * session (the shared-password flow). Used by staff-auth middleware to
+ * recognise the owner's legacy login without re-implementing session lookup.
+ * @param {import('express').Request} req
+ * @returns {boolean}
+ */
+export function hasValidAdminSession(req) {
+  const sid = resolveSessionId(req);
+  if (!sid || !sessions.has(sid)) return false;
+  const session = sessions.get(sid);
+  if (Date.now() > session.expiresAt) {
+    sessions.delete(sid);
+    return false;
+  }
+  return true;
 }
 
 export function requireAdmin(req, res, next) {
@@ -174,7 +289,7 @@ const pendingEmailChanges = new Map();
  * Get the currently configured admin security email (masked).
  * @route GET /admin/settings/security-email
  */
-router.get("/settings/security-email", requireAdmin, (req, res) => {
+router.get("/settings/security-email", requireOwnerOrLegacyAdmin, (req, res) => {
   if (!adminSecurityEmail) return res.json({ email: "" });
   const [localPart, domain] = adminSecurityEmail.split("@");
   const maskedEmail = `${localPart[0]}*****@${domain}`;
@@ -187,7 +302,7 @@ router.get("/settings/security-email", requireAdmin, (req, res) => {
  * applies immediately.
  * @route PUT /admin/settings/security-email
  */
-router.put("/settings/security-email", requireAdmin, async (req, res) => {
+router.put("/settings/security-email", requireOwnerOrLegacyAdmin, async (req, res) => {
   const { email } = req.body;
   const newEmail = (email || "").trim();
 
@@ -223,7 +338,7 @@ router.put("/settings/security-email", requireAdmin, async (req, res) => {
  * Step 2: Confirm the OTP sent to the current security email and apply the change.
  * @route POST /admin/settings/security-email/confirm
  */
-router.post("/settings/security-email/confirm", requireAdmin, (req, res) => {
+router.post("/settings/security-email/confirm", requireOwnerOrLegacyAdmin, (req, res) => {
   const { code } = req.body;
   if (!code) return res.status(400).json({ error: "Verification code required" });
 
@@ -253,7 +368,7 @@ router.post("/settings/security-email/confirm", requireAdmin, (req, res) => {
  * Safe to run multiple times.
  * @route POST /admin/backfill-seeded-plays
  */
-router.post("/backfill-seeded-plays", requireAdmin, async (_req, res, next) => {
+router.post("/backfill-seeded-plays", requireOwnerOrLegacyAdmin, async (_req, res, next) => {
   try {
     const { rowCount } = await pool.query(`
       UPDATE plays
@@ -276,7 +391,10 @@ router.post("/logout", (req, res) => {
 });
 
 // GET /admin/users — list all users
-router.get("/users", requireAdmin, async (_req, res, next) => {
+router.get("/users", requireAdminOrStaff, requirePerm("users.viewTable"), redactByPerm({
+  email: { perm: "users.viewEmails", mask: "email" },
+  name: { perm: "users.viewUsernames", mask: "username" },
+}), async (_req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT u.id, u.name, u.email, u.email_verified_at, u.onboarded_at, u.created_at,
@@ -313,7 +431,10 @@ router.get("/users", requireAdmin, async (_req, res, next) => {
 });
 
 // GET /admin/users/:id/activity - detail + recent activity for a single user
-router.get("/users/:id/activity", requireAdmin, async (req, res, next) => {
+router.get("/users/:id/activity", requireAdminOrStaff, requirePerm("users.viewTable"), redactByPerm({
+  email: { perm: "users.viewEmails", mask: "email" },
+  name: { perm: "users.viewUsernames", mask: "username" },
+}), async (req, res, next) => {
   try {
     const userId = req.params.id;
 
@@ -611,7 +732,7 @@ router.delete("/users", requireElevated, async (_req, res, next) => {
 });
 
 // POST /admin/create-account — create a user with no verification required
-router.post("/create-account", requireAdmin, async (req, res, next) => {
+router.post("/create-account", requireOwnerOrLegacyAdmin, async (req, res, next) => {
   try {
     const { name, email, password, teamName, sport, role } = req.body;
     if (!name?.trim() || !email?.trim() || !password) {
@@ -697,7 +818,7 @@ router.post("/create-account", requireAdmin, async (req, res, next) => {
 });
 
 // POST /admin/cleanup — delete non-onboarded accounts older than 24h
-router.post("/cleanup", requireAdmin, async (_req, res, next) => {
+router.post("/cleanup", requireOwnerOrLegacyAdmin, async (_req, res, next) => {
   try {
     const result = await cleanupStaleAccounts();
     res.json(result);
@@ -740,28 +861,43 @@ function toPlatformFolderResponse(row) {
   };
 }
 
+function filterRowsBySportScope(actor, permPath, rows, getSport) {
+  if (!actor || actor.isOwner) return rows;
+  return rows.filter((row) => {
+    const sport = getSport(row);
+    return !!sport && actorHasSportScope(actor, permPath, sport);
+  });
+}
+
 // GET /admin/plays — list admin-curated platform plays only (excludes community submissions)
-router.get("/plays", requireAdmin, async (_req, res, next) => {
+router.get("/plays", requireAdminOrStaff, requirePerm("plays.viewFolders"), async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      `SELECT * FROM platform_plays
+      `SELECT p.*, f.sport AS folder_sport FROM platform_plays p
+       LEFT JOIN platform_play_folders f ON p.folder_id = f.id
        WHERE is_community_submitted = false
-         AND id NOT IN (
+         AND p.id NOT IN (
            SELECT psp.play_id
            FROM playbook_section_plays psp
            JOIN playbook_sections ps ON ps.id = psp.section_id
            WHERE ps.is_default = false
          )
-       ORDER BY sort_order ASC, created_at DESC`
+       ORDER BY p.sort_order ASC, p.created_at DESC`
     );
-    res.json({ plays: rows.map(toPlatformPlayResponse) });
+    const visibleRows = filterRowsBySportScope(
+      req.actor,
+      "plays.sportScope",
+      rows,
+      (row) => row.folder_sport || row.sport || null
+    );
+    res.json({ plays: visibleRows.map(toPlatformPlayResponse) });
   } catch (err) {
     next(err);
   }
 });
 
 // GET /admin/plays/:id — get a single platform play (for loading in editor)
-router.get("/plays/:id", requireAdmin, async (req, res, next) => {
+router.get("/plays/:id", requireAdminOrStaff, requirePerm("plays.viewFolders"), requireSportScope("plays.sportScope", resolveSportForPlatformPlay), async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       "SELECT * FROM platform_plays WHERE id = $1",
@@ -775,7 +911,7 @@ router.get("/plays/:id", requireAdmin, async (req, res, next) => {
 });
 
 // POST /admin/plays — create a platform play
-router.post("/plays", requireAdmin, async (req, res, next) => {
+router.post("/plays", requireAdminOrStaff, requirePerm("plays.add"), requireSportScope("plays.sportScope", resolveSportFromPlayBody), async (req, res, next) => {
   try {
     const { title, description, sport, playData, thumbnail, tags, isFeatured, sortOrder, folderId } = req.body;
     if (!title?.trim()) return res.status(400).json({ error: "title is required" });
@@ -814,9 +950,23 @@ router.post("/plays", requireAdmin, async (req, res, next) => {
 });
 
 // PATCH /admin/plays/:id — update a platform play
-router.patch("/plays/:id", requireAdmin, async (req, res, next) => {
+router.patch("/plays/:id", requireAdminOrStaff, requireAnyPerm(["plays.rename", "plays.editTags", "plays.editContent"]), requireSportScope("plays.sportScope", resolveSportForPlatformPlay), async (req, res, next) => {
   try {
     const { title, description, sport, playData, thumbnail, tags, isFeatured, sortOrder, folderId } = req.body;
+    const actor = req.actor;
+
+    if (title !== undefined && !actorHasPerm(actor, "plays.rename")) {
+      return res.status(403).json({ error: "Forbidden", missingPermission: "plays.rename" });
+    }
+    if (tags !== undefined && !actorHasPerm(actor, "plays.editTags")) {
+      return res.status(403).json({ error: "Forbidden", missingPermission: "plays.editTags" });
+    }
+    if ((description !== undefined || playData !== undefined || thumbnail !== undefined) && !actorHasPerm(actor, "plays.editContent")) {
+      return res.status(403).json({ error: "Forbidden", missingPermission: "plays.editContent" });
+    }
+    if (!actor?.isOwner && (sport !== undefined || isFeatured !== undefined || sortOrder !== undefined || folderId !== undefined)) {
+      return res.status(403).json({ error: "Forbidden", ownerOnlyFields: ["sport", "isFeatured", "sortOrder", "folderId"] });
+    }
 
     const setClauses = ["updated_at = now()"];
     const values = [];
@@ -838,6 +988,10 @@ router.patch("/plays/:id", requireAdmin, async (req, res, next) => {
     if (sortOrder !== undefined) { setClauses.push(`sort_order = $${idx++}`); values.push(sortOrder); }
     if (folderId !== undefined) { setClauses.push(`folder_id = $${idx++}`); values.push(folderId || null); }
 
+    if (setClauses.length === 1) {
+      return res.status(400).json({ error: "Nothing to update" });
+    }
+
     values.push(req.params.id);
     const { rows } = await pool.query(
       `UPDATE platform_plays SET ${setClauses.join(", ")} WHERE id = $${idx} RETURNING *`,
@@ -851,7 +1005,7 @@ router.patch("/plays/:id", requireAdmin, async (req, res, next) => {
 });
 
 // POST /admin/plays/:id/restore — restore play_data from previous_play_data (one-step rollback)
-router.post("/plays/:id/restore", requireAdmin, async (req, res, next) => {
+router.post("/plays/:id/restore", requireOwnerOrLegacyAdmin, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       `UPDATE platform_plays
@@ -889,7 +1043,7 @@ router.delete("/plays/:id", requireElevated, async (req, res, next) => {
 });
 
 // POST /admin/plays/:id/duplicate — clone a platform play
-router.post("/plays/:id/duplicate", requireAdmin, async (req, res, next) => {
+router.post("/plays/:id/duplicate", requireAdminOrStaff, requirePerm("plays.add"), requireSportScope("plays.sportScope", resolveSportForPlatformPlay), async (req, res, next) => {
   try {
     const { rows: src } = await pool.query(
       "SELECT * FROM platform_plays WHERE id = $1",
@@ -923,19 +1077,57 @@ router.post("/plays/:id/duplicate", requireAdmin, async (req, res, next) => {
 // ── Platform play folders ────────────────────────────────────────────────────
 
 // GET /admin/platform-folders — list all platform play folders
-router.get("/platform-folders", requireAdmin, async (_req, res, next) => {
+router.get("/platform-folders", requireAdminOrStaff, requirePerm("plays.viewFolders"), async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       "SELECT * FROM platform_play_folders ORDER BY sort_order ASC, name ASC"
     );
-    res.json({ folders: rows.map(toPlatformFolderResponse) });
+    if (req.actor?.isOwner) {
+      return res.json({ folders: rows.map(toPlatformFolderResponse) });
+    }
+
+    const folderMap = new Map(rows.map((row) => [row.id, row]));
+    const visibleFolderIds = new Set();
+
+    for (const row of rows) {
+      if (row.is_sport_folder && row.sport && actorHasSportScope(req.actor, "plays.sportScope", row.sport)) {
+        visibleFolderIds.add(row.id);
+      }
+    }
+
+    const { rows: playRows } = await pool.query(
+      `SELECT p.folder_id, p.sport, f.sport AS folder_sport
+         FROM platform_plays p
+         LEFT JOIN platform_play_folders f ON p.folder_id = f.id
+        WHERE p.is_community_submitted = false
+          AND p.id NOT IN (
+            SELECT psp.play_id
+            FROM playbook_section_plays psp
+            JOIN playbook_sections ps ON ps.id = psp.section_id
+            WHERE ps.is_default = false
+          )`
+    );
+
+    for (const play of playRows) {
+      const sport = play.folder_sport || play.sport || null;
+      if (!sport || !actorHasSportScope(req.actor, "plays.sportScope", sport)) continue;
+      let folderId = play.folder_id || null;
+      while (folderId) {
+        if (visibleFolderIds.has(folderId)) break;
+        visibleFolderIds.add(folderId);
+        folderId = folderMap.get(folderId)?.parent_id || null;
+      }
+    }
+
+    const visibleRows = rows.filter((row) => visibleFolderIds.has(row.id));
+    res.json({ folders: visibleRows.map(toPlatformFolderResponse) });
   } catch (err) {
     next(err);
   }
 });
 
 // POST /admin/platform-folders — create a platform play folder
-router.post("/platform-folders", requireAdmin, async (req, res, next) => {
+router.post("/platform-folders", requireOwnerOrLegacyAdmin, async (req, res, next) => {
   try {
     const { name, parentId, sortOrder } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: "name is required" });
@@ -954,7 +1146,7 @@ router.post("/platform-folders", requireAdmin, async (req, res, next) => {
 });
 
 // PATCH /admin/platform-folders/:id — rename or reorder a folder
-router.patch("/platform-folders/:id", requireAdmin, async (req, res, next) => {
+router.patch("/platform-folders/:id", requireOwnerOrLegacyAdmin, async (req, res, next) => {
   try {
     const { name, sortOrder, parentId } = req.body;
     const setClauses = ["updated_at = now()"];
@@ -1000,7 +1192,7 @@ router.delete("/platform-folders/:id", requireElevated, async (req, res, next) =
  * GET /admin/page-sections
  * Returns all page sections with their assigned play (if any).
  */
-router.get("/page-sections", requireAdmin, async (_req, res, next) => {
+router.get("/page-sections", requireAdminOrStaff, requirePerm("pageSections.manage"), async (_req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT ps.section_key, ps.label, ps.page, ps.play_id, ps.is_priority, ps.updated_at,
@@ -1032,7 +1224,7 @@ router.get("/page-sections", requireAdmin, async (_req, res, next) => {
  * Assigns or unassigns a play to a page section, and/or toggles priority flag.
  * Body: { playId?: string | null, isPriority?: boolean }
  */
-router.patch("/page-sections/:key", requireAdmin, async (req, res, next) => {
+router.patch("/page-sections/:key", requireAdminOrStaff, requirePerm("pageSections.manage"), async (req, res, next) => {
   try {
     const { playId, isPriority } = req.body;
     const setClauses = [];
@@ -1074,7 +1266,7 @@ router.patch("/page-sections/:key", requireAdmin, async (req, res, next) => {
  * GET /admin/playbook-sections
  * Returns all playbook sections with their play count.
  */
-router.get("/playbook-sections", requireAdmin, async (_req, res, next) => {
+router.get("/playbook-sections", requireAdminOrStaff, requirePerm("playbooks.view"), async (_req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT ps.*, COUNT(psp.play_id)::int AS play_count
@@ -1107,7 +1299,7 @@ router.get("/playbook-sections", requireAdmin, async (_req, res, next) => {
  * Create a new playbook section.
  * Body: { name, description?, sport?, sortOrder? }
  */
-router.post("/playbook-sections", requireAdmin, async (req, res, next) => {
+router.post("/playbook-sections", requireOwnerOrLegacyAdmin, async (req, res, next) => {
   try {
     const { name, description, sport, sortOrder } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: "name is required" });
@@ -1141,7 +1333,7 @@ router.post("/playbook-sections", requireAdmin, async (req, res, next) => {
  * Update a playbook section's name, description, sport, sort_order, or is_published.
  * Body: { name?, description?, sport?, sortOrder?, isPublished? }
  */
-router.patch("/playbook-sections/:id", requireAdmin, async (req, res, next) => {
+router.patch("/playbook-sections/:id", requireOwnerOrLegacyAdmin, async (req, res, next) => {
   try {
     const { name, description, sport, sortOrder, isPublished } = req.body;
     const setClauses = ["updated_at = now()"];
@@ -1189,7 +1381,7 @@ router.patch("/playbook-sections/:id", requireAdmin, async (req, res, next) => {
  * Delete a playbook section and all its play associations (cascade).
  * Default sections (is_default = true) cannot be deleted.
  */
-router.delete("/playbook-sections/:id", requireAdmin, async (req, res, next) => {
+router.delete("/playbook-sections/:id", requireOwnerOrLegacyAdmin, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       "SELECT is_default FROM playbook_sections WHERE id = $1",
@@ -1210,7 +1402,7 @@ router.delete("/playbook-sections/:id", requireAdmin, async (req, res, next) => 
  * GET /admin/playbook-sections/:id/plays
  * Returns all plays in a section, ordered by sort_order.
  */
-router.get("/playbook-sections/:id/plays", requireAdmin, async (req, res, next) => {
+router.get("/playbook-sections/:id/plays", requireAdminOrStaff, requirePerm("playbooks.view"), async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT pp.*, psp.sort_order AS section_sort_order, psp.added_at
@@ -1242,7 +1434,7 @@ router.get("/playbook-sections/:id/plays", requireAdmin, async (req, res, next) 
  * Add a platform play to a playbook section.
  * Body: { playId, sortOrder? }
  */
-router.post("/playbook-sections/:id/plays", requireAdmin, async (req, res, next) => {
+router.post("/playbook-sections/:id/plays", requireAdminOrStaff, requirePerm("playbooks.addPlays"), async (req, res, next) => {
   try {
     const { playId, sortOrder } = req.body;
     if (!playId) return res.status(400).json({ error: "playId is required" });
@@ -1276,7 +1468,7 @@ router.post("/playbook-sections/:id/plays", requireAdmin, async (req, res, next)
  * DELETE /admin/playbook-sections/:id/plays/:playId
  * Remove a platform play from a playbook section.
  */
-router.delete("/playbook-sections/:id/plays/:playId", requireAdmin, async (req, res, next) => {
+router.delete("/playbook-sections/:id/plays/:playId", requireAdminOrStaff, requirePerm("playbooks.addPlays"), async (req, res, next) => {
   try {
     await pool.query(
       "DELETE FROM playbook_section_plays WHERE section_id = $1 AND play_id = $2",
@@ -1293,7 +1485,7 @@ router.delete("/playbook-sections/:id/plays/:playId", requireAdmin, async (req, 
  * Reorder a play within a playbook section.
  * Body: { sortOrder }
  */
-router.patch("/playbook-sections/:id/plays/:playId", requireAdmin, async (req, res, next) => {
+router.patch("/playbook-sections/:id/plays/:playId", requireAdminOrStaff, requirePerm("playbooks.addPlays"), async (req, res, next) => {
   try {
     const { sortOrder } = req.body;
     if (sortOrder === undefined) return res.status(400).json({ error: "sortOrder is required" });
@@ -1353,7 +1545,7 @@ export async function cleanupDeletedTeams() {
 }
 
 // GET /admin/users/:id/deleted-teams — list soft-deleted teams owned by a user
-router.get("/users/:id/deleted-teams", requireAdmin, async (req, res, next) => {
+router.get("/users/:id/deleted-teams", requireOwnerOrLegacyAdmin, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT id, name, sport, season_year, deleted_at, created_at
@@ -1369,7 +1561,7 @@ router.get("/users/:id/deleted-teams", requireAdmin, async (req, res, next) => {
 });
 
 // POST /admin/teams/:teamId/restore — restore a soft-deleted team
-router.post("/teams/:teamId/restore", requireAdmin, async (req, res, next) => {
+router.post("/teams/:teamId/restore", requireOwnerOrLegacyAdmin, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       `UPDATE teams SET deleted_at = NULL, updated_at = now()
@@ -1387,7 +1579,7 @@ router.post("/teams/:teamId/restore", requireAdmin, async (req, res, next) => {
 });
 
 // PATCH /admin/users/:id/beta-tester — toggle beta tester status for a user
-router.patch("/users/:id/beta-tester", requireAdmin, async (req, res, next) => {
+router.patch("/users/:id/beta-tester", requireAdminOrStaff, requirePerm("users.editStatus"), async (req, res, next) => {
   try {
     const { isBetaTester } = req.body;
     if (typeof isBetaTester !== "boolean") {
@@ -1406,7 +1598,10 @@ router.patch("/users/:id/beta-tester", requireAdmin, async (req, res, next) => {
 });
 
 // GET /admin/user-issues — list all user-reported issues
-router.get("/user-issues", requireAdmin, async (req, res, next) => {
+router.get("/user-issues", requireAdminOrStaff, requirePerm("issues.view"), redactByPerm({
+  user_email: { perm: "users.viewEmails", mask: "email" },
+  user_name: { perm: "users.viewUsernames", mask: "username" },
+}), async (req, res, next) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 50, 100);
     const offset = parseInt(req.query.offset) || 0;
@@ -1425,7 +1620,7 @@ router.get("/user-issues", requireAdmin, async (req, res, next) => {
 });
 
 // PATCH /admin/user-issues/:id — update status of a reported issue
-router.patch("/user-issues/:id", requireAdmin, async (req, res, next) => {
+router.patch("/user-issues/:id", requireAdminOrStaff, requirePerm("issues.resolve"), async (req, res, next) => {
   try {
     const { status } = req.body;
     if (!["open", "in_progress", "resolved"].includes(status)) {
@@ -1443,7 +1638,7 @@ router.patch("/user-issues/:id", requireAdmin, async (req, res, next) => {
 });
 
 // DELETE /admin/user-issues/:id — delete a single reported issue
-router.delete("/user-issues/:id", requireAdmin, async (req, res, next) => {
+router.delete("/user-issues/:id", requireOwnerOrLegacyAdmin, async (req, res, next) => {
   try {
     await pool.query("DELETE FROM user_issues WHERE id = $1", [req.params.id]);
     res.json({ ok: true });
@@ -1458,7 +1653,7 @@ router.delete("/user-issues/:id", requireAdmin, async (req, res, next) => {
  * GET /admin/prefabs
  * Returns all admin-saved prefabs (cross-device, all sports).
  */
-router.get("/prefabs", requireAdmin, async (req, res, next) => {
+router.get("/prefabs", requireAdminOrStaff, requirePerm("prefabs.manage"), async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT id, label, prefab_data, created_at
@@ -1482,7 +1677,7 @@ router.get("/prefabs", requireAdmin, async (req, res, next) => {
  * Save a new admin prefab.
  * Body: { label, prefab_data }
  */
-router.post("/prefabs", requireAdmin, async (req, res, next) => {
+router.post("/prefabs", requireAdminOrStaff, requirePerm("prefabs.manage"), async (req, res, next) => {
   const { label, prefab_data } = req.body;
   if (!label || !prefab_data) {
     return res.status(400).json({ error: "label and prefab_data are required" });
@@ -1512,7 +1707,7 @@ router.post("/prefabs", requireAdmin, async (req, res, next) => {
  * DELETE /admin/prefabs/:id
  * Delete an admin prefab by ID.
  */
-router.delete("/prefabs/:id", requireAdmin, async (req, res, next) => {
+router.delete("/prefabs/:id", requireAdminOrStaff, requirePerm("prefabs.manage"), async (req, res, next) => {
   try {
     const { rowCount } = await pool.query(
       `DELETE FROM admin_prefabs WHERE id = $1`,
@@ -1545,12 +1740,13 @@ function toSportPresetResponse(row) {
  * List all sport presets grouped by sport (for the presets tab overview).
  * @route GET /admin/sport-presets
  */
-router.get("/sport-presets", requireAdmin, async (_req, res, next) => {
+router.get("/sport-presets", requireAdminOrStaff, requireAnyPerm(["presets.create", "presets.edit"]), async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       "SELECT * FROM sport_presets ORDER BY sport, sort_order ASC, created_at ASC"
     );
-    res.json({ presets: rows.map(toSportPresetResponse) });
+    const visibleRows = filterRowsBySportScope(req.actor, "presets.sportScope", rows, (row) => row.sport || null);
+    res.json({ presets: visibleRows.map(toSportPresetResponse) });
   } catch (err) {
     next(err);
   }
@@ -1560,7 +1756,7 @@ router.get("/sport-presets", requireAdmin, async (_req, res, next) => {
  * List all presets for a specific sport (case-insensitive sport match).
  * @route GET /admin/sport-presets/:sport
  */
-router.get("/sport-presets/:sport", requireAdmin, async (req, res, next) => {
+router.get("/sport-presets/:sport", requireAdminOrStaff, requireAnyPerm(["presets.create", "presets.edit"]), requireSportScope("presets.sportScope"), async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       "SELECT * FROM sport_presets WHERE LOWER(sport) = LOWER($1) ORDER BY sort_order ASC, created_at ASC",
@@ -1576,7 +1772,7 @@ router.get("/sport-presets/:sport", requireAdmin, async (req, res, next) => {
  * Fetch a single sport preset by ID (case-insensitive sport match).
  * @route GET /admin/sport-presets/:sport/:id
  */
-router.get("/sport-presets/:sport/:id", requireAdmin, async (req, res, next) => {
+router.get("/sport-presets/:sport/:id", requireAdminOrStaff, requireAnyPerm(["presets.create", "presets.edit"]), requireSportScope("presets.sportScope"), async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       "SELECT * FROM sport_presets WHERE id = $1 AND LOWER(sport) = LOWER($2)",
@@ -1594,7 +1790,7 @@ router.get("/sport-presets/:sport/:id", requireAdmin, async (req, res, next) => 
  * Body: { ids: string[] } — full ordered list of preset UUIDs for the sport.
  * @route POST /admin/sport-presets/:sport/reorder
  */
-router.post("/sport-presets/:sport/reorder", requireAdmin, async (req, res, next) => {
+router.post("/sport-presets/:sport/reorder", requireAdminOrStaff, requirePerm("presets.edit"), requireSportScope("presets.sportScope"), async (req, res, next) => {
   const { sport } = req.params;
   const { ids } = req.body;
   if (!Array.isArray(ids)) return res.status(400).json({ error: "ids must be an array" });
@@ -1621,7 +1817,7 @@ router.post("/sport-presets/:sport/reorder", requireAdmin, async (req, res, next
  * Create a new preset for a sport.
  * @route POST /admin/sport-presets/:sport
  */
-router.post("/sport-presets/:sport", requireAdmin, async (req, res, next) => {
+router.post("/sport-presets/:sport", requireAdminOrStaff, requirePerm("presets.create"), requireSportScope("presets.sportScope"), async (req, res, next) => {
   try {
     const { sport } = req.params;
     const { name, playData } = req.body;
@@ -1642,7 +1838,7 @@ router.post("/sport-presets/:sport", requireAdmin, async (req, res, next) => {
  * Update an existing preset (play data and/or name).
  * @route PATCH /admin/sport-presets/:sport/:id
  */
-router.patch("/sport-presets/:sport/:id", requireAdmin, async (req, res, next) => {
+router.patch("/sport-presets/:sport/:id", requireAdminOrStaff, requirePerm("presets.edit"), requireSportScope("presets.sportScope"), async (req, res, next) => {
   try {
     const { sport, id } = req.params;
     const { name, playData, isHidden } = req.body;
@@ -1683,6 +1879,663 @@ router.delete("/sport-presets/:sport/:id", requireElevated, async (req, res, nex
   }
 });
 
+// ── Sport Prefab Presets ──────────────────────────────────────────────────────
+// Admin-curated reusable player groupings per sport. Distinct from sport_presets
+// (which seed a full starting canvas). Published rows are visible to users via
+// GET /sport-prefab-presets/:sport and surface inside the Slate Prefabs panel.
+
+/** Serialize a sport_prefab_presets DB row to the API response shape. */
+function toSportPrefabPresetResponse(row) {
+  return {
+    id: row.id,
+    sport: row.sport,
+    name: row.name,
+    prefabData: row.prefab_data,
+    sortOrder: row.sort_order,
+    isHidden: row.is_hidden ?? true,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/**
+ * List all sport prefab presets across every sport (for the overview cards).
+ * @route GET /admin/sport-prefab-presets
+ */
+router.get("/sport-prefab-presets", requireAdminOrStaff, requirePerm("prefabs.manage"), async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT * FROM sport_prefab_presets ORDER BY sport, sort_order ASC, created_at ASC"
+    );
+    const visibleRows = filterRowsBySportScope(req.actor, "presets.sportScope", rows, (row) => row.sport || null);
+    res.json({ presets: visibleRows.map(toSportPrefabPresetResponse) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * List all prefab presets for a specific sport (case-insensitive sport match).
+ * @route GET /admin/sport-prefab-presets/:sport
+ */
+router.get("/sport-prefab-presets/:sport", requireAdminOrStaff, requirePerm("prefabs.manage"), requireSportScope("presets.sportScope"), async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT * FROM sport_prefab_presets WHERE LOWER(sport) = LOWER($1) ORDER BY sort_order ASC, created_at ASC",
+      [req.params.sport]
+    );
+    res.json({ presets: rows.map(toSportPrefabPresetResponse) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Fetch a single prefab preset by ID (case-insensitive sport match).
+ * @route GET /admin/sport-prefab-presets/:sport/:id
+ */
+router.get("/sport-prefab-presets/:sport/:id", requireAdminOrStaff, requirePerm("prefabs.manage"), requireSportScope("presets.sportScope"), async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT * FROM sport_prefab_presets WHERE id = $1 AND LOWER(sport) = LOWER($2)",
+      [req.params.id, req.params.sport]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Prefab preset not found" });
+    res.json({ preset: toSportPrefabPresetResponse(rows[0]) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Reorder prefab presets for a sport by assigning sort_order = index of each ID.
+ * Body: { ids: string[] } — full ordered list of preset UUIDs for the sport.
+ * @route POST /admin/sport-prefab-presets/:sport/reorder
+ */
+router.post("/sport-prefab-presets/:sport/reorder", requireAdminOrStaff, requirePerm("prefabs.manage"), requireSportScope("presets.sportScope"), async (req, res, next) => {
+  const { sport } = req.params;
+  const { ids } = req.body;
+  if (!Array.isArray(ids)) return res.status(400).json({ error: "ids must be an array" });
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    for (let i = 0; i < ids.length; i++) {
+      await client.query(
+        "UPDATE sport_prefab_presets SET sort_order = $1, updated_at = now() WHERE id = $2 AND LOWER(sport) = LOWER($3)",
+        [i, ids[i], sport]
+      );
+    }
+    await client.query("COMMIT");
+    res.json({ ok: true });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    next(err);
+  } finally {
+    client.release();
+  }
+});
+
+/**
+ * Create a new prefab preset for a sport.
+ * @route POST /admin/sport-prefab-presets/:sport
+ */
+router.post("/sport-prefab-presets/:sport", requireAdminOrStaff, requirePerm("prefabs.manage"), requireSportScope("presets.sportScope"), async (req, res, next) => {
+  try {
+    const { sport } = req.params;
+    const { name, prefabData } = req.body;
+    if (!prefabData || typeof prefabData !== "object") {
+      return res.status(400).json({ error: "prefabData is required" });
+    }
+    const players = Array.isArray(prefabData.players) ? prefabData.players : [];
+    const objects = Array.isArray(prefabData.objects) ? prefabData.objects : [];
+    if (players.length === 0 && objects.length === 0 && !prefabData.ball) {
+      return res.status(400).json({ error: "prefabData must include at least one player, ball, or cone" });
+    }
+    const { rows } = await pool.query(
+      `INSERT INTO sport_prefab_presets (sport, name, prefab_data, sort_order)
+       VALUES ($1, $2, $3, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM sport_prefab_presets WHERE sport = $1))
+       RETURNING *`,
+      [sport, (name || "Prefab").trim(), JSON.stringify(prefabData)]
+    );
+    res.status(201).json({ preset: toSportPrefabPresetResponse(rows[0]) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Update an existing prefab preset (name, prefab data, and/or hidden state).
+ * @route PATCH /admin/sport-prefab-presets/:sport/:id
+ */
+router.patch("/sport-prefab-presets/:sport/:id", requireAdminOrStaff, requirePerm("prefabs.manage"), requireSportScope("presets.sportScope"), async (req, res, next) => {
+  try {
+    const { sport, id } = req.params;
+    const { name, prefabData, isHidden } = req.body;
+    const sets = [];
+    const vals = [];
+    if (name !== undefined) { sets.push(`name = $${vals.length + 1}`); vals.push(String(name).trim()); }
+    if (prefabData !== undefined) {
+      if (!prefabData || typeof prefabData !== "object") {
+        return res.status(400).json({ error: "prefabData must be an object" });
+      }
+      const players = Array.isArray(prefabData.players) ? prefabData.players : [];
+      const objects = Array.isArray(prefabData.objects) ? prefabData.objects : [];
+      if (players.length === 0 && objects.length === 0 && !prefabData.ball) {
+        return res.status(400).json({ error: "prefabData must include at least one player, ball, or cone" });
+      }
+      sets.push(`prefab_data = $${vals.length + 1}`);
+      vals.push(JSON.stringify(prefabData));
+    }
+    if (isHidden !== undefined) { sets.push(`is_hidden = $${vals.length + 1}`); vals.push(Boolean(isHidden)); }
+    if (!sets.length) return res.status(400).json({ error: "Nothing to update" });
+    sets.push("updated_at = now()");
+    vals.push(id, sport);
+    const { rows } = await pool.query(
+      `UPDATE sport_prefab_presets SET ${sets.join(", ")} WHERE id = $${vals.length - 1} AND LOWER(sport) = LOWER($${vals.length}) RETURNING *`,
+      vals
+    );
+    if (!rows.length) return res.status(404).json({ error: "Prefab preset not found" });
+    res.json({ preset: toSportPrefabPresetResponse(rows[0]) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Delete a sport prefab preset. Requires elevated (Danger Mode) session.
+ * @route DELETE /admin/sport-prefab-presets/:sport/:id
+ */
+router.delete("/sport-prefab-presets/:sport/:id", requireElevated, async (req, res, next) => {
+  try {
+    const { sport, id } = req.params;
+    const { rowCount } = await pool.query(
+      "DELETE FROM sport_prefab_presets WHERE id = $1 AND LOWER(sport) = LOWER($2)",
+      [id, sport]
+    );
+    if (!rowCount) return res.status(404).json({ error: "Prefab preset not found" });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Staff Admin Management (owner-only) ────────────────────────────────────────
+
+/**
+ * GET /admin/staff-roles
+ * List reusable staff roles with lightweight usage counts.
+ */
+router.get("/staff-roles", requireOwnerOrLegacyAdmin, async (_req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT
+         sar.id,
+         sar.name,
+         sar.description,
+         sar.permissions,
+         sar.created_at,
+         sar.updated_at,
+         (
+           SELECT COUNT(*)
+             FROM staff_admins sa
+            WHERE sa.role_id = sar.id
+              AND sa.revoked_at IS NULL
+         ) AS active_staff_count,
+         (
+           SELECT COUNT(*)
+             FROM staff_admin_invites sai
+            WHERE sai.role_id = sar.id
+              AND sai.accepted_at IS NULL
+         ) AS pending_invite_count
+        FROM staff_admin_roles sar
+       ORDER BY LOWER(sar.name) ASC`
+    );
+    res.json({
+      roles: rows.map((row) => ({
+        ...buildStaffRolePayload(row),
+        activeStaffCount: Number(row.active_staff_count || 0),
+        pendingInviteCount: Number(row.pending_invite_count || 0),
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /admin/staff-roles
+ * Body: { name, description?, permissions }
+ */
+router.post("/staff-roles", requireOwnerOrLegacyAdmin, async (req, res, next) => {
+  try {
+    const { name, description, permissions } = req.body || {};
+    if (!name?.trim()) return res.status(400).json({ error: "name is required" });
+    if (permissions !== undefined && !isPermissionObject(permissions)) {
+      return res.status(400).json({ error: "permissions must be an object" });
+    }
+    const { rows } = await pool.query(
+      `INSERT INTO staff_admin_roles (name, description, permissions, updated_at)
+       VALUES ($1, $2, $3, now())
+       RETURNING id, name, description, permissions, created_at, updated_at`,
+      [name.trim(), description?.trim() || "", normalizePermissionObject(permissions)]
+    );
+    writeAudit(req, "staff.role.create", {
+      targetType: "staff_role",
+      targetId: rows[0].id,
+      metadata: { name: rows[0].name },
+    });
+    res.status(201).json({ role: buildStaffRolePayload(rows[0]) });
+  } catch (err) {
+    if (err?.code === "23505") {
+      return res.status(409).json({ error: "A staff role with that name already exists" });
+    }
+    next(err);
+  }
+});
+
+/**
+ * PATCH /admin/staff-roles/:id
+ * Body: { name?, description?, permissions? }
+ */
+router.patch("/staff-roles/:id", requireOwnerOrLegacyAdmin, async (req, res, next) => {
+  try {
+    const existing = await loadStaffRole(req.params.id);
+    if (!existing) return res.status(404).json({ error: "Staff role not found" });
+    const body = req.body || {};
+    if (body.permissions !== undefined && !isPermissionObject(body.permissions)) {
+      return res.status(400).json({ error: "permissions must be an object" });
+    }
+    const nextName = Object.prototype.hasOwnProperty.call(body, "name")
+      ? body.name?.trim()
+      : existing.name;
+    if (!nextName) return res.status(400).json({ error: "name is required" });
+    const nextDescription = Object.prototype.hasOwnProperty.call(body, "description")
+      ? body.description?.trim() || ""
+      : existing.description || "";
+    const nextPermissions = Object.prototype.hasOwnProperty.call(body, "permissions")
+      ? normalizePermissionObject(body.permissions)
+      : normalizePermissionObject(existing.permissions);
+    const { rows } = await pool.query(
+      `UPDATE staff_admin_roles
+          SET name = $1,
+              description = $2,
+              permissions = $3,
+              updated_at = now()
+        WHERE id = $4
+      RETURNING id, name, description, permissions, created_at, updated_at`,
+      [nextName, nextDescription, nextPermissions, req.params.id]
+    );
+    writeAudit(req, "staff.role.update", {
+      targetType: "staff_role",
+      targetId: req.params.id,
+      metadata: { name: nextName },
+    });
+    res.json({ role: buildStaffRolePayload(rows[0]) });
+  } catch (err) {
+    if (err?.code === "23505") {
+      return res.status(409).json({ error: "A staff role with that name already exists" });
+    }
+    next(err);
+  }
+});
+
+/**
+ * DELETE /admin/staff-roles/:id
+ * Roles can only be deleted when nothing active still references them.
+ */
+router.delete("/staff-roles/:id", requireOwnerOrLegacyAdmin, async (req, res, next) => {
+  try {
+    const [{ rows: activeStaffRows }, { rows: pendingInviteRows }] = await Promise.all([
+      pool.query(
+        `SELECT COUNT(*) AS count
+           FROM staff_admins
+          WHERE role_id = $1 AND revoked_at IS NULL`,
+        [req.params.id]
+      ),
+      pool.query(
+        `SELECT COUNT(*) AS count
+           FROM staff_admin_invites
+          WHERE role_id = $1 AND accepted_at IS NULL`,
+        [req.params.id]
+      ),
+    ]);
+    const activeStaffCount = Number(activeStaffRows[0]?.count || 0);
+    const pendingInviteCount = Number(pendingInviteRows[0]?.count || 0);
+    if (activeStaffCount || pendingInviteCount) {
+      return res.status(409).json({
+        error: "Remove this role from active staff and pending invites before deleting it",
+        activeStaffCount,
+        pendingInviteCount,
+      });
+    }
+    const { rowCount } = await pool.query(
+      `DELETE FROM staff_admin_roles WHERE id = $1`,
+      [req.params.id]
+    );
+    if (!rowCount) return res.status(404).json({ error: "Staff role not found" });
+    writeAudit(req, "staff.role.delete", { targetType: "staff_role", targetId: req.params.id });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /admin/staff-invites
+ * Body: { email, roleId?, permissions?, expiresInDays? }
+ * Creates an invite. Email is sent to the recipient with the accept-invite URL.
+ */
+router.post("/staff-invites", requireOwnerOrLegacyAdmin, async (req, res, next) => {
+  try {
+    const { email, roleId, permissions, expiresInDays } = req.body || {};
+    if (!email?.trim()) return res.status(400).json({ error: "email is required" });
+    if (permissions !== undefined && !isPermissionObject(permissions)) {
+      return res.status(400).json({ error: "permissions must be an object" });
+    }
+    const lower = email.trim().toLowerCase();
+    const token = crypto.randomBytes(32).toString("hex");
+    const days = Math.max(1, Math.min(30, Number(expiresInDays) || 7));
+    const expiresAt = new Date(Date.now() + days * 86_400_000);
+    const inviterId = req.actor?.userId || null;
+    const role = await requireExistingStaffRole(roleId || null);
+    const permissionOverrides = normalizePermissionObject(permissions);
+
+    const { rows } = await pool.query(
+      `INSERT INTO staff_admin_invites (email, role_id, permissions, token, created_by, expires_at)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, email, role_id, permissions, token, created_by, created_at, expires_at`,
+      [lower, role?.id || null, permissionOverrides, token, inviterId, expiresAt]
+    );
+    const effectivePermissions = mergeStaffPermissions(role?.permissions, permissionOverrides);
+
+    const frontendBase = process.env.FRONTEND_URL || `${req.protocol}://${req.get("host")}`;
+    const inviteUrl = `${frontendBase.replace(/\/$/, "")}/staff/accept-invite?token=${token}`;
+    // Best-effort: don't fail the request if email send fails — return the URL so the owner can paste manually
+    let emailSent = false;
+    let emailError = null;
+    try {
+      const { sendStaffAdminInviteEmail } = await import("../lib/email.js");
+      await sendStaffAdminInviteEmail({
+        toEmail: lower,
+        inviteUrl,
+        ownerName: "Coachable",
+        permissionsSummary: summarizePermissions(effectivePermissions, role?.name || null),
+      });
+      emailSent = true;
+    } catch (err) {
+      emailError = err.message;
+    }
+
+    writeAudit(req, "staff.invite.create", {
+      targetType: "staff_invite",
+      targetId: rows[0].id,
+      metadata: { email: lower, roleId: role?.id || null, roleName: role?.name || null },
+    });
+    res.status(201).json({
+      invite: {
+        ...rows[0],
+        role: buildStaffRolePayload(role),
+        permissionOverrides,
+        permissions: effectivePermissions,
+      },
+      inviteUrl,
+      emailSent,
+      emailError,
+    });
+  } catch (err) {
+    if (err?.statusCode) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
+    next(err);
+  }
+});
+
+/**
+ * GET /admin/staff-invites
+ * List pending (not-yet-accepted) staff invites.
+ */
+router.get("/staff-invites", requireOwnerOrLegacyAdmin, async (_req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT
+         sai.id,
+         sai.email,
+         sai.role_id,
+         sai.permissions,
+         sai.created_by,
+         sai.created_at,
+         sai.expires_at,
+         sai.accepted_at,
+         sai.accepted_user,
+         sar.name AS role_name,
+         sar.description AS role_description,
+         sar.permissions AS role_permissions,
+         sar.created_at AS role_created_at,
+         sar.updated_at AS role_updated_at
+        FROM staff_admin_invites sai
+        LEFT JOIN staff_admin_roles sar ON sar.id = sai.role_id
+       WHERE sai.accepted_at IS NULL
+       ORDER BY sai.created_at DESC`
+    );
+    res.json({
+      invites: rows.map((row) => {
+        const role = row.role_id
+          ? {
+              id: row.role_id,
+              name: row.role_name,
+              description: row.role_description || "",
+              permissions: normalizePermissionObject(row.role_permissions),
+              created_at: row.role_created_at,
+              updated_at: row.role_updated_at,
+            }
+          : null;
+        const permissionOverrides = normalizePermissionObject(row.permissions);
+        return {
+          id: row.id,
+          email: row.email,
+          role_id: row.role_id,
+          role: role ? buildStaffRolePayload(role) : null,
+          permissionOverrides,
+          permissions: mergeStaffPermissions(role?.permissions, permissionOverrides),
+          created_by: row.created_by,
+          created_at: row.created_at,
+          expires_at: row.expires_at,
+          accepted_at: row.accepted_at,
+          accepted_user: row.accepted_user,
+        };
+      }),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * DELETE /admin/staff-invites/:id
+ * Revoke a pending invite.
+ */
+router.delete("/staff-invites/:id", requireOwnerOrLegacyAdmin, async (req, res, next) => {
+  try {
+    const { rowCount } = await pool.query(
+      `DELETE FROM staff_admin_invites WHERE id = $1 AND accepted_at IS NULL`,
+      [req.params.id]
+    );
+    if (!rowCount) return res.status(404).json({ error: "Invite not found or already accepted" });
+    writeAudit(req, "staff.invite.revoke", { targetType: "staff_invite", targetId: req.params.id });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /admin/staff-admins
+ * List active staff admins (joined to users for display).
+ */
+router.get("/staff-admins", requireOwnerOrLegacyAdmin, async (_req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT
+         sa.user_id,
+         u.email,
+         u.name,
+         sa.role_id,
+         sa.permissions,
+         sa.invited_by,
+         sa.invited_at,
+         sa.accepted_at,
+         sa.revoked_at,
+         sar.name AS role_name,
+         sar.description AS role_description,
+         sar.permissions AS role_permissions,
+         sar.created_at AS role_created_at,
+         sar.updated_at AS role_updated_at
+         FROM staff_admins sa
+         JOIN users u ON u.id = sa.user_id
+         LEFT JOIN staff_admin_roles sar ON sar.id = sa.role_id
+        ORDER BY sa.accepted_at DESC NULLS LAST, sa.invited_at DESC`
+    );
+    res.json({
+      staffAdmins: rows.map((row) => {
+        const role = row.role_id
+          ? {
+              id: row.role_id,
+              name: row.role_name,
+              description: row.role_description || "",
+              permissions: normalizePermissionObject(row.role_permissions),
+              created_at: row.role_created_at,
+              updated_at: row.role_updated_at,
+            }
+          : null;
+        const permissionOverrides = normalizePermissionObject(row.permissions);
+        return {
+          user_id: row.user_id,
+          email: row.email,
+          name: row.name,
+          role_id: row.role_id,
+          role: role ? buildStaffRolePayload(role) : null,
+          permissionOverrides,
+          permissions: mergeStaffPermissions(role?.permissions, permissionOverrides),
+          invited_by: row.invited_by,
+          invited_at: row.invited_at,
+          accepted_at: row.accepted_at,
+          revoked_at: row.revoked_at,
+        };
+      }),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PATCH /admin/staff-admins/:userId
+ * Body: { roleId?, permissions? }
+ */
+router.patch("/staff-admins/:userId", requireOwnerOrLegacyAdmin, async (req, res, next) => {
+  try {
+    const body = req.body || {};
+    if (
+      !Object.prototype.hasOwnProperty.call(body, "permissions") &&
+      !Object.prototype.hasOwnProperty.call(body, "roleId")
+    ) {
+      return res.status(400).json({ error: "roleId or permissions is required" });
+    }
+    if (body.permissions !== undefined && !isPermissionObject(body.permissions)) {
+      return res.status(400).json({ error: "permissions must be an object" });
+    }
+    const { rows: existingRows } = await pool.query(
+      `SELECT role_id, permissions FROM staff_admins WHERE user_id = $1`,
+      [req.params.userId]
+    );
+    if (!existingRows.length) return res.status(404).json({ error: "Staff admin not found" });
+    const nextRoleId = Object.prototype.hasOwnProperty.call(body, "roleId")
+      ? body.roleId || null
+      : existingRows[0].role_id || null;
+    const role = await requireExistingStaffRole(nextRoleId);
+    const nextOverrides = Object.prototype.hasOwnProperty.call(body, "permissions")
+      ? normalizePermissionObject(body.permissions)
+      : normalizePermissionObject(existingRows[0].permissions);
+    const { rows, rowCount } = await pool.query(
+      `UPDATE staff_admins
+          SET role_id = $1,
+              permissions = $2
+        WHERE user_id = $3
+      RETURNING user_id, role_id, permissions`,
+      [nextRoleId, nextOverrides, req.params.userId]
+    );
+    if (!rowCount) return res.status(404).json({ error: "Staff admin not found" });
+    writeAudit(req, "staff.permissions.update", {
+      targetType: "staff_admin",
+      targetId: req.params.userId,
+      metadata: { roleId: nextRoleId },
+    });
+    res.json({
+      staffAdmin: {
+        ...rows[0],
+        role: buildStaffRolePayload(role),
+        permissionOverrides: nextOverrides,
+        permissions: mergeStaffPermissions(role?.permissions, nextOverrides),
+      },
+    });
+  } catch (err) {
+    if (err?.statusCode) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
+    next(err);
+  }
+});
+
+/**
+ * DELETE /admin/staff-admins/:userId
+ * Revoke staff access (sets revoked_at; keeps row for audit).
+ */
+router.delete("/staff-admins/:userId", requireOwnerOrLegacyAdmin, async (req, res, next) => {
+  try {
+    const { rowCount } = await pool.query(
+      `UPDATE staff_admins SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL`,
+      [req.params.userId]
+    );
+    if (!rowCount) return res.status(404).json({ error: "Staff admin not found or already revoked" });
+    writeAudit(req, "staff.revoke", { targetType: "staff_admin", targetId: req.params.userId });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Build a short human-readable summary of granted permissions for the
+ * invite email body. Pure formatting helper.
+ * @param {object} perms
+ * @returns {string[]}
+ */
+function summarizePermissions(perms, roleName = null) {
+  const lines = [];
+  if (roleName) lines.push(`Role: ${roleName}`);
+  if (perms?.dashboard?.viewAnalytics) lines.push("View analytics dashboard");
+  if (perms?.users?.viewTable) lines.push("View users");
+  if (perms?.users?.editStatus) lines.push("Edit user status");
+  if (perms?.tests?.run) lines.push("Run tests");
+  if (perms?.errors?.viewReports) lines.push("View error reports");
+  if (perms?.issues?.view) lines.push("View reported issues");
+  if (perms?.plays?.viewFolders) {
+    const scope = perms?.plays?.sportScope;
+    const sports = Array.isArray(scope) ? scope.join(", ") : scope === "*" ? "all sports" : "(no sports)";
+    lines.push(`Manage plays — ${sports}`);
+  }
+  if (perms?.playbooks?.view) lines.push("View playbook sessions");
+  if (perms?.pageSections?.manage) lines.push("Manage landing page sections");
+  if (perms?.presets?.create || perms?.presets?.edit) {
+    const scope = perms?.presets?.sportScope;
+    const sports = Array.isArray(scope) ? scope.join(", ") : scope === "*" ? "all sports" : "(no sports)";
+    lines.push(`Manage sport presets — ${sports}`);
+  }
+  if (perms?.prefabs?.manage) lines.push("Manage admin prefabs");
+  if (perms?.videos?.addDemo) lines.push("Add demo videos");
+  return lines.length ? lines : ["(no permissions yet)"];
+}
+
 // ── Analytics Dashboard ────────────────────────────────────────────────────────
 
 const PERIOD_MAP = {
@@ -1697,7 +2550,11 @@ const PERIOD_MAP = {
  * Returns all dashboard analytics in one request.
  * period: "7d" | "30d" | "90d" | "all"
  */
-router.get("/analytics", requireAdmin, async (req, res, next) => {
+router.get("/analytics", requireAdminOrStaff, requirePerm("dashboard.viewAnalytics"), redactByPerm({
+  email: { perm: "users.viewEmails", mask: "email" },
+  name: { perm: "users.viewUsernames", mask: "username" },
+  user_name: { perm: "users.viewUsernames", mask: "username" },
+}), async (req, res, next) => {
   try {
     const periodKey = PERIOD_MAP.hasOwnProperty(req.query.period) ? req.query.period : "30d";
     const interval = PERIOD_MAP[periodKey];

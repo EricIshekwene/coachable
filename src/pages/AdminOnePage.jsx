@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { FiDownload, FiLayers, FiPlay, FiShare2, FiUsers } from "react-icons/fi";
 import { useAdmin } from "../admin/AdminContext";
 import { adminPath } from "../admin/adminNav";
+import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
 import { AdminShell, AdminHeader, AdminPage, AdminCard } from "../admin/components";
 import PlayPreviewCard from "../components/PlayPreviewCard";
 import ericPhoto from "../assets/pictures/faces/IMG_7356 (5).jpg";
@@ -82,23 +83,23 @@ function BackgroundGraphics() {
 
 export default function AdminOnePage() {
   const { basePath } = useAdmin();
-  const [session] = useState(() => sessionStorage.getItem(SESSION_KEY) || "");
+  const [session] = useState(() => readAdminSession() || "");
   const [downloading, setDownloading] = useState(false);
   const [footballDemoPlay, setFootballDemoPlay] = useState(null);
   const pageRef = useRef(null);
-  const authed = Boolean(session);
+  const authed = basePath === "/staff" || Boolean(session);
 
   useEffect(() => {
-    if (!session) return;
+    if (!authed) return;
 
     let cancelled = false;
 
     Promise.all([
-      fetch(`${API_URL}/admin/page-sections`, { headers: { "x-admin-session": session } })
+      fetch(`${API_URL}/admin/page-sections`, adminFetchOptions())
         .then((res) => (res.ok ? res.json() : Promise.reject()))
         .then((data) => (data.sections || []).find((s) => s.sectionKey === "one-pager.play") || null)
         .catch(() => null),
-      fetch(`${API_URL}/admin/plays`, { headers: { "x-admin-session": session } })
+      fetch(`${API_URL}/admin/plays`, adminFetchOptions())
         .then((res) => (res.ok ? res.json() : Promise.reject()))
         .then((data) => data.plays || [])
         .catch(() => []),
@@ -115,7 +116,7 @@ export default function AdminOnePage() {
     return () => {
       cancelled = true;
     };
-  }, [session]);
+  }, [authed]);
 
   const handleDownload = useCallback(async () => {
     const pageEl = pageRef.current;

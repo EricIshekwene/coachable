@@ -291,22 +291,24 @@ describe("applyResize", () => {
     expect(changes.get("s1").points).toEqual([0, 0, 200, 200]);
   });
 
-  it("scales text position and fontSize", () => {
-    const drawings = [{ id: "t1", type: "text", x: 50, y: 50, fontSize: 18 }];
+  it("text resize updates width only and keeps fontSize untouched (commit 1bc0643)", () => {
+    const drawings = [{ id: "t1", type: "text", x: 50, y: 50, fontSize: 18, align: "left" }];
     const oldBounds = { x: 0, y: 0, width: 100, height: 100 };
     const newBounds = { x: 0, y: 0, width: 200, height: 200 };
     const changes = applyResize(drawings, ["t1"], oldBounds, newBounds);
-    expect(changes.get("t1").x).toBe(100);
-    expect(changes.get("t1").y).toBe(100);
-    expect(changes.get("t1").fontSize).toBe(36);
+    expect(changes.get("t1").x).toBe(0); // anchor for left-aligned text = newBounds.x
+    expect(changes.get("t1").y).toBe(50); // y is preserved as-is
+    expect(changes.get("t1").width).toBe(200);
+    expect(changes.get("t1").fontSize).toBeUndefined();
   });
 
-  it("enforces minimum fontSize of 8", () => {
-    const drawings = [{ id: "t1", type: "text", x: 50, y: 50, fontSize: 18 }];
+  it("text resize clamps width to a 20px minimum", () => {
+    const drawings = [{ id: "t1", type: "text", x: 50, y: 50, fontSize: 18, align: "left" }];
     const oldBounds = { x: 0, y: 0, width: 100, height: 100 };
     const newBounds = { x: 0, y: 0, width: 10, height: 10 };
     const changes = applyResize(drawings, ["t1"], oldBounds, newBounds);
-    expect(changes.get("t1").fontSize).toBe(8);
+    expect(changes.get("t1").width).toBe(20);
+    expect(changes.get("t1").fontSize).toBeUndefined();
   });
 });
 

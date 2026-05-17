@@ -11,6 +11,7 @@ import { FiPlus, FiEdit2, FiTrash2, FiCheck, FiX, FiChevronUp, FiChevronDown } f
 import ConfirmModal from "../components/subcomponents/ConfirmModal";
 import { useAdmin } from "../admin/AdminContext";
 import { adminPath } from "../admin/adminNav";
+import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
 import {
   AdminShell, AdminHeader, AdminPage, AdminCard, AdminSection,
   AdminBtn, AdminInput, AdminModal, AdminEmptyState, AdminSpinner,
@@ -64,7 +65,7 @@ function buildEmbedUrl(id) {
  */
 async function fetchVideos(session) {
   const res = await fetch(`${API_URL}/demo-videos`, {
-    headers: { "x-admin-session": session },
+    ...adminFetchOptions(),
   });
   if (res.status === 401) throw new Error("UNAUTHORIZED");
   const data = await res.json();
@@ -79,9 +80,10 @@ async function fetchVideos(session) {
  */
 async function createVideo(session, body) {
   const res = await fetch(`${API_URL}/demo-videos`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-admin-session": session },
-    body: JSON.stringify(body),
+    ...adminFetchOptions({
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to create");
@@ -97,9 +99,10 @@ async function createVideo(session, body) {
  */
 async function updateVideo(session, id, body) {
   const res = await fetch(`${API_URL}/demo-videos/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json", "x-admin-session": session },
-    body: JSON.stringify(body),
+    ...adminFetchOptions({
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to update");
@@ -113,8 +116,7 @@ async function updateVideo(session, id, body) {
  */
 async function deleteVideo(session, id) {
   const res = await fetch(`${API_URL}/demo-videos/${id}`, {
-    method: "DELETE",
-    headers: { "x-admin-session": session },
+    ...adminFetchOptions({ method: "DELETE" }),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -130,8 +132,8 @@ const BLANK_FORM = { title: "", youtubeUrl: "", keywords: "", done: false };
  * Admin page for managing demo tutorial videos.
  */
 export default function AdminDemoVideos() {
-  const { basePath } = useAdmin();
-  const [session] = useState(() => sessionStorage.getItem(SESSION_KEY) || "");
+  const { basePath, isOwner } = useAdmin();
+  const [session] = useState(() => readAdminSession() || "");
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -163,7 +165,7 @@ export default function AdminDemoVideos() {
   const [dangerMaskedEmail, setDangerMaskedEmail] = useState("");
   const dangerResolveRef = useRef(null);
 
-  const authed = Boolean(session);
+  const authed = basePath === "/staff" || Boolean(session);
 
   // ── Confirm modal ──
 
@@ -208,7 +210,8 @@ export default function AdminDemoVideos() {
       if (dangerStep === "password") {
         const res = await fetch(`${API_URL}/admin/elevate/request`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "x-admin-session": session },
+          credentials: "include",
+    headers: {"Content-Type": "application/json", "x-admin-session": session },
           body: JSON.stringify({ password: dangerPassword }),
         });
         const data = await res.json();
@@ -225,7 +228,8 @@ export default function AdminDemoVideos() {
       } else {
         const res = await fetch(`${API_URL}/admin/elevate/confirm`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "x-admin-session": session },
+          credentials: "include",
+    headers: {"Content-Type": "application/json", "x-admin-session": session },
           body: JSON.stringify({ code: dangerCode }),
         });
         const data = await res.json();
@@ -362,6 +366,7 @@ export default function AdminDemoVideos() {
   // ── Delete ──
 
   const handleDelete = async (video) => {
+    if (!isOwner) return;
     const ok = await openConfirm({
       message: `Delete "${video.title}"?`,
       subtitle: "This cannot be undone.",
@@ -670,9 +675,11 @@ export default function AdminDemoVideos() {
                           <AdminBtn variant="ghost" size="sm" onClick={() => startEdit(video)} title="Edit">
                             <FiEdit2 className="text-sm" />
                           </AdminBtn>
-                          <AdminBtn variant="danger" size="sm" onClick={() => handleDelete(video)} title="Delete">
-                            <FiTrash2 className="text-sm" />
-                          </AdminBtn>
+                          {isOwner && (
+                            <AdminBtn variant="danger" size="sm" onClick={() => handleDelete(video)} title="Delete">
+                              <FiTrash2 className="text-sm" />
+                            </AdminBtn>
+                          )}
                         </div>
                       </div>
                     )}

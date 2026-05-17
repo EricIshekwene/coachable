@@ -153,6 +153,7 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 | "local autosave for plays" | [src/utils/appPlaysStorage.js](src/utils/appPlaysStorage.js) |
 | "playbook localStorage" | [src/utils/playbookStorage.js](src/utils/playbookStorage.js) |
 | "custom prefabs (local)" | [src/utils/customPrefabs.js](src/utils/customPrefabs.js) |
+| "sport prefab presets" (published prefabs) | [src/utils/sportPrefabPresets.js](src/utils/sportPrefabPresets.js) |
 | "data contracts / shape validation" | [src/utils/dataContracts.js](src/utils/dataContracts.js) |
 | "input validation" | [src/utils/inputValidation.js](src/utils/inputValidation.js) |
 
@@ -241,6 +242,8 @@ All under [src/animation/](src/animation/), [src/canvas/](src/canvas/), [src/fea
 | `/admin/plays/:playId/edit` | [AdminPlayEditPage.jsx](src/pages/AdminPlayEditPage.jsx) |
 | `/admin/presets/:sport` | [AdminSportPresetsPage.jsx](src/pages/AdminSportPresetsPage.jsx) |
 | `/admin/presets/:sport/:presetId/edit` | [AdminPresetEditPage.jsx](src/pages/AdminPresetEditPage.jsx) |
+| `/admin/prefab-presets/:sport` | [AdminSportPrefabPresetsPage.jsx](src/pages/AdminSportPrefabPresetsPage.jsx) |
+| `/admin/prefab-presets/:sport/:prefabPresetId/edit` | [AdminPrefabPresetEditPage.jsx](src/pages/AdminPrefabPresetEditPage.jsx) |
 | `/admin/users/:userId` | [AdminUserActivity.jsx](src/pages/AdminUserActivity.jsx) |
 | `/admin/user-issues` | [AdminUserIssues.jsx](src/pages/AdminUserIssues.jsx) |
 | `/admin/mobile-view` | [AdminMobileView.jsx](src/pages/AdminMobileView.jsx) |
@@ -248,12 +251,33 @@ All under [src/animation/](src/animation/), [src/canvas/](src/canvas/), [src/fea
 | `/admin/demo-videos` | [AdminDemoVideos.jsx](src/pages/AdminDemoVideos.jsx) |
 | `/admin/one-page` | [AdminOnePage.jsx](src/pages/AdminOnePage.jsx) |
 
+### Staff admin (`/staff/*`)
+Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PLAN.md). Pages reuse the existing Admin* components with `basePath="/staff"` and `mode="staff"` on `<AdminProvider>`.
+
+| Path | File |
+|---|---|
+| `/staff/login` | [StaffLogin.jsx](src/pages/StaffLogin.jsx) |
+| `/staff/accept-invite` | [StaffAcceptInvite.jsx](src/pages/StaffAcceptInvite.jsx) |
+| `/staff` (dashboard) | [StaffDashboard.jsx](src/pages/StaffDashboard.jsx) |
+| `/staff/app` | reuses [AdminPlaysPage.jsx](src/pages/AdminPlaysPage.jsx) |
+| `/staff/plays/:playId/edit` | reuses [AdminPlayEditPage.jsx](src/pages/AdminPlayEditPage.jsx) |
+| `/staff/presets/:sport[/:presetId/edit]` | reuses [AdminSportPresetsPage.jsx](src/pages/AdminSportPresetsPage.jsx) / [AdminPresetEditPage.jsx](src/pages/AdminPresetEditPage.jsx) |
+| `/staff/prefab-presets/:sport[/:prefabPresetId/edit]` | reuses [AdminSportPrefabPresetsPage.jsx](src/pages/AdminSportPrefabPresetsPage.jsx) / [AdminPrefabPresetEditPage.jsx](src/pages/AdminPrefabPresetEditPage.jsx) |
+| `/staff/users/:userId` | reuses [AdminUserActivity.jsx](src/pages/AdminUserActivity.jsx) |
+| `/staff/user-issues` | reuses [AdminUserIssues.jsx](src/pages/AdminUserIssues.jsx) |
+| `/staff/errors` | reuses [AdminErrors.jsx](src/pages/AdminErrors.jsx) |
+| `/staff/demo-videos` | reuses [AdminDemoVideos.jsx](src/pages/AdminDemoVideos.jsx) |
+| `/staff/one-page` | reuses [AdminOnePage.jsx](src/pages/AdminOnePage.jsx) |
+| `/staff/tests` | reuses [AdminTests.jsx](src/pages/AdminTests.jsx) |
+
 ---
 
 ## Admin shared UI (`src/admin/`)
 - [adminNav.js](src/admin/adminNav.js) — admin nav config
-- [AdminContext.jsx](src/admin/AdminContext.jsx) — theme + admin session context
-- **components/**: AdminShell, AdminPage, AdminSection, AdminHeader, AdminNav, AdminSidebar, AdminCard, AdminBtn, AdminInput, AdminSelect, AdminCheckbox, AdminBadge, AdminEmptyState, AdminSpinner, AdminModal — see [src/admin/components/](src/admin/components/)
+- [AdminContext.jsx](src/admin/AdminContext.jsx) — theme + admin session context + (for staff mode) permissions, hasPerm, hasSportScope
+- [adminTransport.js](src/admin/adminTransport.js) — `adminFetchOptions`, `adminApi` — shared transport that sends BOTH legacy admin session header AND JWT cookie + Bearer so the same /admin/* endpoints work for owner and staff
+- [StaffAdminManager.jsx](src/admin/StaffAdminManager.jsx) — owner-only UI mounted in the /admin dashboard for inviting + revoking staff admins
+- **components/**: AdminShell, AdminPage, AdminSection, AdminHeader, AdminNav (perm-filtered), AdminSidebar, AdminCard, AdminBtn, AdminInput, AdminSelect, AdminCheckbox, AdminBadge, AdminEmptyState, AdminSpinner, AdminModal — see [src/admin/components/](src/admin/components/)
 - **analytics/**: AnalyticsDashboard + KpiStrip, KpiCard, ActivityFeed, UserGrowthChart, SportMixChart, PlayActivityChart, OnboardingFunnel, useDashboardAnalytics — see [src/admin/analytics/](src/admin/analytics/)
 
 ---
@@ -283,9 +307,12 @@ All under [src/animation/](src/animation/), [src/canvas/](src/canvas/), [src/fea
 | `/demo-videos` | [routes/demoVideos.js](server/routes/demoVideos.js) |
 | `/prefabs` | [routes/prefabs.js](server/routes/prefabs.js) |
 | `/sport-presets` | [routes/sportPresets.js](server/routes/sportPresets.js) |
+| `/sport-prefab-presets` | [routes/sportPrefabPresets.js](server/routes/sportPrefabPresets.js) |
 
 ### Middleware / lib / utils / config
-- [middleware/auth.js](server/middleware/auth.js) — JWT/session middleware
+- [middleware/auth.js](server/middleware/auth.js) — JWT/session middleware (also exports `verifySessionToken`, `readSessionToken` for compositional auth)
+- [middleware/staffAuth.js](server/middleware/staffAuth.js) — scoped staff-admin auth: `requireAdminOrStaff`, `requireOwnerOrLegacyAdmin`, `requirePerm`, `requireAnyPerm`, `requireSportScope`, `redactByPerm`, `writeAudit`, `isOwner`, `resolveActor` (see [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PLAN.md))
+- [routes/staff.js](server/routes/staff.js) — public-or-JWT staff endpoints: `GET /staff/session`, `POST /staff/accept-invite`
 - [lib/email.js](server/lib/email.js) — Resend email helpers
 - [lib/userTeams.js](server/lib/userTeams.js) — user↔team queries
 - [utils/syncSports.js](server/utils/syncSports.js) — startup sport seed
@@ -298,7 +325,7 @@ All under [src/animation/](src/animation/), [src/canvas/](src/canvas/), [src/fea
 - [db/migrate.js](server/db/migrate.js) — standalone migration runner
 - [db/pool.js](server/db/pool.js) — `pg` Pool export
 
-**Tables** (from schema.sql): `users`, `email_verification_codes`, `user_preferences`, `teams`, `team_settings`, `team_memberships`, `team_invite_codes`, `team_invites`, `team_join_requests`, `play_folders`, `plays`, `play_tags`, `play_tag_links`, `play_favorites`, `play_share_links`, `folder_share_links`, `error_reports`, `password_reset_codes`, `platform_play_folders`, `platform_plays`, `page_sections`, `user_issues`, `playbook_sections`, `playbook_section_plays`, `demo_videos`, `user_prefabs`, `admin_prefabs`, `sport_presets`.
+**Tables** (from schema.sql): `users`, `email_verification_codes`, `user_preferences`, `teams`, `team_settings`, `team_memberships`, `team_invite_codes`, `team_invites`, `team_join_requests`, `play_folders`, `plays`, `play_tags`, `play_tag_links`, `play_favorites`, `play_share_links`, `folder_share_links`, `error_reports`, `password_reset_codes`, `platform_play_folders`, `platform_plays`, `page_sections`, `user_issues`, `playbook_sections`, `playbook_section_plays`, `demo_videos`, `user_prefabs`, `admin_prefabs`, `sport_presets`, `sport_prefab_presets`, `staff_admins`, `staff_admin_invites`, `admin_audit_log`.
 
 ---
 
@@ -331,6 +358,7 @@ Suites used by the admin test runner: [src/testing/suites/](src/testing/suites/)
 ---
 
 ## Feature docs (read these when touching the feature)
+- [src/pages/SPORT_PREFAB_PRESETS.md](src/pages/SPORT_PREFAB_PRESETS.md) — admin-published prefab presets that surface in the Slate Prefabs panel per sport (distinct from full-canvas sport presets)
 - [src/features/slate/README.md](src/features/slate/README.md) — slate architecture overview
 - [src/features/slate/DRAWING_SEPARATION.md](src/features/slate/DRAWING_SEPARATION.md) — annotation/motion drawing split (read before touching drawings, palettes, eraser scope, or the v3 import/export pipeline)
 - [src/features/slate/DRAWING_MODE_UNDO_REDO.md](src/features/slate/DRAWING_MODE_UNDO_REDO.md)

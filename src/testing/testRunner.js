@@ -8,7 +8,9 @@
 
 /** Safely stringify a value without crashing on circular refs or DOM nodes. */
 function safeStr(value) {
-  if (value instanceof Element || value instanceof Node) return `[${value.constructor.name}]`;
+  // Element/Node are browser globals — guard so this works in Node (e.g. CI smoke tests).
+  if (typeof Element !== "undefined" && value instanceof Element) return `[${value.constructor.name}]`;
+  if (typeof Node !== "undefined" && value instanceof Node) return `[${value.constructor.name}]`;
   try { return JSON.stringify(value); } catch { return String(value); }
 }
 
@@ -60,6 +62,11 @@ function createExpect(actual) {
       } else {
         assert(false, `toContain requires string or array, got ${typeof actual}`);
       }
+    },
+    toMatch(pattern) {
+      const str = String(actual);
+      const pass = pattern instanceof RegExp ? pattern.test(str) : str.includes(String(pattern));
+      assert(pass, `Expected "${str}" to match ${pattern instanceof RegExp ? pattern : `"${pattern}"`}`);
     },
     toHaveLength(len) {
       assert(actual?.length === len, `Expected length ${len}, got ${actual?.length}`);

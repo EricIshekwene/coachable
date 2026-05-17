@@ -541,36 +541,71 @@ function PlayersSheet({
 // ── Prefabs sheet ────────────────────────────────────────────────────────────
 
 /**
- * PrefabsSheet — shows saved prefab groups. Tapping one places it on the canvas.
+ * PrefabsSheet — shows saved prefab groups, split into Published Presets
+ * (admin-curated, read-only) and Your Prefabs (user-saved, deletable).
+ * Tapping any prefab arms placement mode and closes the sheet.
  */
-function PrefabsSheet({ customPrefabs = [], onPrefabSelect, onDeleteCustomPrefab, onClose }) {
+function PrefabsSheet({ customPrefabs = [], publishedPrefabs = [], onPrefabSelect, onDeleteCustomPrefab, onClose }) {
+  const hasAny = customPrefabs.length > 0 || publishedPrefabs.length > 0;
   return (
-    <div className="flex flex-col gap-2">
-      {customPrefabs.length === 0 && (
+    <div className="flex flex-col gap-4">
+      {!hasAny && (
         <p className="text-sm text-BrandGray2 text-center py-6">
           No prefabs yet. Select multiple players and tap Save Group.
         </p>
       )}
-      {customPrefabs.map((prefab) => (
-        <div key={prefab.id} className="flex items-center gap-2">
-          <button
-            onClick={() => { onPrefabSelect?.(prefab); onClose?.(); }}
-            className="flex-1 min-w-0 text-left px-4 py-3.5 rounded-xl border border-white/10 text-sm text-white font-DmSans active:bg-white/5 flex items-center gap-3"
-          >
-            <FiLayers className="text-BrandOrange shrink-0" />
-            <span className="truncate">{prefab.label || "Unnamed Group"}</span>
-            <span className="ml-auto text-xs text-BrandGray2 shrink-0">
-              {prefab.players?.length ?? 0} players
-            </span>
-          </button>
-          <button
-            onClick={() => onDeleteCustomPrefab?.(prefab.id)}
-            className="shrink-0 p-3 rounded-xl border border-white/10 text-BrandGray2 active:bg-red-500/10 active:text-red-400"
-          >
-            <FiTrash2 className="text-base" />
-          </button>
+
+      {publishedPrefabs.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <p className="text-BrandGray2 text-[10px] uppercase tracking-wider font-DmSans px-1">
+            Published Presets
+          </p>
+          {publishedPrefabs.map((prefab) => (
+            <button
+              key={prefab.id}
+              onClick={() => { onPrefabSelect?.(prefab); onClose?.(); }}
+              className="w-full text-left px-4 py-3.5 rounded-xl border border-white/10 text-sm text-white font-DmSans active:bg-white/5 flex items-center gap-3"
+            >
+              <FiLayers className="text-BrandOrange shrink-0" />
+              <span className="truncate flex-1">{prefab.label || "Unnamed Preset"}</span>
+              <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-BrandOrange/20 text-BrandOrange">
+                Shared
+              </span>
+              <span className="text-xs text-BrandGray2 shrink-0">
+                {prefab.players?.length ?? 0} players
+              </span>
+            </button>
+          ))}
         </div>
-      ))}
+      )}
+
+      {customPrefabs.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <p className="text-BrandGray2 text-[10px] uppercase tracking-wider font-DmSans px-1">
+            Your Prefabs
+          </p>
+          {customPrefabs.map((prefab) => (
+            <div key={prefab.id} className="flex items-center gap-2">
+              <button
+                onClick={() => { onPrefabSelect?.(prefab); onClose?.(); }}
+                className="flex-1 min-w-0 text-left px-4 py-3.5 rounded-xl border border-white/10 text-sm text-white font-DmSans active:bg-white/5 flex items-center gap-3"
+              >
+                <FiLayers className="text-BrandOrange shrink-0" />
+                <span className="truncate">{prefab.label || "Unnamed Group"}</span>
+                <span className="ml-auto text-xs text-BrandGray2 shrink-0">
+                  {prefab.players?.length ?? 0} players
+                </span>
+              </button>
+              <button
+                onClick={() => onDeleteCustomPrefab?.(prefab.id)}
+                className="shrink-0 p-3 rounded-xl border border-white/10 text-BrandGray2 active:bg-red-500/10 active:text-red-400"
+              >
+                <FiTrash2 className="text-base" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -581,7 +616,9 @@ function PrefabsSheet({ customPrefabs = [], onPrefabSelect, onDeleteCustomPrefab
  * Provides a "Save Group" button to open the save-prefab modal.
  */
 function SelectionBanner({ selectedCount, onSavePrefab }) {
-  if (selectedCount < 2) return null;
+  // Hide the banner entirely when the host doesn't provide a save handler —
+  // e.g. in the prefab-preset editor where autosave already covers persistence.
+  if (selectedCount < 2 || !onSavePrefab) return null;
   return (
     <div
       className="fixed inset-x-0 z-70 flex justify-center pointer-events-none"
@@ -736,6 +773,7 @@ export default function MobileEditorBar({
   onCloseEditPlayer,
   onTogglePlayerHidden,
   customPrefabs = [],
+  publishedPrefabs = [],
   onPrefabSelect,
   onDeleteCustomPrefab,
   allPlayersDisplay,
@@ -838,6 +876,7 @@ export default function MobileEditorBar({
         <TopSheet open={activeSheet === "prefabs"} onClose={closeSheet} title="Prefabs">
           <PrefabsSheet
             customPrefabs={customPrefabs}
+            publishedPrefabs={publishedPrefabs}
             onPrefabSelect={onPrefabSelect}
             onDeleteCustomPrefab={onDeleteCustomPrefab}
             onClose={closeSheet}

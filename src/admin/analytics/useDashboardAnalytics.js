@@ -1,21 +1,23 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+import { adminFetchOptions, API_URL } from "../adminTransport";
 
 /**
  * Fetches all analytics data for the admin dashboard.
  *
- * @param {{ session: string, period: "7d"|"30d"|"90d"|"all" }} options
+ * The `session` param is accepted for backward compatibility but no longer
+ * required — adminFetchOptions() now reads credentials transparently from
+ * sessionStorage (legacy admin) and localStorage/cookie (staff JWT).
+ *
+ * @param {{ session?: string, period: "7d"|"30d"|"90d"|"all" }} options
  * @returns {{ data: Object|null, loading: boolean, error: string, refetch: () => void }}
  */
-export function useDashboardAnalytics({ session, period }) {
+export function useDashboardAnalytics({ period }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const abortRef = useRef(null);
 
   const fetch_ = useCallback(async () => {
-    if (!session) return;
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -23,10 +25,10 @@ export function useDashboardAnalytics({ session, period }) {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`${API_URL}/admin/analytics?period=${period}`, {
-        signal: controller.signal,
-        headers: { "x-admin-session": session },
-      });
+      const res = await fetch(
+        `${API_URL}/admin/analytics?period=${period}`,
+        adminFetchOptions({ signal: controller.signal })
+      );
       if (res.status === 401) {
         setError("Session expired. Reload the page.");
         return;
@@ -39,7 +41,7 @@ export function useDashboardAnalytics({ session, period }) {
     } finally {
       setLoading(false);
     }
-  }, [session, period]);
+  }, [period]);
 
   useEffect(() => {
     fetch_();

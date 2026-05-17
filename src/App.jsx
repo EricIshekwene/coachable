@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { installGlobalErrorHandlers } from "./utils/errorReporter";
 import { installMobileViewportFixes } from "./utils/mobileViewport";
 import "./index.css";
@@ -25,13 +25,21 @@ import AdminErrors from "./pages/AdminErrors";
 import AdminPlayEditPage from "./pages/AdminPlayEditPage";
 import AdminPresetEditPage from "./pages/AdminPresetEditPage";
 import AdminSportPresetsPage from "./pages/AdminSportPresetsPage";
+import AdminSportPrefabPresetsPage from "./pages/AdminSportPrefabPresetsPage";
+import AdminPrefabPresetEditPage from "./pages/AdminPrefabPresetEditPage";
 import AdminPlaysPage from "./pages/AdminPlaysPage";
 import AdminUserActivity from "./pages/AdminUserActivity";
+import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminUserIssues from "./pages/AdminUserIssues";
 import AdminMobileView from "./pages/AdminMobileView";
 import AdminTestSlate from "./pages/AdminTestSlate";
 import AdminDemoVideos from "./pages/AdminDemoVideos";
 import AdminOnePage from "./pages/AdminOnePage";
+import StaffLogin from "./pages/StaffLogin";
+import StaffAcceptInvite from "./pages/StaffAcceptInvite";
+import StaffDashboard from "./pages/StaffDashboard";
+import AdminStaff from "./pages/AdminStaff";
+import RequirePerm from "./admin/RequirePerm";
 import AppLayout from "./layouts/AppLayout";
 import Plays from "./pages/app/Plays";
 import PlayNew from "./pages/app/PlayNew";
@@ -188,6 +196,45 @@ function AdminLayout() {
   );
 }
 
+/** Layout wrapper for /staff/* pages — same admin shell, but mode="staff" and basePath="/staff". */
+function StaffLayout() {
+  return (
+    <AdminProvider basePath="/staff" mode="staff">
+      <Outlet />
+    </AdminProvider>
+  );
+}
+
+/**
+ * Guards /staff sub-routes. Verifies the user has staff access by probing
+ * /staff/session. Redirects to /staff/login on 401.
+ */
+function RequireStaffSession({ children }) {
+  const [status, setStatus] = useState("checking");
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { adminApi } = await import("./admin/adminTransport");
+        await adminApi("/staff/session");
+        if (!cancelled) setStatus("ok");
+      } catch {
+        if (!cancelled) setStatus("denied");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  if (status === "checking") {
+    return (
+      <div className="flex h-screen items-center justify-center bg-BrandBlack">
+        <div className="h-10 w-10 rounded-full border-[3px] border-BrandOrange/30 border-t-BrandOrange animate-spin" />
+      </div>
+    );
+  }
+  if (status === "denied") return <Navigate to="/staff/login" replace />;
+  return children;
+}
+
 export function RequireAuth({ children }) {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -283,12 +330,37 @@ export function AppRoutes() {
         <Route path="/admin/plays/:playId/edit" element={<RequireAdminSession><AdminPlayEditPage /></RequireAdminSession>} />
         <Route path="/admin/presets/:sport" element={<RequireAdminSession><AdminSportPresetsPage /></RequireAdminSession>} />
         <Route path="/admin/presets/:sport/:presetId/edit" element={<RequireAdminSession><AdminPresetEditPage /></RequireAdminSession>} />
+        <Route path="/admin/prefab-presets/:sport" element={<RequireAdminSession><AdminSportPrefabPresetsPage /></RequireAdminSession>} />
+        <Route path="/admin/prefab-presets/:sport/:prefabPresetId/edit" element={<RequireAdminSession><AdminPrefabPresetEditPage /></RequireAdminSession>} />
+        <Route path="/admin/users" element={<RequireAdminSession><AdminUsersPage /></RequireAdminSession>} />
         <Route path="/admin/users/:userId" element={<RequireAdminSession><AdminUserActivity /></RequireAdminSession>} />
         <Route path="/admin/user-issues" element={<RequireAdminSession><AdminUserIssues /></RequireAdminSession>} />
         <Route path="/admin/mobile-view" element={<RequireAdminSession><AdminMobileView /></RequireAdminSession>} />
         <Route path="/admin/test" element={<RequireAdminSession><AdminTestSlate /></RequireAdminSession>} />
         <Route path="/admin/demo-videos" element={<RequireAdminSession><AdminDemoVideos /></RequireAdminSession>} />
         <Route path="/admin/one-page" element={<RequireAdminSession><AdminOnePage /></RequireAdminSession>} />
+        <Route path="/admin/staff" element={<RequireAdminSession><AdminStaff /></RequireAdminSession>} />
+      </Route>
+
+      {/* Staff admin tree — scoped sub-admins (see STAFF_ADMIN_PLAN.md). */}
+      <Route path="/staff/login" element={<StaffLogin />} />
+      <Route path="/staff/accept-invite" element={<StaffAcceptInvite />} />
+      <Route element={<StaffLayout />}>
+        <Route path="/staff" element={<RequireStaffSession><StaffDashboard /></RequireStaffSession>} />
+        <Route path="/staff/app" element={<RequireStaffSession><RequirePerm anyOf={["plays.viewFolders", "pageSections.manage", "playbooks.view", "presets.create", "presets.edit", "prefabs.manage"]}><AdminPlaysPage /></RequirePerm></RequireStaffSession>} />
+        <Route path="/staff/plays/:playId/edit" element={<RequireStaffSession><RequirePerm perm="plays.editContent"><AdminPlayEditPage /></RequirePerm></RequireStaffSession>} />
+        <Route path="/staff/presets/:sport" element={<RequireStaffSession><RequirePerm anyOf={["presets.create", "presets.edit"]}><AdminSportPresetsPage /></RequirePerm></RequireStaffSession>} />
+        <Route path="/staff/presets/:sport/:presetId/edit" element={<RequireStaffSession><RequirePerm anyOf={["presets.create", "presets.edit"]}><AdminPresetEditPage /></RequirePerm></RequireStaffSession>} />
+        <Route path="/staff/prefab-presets/:sport" element={<RequireStaffSession><RequirePerm perm="prefabs.manage"><AdminSportPrefabPresetsPage /></RequirePerm></RequireStaffSession>} />
+        <Route path="/staff/prefab-presets/:sport/:prefabPresetId/edit" element={<RequireStaffSession><RequirePerm perm="prefabs.manage"><AdminPrefabPresetEditPage /></RequirePerm></RequireStaffSession>} />
+        <Route path="/staff/users" element={<RequireStaffSession><RequirePerm perm="users.viewTable"><AdminUsersPage /></RequirePerm></RequireStaffSession>} />
+        <Route path="/staff/users/:userId" element={<RequireStaffSession><RequirePerm perm="users.viewTable"><AdminUserActivity /></RequirePerm></RequireStaffSession>} />
+        <Route path="/staff/user-issues" element={<RequireStaffSession><RequirePerm perm="issues.view"><AdminUserIssues /></RequirePerm></RequireStaffSession>} />
+        <Route path="/staff/errors" element={<RequireStaffSession><RequirePerm perm="errors.viewReports"><AdminErrors /></RequirePerm></RequireStaffSession>} />
+        <Route path="/staff/demo-videos" element={<RequireStaffSession><RequirePerm perm="videos.addDemo"><AdminDemoVideos /></RequirePerm></RequireStaffSession>} />
+        <Route path="/staff/one-page" element={<RequireStaffSession><RequirePerm perm="pageSections.manage"><AdminOnePage /></RequirePerm></RequireStaffSession>} />
+        <Route path="/staff/tests" element={<RequireStaffSession><RequirePerm perm="tests.run"><AdminTests /></RequirePerm></RequireStaffSession>} />
+        <Route path="/staff/staff" element={<RequireStaffSession><RequirePerm ownerOnly><AdminStaff /></RequirePerm></RequireStaffSession>} />
       </Route>
 
       <Route path="/platform-play/:playId" element={<PlatformPlayView />} />

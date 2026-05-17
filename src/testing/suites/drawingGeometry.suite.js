@@ -245,23 +245,27 @@ export default buildSuite(({ describe, it, expect }) => {
       expect(changes.get("s1").points).toEqual([0, 0, 200, 200]);
     }, "Doubling the selection bounds should double all stroke point coordinates. This is proportional scaling — every point moves relative to the selection origin. Failure causes distorted or incorrectly positioned strokes after resize.");
 
-    it("scales text fontSize", () => {
-      const drawings = [{ id: "t1", type: "text", x: 50, y: 50, fontSize: 18 }];
+    it("text resize updates width only (fontSize unchanged)", () => {
+      const drawings = [{ id: "t1", type: "text", x: 50, y: 50, fontSize: 18, align: "left" }];
       const changes = applyResize(drawings, ["t1"],
         { x: 0, y: 0, width: 100, height: 100 },
         { x: 0, y: 0, width: 200, height: 200 }
       );
-      expect(changes.get("t1").fontSize).toBe(36);
-    }, "When resizing a group containing text, the font size should scale proportionally. Without this, text would stay the same size while everything else grows, breaking the visual layout.");
+      // Text intentionally does not scale fontSize on resize — width-only handles, per commit 1bc0643.
+      expect(changes.get("t1").fontSize).toBe(undefined);
+      expect(changes.get("t1").width).toBe(200);
+    }, "Text resize handles are width-only (commit 1bc0643): dragging makes the text box wider/narrower but never changes the font size — font size is controlled via the right panel. Failure would re-introduce surprise font scaling when resizing groups that contain text.");
 
-    it("enforces min fontSize 8", () => {
-      const drawings = [{ id: "t1", type: "text", x: 50, y: 50, fontSize: 18 }];
+    it("text resize clamps width to a 20px minimum", () => {
+      const drawings = [{ id: "t1", type: "text", x: 50, y: 50, fontSize: 18, align: "left" }];
       const changes = applyResize(drawings, ["t1"],
         { x: 0, y: 0, width: 100, height: 100 },
         { x: 0, y: 0, width: 10, height: 10 }
       );
-      expect(changes.get("t1").fontSize).toBe(8);
-    }, "Font size can't go below 8px to keep text readable. Without this floor, shrinking a group too much would make text invisible or cause rendering issues with tiny font sizes.");
+      // Implementation clamps width via Math.max(20, newBounds.width); fontSize stays untouched.
+      expect(changes.get("t1").width).toBe(20);
+      expect(changes.get("t1").fontSize).toBe(undefined);
+    }, "Text boxes have a hard 20px minimum width so they stay grabbable after aggressive shrink. fontSize stays unchanged (width-only resize). Without the clamp, text boxes can collapse to zero and become unselectable.");
   });
 
   // ─── applyRotation ───────────────────────────────────────────────────

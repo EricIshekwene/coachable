@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 import ConfirmModal from "../components/subcomponents/ConfirmModal";
 import { useAdmin } from "../admin/AdminContext";
 import { adminPath } from "../admin/adminNav";
+import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
 import {
   AdminShell, AdminHeader, AdminPage, AdminCard, AdminSection,
   AdminBtn, AdminSelect, AdminBadge, AdminEmptyState, AdminSpinner,
@@ -116,8 +117,8 @@ function formatReportText(r) {
 }
 
 export default function AdminErrors() {
-  const { basePath } = useAdmin();
-  const [session] = useState(() => sessionStorage.getItem(SESSION_KEY) || "");
+  const { basePath, isOwner } = useAdmin();
+  const [session] = useState(() => readAdminSession() || "");
   const [reports, setReports] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -149,7 +150,7 @@ export default function AdminErrors() {
     confirmResolveRef.current?.(false);
   };
 
-  const authed = Boolean(session);
+  const authed = basePath === "/staff" || Boolean(session);
 
   const fetchReports = useCallback(async () => {
     setLoading(true);
@@ -162,7 +163,7 @@ export default function AdminErrors() {
       if (filter) params.set("component", filter);
 
       const res = await fetch(`${API_URL}/error-reports?${params}`, {
-        headers: { "x-admin-session": session },
+        ...adminFetchOptions(),
       });
       if (!res.ok) throw new Error("Failed to fetch error reports");
       const data = await res.json();
@@ -180,10 +181,10 @@ export default function AdminErrors() {
   }, [authed, fetchReports]);
 
   const handleDelete = async (id) => {
+    if (!isOwner) return;
     try {
       await fetch(`${API_URL}/error-reports/${id}`, {
-        method: "DELETE",
-        headers: { "x-admin-session": session },
+        ...adminFetchOptions({ method: "DELETE" }),
       });
       setReports((prev) => prev.filter((r) => r.id !== id));
       setTotal((t) => t - 1);
@@ -193,12 +194,12 @@ export default function AdminErrors() {
   };
 
   const handleClearAll = async () => {
+    if (!isOwner) return;
     const ok = await openConfirm({ message: "Clear ALL error reports?", subtitle: "This cannot be undone.", confirmLabel: "Clear All", danger: true });
     if (!ok) return;
     try {
       await fetch(`${API_URL}/error-reports`, {
-        method: "DELETE",
-        headers: { "x-admin-session": session },
+        ...adminFetchOptions({ method: "DELETE" }),
       });
       setReports([]);
       setTotal(0);
@@ -249,7 +250,7 @@ export default function AdminErrors() {
         actions={
           <div className="flex gap-2">
             <AdminBtn variant="secondary" size="sm" onClick={handleCopyAll} disabled={reports.length === 0}>{copied === "all" ? "Copied!" : "Copy All"}</AdminBtn>
-            <AdminBtn variant="danger" size="sm" onClick={handleClearAll}>Clear All</AdminBtn>
+            {isOwner && <AdminBtn variant="danger" size="sm" onClick={handleClearAll}>Clear All</AdminBtn>}
           </div>
         }
       />
@@ -314,7 +315,9 @@ export default function AdminErrors() {
                             <span className="text-[10px]" style={{ color: "var(--adm-muted)" }}>{new Date(r.created_at).toLocaleString()}</span>
                             <div className="flex flex-wrap gap-2">
                               <AdminBtn variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleCopyOne(r); }}>{copied === r.id ? "Copied!" : "Copy"}</AdminBtn>
-                              <AdminBtn variant="danger" size="sm" onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }}>Delete</AdminBtn>
+                              {isOwner && (
+                                <AdminBtn variant="danger" size="sm" onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }}>Delete</AdminBtn>
+                              )}
                             </div>
                           </div>
                         </div>

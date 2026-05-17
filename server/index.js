@@ -22,6 +22,8 @@ import playbookSectionsRoutes from "./routes/playbookSections.js";
 import demoVideosRoutes from "./routes/demoVideos.js";
 import prefabsRoutes from "./routes/prefabs.js";
 import sportPresetsRoutes from "./routes/sportPresets.js";
+import sportPrefabPresetsRoutes from "./routes/sportPrefabPresets.js";
+import staffRoutes from "./routes/staff.js";
 import { syncSports } from "./utils/syncSports.js";
 import { syncPlaybookDefaults } from "./utils/syncPlaybookDefaults.js";
 
@@ -80,6 +82,8 @@ app.use("/playbook-sections", playbookSectionsRoutes);
 app.use("/demo-videos", demoVideosRoutes);
 app.use("/prefabs", prefabsRoutes);
 app.use("/sport-presets", sportPresetsRoutes);
+app.use("/sport-prefab-presets", sportPrefabPresetsRoutes);
+app.use("/staff", staffRoutes);
 
 // --------------- Static files ---------------
 

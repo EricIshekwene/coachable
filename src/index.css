@@ -91,6 +91,14 @@ body {
     --font-DmSans: DmSans, sans-serif;
 }
 
+:root {
+    --scrollbar-thumb: linear-gradient(180deg, #FF7A18 0%, #ff8d3d 100%);
+    --scrollbar-thumb-hover: linear-gradient(180deg, #ff8d3d 0%, #FF7A18 100%);
+    --scrollbar-thumb-active: #FF7A18;
+    --scrollbar-track: transparent;
+    --scrollbar-corner: transparent;
+}
+
 /* Custom Scrollbar Styling */
 /* Webkit browsers (Chrome, Safari, Edge) */
 ::-webkit-scrollbar {
@@ -99,12 +107,12 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-    background: rgba(18, 18, 18, 0.1);
+    background: var(--scrollbar-track);
     border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, #FF7A18 0%, #ff8d3d 100%);
+    background: var(--scrollbar-thumb);
     border-radius: 10px;
     border: 0;
     background-clip: border-box;
@@ -124,23 +132,33 @@ input[type="number"] {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, #ff8d3d 0%, #FF7A18 100%);
+    background: var(--scrollbar-thumb-hover);
     background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:active {
-    background: #FF7A18;
+    background: var(--scrollbar-thumb-active);
     background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-corner {
-    background: rgba(18, 18, 18, 0.1);
+    background: var(--scrollbar-corner);
 }
 
 /* Firefox */
 * {
     scrollbar-width: thin;
-    scrollbar-color: #FF7A18 rgba(18, 18, 18, 0.1);
+    scrollbar-color: var(--scrollbar-thumb-active) var(--scrollbar-track);
+}
+
+.scrollbar-surface-dark {
+    --scrollbar-track: rgba(18, 18, 18, 0.1);
+    --scrollbar-corner: rgba(18, 18, 18, 0.1);
+}
+
+.scrollbar-surface-light {
+    --scrollbar-track: rgba(17, 24, 39, 0.08);
+    --scrollbar-corner: rgba(17, 24, 39, 0.08);
 }
 
 /* Utility: hide scrollbars but keep scroll behavior */

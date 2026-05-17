@@ -17,6 +17,7 @@ export default function WideSidebar({
     players,
     prefabs,
     customPrefabs,
+    publishedPrefabs,
     playName,
     onCollapse,
     onNavigateHome,
@@ -41,6 +42,7 @@ export default function WideSidebar({
             players={players}
             prefabs={prefabs}
             customPrefabs={customPrefabs}
+            publishedPrefabs={publishedPrefabs}
             playName={playName}
             onCollapse={onCollapse}
             onNavigateHome={onNavigateHome}

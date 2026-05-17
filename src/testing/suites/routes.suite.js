@@ -307,6 +307,10 @@ function createAppDataFetchDefinitions(teamId = "team-1") {
   return [
     { method: "GET", match: `/teams/${teamId}/plays`, response: jsonResponse(200, { plays: [] }) },
     { method: "GET", match: `/teams/${teamId}/folders`, response: jsonResponse(200, { folders: [] }) },
+    // AppLayout fetches this on mount to decide whether to show the Playbooks nav link.
+    // Without a mock the request errors out and the failing apiFetch trips the error
+    // reporter, which adds noise and races the per-page useEffects we actually want to assert on.
+    { method: "GET", match: /\/playbook-sections$/, response: jsonResponse(200, { sections: [] }) },
   ];
 }
 

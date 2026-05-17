@@ -2104,25 +2104,6 @@ function SlateRecord({
     let currentRepresented = [...(entities.representedPlayerIds || [])];
     const newIds = [];
 
-    // Build a set of taken numbers per color for dedup
-    const takenByColor = {};
-    Object.values(currentById).forEach((p) => {
-      const c = (p.color ?? "#ef4444").toLowerCase();
-      if (!takenByColor[c]) takenByColor[c] = new Set();
-      const n = Number(p.number);
-      if (!Number.isNaN(n)) takenByColor[c].add(n);
-    });
-
-    const getNextAvailableNumber = (color, desiredNumber) => {
-      const c = (color ?? "#ef4444").toLowerCase();
-      if (!takenByColor[c]) takenByColor[c] = new Set();
-      let num = Number(desiredNumber);
-      if (Number.isNaN(num)) num = 1;
-      while (takenByColor[c].has(num)) num++;
-      takenByColor[c].add(num);
-      return num;
-    };
-
     (prefab.players || []).forEach((p) => {
       const newId = getNextPlayerId(currentById);
       const color = p.color ?? "#ef4444";
@@ -2130,7 +2111,11 @@ function SlateRecord({
         id: newId,
         x: x + (p.dx ?? 0),
         y: y + (p.dy ?? 0),
-        number: usePositionLabels ? (p.number ?? "") : getNextAvailableNumber(color, p.number),
+        // Prefab labels are preserved verbatim — placing a 3-player
+        // prefab saved as 1/2/3 keeps those numbers even when the slate
+        // already has a 1/2/3. Duplicate numbers are acceptable; this
+        // matches the saved layout instead of silently renumbering.
+        number: p.number ?? "",
         name: usePositionLabels ? "" : (p.name ?? ""),
         color,
       };

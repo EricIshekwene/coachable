@@ -11,6 +11,7 @@ const SUITE_NAMES = [
   "Import / Export",
   "Animation Schema",
   "Routes",
+  "API Routes",
 ];
 
 const SUITE_DESCRIPTIONS = {
@@ -19,6 +20,7 @@ const SUITE_DESCRIPTIONS = {
   "Import / Export": "Play file serialization — building export JSON, validating imports, and verifying data survives the round trip.",
   "Animation Schema": "Animation data structure utilities — keyframe sorting, track normalization, upsert/delete operations, and deep cloning.",
   "Routes": "Route guards, auth recovery, public share links, and critical login/onboarding/save flows against real route contracts.",
+  "API Routes": "Server route contracts — URL, method, headers, and body shape for every admin and team endpoint. Catches client/server contract drift before it lands in prod.",
 };
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
@@ -135,7 +137,8 @@ export default function AdminTests() {
       import("../testing/suites/importExport.suite"),
       import("../testing/suites/animationSchema.suite"),
       import("../testing/suites/routes.suite"),
-    ]).then(([runner, drawingGeometry, interpolation, importExport, animationSchema, routes]) => {
+      import("../testing/suites/apiRoutes.suite"),
+    ]).then(([runner, drawingGeometry, interpolation, importExport, animationSchema, routes, apiRoutes]) => {
       runAllSuitesRef.current = runner.runAllSuites;
       setAllSuites({
         "Drawing Geometry": drawingGeometry.default,
@@ -143,6 +146,7 @@ export default function AdminTests() {
         "Import / Export": importExport.default,
         "Animation Schema": animationSchema.default,
         "Routes": routes.default,
+        "API Routes": apiRoutes.default,
       });
     }).catch((err) => console.error("Failed to load test suites:", err));
   }, []);

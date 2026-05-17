@@ -614,3 +614,95 @@ EXCEPTION WHEN duplicate_column THEN NULL;
 END $$;
 
 CREATE INDEX IF NOT EXISTS sport_presets_sport_idx ON sport_presets(sport);
+
+-- ============================================================
+-- Sport prefab presets (admin-managed reusable player groupings, per sport)
+-- Distinct from sport_presets (full starting canvases). These appear in the
+-- Slate Prefabs panel for every user of the matching sport when published.
+-- See src/pages/SPORT_PREFAB_PRESETS.md for the design rationale.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS sport_prefab_presets (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sport       TEXT NOT NULL,
+  name        TEXT NOT NULL DEFAULT 'Prefab',
+  prefab_data JSONB NOT NULL,
+  sort_order  INT NOT NULL DEFAULT 0,
+  is_hidden   BOOLEAN NOT NULL DEFAULT true,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS sport_prefab_presets_sport_idx ON sport_prefab_presets(sport);
+
+-- ============================================================
+-- Staff admins (scoped admin invites — see STAFF_ADMIN_PLAN.md)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS staff_admin_roles (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  permissions JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_staff_roles_name_unique
+  ON staff_admin_roles(LOWER(name));
+
+CREATE TABLE IF NOT EXISTS staff_admins (
+  user_id      UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  permissions  JSONB NOT NULL DEFAULT '{}'::jsonb,
+  invited_by   UUID REFERENCES users(id),
+  invited_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  accepted_at  TIMESTAMPTZ,
+  revoked_at   TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS staff_admin_invites (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email         TEXT NOT NULL,
+  permissions   JSONB NOT NULL DEFAULT '{}'::jsonb,
+  token         TEXT NOT NULL UNIQUE,
+  created_by    UUID NOT NULL REFERENCES users(id),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at    TIMESTAMPTZ NOT NULL,
+  accepted_at   TIMESTAMPTZ,
+  accepted_user UUID REFERENCES users(id)
+);
+
+ALTER TABLE staff_admins
+  ADD COLUMN IF NOT EXISTS role_id UUID REFERENCES staff_admin_roles(id) ON DELETE SET NULL;
+
+ALTER TABLE staff_admin_invites
+  ADD COLUMN IF NOT EXISTS role_id UUID REFERENCES staff_admin_roles(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_staff_admins_role_id
+  ON staff_admins(role_id);
+
+CREATE INDEX IF NOT EXISTS idx_staff_invites_role_id
+  ON staff_admin_invites(role_id);
+
+CREATE INDEX IF NOT EXISTS idx_staff_invites_email
+  ON staff_admin_invites(LOWER(email)) WHERE accepted_at IS NULL;
+
+-- ============================================================
+-- Admin audit log (mutation-only — staff actions + legacy admin)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS admin_audit_log (
+  id              BIGSERIAL PRIMARY KEY,
+  occurred_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  actor_auth_mode TEXT NOT NULL,         -- 'legacy_admin' | 'staff' | 'owner_jwt'
+  actor_user_id   UUID,                  -- legacy_admin attributes to OWNER_USER_ID
+  action          TEXT NOT NULL,         -- e.g. 'play.delete'
+  target_type     TEXT,                  -- e.g. 'play'
+  target_id       TEXT,
+  metadata        JSONB NOT NULL DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_actor
+  ON admin_audit_log(actor_user_id, occurred_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_action
+  ON admin_audit_log(action, occurred_at DESC);

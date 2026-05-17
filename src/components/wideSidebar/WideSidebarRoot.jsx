@@ -133,6 +133,7 @@ export default function WideSidebarRoot({
     onDeleteCustomPrefab,
     onAddPlayer,
     customPrefabs,
+    publishedPrefabs,
     playName,
     onCollapse,
     onNavigateHome,
@@ -156,12 +157,24 @@ export default function WideSidebarRoot({
     const objectsButtonRef = useRef(null);
     const playerButtonRef = useRef(null);
     const prefabsButtonRef = useRef(null);
+    // Merge admin-published prefab presets and the user's personal prefabs into
+    // a single list. Source metadata is preserved so PrefabsPopover can render
+    // them in two sections and gate the delete button to personal items only.
     const prefabs = useMemo(() => {
-        return (customPrefabs || []).map((cp) => ({
+        const published = (publishedPrefabs || []).map((pp) => ({
+            ...pp,
+            isCustom: false,
+            isPublished: true,
+            readOnly: true,
+            source: pp.source ?? "sport-preset",
+        }));
+        const custom = (customPrefabs || []).map((cp) => ({
             ...cp,
             isCustom: true,
+            isPublished: false,
         }));
-    }, [customPrefabs]);
+        return [...published, ...custom];
+    }, [customPrefabs, publishedPrefabs]);
 
     const togglePopover = (key) => {
         setOpenPopover((prev) => (prev === key ? null : key));

@@ -556,6 +556,82 @@ export async function sendAccountDeletedEmail({ toEmail, userName, reason }) {
 /**
  * Send a notification email when a member is removed from a team.
  */
+/**
+ * Send a staff-admin invite email. The recipient clicks the CTA, which routes
+ * them to `/staff/accept-invite?token=…` to either log into an existing
+ * Coachable account or sign up.
+ *
+ * @param {{ toEmail: string, inviteUrl: string, ownerName?: string, permissionsSummary?: string[] }} args
+ */
+export async function sendStaffAdminInviteEmail({ toEmail, inviteUrl, ownerName, permissionsSummary }) {
+  const summaryHtml = (permissionsSummary && permissionsSummary.length)
+    ? `<ul style="margin:0 0 20px; padding-left:18px; color:#4b5157; font-size:14px; line-height:1.7;">${permissionsSummary
+        .map((line) => `<li>${line}</li>`)
+        .join("")}</ul>`
+    : "";
+
+  const inviter = ownerName || "The Coachable owner";
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+<body style="margin:0; padding:0; background-color:#f5f5f5; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f5f5; padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px; background-color:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.06);">
+          <tr>
+            <td style="background-color:#121212; padding:32px 40px; text-align:center;">
+              <span style="font-size:24px; font-weight:700; color:#FF7A18; letter-spacing:-0.5px;">coachable</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:40px 40px 16px;">
+              <h1 style="margin:0 0 8px; font-size:22px; font-weight:700; color:#121212; letter-spacing:-0.3px;">
+                You've been invited as a staff admin
+              </h1>
+              <p style="margin:0 0 24px; font-size:15px; color:#4b5157; line-height:1.6;">
+                ${inviter} has invited you to help manage the Coachable platform. You'll have a scoped admin role with the following access:
+              </p>
+              ${summaryHtml}
+              <div style="text-align:center; margin:28px 0;">
+                <a href="${inviteUrl}" style="display:inline-block; background-color:#FF7A18; color:#ffffff; text-decoration:none; font-weight:600; padding:14px 28px; border-radius:10px; font-size:15px;">
+                  Accept invitation
+                </a>
+              </div>
+              <p style="margin:0; font-size:13px; color:#9AA0A6; line-height:1.5;">
+                If you didn't expect this email, you can safely ignore it. The invite link expires in 7 days.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 40px 32px; text-align:center;">
+              <p style="margin:0; font-size:12px; color:#9AA0A6; line-height:1.5;">
+                Coachable — The modern playbook platform for coaches and teams.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  const { error } = await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: toEmail,
+    subject: "You've been invited as a Coachable staff admin",
+    html,
+  });
+
+  if (error) throw new Error(error.message || "Failed to send staff invite email");
+}
+
 export async function sendMemberRemovedEmail({ toEmail, memberName, teamName, removedByName }) {
   const firstName = (memberName || "").split(" ")[0] || "there";
 

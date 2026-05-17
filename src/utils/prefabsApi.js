@@ -1,25 +1,14 @@
 import { apiFetch } from "./api";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
-const ADMIN_SESSION_KEY = "coachable_admin_session";
-
-/** Returns the admin session token from sessionStorage, or null. */
-function getAdminSession() {
-  return sessionStorage.getItem(ADMIN_SESSION_KEY);
-}
+import { adminFetchOptions, API_URL } from "../admin/adminTransport";
 
 /**
  * Fetch all prefabs for the current context.
- * @param {boolean} adminMode - If true, use admin API with session auth.
+ * @param {boolean} adminMode - If true, use admin API (legacy session OR staff JWT).
  * @returns {Promise<Object[]>} Array of prefab objects.
  */
 export async function fetchPrefabs(adminMode = false) {
   if (adminMode) {
-    const session = getAdminSession();
-    if (!session) return [];
-    const res = await fetch(`${API_URL}/admin/prefabs`, {
-      headers: { "x-admin-session": session },
-    });
+    const res = await fetch(`${API_URL}/admin/prefabs`, adminFetchOptions());
     if (!res.ok) return [];
     const data = await res.json();
     return data.prefabs || [];
@@ -41,16 +30,10 @@ export async function fetchPrefabs(adminMode = false) {
 export async function savePrefabToServer(prefab, adminMode = false) {
   const { label, ...rest } = prefab;
   if (adminMode) {
-    const session = getAdminSession();
-    if (!session) return null;
-    const res = await fetch(`${API_URL}/admin/prefabs`, {
+    const res = await fetch(`${API_URL}/admin/prefabs`, adminFetchOptions({
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-admin-session": session,
-      },
       body: JSON.stringify({ label, prefab_data: rest }),
-    });
+    }));
     if (!res.ok) return null;
     const data = await res.json();
     return data.prefab || null;
@@ -74,12 +57,9 @@ export async function savePrefabToServer(prefab, adminMode = false) {
  */
 export async function deletePrefabFromServer(id, adminMode = false) {
   if (adminMode) {
-    const session = getAdminSession();
-    if (!session) return false;
-    const res = await fetch(`${API_URL}/admin/prefabs/${id}`, {
+    const res = await fetch(`${API_URL}/admin/prefabs/${id}`, adminFetchOptions({
       method: "DELETE",
-      headers: { "x-admin-session": session },
-    });
+    }));
     return res.ok;
   }
   try {
@@ -87,5 +67,27 @@ export async function deletePrefabFromServer(id, adminMode = false) {
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Fetch all published prefab presets for a sport. These are admin-curated
+ * reusable player groupings that all users of the sport can drop into a play
+ * from the Slate Prefabs panel.
+ *
+ * Returns an empty array if the sport is missing/blank, the request fails,
+ * or the user is unauthenticated (the endpoint requires a logged-in session).
+ *
+ * @param {string} sport - Sport name (case-insensitive on the server)
+ * @returns {Promise<Object[]>} Array of `{ id, name, prefabData }` records
+ */
+export async function fetchSportPrefabPresets(sport) {
+  const trimmed = String(sport ?? "").trim();
+  if (!trimmed) return [];
+  try {
+    const data = await apiFetch(`/sport-prefab-presets/${encodeURIComponent(trimmed)}`);
+    return data.presets || [];
+  } catch {
+    return [];
   }
 }

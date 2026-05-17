@@ -7,6 +7,7 @@ import { useAdmin } from "../admin/AdminContext";
 import { adminPath } from "../admin/adminNav";
 import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
 import { AdminShell, AdminHeader, AdminPage, AdminBtn, AdminInput, AdminModal, AdminEmptyState, AdminSpinner } from "../admin/components";
+import { prefabToPreviewPlayData } from "../utils/sportPrefabPresets";
 import {
   isAdminElevated,
   getAdminElevatedUntil,
@@ -18,37 +19,37 @@ const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 /**
- * Fetch all presets for a specific sport.
+ * Fetch all prefab presets for a specific sport.
  * @param {string} session - Admin session token
  * @param {string} sport - Sport name
  * @returns {Promise<Object[]>} Array of preset objects
  */
 async function fetchPresetsForSport(session, sport) {
   const res = await fetch(
-    `${API_URL}/admin/sport-presets/${encodeURIComponent(sport)}`,
+    `${API_URL}/admin/sport-prefab-presets/${encodeURIComponent(sport)}`,
     adminFetchOptions()
   );
   if (res.status === 401) throw new Error("UNAUTHORIZED");
-  if (!res.ok) throw new Error("Failed to load presets");
+  if (!res.ok) throw new Error("Failed to load prefab presets");
   return (await res.json()).presets || [];
 }
 
 /**
- * Delete a sport preset via the admin API. Requires elevated session.
+ * Delete a sport prefab preset via the admin API. Requires elevated session.
  * @param {string} session - Admin session token
  * @param {string} sport - Sport name
  * @param {string} id - Preset UUID
  */
 async function deletePreset(session, sport, id) {
   const res = await fetch(
-    `${API_URL}/admin/sport-presets/${encodeURIComponent(sport)}/${id}`,
+    `${API_URL}/admin/sport-prefab-presets/${encodeURIComponent(sport)}/${id}`,
     adminFetchOptions({ method: "DELETE" })
   );
-  if (!res.ok) throw new Error("Failed to delete preset");
+  if (!res.ok) throw new Error("Failed to delete prefab preset");
 }
 
 /**
- * Persist a new display order for all presets of a sport.
+ * Persist a new display order for all prefab presets of a sport.
  * Sends the full ordered array of IDs; server assigns sort_order = index.
  * @param {string} session - Admin session token
  * @param {string} sport - Sport name
@@ -56,17 +57,17 @@ async function deletePreset(session, sport, id) {
  */
 async function reorderPresets(session, sport, ids) {
   const res = await fetch(
-    `${API_URL}/admin/sport-presets/${encodeURIComponent(sport)}/reorder`,
+    `${API_URL}/admin/sport-prefab-presets/${encodeURIComponent(sport)}/reorder`,
     adminFetchOptions({
       method: "POST",
       body: JSON.stringify({ ids }),
     })
   );
-  if (!res.ok) throw new Error("Failed to reorder presets");
+  if (!res.ok) throw new Error("Failed to reorder prefab presets");
 }
 
 /**
- * Toggle the hidden/published state of a sport preset.
+ * Toggle the hidden/published state of a prefab preset.
  * @param {string} session - Admin session token
  * @param {string} sport - Sport name
  * @param {string} id - Preset UUID
@@ -75,52 +76,73 @@ async function reorderPresets(session, sport, ids) {
  */
 async function togglePresetVisibility(session, sport, id, isHidden) {
   const res = await fetch(
-    `${API_URL}/admin/sport-presets/${encodeURIComponent(sport)}/${id}`,
+    `${API_URL}/admin/sport-prefab-presets/${encodeURIComponent(sport)}/${id}`,
     adminFetchOptions({
       method: "PATCH",
       body: JSON.stringify({ isHidden }),
     })
   );
-  if (!res.ok) throw new Error("Failed to update preset visibility");
+  if (!res.ok) throw new Error("Failed to update prefab preset visibility");
   return (await res.json()).preset;
 }
 
 /**
- * Create a duplicate of a preset with "Copy of " prepended to its name.
- * @param {string} session - Admin session token
+ * Rename a prefab preset. Same PATCH endpoint as visibility/data updates —
+ * only the `name` field is sent.
  * @param {string} sport - Sport name
- * @param {string} name - Original preset name
- * @param {Object} playData - Play data to duplicate
- * @returns {Promise<Object>} Newly created preset object
+ * @param {string} id - Preset UUID
+ * @param {string} name - New name (trimmed)
+ * @returns {Promise<Object>} Updated preset object
  */
-async function duplicatePreset(session, sport, name, playData) {
+async function renamePreset(sport, id, name) {
   const res = await fetch(
-    `${API_URL}/admin/sport-presets/${encodeURIComponent(sport)}`,
+    `${API_URL}/admin/sport-prefab-presets/${encodeURIComponent(sport)}/${id}`,
     adminFetchOptions({
-      method: "POST",
-      body: JSON.stringify({ name: `Copy of ${name}`, playData }),
+      method: "PATCH",
+      body: JSON.stringify({ name }),
     })
   );
-  if (!res.ok) throw new Error("Failed to duplicate preset");
+  if (!res.ok) throw new Error("Failed to rename prefab preset");
   return (await res.json()).preset;
 }
 
 /**
- * Per-sport preset list page. Shows all presets for a sport with edit/delete/create actions.
- * Supports drag-and-drop reordering. Accessible at /admin/presets/:sport.
+ * Duplicate a prefab preset. Server assigns a new id and the next sort_order.
+ * @param {string} session - Admin session token
+ * @param {string} sport - Sport name
+ * @param {string} name - Original preset name (prefixed with "Copy of ")
+ * @param {Object} prefabData - Prefab payload to duplicate
+ * @returns {Promise<Object>} Newly created preset object
  */
-export default function AdminSportPresetsPage() {
+async function duplicatePreset(session, sport, name, prefabData) {
+  const res = await fetch(
+    `${API_URL}/admin/sport-prefab-presets/${encodeURIComponent(sport)}`,
+    adminFetchOptions({
+      method: "POST",
+      body: JSON.stringify({ name: `Copy of ${name}`, prefabData }),
+    })
+  );
+  if (!res.ok) throw new Error("Failed to duplicate prefab preset");
+  return (await res.json()).preset;
+}
+
+/**
+ * Per-sport prefab preset list page. Mirrors AdminSportPresetsPage but for
+ * the `sport_prefab_presets` table — small reusable player groupings rather
+ * than full starting canvases.
+ *
+ * URL: /admin/prefab-presets/:sport
+ */
+export default function AdminSportPrefabPresetsPage() {
   const { basePath, hasPerm, hasSportScope, isOwner, sessionLoaded } = useAdmin();
   const { sport } = useParams();
   const navigate = useNavigate();
   const decodedSport = decodeURIComponent(sport);
   const session = readAdminSession() || "";
   const canAccessSport = isOwner || (
-    hasSportScope("presets.sportScope", decodedSport) &&
-    (hasPerm("presets.create") || hasPerm("presets.edit"))
+    hasPerm("prefabs.manage") &&
+    hasSportScope("presets.sportScope", decodedSport)
   );
-  const canCreatePresets = isOwner || hasPerm("presets.create");
-  const canEditPresets = isOwner || hasPerm("presets.edit");
 
   const [presets, setPresets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -131,7 +153,7 @@ export default function AdminSportPresetsPage() {
   const [elevatePassword, setElevatePassword] = useState("");
   const [elevateError, setElevateError] = useState("");
   const [elevating, setElevating] = useState(false);
-  const [elevateStep, setElevateStep] = useState("password"); // "password" | "code"
+  const [elevateStep, setElevateStep] = useState("password");
   const [elevateCode, setElevateCode] = useState("");
   const [elevateMaskedEmail, setElevateMaskedEmail] = useState("");
   const [deletingId, setDeletingId] = useState(null);
@@ -139,6 +161,10 @@ export default function AdminSportPresetsPage() {
   const [duplicatingId, setDuplicatingId] = useState(null);
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
+  // Inline rename: which card is currently being edited + the draft value.
+  // Empty/whitespace draft on commit is rejected; the row reverts to its prior name.
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameValue, setRenameValue] = useState("");
   const elevateResolveRef = useRef(null);
 
   useEffect(() => {
@@ -247,7 +273,7 @@ export default function AdminSportPresetsPage() {
       if (!elevated) return;
     }
     const confirmed = await openConfirm(
-      "Delete Preset",
+      "Delete Prefab Preset",
       `Delete "${preset.name}"? This cannot be undone.`
     );
     if (!confirmed) return;
@@ -256,18 +282,14 @@ export default function AdminSportPresetsPage() {
       await deletePreset(session, decodedSport, preset.id);
       setPresets((prev) => prev.filter((p) => p.id !== preset.id));
     } catch {
-      setError("Failed to delete preset.");
+      setError("Failed to delete prefab preset.");
     } finally {
       setDeletingId(null);
     }
   };
 
-  /**
-   * Optimistically toggle is_hidden on a preset and persist to the server.
-   * @param {Object} preset - The preset to toggle
-   */
+  /** Optimistically toggle is_hidden on a preset and persist to the server. */
   const handleToggleVisibility = async (preset) => {
-    if (!canEditPresets) return;
     if (togglingId) return;
     const newHidden = !preset.isHidden;
     setTogglingId(preset.id);
@@ -277,29 +299,59 @@ export default function AdminSportPresetsPage() {
     try {
       await togglePresetVisibility(session, decodedSport, preset.id, newHidden);
     } catch {
-      // Roll back optimistic update on failure
       setPresets((prev) =>
         prev.map((p) => (p.id === preset.id ? { ...p, isHidden: preset.isHidden } : p))
       );
-      setError("Failed to update preset visibility.");
+      setError("Failed to update prefab preset visibility.");
     } finally {
       setTogglingId(null);
     }
   };
 
+  /** Enter inline rename mode for a card. */
+  const handleStartRename = (preset) => {
+    setRenamingId(preset.id);
+    setRenameValue(preset.name || "");
+  };
+
+  /** Cancel the inline rename without saving. */
+  const handleCancelRename = () => {
+    setRenamingId(null);
+    setRenameValue("");
+  };
+
   /**
-   * Duplicate a preset and append the copy at the end of the list.
-   * @param {Object} preset - The preset to duplicate
+   * Commit the inline rename. Empty/whitespace or unchanged values cancel
+   * silently. Optimistic update; reverts on server error.
    */
+  const handleCommitRename = async (preset) => {
+    const trimmed = renameValue.trim();
+    setRenamingId(null);
+    setRenameValue("");
+    if (!trimmed || trimmed === preset.name) return;
+    const previousName = preset.name;
+    setPresets((prev) =>
+      prev.map((p) => (p.id === preset.id ? { ...p, name: trimmed } : p))
+    );
+    try {
+      await renamePreset(decodedSport, preset.id, trimmed);
+    } catch {
+      setPresets((prev) =>
+        prev.map((p) => (p.id === preset.id ? { ...p, name: previousName } : p))
+      );
+      setError("Failed to rename prefab preset.");
+    }
+  };
+
+  /** Duplicate a preset and append the copy at the end of the list. */
   const handleDuplicate = async (preset) => {
-    if (!canCreatePresets) return;
     if (duplicatingId) return;
     setDuplicatingId(preset.id);
     try {
-      const copy = await duplicatePreset(session, decodedSport, preset.name, preset.playData);
+      const copy = await duplicatePreset(session, decodedSport, preset.name, preset.prefabData);
       setPresets((prev) => [...prev, copy]);
     } catch {
-      setError("Failed to duplicate preset.");
+      setError("Failed to duplicate prefab preset.");
     } finally {
       setDuplicatingId(null);
     }
@@ -308,20 +360,17 @@ export default function AdminSportPresetsPage() {
   // ── Drag-and-drop handlers ────────────────────────────────────────────────
 
   const handleDragStart = (e, id) => {
-    if (!canEditPresets) return;
     setDraggedId(id);
     e.dataTransfer.effectAllowed = "move";
   };
 
   const handleDragOver = (e, id) => {
-    if (!canEditPresets) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     if (id !== dragOverId) setDragOverId(id);
   };
 
   const handleDrop = async (e, targetId) => {
-    if (!canEditPresets) return;
     e.preventDefault();
     setDragOverId(null);
     if (!draggedId || draggedId === targetId) { setDraggedId(null); return; }
@@ -330,7 +379,6 @@ export default function AdminSportPresetsPage() {
     const to = presets.findIndex((p) => p.id === targetId);
     if (from === -1 || to === -1) { setDraggedId(null); return; }
 
-    // Optimistically reorder in UI, then persist
     const reordered = [...presets];
     const [item] = reordered.splice(from, 1);
     reordered.splice(to, 0, item);
@@ -341,20 +389,13 @@ export default function AdminSportPresetsPage() {
       await reorderPresets(session, decodedSport, reordered.map((p) => p.id));
     } catch {
       setError("Failed to save new order.");
-      load(); // rollback to server state
+      load();
     }
   };
 
   const handleDragEnd = () => {
     setDraggedId(null);
     setDragOverId(null);
-  };
-
-  // ─────────────────────────────────────────────────────────────────────────
-
-  const handleLogout = () => {
-    sessionStorage.removeItem(SESSION_KEY);
-    navigate(adminPath(basePath, ""), { replace: true });
   };
 
   const dangerMinsDisplay = (() => {
@@ -364,6 +405,8 @@ export default function AdminSportPresetsPage() {
     const s = String(secs % 60).padStart(2, "0");
     return `${mins}:${s}`;
   })();
+
+  const editPathBase = `${adminPath(basePath, "/prefab-presets")}/${encodeURIComponent(decodedSport)}`;
 
   if (basePath === "/staff" && sessionLoaded && !canAccessSport) {
     return <Navigate to={basePath} replace />;
@@ -419,9 +462,9 @@ export default function AdminSportPresetsPage() {
       </AdminModal>
 
       <AdminHeader
-        title={`${decodedSport} Presets`}
-        backLabel="Sport Presets"
-        backTo={adminPath(basePath, "/app")}
+        title={`${decodedSport} Prefab Presets`}
+        backLabel="Prefab Presets"
+        backTo={`${adminPath(basePath, "/app")}`}
         actions={
           <div className="flex items-center gap-2">
             {dangerMinsDisplay && (
@@ -429,18 +472,16 @@ export default function AdminSportPresetsPage() {
                 ⚠ Danger · {dangerMinsDisplay}
               </span>
             )}
-            {canCreatePresets && (
-              <AdminBtn variant="primary" size="sm" onClick={() => navigate(`${adminPath(basePath, "/presets")}/${encodeURIComponent(decodedSport)}/new/edit`)}>
-                <FiPlus className="mr-1 inline" /> New Preset
-              </AdminBtn>
-            )}
+            <AdminBtn variant="primary" size="sm" onClick={() => navigate(`${editPathBase}/new/edit`)}>
+              <FiPlus className="mr-1 inline" /> New Prefab Preset
+            </AdminBtn>
           </div>
         }
       />
 
       <AdminPage>
         <p className="mb-6 text-xs" style={{ color: "var(--adm-muted)" }}>
-          These presets appear as starting-canvas options for {decodedSport} users. Drag cards to reorder.
+          These prefab presets appear in the Slate Prefabs panel for {decodedSport} users. Drag cards to reorder.
         </p>
 
         {error && (
@@ -451,23 +492,25 @@ export default function AdminSportPresetsPage() {
           <div className="flex items-center justify-center py-24"><AdminSpinner size={32} /></div>
         ) : presets.length === 0 ? (
           <AdminEmptyState
-            title={`No presets for ${decodedSport}`}
-            subtitle="Create the first preset to give users a starting canvas"
-            action={canCreatePresets ? (
-              <AdminBtn variant="primary" onClick={() => navigate(`${adminPath(basePath, "/presets")}/${encodeURIComponent(decodedSport)}/new/edit`)}>
-                <FiPlus className="mr-1 inline" /> Create First Preset
+            title={`No prefab presets for ${decodedSport}`}
+            subtitle="Create one to give users a reusable player layout in the Slate Prefabs panel"
+            action={
+              <AdminBtn variant="primary" onClick={() => navigate(`${editPathBase}/new/edit`)}>
+                <FiPlus className="mr-1 inline" /> Create First Prefab Preset
               </AdminBtn>
-            ) : undefined}
+            }
           />
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
             {presets.map((preset) => {
               const isDragging = draggedId === preset.id;
               const isOver = dragOverId === preset.id && !isDragging;
+              const playerCount = preset.prefabData?.players?.length ?? 0;
+              const hasBall = Boolean(preset.prefabData?.ball);
               return (
                 <div
                   key={preset.id}
-                  draggable={canEditPresets}
+                  draggable
                   onDragStart={(e) => handleDragStart(e, preset.id)}
                   onDragOver={(e) => handleDragOver(e, preset.id)}
                   onDrop={(e) => handleDrop(e, preset.id)}
@@ -484,8 +527,8 @@ export default function AdminSportPresetsPage() {
                 >
                   <div className="overflow-hidden rounded-[var(--adm-radius-sm)]" style={{ height: 110 }}>
                     <PlayPreviewCard
-                      playData={preset.playData}
-                      autoplay="hover"
+                      playData={prefabToPreviewPlayData(preset.prefabData, decodedSport)}
+                      autoplay="off"
                       shape="landscape"
                       cameraMode="fit-distribution"
                       background="field"
@@ -496,7 +539,40 @@ export default function AdminSportPresetsPage() {
                   </div>
 
                   <div className="flex min-w-0 items-center gap-1.5">
-                    <p className="truncate text-sm font-semibold" style={{ color: "var(--adm-text)" }}>{preset.name}</p>
+                    {renamingId === preset.id ? (
+                      <input
+                        type="text"
+                        value={renameValue}
+                        autoFocus
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onBlur={() => handleCommitRename(preset)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { e.preventDefault(); handleCommitRename(preset); }
+                          else if (e.key === "Escape") { e.preventDefault(); handleCancelRename(); }
+                        }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        draggable={false}
+                        onDragStart={(e) => e.preventDefault()}
+                        className="min-w-0 flex-1 rounded px-1.5 py-0.5 text-sm font-semibold"
+                        style={{
+                          backgroundColor: "var(--adm-surface)",
+                          border: "1px solid var(--adm-accent)",
+                          color: "var(--adm-text)",
+                          outline: "none",
+                        }}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleStartRename(preset); }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        title="Click to rename"
+                        className="min-w-0 flex-1 truncate text-left text-sm font-semibold transition hover:opacity-70"
+                        style={{ color: "var(--adm-text)" }}
+                      >
+                        {preset.name}
+                      </button>
+                    )}
                     {preset.isHidden ? (
                       <span className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider" style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-muted)" }}>Hidden</span>
                     ) : (
@@ -504,38 +580,36 @@ export default function AdminSportPresetsPage() {
                     )}
                   </div>
 
+                  <p className="text-[10px]" style={{ color: "var(--adm-muted)" }}>
+                    {playerCount} player{playerCount !== 1 ? "s" : ""}{hasBall ? " + ball" : ""}
+                  </p>
+
                   <div className="flex gap-1.5">
-                    {canEditPresets && (
-                      <button
-                        onClick={() => navigate(`${adminPath(basePath, "/presets")}/${encodeURIComponent(decodedSport)}/${preset.id}/edit`)}
-                        className="flex flex-1 items-center justify-center gap-1 rounded py-1.5 text-xs transition"
-                        style={{ border: "1px solid var(--adm-border)", color: "var(--adm-muted)" }}
-                      >
-                        <FiEdit2 className="text-[10px]" /> Edit
-                      </button>
-                    )}
-                    {canCreatePresets && (
-                      <button
-                        onClick={() => handleDuplicate(preset)}
-                        disabled={duplicatingId === preset.id}
-                        className="flex items-center justify-center rounded px-2 py-1.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-40"
-                        style={{ border: "1px solid var(--adm-border)", color: "var(--adm-muted)" }}
-                        title="Duplicate"
-                      >
-                        {duplicatingId === preset.id ? <AdminSpinner size={12} /> : <FiCopy className="text-[10px]" />}
-                      </button>
-                    )}
-                    {canEditPresets && (
-                      <button
-                        onClick={() => handleToggleVisibility(preset)}
-                        disabled={togglingId === preset.id}
-                        className="flex items-center justify-center rounded px-2 py-1.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-40"
-                        style={{ border: "1px solid var(--adm-border)", color: "var(--adm-muted)" }}
-                        title={preset.isHidden ? "Publish" : "Hide"}
-                      >
-                        {togglingId === preset.id ? <AdminSpinner size={12} /> : preset.isHidden ? <FiEye className="text-[10px]" /> : <FiEyeOff className="text-[10px]" />}
-                      </button>
-                    )}
+                    <button
+                      onClick={() => navigate(`${editPathBase}/${preset.id}/edit`)}
+                      className="flex flex-1 items-center justify-center gap-1 rounded py-1.5 text-xs transition"
+                      style={{ border: "1px solid var(--adm-border)", color: "var(--adm-muted)" }}
+                    >
+                      <FiEdit2 className="text-[10px]" /> Edit
+                    </button>
+                    <button
+                      onClick={() => handleDuplicate(preset)}
+                      disabled={duplicatingId === preset.id}
+                      className="flex items-center justify-center rounded px-2 py-1.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-40"
+                      style={{ border: "1px solid var(--adm-border)", color: "var(--adm-muted)" }}
+                      title="Duplicate"
+                    >
+                      {duplicatingId === preset.id ? <AdminSpinner size={12} /> : <FiCopy className="text-[10px]" />}
+                    </button>
+                    <button
+                      onClick={() => handleToggleVisibility(preset)}
+                      disabled={togglingId === preset.id}
+                      className="flex items-center justify-center rounded px-2 py-1.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-40"
+                      style={{ border: "1px solid var(--adm-border)", color: "var(--adm-muted)" }}
+                      title={preset.isHidden ? "Publish" : "Hide"}
+                    >
+                      {togglingId === preset.id ? <AdminSpinner size={12} /> : preset.isHidden ? <FiEye className="text-[10px]" /> : <FiEyeOff className="text-[10px]" />}
+                    </button>
                     {isOwner && (
                       <button
                         onClick={() => handleDelete(preset)}

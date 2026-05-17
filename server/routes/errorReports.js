@@ -1,6 +1,6 @@
 import { Router } from "express";
 import pool from "../db/pool.js";
-import { requireAdmin } from "./admin.js";
+import { requireAdminOrStaff, requireOwnerOrLegacyAdmin, requirePerm } from "../middleware/staffAuth.js";
 
 const router = Router();
 
@@ -54,7 +54,7 @@ router.post("/", async (req, res, next) => {
  * GET /error-reports — list error reports (admin only).
  * Supports query params: ?limit=50&offset=0&component=videoExport
  */
-router.get("/", requireAdmin, async (req, res, next) => {
+router.get("/", requireAdminOrStaff, requirePerm("errors.viewReports"), async (req, res, next) => {
   try {
     const limit = Math.min(Math.max(1, parseInt(req.query.limit) || 50), 200);
     const offset = Math.max(0, parseInt(req.query.offset) || 0);
@@ -95,7 +95,7 @@ router.get("/", requireAdmin, async (req, res, next) => {
 /**
  * DELETE /error-reports/:id — delete a single error report (admin only).
  */
-router.delete("/:id", requireAdmin, async (req, res, next) => {
+router.delete("/:id", requireOwnerOrLegacyAdmin, async (req, res, next) => {
   try {
     await pool.query("DELETE FROM error_reports WHERE id = $1", [req.params.id]);
     res.json({ ok: true });
@@ -107,7 +107,7 @@ router.delete("/:id", requireAdmin, async (req, res, next) => {
 /**
  * DELETE /error-reports — clear all error reports (admin only).
  */
-router.delete("/", requireAdmin, async (req, res, next) => {
+router.delete("/", requireOwnerOrLegacyAdmin, async (req, res, next) => {
   try {
     const result = await pool.query("DELETE FROM error_reports");
     res.json({ ok: true, deleted: result.rowCount });

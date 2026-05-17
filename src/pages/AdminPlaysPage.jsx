@@ -72,7 +72,8 @@ function formatRelativeTime(isoString) {
  */
 async function fetchAllPlays(session) {
   const res = await fetch(`${API_URL}/admin/plays`, {
-    headers: { "x-admin-session": session },
+    credentials: "include",
+    headers: {"x-admin-session": session },
   });
   if (res.status === 401) throw new Error("UNAUTHORIZED");
   const data = await res.json();
@@ -86,7 +87,8 @@ async function fetchAllPlays(session) {
  */
 async function fetchAllFolders(session) {
   const res = await fetch(`${API_URL}/admin/platform-folders`, {
-    headers: { "x-admin-session": session },
+    credentials: "include",
+    headers: {"x-admin-session": session },
   });
   if (res.status === 401) throw new Error("UNAUTHORIZED");
   const data = await res.json();
@@ -102,7 +104,8 @@ async function fetchAllFolders(session) {
 async function duplicatePlay(session, id) {
   const res = await fetch(`${API_URL}/admin/plays/${id}/duplicate`, {
     method: "POST",
-    headers: { "x-admin-session": session },
+    credentials: "include",
+    headers: {"x-admin-session": session },
   });
   if (!res.ok) throw new Error("Failed to duplicate play");
   const data = await res.json();
@@ -119,7 +122,8 @@ async function duplicatePlay(session, id) {
 async function renamePlay(session, id, title) {
   const res = await fetch(`${API_URL}/admin/plays/${id}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", "x-admin-session": session },
+    credentials: "include",
+    headers: {"Content-Type": "application/json", "x-admin-session": session },
     body: JSON.stringify({ title }),
   });
   if (!res.ok) throw new Error("Failed to rename play");
@@ -134,7 +138,8 @@ async function renamePlay(session, id, title) {
 async function deletePlay(session, id) {
   const res = await fetch(`${API_URL}/admin/plays/${id}`, {
     method: "DELETE",
-    headers: { "x-admin-session": session },
+    credentials: "include",
+    headers: {"x-admin-session": session },
   });
   if (!res.ok) throw new Error("Failed to delete play");
   return await res.json();
@@ -150,7 +155,8 @@ async function deletePlay(session, id) {
 async function movePlay(session, playId, folderId) {
   const res = await fetch(`${API_URL}/admin/plays/${playId}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", "x-admin-session": session },
+    credentials: "include",
+    headers: {"Content-Type": "application/json", "x-admin-session": session },
     body: JSON.stringify({ folderId: folderId || null }),
   });
   if (!res.ok) throw new Error("Failed to move play");
@@ -167,7 +173,8 @@ async function movePlay(session, playId, folderId) {
 async function updatePlayTags(session, playId, tags) {
   const res = await fetch(`${API_URL}/admin/plays/${playId}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", "x-admin-session": session },
+    credentials: "include",
+    headers: {"Content-Type": "application/json", "x-admin-session": session },
     body: JSON.stringify({ tags }),
   });
   if (!res.ok) throw new Error("Failed to update tags");
@@ -184,7 +191,8 @@ async function updatePlayTags(session, playId, tags) {
 async function createFolderApi(session, name, parentId) {
   const res = await fetch(`${API_URL}/admin/platform-folders`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-admin-session": session },
+    credentials: "include",
+    headers: {"Content-Type": "application/json", "x-admin-session": session },
     body: JSON.stringify({ name, parentId: parentId || null }),
   });
   if (!res.ok) {
@@ -204,7 +212,8 @@ async function createFolderApi(session, name, parentId) {
 async function renameFolderApi(session, id, name) {
   const res = await fetch(`${API_URL}/admin/platform-folders/${id}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", "x-admin-session": session },
+    credentials: "include",
+    headers: {"Content-Type": "application/json", "x-admin-session": session },
     body: JSON.stringify({ name }),
   });
   if (!res.ok) {
@@ -222,7 +231,8 @@ async function renameFolderApi(session, id, name) {
 async function deleteFolderApi(session, id) {
   const res = await fetch(`${API_URL}/admin/platform-folders/${id}`, {
     method: "DELETE",
-    headers: { "x-admin-session": session },
+    credentials: "include",
+    headers: {"x-admin-session": session },
   });
   if (!res.ok) throw new Error("Failed to delete folder");
 }
@@ -234,7 +244,8 @@ async function deleteFolderApi(session, id) {
  */
 async function fetchPageSections(session) {
   const res = await fetch(`${API_URL}/admin/page-sections`, {
-    headers: { "x-admin-session": session },
+    credentials: "include",
+    headers: {"x-admin-session": session },
   });
   if (res.status === 401) throw new Error("UNAUTHORIZED");
   return (await res.json()).sections || [];
@@ -249,7 +260,8 @@ async function fetchPageSections(session) {
 async function assignSectionPlay(session, key, playId) {
   const res = await fetch(`${API_URL}/admin/page-sections/${encodeURIComponent(key)}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", "x-admin-session": session },
+    credentials: "include",
+    headers: {"Content-Type": "application/json", "x-admin-session": session },
     body: JSON.stringify({ playId: playId || null }),
   });
   if (!res.ok) throw new Error("Failed to update section");
@@ -265,7 +277,8 @@ async function assignSectionPlay(session, key, playId) {
 async function setSectionPriority(session, key, isPriority) {
   const res = await fetch(`${API_URL}/admin/page-sections/${encodeURIComponent(key)}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", "x-admin-session": session },
+    credentials: "include",
+    headers: {"Content-Type": "application/json", "x-admin-session": session },
     body: JSON.stringify({ isPriority }),
   });
   if (!res.ok) throw new Error("Failed to update section priority");
@@ -281,7 +294,8 @@ async function setSectionPriority(session, key, isPriority) {
  */
 async function fetchPlaybookSections(session) {
   const res = await fetch(`${API_URL}/admin/playbook-sections`, {
-    headers: { "x-admin-session": session },
+    credentials: "include",
+    headers: {"x-admin-session": session },
   });
   if (res.status === 401) throw new Error("UNAUTHORIZED");
   return (await res.json()).sections || [];
@@ -296,7 +310,8 @@ async function fetchPlaybookSections(session) {
 async function createPlaybookSection(session, data) {
   const res = await fetch(`${API_URL}/admin/playbook-sections`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-admin-session": session },
+    credentials: "include",
+    headers: {"Content-Type": "application/json", "x-admin-session": session },
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -316,7 +331,8 @@ async function createPlaybookSection(session, data) {
 async function updatePlaybookSection(session, id, data) {
   const res = await fetch(`${API_URL}/admin/playbook-sections/${id}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", "x-admin-session": session },
+    credentials: "include",
+    headers: {"Content-Type": "application/json", "x-admin-session": session },
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error("Failed to update section");
@@ -331,7 +347,8 @@ async function updatePlaybookSection(session, id, data) {
 async function deletePlaybookSection(session, id) {
   const res = await fetch(`${API_URL}/admin/playbook-sections/${id}`, {
     method: "DELETE",
-    headers: { "x-admin-session": session },
+    credentials: "include",
+    headers: {"x-admin-session": session },
   });
   if (!res.ok) throw new Error("Failed to delete section");
 }
@@ -344,7 +361,8 @@ async function deletePlaybookSection(session, id) {
  */
 async function fetchSectionPlays(session, sectionId) {
   const res = await fetch(`${API_URL}/admin/playbook-sections/${sectionId}/plays`, {
-    headers: { "x-admin-session": session },
+    credentials: "include",
+    headers: {"x-admin-session": session },
   });
   if (!res.ok) throw new Error("Failed to load section plays");
   return (await res.json()).plays || [];
@@ -359,7 +377,8 @@ async function fetchSectionPlays(session, sectionId) {
 async function addPlayToSection(session, sectionId, playId) {
   const res = await fetch(`${API_URL}/admin/playbook-sections/${sectionId}/plays`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-admin-session": session },
+    credentials: "include",
+    headers: {"Content-Type": "application/json", "x-admin-session": session },
     body: JSON.stringify({ playId }),
   });
   if (!res.ok) {
@@ -377,7 +396,8 @@ async function addPlayToSection(session, sectionId, playId) {
 async function removePlayFromSection(session, sectionId, playId) {
   const res = await fetch(`${API_URL}/admin/playbook-sections/${sectionId}/plays/${playId}`, {
     method: "DELETE",
-    headers: { "x-admin-session": session },
+    credentials: "include",
+    headers: {"x-admin-session": session },
   });
   if (!res.ok) throw new Error("Failed to remove play");
 }
@@ -391,7 +411,8 @@ async function removePlayFromSection(session, sectionId, playId) {
 async function reorderPlayApi(session, playId, sortOrder) {
   const res = await fetch(`${API_URL}/admin/plays/${playId}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", "x-admin-session": session },
+    credentials: "include",
+    headers: {"Content-Type": "application/json", "x-admin-session": session },
     body: JSON.stringify({ sortOrder }),
   });
   if (!res.ok) throw new Error("Failed to reorder play");
@@ -407,7 +428,8 @@ async function reorderPlayApi(session, playId, sortOrder) {
 async function reorderSectionPlayApi(session, sectionId, playId, sortOrder) {
   const res = await fetch(`${API_URL}/admin/playbook-sections/${sectionId}/plays/${playId}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", "x-admin-session": session },
+    credentials: "include",
+    headers: {"Content-Type": "application/json", "x-admin-session": session },
     body: JSON.stringify({ sortOrder }),
   });
   if (!res.ok) throw new Error("Failed to reorder play in section");
@@ -429,9 +451,25 @@ const PRESET_SPORTS = SUPPORTED_FIELD_TYPES.filter((s) => s !== "Blank");
  */
 async function fetchSportPresets(session) {
   const res = await fetch(`${API_URL}/admin/sport-presets`, {
-    headers: { "x-admin-session": session },
+    credentials: "include",
+    headers: {"x-admin-session": session },
   });
   if (!res.ok) throw new Error("Failed to load sport presets");
+  return (await res.json()).presets || [];
+}
+
+/**
+ * Fetch all saved sport prefab presets (admin-curated reusable player groups
+ * for the Slate Prefabs panel — separate from full-canvas sport presets).
+ * @param {string} session - Admin session token
+ * @returns {Promise<Object[]>} Array of `{ id, sport, name, prefabData, ... }`
+ */
+async function fetchSportPrefabPresets(session) {
+  const res = await fetch(`${API_URL}/admin/sport-prefab-presets`, {
+    credentials: "include",
+    headers: {"x-admin-session": session },
+  });
+  if (!res.ok) throw new Error("Failed to load sport prefab presets");
   return (await res.json()).presets || [];
 }
 
@@ -586,7 +624,27 @@ function DuplicateButton({ play, onDuplicate, onClose }) {
  * @param {Function} props.onAddToSection - Called with (play, sectionId) to add play to a section
  * @param {Function} props.onTagsUpdate - Called with (play, newTags[]) to update play tags
  */
-function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, onDuplicate, onAddToSection, onTagsUpdate, onRename, allTags }) {
+function PlayCard({
+  play,
+  folders,
+  playbookSections,
+  onEdit,
+  onDelete,
+  onMove,
+  onDuplicate,
+  onAddToSection,
+  onTagsUpdate,
+  onRename,
+  allTags,
+  canEdit = false,
+  canDelete = false,
+  canMove = false,
+  canDuplicate = false,
+  canAddToSection = false,
+  canEditTags = false,
+  canRename = false,
+  canCopyShareLinks = false,
+}) {
   // null → closed  |  "main" → first popup  |  "sections" / "folders" / "tags" / "rename" → sub-pickers
   const [menuStep, setMenuStep] = useState(null);
   const [tagInput, setTagInput] = useState("");
@@ -594,6 +652,9 @@ function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, o
   const menuRef = useRef(null);
   const tagInputRef = useRef(null);
   const renameInputRef = useRef(null);
+  const hasSecondaryActions = canCopyShareLinks || canDuplicate || canRename || canAddToSection || canMove || canEditTags || canDelete;
+  const hasPrimaryMenuActions = canCopyShareLinks || canDuplicate || canRename;
+  const hasGroupedMenuActions = canAddToSection || canMove || canEditTags;
 
   useEffect(() => {
     if (!menuStep) return;
@@ -629,78 +690,92 @@ function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, o
       <div className="flex items-center gap-1.5">
         <h3 className="min-w-0 flex-1 truncate font-Manrope text-sm font-semibold" style={{ color: "var(--adm-text)" }}>{play.title}</h3>
         <div className="relative shrink-0" ref={menuRef}>
-          <button
-            onClick={(e) => { e.stopPropagation(); setMenuStep((v) => (v ? null : "main")); }}
-            className="rounded-md p-1 opacity-100 transition hover:opacity-80 md:opacity-0 group-hover:opacity-100"
-            style={{ color: "var(--adm-text2)" }}
-          >
-            <FiMoreHorizontal className="text-sm" />
-          </button>
+          {hasSecondaryActions && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setMenuStep((v) => (v ? null : "main")); }}
+              className="rounded-md p-1 opacity-100 transition hover:opacity-80 md:opacity-0 group-hover:opacity-100"
+              style={{ color: "var(--adm-text2)" }}
+            >
+              <FiMoreHorizontal className="text-sm" />
+            </button>
+          )}
 
           {/* ── Step 1: main popup ── */}
           {menuStep === "main" && (
             <div className="absolute right-0 top-full z-30 mt-1 w-52 overflow-hidden rounded-xl py-1" style={MENU_STYLE}>
               {/* Copy link */}
-              <CopyLinkButton play={play} onClose={close} />
+              {canCopyShareLinks && <CopyLinkButton play={play} onClose={close} />}
 
               {/* Duplicate */}
-              <DuplicateButton play={play} onDuplicate={onDuplicate} onClose={close} />
+              {canDuplicate && <DuplicateButton play={play} onDuplicate={onDuplicate} onClose={close} />}
 
               {/* Rename */}
-              <button
-                onClick={() => { setRenameValue(play.title || ""); setMenuStep("rename"); setTimeout(() => renameInputRef.current?.focus(), 50); }}
-                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition hover:opacity-80"
-                style={{ color: "var(--adm-text2)" }}
-              >
-                <FiEdit2 className="shrink-0 text-[10px]" />
-                Rename
-              </button>
+              {canRename && (
+                <button
+                  onClick={() => { setRenameValue(play.title || ""); setMenuStep("rename"); setTimeout(() => renameInputRef.current?.focus(), 50); }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition hover:opacity-80"
+                  style={{ color: "var(--adm-text2)" }}
+                >
+                  <FiEdit2 className="shrink-0 text-[10px]" />
+                  Rename
+                </button>
+              )}
 
-              <div className="my-1 border-t" style={MENU_DIVIDER_STYLE} />
+              {hasPrimaryMenuActions && hasGroupedMenuActions && (
+                <div className="my-1 border-t" style={MENU_DIVIDER_STYLE} />
+              )}
 
               {/* Add to section → sub-popup */}
-              <button
-                onClick={() => setMenuStep("sections")}
-                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition hover:opacity-80"
-                style={{ color: "var(--adm-text2)" }}
-              >
-                <FiBookOpen className="shrink-0 text-[10px]" />
-                Add to Section
-                <FiChevronRight className="ml-auto shrink-0 text-[10px]" style={{ color: "var(--adm-muted)" }} />
-              </button>
+              {canAddToSection && (
+                <button
+                  onClick={() => setMenuStep("sections")}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition hover:opacity-80"
+                  style={{ color: "var(--adm-text2)" }}
+                >
+                  <FiBookOpen className="shrink-0 text-[10px]" />
+                  Add to Section
+                  <FiChevronRight className="ml-auto shrink-0 text-[10px]" style={{ color: "var(--adm-muted)" }} />
+                </button>
+              )}
 
               {/* Move to folder → sub-popup */}
-              <button
-                onClick={() => setMenuStep("folders")}
-                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition hover:opacity-80"
-                style={{ color: "var(--adm-text2)" }}
-              >
-                <FiFolder className="shrink-0 text-[10px]" style={play.folderId ? { color: "var(--adm-color-blue)" } : undefined} />
-                Move to Folder
-                <FiChevronRight className="ml-auto shrink-0 text-[10px]" style={{ color: "var(--adm-muted)" }} />
-              </button>
+              {canMove && (
+                <button
+                  onClick={() => setMenuStep("folders")}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition hover:opacity-80"
+                  style={{ color: "var(--adm-text2)" }}
+                >
+                  <FiFolder className="shrink-0 text-[10px]" style={play.folderId ? { color: "var(--adm-color-blue)" } : undefined} />
+                  Move to Folder
+                  <FiChevronRight className="ml-auto shrink-0 text-[10px]" style={{ color: "var(--adm-muted)" }} />
+                </button>
+              )}
 
               {/* Edit tags → sub-popup */}
-              <button
-                onClick={() => { setTagInput(""); setMenuStep("tags"); setTimeout(() => tagInputRef.current?.focus(), 50); }}
-                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition hover:opacity-80"
-                style={{ color: "var(--adm-text2)" }}
-              >
-                <FiTag className="shrink-0 text-[10px]" />
-                Edit Tags
-                <FiChevronRight className="ml-auto shrink-0 text-[10px]" style={{ color: "var(--adm-muted)" }} />
-              </button>
+              {canEditTags && (
+                <button
+                  onClick={() => { setTagInput(""); setMenuStep("tags"); setTimeout(() => tagInputRef.current?.focus(), 50); }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition hover:opacity-80"
+                  style={{ color: "var(--adm-text2)" }}
+                >
+                  <FiTag className="shrink-0 text-[10px]" />
+                  Edit Tags
+                  <FiChevronRight className="ml-auto shrink-0 text-[10px]" style={{ color: "var(--adm-muted)" }} />
+                </button>
+              )}
 
-              <div className="my-1 border-t" style={MENU_DIVIDER_STYLE} />
+              {canDelete && <div className="my-1 border-t" style={MENU_DIVIDER_STYLE} />}
 
               {/* Delete */}
-              <button
-                onClick={() => { onDelete(play); close(); }}
-                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition hover:opacity-80"
-                style={{ color: "var(--adm-danger)" }}
-              >
-                <FiTrash2 className="shrink-0 text-[10px]" /> Delete
-              </button>
+              {canDelete && (
+                <button
+                  onClick={() => { onDelete(play); close(); }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition hover:opacity-80"
+                  style={{ color: "var(--adm-danger)" }}
+                >
+                  <FiTrash2 className="shrink-0 text-[10px]" /> Delete
+                </button>
+              )}
             </div>
           )}
 
@@ -958,13 +1033,15 @@ function PlayCard({ play, folders, playbookSections, onEdit, onDelete, onMove, o
           <FiClock className="text-[10px]" />
           {formatRelativeTime(play.createdAt)}
         </span>
-        <button
-          onClick={() => onEdit(play)}
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold transition hover:opacity-80"
-          style={{ color: "var(--adm-text2)" }}
-        >
-          <FiEdit2 className="text-[10px]" /> Edit
-        </button>
+        {canEdit ? (
+          <button
+            onClick={() => onEdit(play)}
+            className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold transition hover:opacity-80"
+            style={{ color: "var(--adm-text2)" }}
+          >
+            <FiEdit2 className="text-[10px]" /> Edit
+          </button>
+        ) : <span />}
       </div>
     </div>
   );
@@ -1190,7 +1267,7 @@ function SectionRow({ section, plays, onAssign, onTogglePriority }) {
  * @param {string} props.error - Parent-level error string
  * @param {Function} props.setError - Error setter from parent
  */
-function PlaybookSectionPanel({ session, allPlays, folders, error, setError }) {
+function PlaybookSectionPanel({ session, allPlays, folders, error, setError, canManageSections = false, canAddPlays = false }) {
   const [sections, setSections] = useState([]);
   const [loadingSections, setLoadingSections] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
@@ -1635,7 +1712,7 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError }) {
                 </button>
               </div>
             </div>
-          ) : (
+          ) : canManageSections ? (
             <button
               onClick={() => setCreatingSection(true)}
               className="mt-3 flex w-full items-center gap-1.5 rounded-lg border border-dashed px-2.5 py-2 text-xs font-semibold transition hover:opacity-85"
@@ -1643,7 +1720,7 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError }) {
             >
               <FiPlus className="text-xs" /> New Section
             </button>
-          )}
+          ) : null}
         </div>
 
         {/* ── Right: Section detail ── */}
@@ -1692,17 +1769,19 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError }) {
                           Default
                         </span>
                       )}
-                      <button
-                        onClick={() => {
-                          setEditNameValue(selectedSection.name);
-                          setEditingName(true);
-                        }}
-                        title="Rename section"
-                        className="rounded p-0.5 transition hover:opacity-80"
-                        style={{ color: "var(--adm-text2)" }}
-                      >
-                        <FiEdit3 className="text-[10px]" />
-                      </button>
+                      {canManageSections && (
+                        <button
+                          onClick={() => {
+                            setEditNameValue(selectedSection.name);
+                            setEditingName(true);
+                          }}
+                          title="Rename section"
+                          className="rounded p-0.5 transition hover:opacity-80"
+                          style={{ color: "var(--adm-text2)" }}
+                        >
+                          <FiEdit3 className="text-[10px]" />
+                        </button>
+                      )}
                     </div>
                   )}
                   <p className="mt-0.5 text-xs" style={{ color: "var(--adm-muted)" }}>
@@ -1717,28 +1796,30 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError }) {
 
                 {/* Actions */}
                 <div className="flex shrink-0 items-center gap-2">
-                  <button
-                    onClick={handleTogglePublish}
-                    title={selectedSection.isPublished ? "Unpublish (hide from coaches)" : "Publish (visible to coaches)"}
-                    className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition hover:opacity-85"
-                    style={selectedSection.isPublished
-                      ? {
-                          borderColor: "color-mix(in srgb, var(--adm-badge-green-text) 22%, transparent)",
-                          backgroundColor: "var(--adm-badge-green-bg)",
-                          color: "var(--adm-badge-green-text)",
-                        }
-                      : {
-                          borderColor: "var(--adm-border2)",
-                          backgroundColor: "var(--adm-surface2)",
-                          color: "var(--adm-text2)",
-                        }}
-                  >
-                    {selectedSection.isPublished
-                      ? <><FiEye className="text-xs" /> Published</>
-                      : <><FiEyeOff className="text-xs" /> Draft</>
-                    }
-                  </button>
-                  {!selectedSection.isDefault && !/^community\s/i.test(selectedSection.name) && (
+                  {canManageSections && (
+                    <button
+                      onClick={handleTogglePublish}
+                      title={selectedSection.isPublished ? "Unpublish (hide from coaches)" : "Publish (visible to coaches)"}
+                      className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition hover:opacity-85"
+                      style={selectedSection.isPublished
+                        ? {
+                            borderColor: "color-mix(in srgb, var(--adm-badge-green-text) 22%, transparent)",
+                            backgroundColor: "var(--adm-badge-green-bg)",
+                            color: "var(--adm-badge-green-text)",
+                          }
+                        : {
+                            borderColor: "var(--adm-border2)",
+                            backgroundColor: "var(--adm-surface2)",
+                            color: "var(--adm-text2)",
+                          }}
+                    >
+                      {selectedSection.isPublished
+                        ? <><FiEye className="text-xs" /> Published</>
+                        : <><FiEyeOff className="text-xs" /> Draft</>
+                      }
+                    </button>
+                  )}
+                  {canManageSections && !selectedSection.isDefault && !/^community\s/i.test(selectedSection.name) && (
                     <button
                       onClick={() => setDeleteTarget(selectedSection)}
                       title="Delete section"
@@ -1757,7 +1838,7 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError }) {
 
               {/* Add play / Add folder buttons */}
               <div className="mb-4 flex items-center gap-3">
-                <div className="relative" ref={pickerRef}>
+                {canAddPlays && <div className="relative" ref={pickerRef}>
                   <button
                     onClick={() => { setPickerOpen((v) => !v); setFolderPickerOpen(false); }}
                     className="flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold text-white transition hover:brightness-110"
@@ -1819,10 +1900,10 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError }) {
                       </div>
                     </div>
                   )}
-                </div>
+                </div>}
 
                 {/* Add Folder picker */}
-                <div className="relative" ref={folderPickerRef}>
+                {canAddPlays && <div className="relative" ref={folderPickerRef}>
                   <button
                     onClick={() => { setFolderPickerOpen((v) => !v); setPickerOpen(false); }}
                     className="flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-xs font-semibold transition hover:opacity-85"
@@ -1882,7 +1963,7 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError }) {
                       </div>
                     </div>
                   )}
-                </div>
+                </div>}
 
                 <p className="text-xs" style={{ color: "var(--adm-muted)" }}>
                   {sectionPlays.length} {sectionPlays.length === 1 ? "play" : "plays"} in this section
@@ -1950,12 +2031,12 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError }) {
                   {sectionPlays.map((play) => (
                     <div
                       key={play.id}
-                      draggable
-                      onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; setSectionDragSrcId(play.id); }}
-                      onDragOver={(e) => { e.preventDefault(); if (sectionDragSrcId !== play.id) setSectionDragOverId(play.id); }}
-                      onDrop={(e) => { e.preventDefault(); handleReorderSectionPlay(sectionDragSrcId, play.id); }}
-                      onDragEnd={() => { setSectionDragSrcId(null); setSectionDragOverId(null); }}
-                      className="flex cursor-grab items-center gap-3 rounded-lg px-3 py-2.5 transition active:cursor-grabbing"
+                      draggable={canAddPlays}
+                      onDragStart={canAddPlays ? (e) => { e.dataTransfer.effectAllowed = "move"; setSectionDragSrcId(play.id); } : undefined}
+                      onDragOver={canAddPlays ? (e) => { e.preventDefault(); if (sectionDragSrcId !== play.id) setSectionDragOverId(play.id); } : undefined}
+                      onDrop={canAddPlays ? (e) => { e.preventDefault(); handleReorderSectionPlay(sectionDragSrcId, play.id); } : undefined}
+                      onDragEnd={canAddPlays ? () => { setSectionDragSrcId(null); setSectionDragOverId(null); } : undefined}
+                      className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition ${canAddPlays ? "cursor-grab active:cursor-grabbing" : ""}`}
                       style={sectionDragOverId === play.id && sectionDragSrcId !== play.id
                         ? {
                             backgroundColor: "var(--adm-surface2)",
@@ -1966,7 +2047,7 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError }) {
                         : INSET_STYLE}
                     >
                       {/* Drag handle */}
-                      <FiMenu className="shrink-0 text-sm" style={{ color: "var(--adm-muted)" }} />
+                      {canAddPlays && <FiMenu className="shrink-0 text-sm" style={{ color: "var(--adm-muted)" }} />}
 
                       {/* Thumbnail */}
                       <div className="w-16 shrink-0">
@@ -1994,18 +2075,20 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError }) {
                       </div>
 
                       {/* Remove */}
-                      <button
-                        onClick={() => handleRemovePlay(play.id)}
-                        title="Remove from section"
-                        className="flex shrink-0 items-center justify-center rounded-lg border px-2 py-1.5 text-xs transition hover:opacity-85"
-                        style={{
-                          borderColor: "rgba(220, 38, 38, 0.18)",
-                          backgroundColor: "var(--adm-danger-dim)",
-                          color: "var(--adm-danger)",
-                        }}
-                      >
-                        <FiX className="text-xs" />
-                      </button>
+                      {canAddPlays && (
+                        <button
+                          onClick={() => handleRemovePlay(play.id)}
+                          title="Remove from section"
+                          className="flex shrink-0 items-center justify-center rounded-lg border px-2 py-1.5 text-xs transition hover:opacity-85"
+                          style={{
+                            borderColor: "rgba(220, 38, 38, 0.18)",
+                            backgroundColor: "var(--adm-danger-dim)",
+                            color: "var(--adm-danger)",
+                          }}
+                        >
+                          <FiX className="text-xs" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -2037,10 +2120,35 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError }) {
  * and per-play shareable link copying. Redirects to /admin if not authenticated.
  */
 export default function AdminPlaysPage() {
-  const { basePath } = useAdmin();
+  const { basePath, hasPerm, hasSportScope, isOwner } = useAdmin();
   const navigate = useNavigate();
   const location = useLocation();
-  const session = sessionStorage.getItem(SESSION_KEY) || "";
+  const session = (typeof window !== "undefined" && window.location.pathname.startsWith("/staff") ? null : sessionStorage.getItem(SESSION_KEY)) || "";
+  const canViewPlays = isOwner || hasPerm("plays.viewFolders");
+  const canAddPlays = isOwner || hasPerm("plays.add");
+  const canEditPlayContent = isOwner || hasPerm("plays.editContent");
+  const canRenamePlays = isOwner || hasPerm("plays.rename");
+  const canEditPlayTags = isOwner || hasPerm("plays.editTags");
+  const canCopyShareLinks = isOwner || hasPerm("plays.copyShareLinks");
+  const canManageSections = isOwner || hasPerm("pageSections.manage");
+  const canViewPlaybooks = isOwner || hasPerm("playbooks.view");
+  const canAddPlaysToPlaybooks = isOwner || hasPerm("playbooks.addPlays");
+  const canSeePresets = isOwner || hasPerm("presets.create") || hasPerm("presets.edit");
+  const canSeePrefabPresets = isOwner || hasPerm("prefabs.manage");
+  const needsPlayLibraryData = canViewPlays;
+  const visiblePresetSports = PRESET_SPORTS.filter((sport) => isOwner || hasSportScope("presets.sportScope", sport));
+  const visiblePresetSportSet = new Set(visiblePresetSports);
+  const hasVisiblePresetSports = visiblePresetSports.length > 0;
+  const canOpenPresetsTab = canSeePresets && hasVisiblePresetSports;
+  const canOpenPrefabPresetsTab = canSeePrefabPresets && hasVisiblePresetSports;
+  const visibleTabs = [
+    ...(canViewPlays ? [{ key: "plays", icon: <FiFolder className="text-[10px]" />, label: "Plays" }] : []),
+    ...(canManageSections ? [{ key: "sections", icon: <FiLayout className="text-[10px]" />, label: "Page Sections" }] : []),
+    ...(canViewPlaybooks ? [{ key: "playbooks", icon: <FiBookOpen className="text-[10px]" />, label: "Playbook Sections" }] : []),
+    ...(canOpenPresetsTab ? [{ key: "presets", icon: <FiSliders className="text-[10px]" />, label: "Sport Presets" }] : []),
+    ...(canOpenPrefabPresetsTab ? [{ key: "prefab-presets", icon: <FiCopy className="text-[10px]" />, label: "Prefab Presets" }] : []),
+  ];
+  const visibleTabKeys = new Set(visibleTabs.map((tab) => tab.key));
 
   const [activeTab, setActiveTab] = useState(location.state?.tab || "plays");
   const [plays, setPlays] = useState([]);
@@ -2048,6 +2156,7 @@ export default function AdminPlaysPage() {
   const [sections, setSections] = useState([]);
   const [playbookSections, setPlaybookSections] = useState([]);
   const [sportPresets, setSportPresets] = useState([]);
+  const [sportPrefabPresets, setSportPrefabPresets] = useState([]);
   const [loading, setLoading] = useState(true);
   const allTags = [...new Set(plays.flatMap((p) => p.tags || []))].sort();
   const [error, setError] = useState("");
@@ -2092,46 +2201,66 @@ export default function AdminPlaysPage() {
   }, []);
 
   useEffect(() => {
-    if (!session) navigate(adminPath(basePath, ""), { replace: true });
+    // Legacy-admin redirect only fires in /admin. In /staff the route
+    // guards (RequireStaffSession + RequirePerm) handle access.
+    if (!session && basePath === "/admin") navigate(adminPath(basePath, ""), { replace: true });
   }, [session, navigate, basePath]);
 
+  useEffect(() => {
+    if (!visibleTabKeys.has(activeTab)) {
+      setActiveTab(visibleTabs[0]?.key || "plays");
+    }
+  }, [activeTab, visibleTabKeys, visibleTabs]);
+
   const load = useCallback(async () => {
-    if (!session) return;
+    // In staff mode, session is null but the JWT cookie still authorizes
+    // the underlying /admin/* fetches via the shared transport.
+    if (!session && basePath === "/admin") return;
     setLoading(true);
     setError("");
     try {
-      const [playsData, foldersData, sectionsData, playbookSectionsData, sportPresetsData] = await Promise.all([
-        fetchAllPlays(session),
-        fetchAllFolders(session),
-        fetchPageSections(session),
-        fetchPlaybookSections(session),
-        fetchSportPresets(session),
+      const [playsData, foldersData, sectionsData, playbookSectionsData, sportPresetsData, sportPrefabPresetsData] = await Promise.all([
+        needsPlayLibraryData ? fetchAllPlays(session) : Promise.resolve([]),
+        needsPlayLibraryData ? fetchAllFolders(session) : Promise.resolve([]),
+        canManageSections ? fetchPageSections(session) : Promise.resolve([]),
+        canViewPlaybooks ? fetchPlaybookSections(session) : Promise.resolve([]),
+        canOpenPresetsTab ? fetchSportPresets(session) : Promise.resolve([]),
+        canOpenPrefabPresetsTab ? fetchSportPrefabPresets(session) : Promise.resolve([]),
       ]);
       setPlays(playsData);
       setFolders(foldersData);
       setSections(sectionsData);
       setPlaybookSections(playbookSectionsData);
       setSportPresets(sportPresetsData);
+      setSportPrefabPresets(sportPrefabPresetsData);
     } catch (err) {
       if (err.message === "UNAUTHORIZED") {
         sessionStorage.removeItem(SESSION_KEY);
-        navigate("/admin", { replace: true });
+        // Send the user back to the right login page based on the current shell
+        navigate(basePath === "/staff" ? "/staff/login" : "/admin", { replace: true });
       } else {
         setError(err.message);
       }
     } finally {
       setLoading(false);
     }
-  }, [session, navigate]);
+  }, [session, navigate, canManageSections, canViewPlaybooks, canOpenPresetsTab, canOpenPrefabPresetsTab, needsPlayLibraryData, basePath]);
 
   useEffect(() => { load(); }, [load]);
 
   // Re-fetch sport preset counts whenever the presets tab becomes active so badge
   // counts stay accurate after returning from AdminSportPresetsPage without a full reload.
   useEffect(() => {
-    if (activeTab !== "presets" || !session) return;
+    if (activeTab !== "presets" || !session || !canOpenPresetsTab) return;
     fetchSportPresets(session).then(setSportPresets).catch(() => {});
-  }, [activeTab, session]);
+  }, [activeTab, session, canOpenPresetsTab]);
+
+  // Same refresh pattern as sport presets — keeps prefab-preset counts current
+  // when returning to the tab after editing in AdminSportPrefabPresetsPage.
+  useEffect(() => {
+    if (activeTab !== "prefab-presets" || !session || !canOpenPrefabPresetsTab) return;
+    fetchSportPrefabPresets(session).then(setSportPrefabPresets).catch(() => {});
+  }, [activeTab, session, canOpenPrefabPresetsTab]);
 
   // Strip any sport-name tags that were previously auto-applied.
   const SPORT_TAGS = new Set(["rugby", "soccer", "football", "lacrosse", "womens lacrosse", "basketball", "field hockey", "ice hockey", "blank"]);
@@ -2164,7 +2293,8 @@ export default function AdminPlaysPage() {
       if (elevateStep === "password") {
         const res = await fetch(`${API_URL}/admin/elevate/request`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "x-admin-session": session },
+          credentials: "include",
+    headers: {"Content-Type": "application/json", "x-admin-session": session },
           body: JSON.stringify({ password: elevatePassword }),
         });
         const data = await res.json().catch(() => ({}));
@@ -2183,7 +2313,8 @@ export default function AdminPlaysPage() {
       } else {
         const res = await fetch(`${API_URL}/admin/elevate/confirm`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "x-admin-session": session },
+          credentials: "include",
+    headers: {"Content-Type": "application/json", "x-admin-session": session },
           body: JSON.stringify({ code: elevateCode }),
         });
         const data = await res.json().catch(() => ({}));
@@ -2226,7 +2357,7 @@ export default function AdminPlaysPage() {
     });
   }, []);
 
-  const handleEdit = (play) => navigate(`/admin/plays/${play.id}/edit`);
+  const handleEdit = (play) => navigate(adminPath(basePath, `/plays/${play.id}/edit`));
   const handleNew = () => {
     if (currentFolderSport) {
       const allSportPresets = sportPresets.filter(
@@ -2235,7 +2366,7 @@ export default function AdminPlaysPage() {
       if (allSportPresets.length > 0) {
         setPresetPickerSport(currentFolderSport);
       } else {
-        navigate("/admin/plays/new/edit", { state: { sport: currentFolderSport, folderId: currentFolderId } });
+        navigate(adminPath(basePath, "/plays/new/edit"), { state: { sport: currentFolderSport, folderId: currentFolderId } });
       }
     } else {
       setNewPlaySport("Rugby");
@@ -2252,7 +2383,7 @@ export default function AdminPlaysPage() {
       setNewPlayMode("keyframe");
       setFootballModeModal(true);
     } else {
-      navigate("/admin/plays/new/edit", {
+      navigate(adminPath(basePath, "/plays/new/edit"), {
         state: {
           sport: currentFolderSport,
           folderId: currentFolderId,
@@ -2264,7 +2395,7 @@ export default function AdminPlaysPage() {
 
   const handleFootballModeConfirm = () => {
     setFootballModeModal(false);
-    navigate("/admin/plays/new/edit", {
+    navigate(adminPath(basePath, "/plays/new/edit"), {
       state: {
         sport: currentFolderSport,
         folderId: currentFolderId,
@@ -2278,7 +2409,7 @@ export default function AdminPlaysPage() {
   const handleNewPlayConfirm = () => {
     setNewPlayModal(false);
     const mode = newPlaySport === "Football" ? newPlayMode : "keyframe";
-    navigate("/admin/plays/new/edit", { state: { sport: newPlaySport, mode } });
+    navigate(adminPath(basePath, "/plays/new/edit"), { state: { sport: newPlaySport, mode } });
   };
 
   const handleDelete = async (play) => {
@@ -2676,12 +2807,7 @@ export default function AdminPlaysPage() {
             )}
           </div>
           <div className="flex w-full items-center gap-0.5 overflow-x-auto rounded-[var(--adm-radius-sm)] p-0.5 lg:w-auto" style={{ backgroundColor: "var(--adm-surface2)", border: "1px solid var(--adm-border)" }}>
-            {[
-              { key: "plays", icon: <FiFolder className="text-[10px]" />, label: "Plays" },
-              { key: "sections", icon: <FiLayout className="text-[10px]" />, label: "Page Sections" },
-              { key: "playbooks", icon: <FiBookOpen className="text-[10px]" />, label: "Playbook Sections" },
-              { key: "presets", icon: <FiSliders className="text-[10px]" />, label: "Sport Presets" },
-            ].map(({ key, icon, label }) => (
+            {visibleTabs.map(({ key, icon, label }) => (
               <button
                 key={key}
                 onClick={() => setActiveTab(key)}
@@ -2696,7 +2822,9 @@ export default function AdminPlaysPage() {
           </div>
           <span className="text-xs" style={{ color: "var(--adm-muted)" }}>{plays.length} total</span>
           <div className="flex w-full flex-wrap items-center gap-2 lg:ml-auto lg:w-auto lg:justify-end">
-            <AdminBtn variant="primary" size="sm" onClick={handleNew}><FiPlus className="mr-1 inline" /> New Play</AdminBtn>
+            {canAddPlays && (
+              <AdminBtn variant="primary" size="sm" onClick={handleNew}><FiPlus className="mr-1 inline" /> New Play</AdminBtn>
+            )}
             <AdminBtn variant="secondary" size="sm" onClick={() => navigate(adminPath(basePath, ""))}>Dashboard</AdminBtn>
           </div>
         </div>
@@ -2749,21 +2877,23 @@ export default function AdminPlaysPage() {
 
       {/* Playbook Sections tab */}
       {activeTab === "playbooks" && (
-        <PlaybookSectionPanel
-          session={session}
-          allPlays={plays}
-          folders={folders}
-          error={error}
-          setError={setError}
-        />
-      )}
+          <PlaybookSectionPanel
+            session={session}
+            allPlays={plays}
+            folders={folders}
+            error={error}
+            setError={setError}
+            canManageSections={isOwner}
+            canAddPlays={canAddPlaysToPlaybooks}
+          />
+        )}
 
       {activeTab === "presets" && (
         <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
           <h2 className="mb-1 font-Manrope text-base font-bold" style={{ color: "var(--adm-text)" }}>Sport Presets</h2>
           <p className="mb-6 text-xs" style={{ color: "var(--adm-muted)" }}>Manage starting-canvas presets for each sport. Click a sport to view and create presets for it.</p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {PRESET_SPORTS.map((sport) => {
+            {visiblePresetSports.map((sport) => {
               const count = sportPresets.filter((p) => p.sport === sport).length;
               return (
                 <button
@@ -2785,6 +2915,46 @@ export default function AdminPlaysPage() {
                 </button>
               );
             })}
+            {visiblePresetSports.length === 0 && (
+              <p className="text-sm" style={{ color: "var(--adm-muted)" }}>No preset sports are assigned to this staff account.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === "prefab-presets" && (
+        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
+          <h2 className="mb-1 font-Manrope text-base font-bold" style={{ color: "var(--adm-text)" }}>Prefab Presets</h2>
+          <p className="mb-6 text-xs" style={{ color: "var(--adm-muted)" }}>
+            Admin-curated reusable player groupings for each sport. Published presets appear in the Slate Prefabs panel for all users of that sport.
+            Distinct from Sport Presets (full starting canvases).
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {visiblePresetSports.map((sport) => {
+              const count = sportPrefabPresets.filter((p) => p.sport === sport).length;
+              return (
+                <button
+                  key={sport}
+                  type="button"
+                  onClick={() => navigate(`${adminPath(basePath, "/prefab-presets")}/${encodeURIComponent(sport)}`)}
+                  className="group flex flex-col gap-3 rounded-[var(--adm-radius)] p-4 text-left transition"
+                  style={{ border: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface2)" }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-Manrope text-sm font-normal" style={{ color: "var(--adm-text)" }}>{sport}</span>
+                    <span className="rounded-full px-2 py-0.5 text-[10px] font-normal" style={count > 0 ? { backgroundColor: "rgba(52,211,153,0.12)", color: "#34d399" } : { backgroundColor: "var(--adm-surface3)", color: "var(--adm-muted)" }}>
+                      {count > 0 ? `${count} ${count === 1 ? "prefab" : "prefabs"}` : "None"}
+                    </span>
+                  </div>
+                  <div className="mt-auto flex items-center gap-1.5 text-[11px] font-normal opacity-0 transition group-hover:opacity-100" style={{ color: "var(--adm-accent)" }}>
+                    <FiCopy className="text-xs" /> Manage
+                  </div>
+                </button>
+              );
+            })}
+            {visiblePresetSports.length === 0 && (
+              <p className="text-sm" style={{ color: "var(--adm-muted)" }}>No prefab preset sports are assigned to this staff account.</p>
+            )}
           </div>
         </div>
       )}
@@ -2805,10 +2975,10 @@ export default function AdminPlaysPage() {
             </button>
             <div className="max-h-64 space-y-0.5 overflow-y-auto pr-1 lg:max-h-none lg:overflow-visible lg:pr-0">
               {folders.map((folder) => (
-                <FolderItem key={folder.id} folder={folder} isActive={currentFolderId === folder.id} onClick={() => setCurrentFolderId(folder.id)} onRename={folder.isSportFolder ? null : handleRenameFolder} onDelete={folder.isSportFolder ? null : handleDeleteFolder} />
+                <FolderItem key={folder.id} folder={folder} isActive={currentFolderId === folder.id} onClick={() => setCurrentFolderId(folder.id)} onRename={isOwner && !folder.isSportFolder ? handleRenameFolder : null} onDelete={isOwner && !folder.isSportFolder ? handleDeleteFolder : null} />
               ))}
             </div>
-            {newFolderMode ? (
+            {newFolderMode && isOwner ? (
               <div className="mt-2">
                 <input
                   ref={newFolderRef}
@@ -2821,7 +2991,7 @@ export default function AdminPlaysPage() {
                   style={{ border: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface2)", color: "var(--adm-text)" }}
                 />
               </div>
-            ) : (
+            ) : isOwner ? (
               <button
                 onClick={() => setNewFolderMode(true)}
                 className="mt-3 flex w-full items-center gap-1.5 rounded-lg border-dashed px-2.5 py-2 text-xs transition"
@@ -2829,6 +2999,11 @@ export default function AdminPlaysPage() {
               >
                 <FiFolderPlus className="text-xs" /> New Folder
               </button>
+            ) : null}
+            {currentFolder && currentFolder.isSportFolder && basePath === "/staff" && !visiblePresetSportSet.has(currentFolder.sport) && (
+              <p className="mt-3 text-[11px]" style={{ color: "var(--adm-muted)" }}>
+                This folder is visible, but preset tools are only available for your assigned sports.
+              </p>
             )}
           </aside>
 
@@ -2878,14 +3053,34 @@ export default function AdminPlaysPage() {
                 {visiblePlays.map((play) => (
                   <div
                     key={play.id}
-                    draggable
-                    onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; setDragSrcId(play.id); }}
-                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (dragSrcId !== play.id) setDragOverId(play.id); }}
-                    onDrop={(e) => { e.preventDefault(); handleReorderPlay(dragSrcId, play.id); }}
-                    onDragEnd={() => { setDragSrcId(null); setDragOverId(null); }}
+                    draggable={isOwner}
+                    onDragStart={isOwner ? (e) => { e.dataTransfer.effectAllowed = "move"; setDragSrcId(play.id); } : undefined}
+                    onDragOver={isOwner ? (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (dragSrcId !== play.id) setDragOverId(play.id); } : undefined}
+                    onDrop={isOwner ? (e) => { e.preventDefault(); handleReorderPlay(dragSrcId, play.id); } : undefined}
+                    onDragEnd={isOwner ? () => { setDragSrcId(null); setDragOverId(null); } : undefined}
                     className={`rounded-[var(--adm-radius)] transition ${dragOverId === play.id && dragSrcId !== play.id ? "opacity-60 ring-2 ring-[var(--adm-accent)]" : ""}`}
                   >
-                    <PlayCard play={play} folders={folders} playbookSections={playbookSections} onEdit={handleEdit} onDelete={handleDelete} onMove={handleMove} onDuplicate={handleDuplicate} onAddToSection={handleAddToSection} onTagsUpdate={handleUpdateTags} onRename={handleRenamePlay} allTags={allTags} />
+                    <PlayCard
+                      play={play}
+                      folders={folders}
+                      playbookSections={playbookSections}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                      onMove={handleMove}
+                      onDuplicate={handleDuplicate}
+                      onAddToSection={handleAddToSection}
+                      onTagsUpdate={handleUpdateTags}
+                      onRename={handleRenamePlay}
+                      allTags={allTags}
+                      canEdit={canEditPlayContent}
+                      canDelete={isOwner}
+                      canMove={isOwner}
+                      canDuplicate={canAddPlays}
+                      canAddToSection={canAddPlaysToPlaybooks}
+                      canEditTags={canEditPlayTags}
+                      canRename={canRenamePlays}
+                      canCopyShareLinks={canCopyShareLinks}
+                    />
                   </div>
                 ))}
               </div>
