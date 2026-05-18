@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAdmin } from "../admin/AdminContext";
+import darkLogo from "../assets/logos/full_Coachable_logo.png";
+import whiteLogo from "../assets/logos/White_Full_Coachable.png";
 import { adminPath } from "../admin/adminNav";
 import { AdminShell, AdminModal, AdminBtn, AdminInput, AdminSelect, AdminSpinner } from "../admin/components";
 import {
@@ -2123,7 +2125,7 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError, can
  * and per-play shareable link copying. Redirects to /admin if not authenticated.
  */
 export default function AdminPlaysPage() {
-  const { basePath, hasPerm, hasSportScope, isOwner, ownsResource, canModifyResource } = useAdmin();
+  const { basePath, theme, hasPerm, hasSportScope, isOwner, ownsResource, canModifyResource } = useAdmin();
   const navigate = useNavigate();
   const location = useLocation();
   const session = (typeof window !== "undefined" && window.location.pathname.startsWith("/staff") ? null : sessionStorage.getItem(SESSION_KEY)) || "";
@@ -2807,7 +2809,7 @@ export default function AdminPlaysPage() {
         <div className="mx-auto flex max-w-7xl flex-col items-stretch gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:gap-4 lg:py-3.5">
           <div className="flex flex-wrap items-center gap-3">
             <button onClick={() => navigate(adminPath(basePath, ""))} className="inline-flex opacity-70 transition hover:opacity-100">
-              <span className="font-Manrope text-sm font-bold" style={{ color: "var(--adm-accent)" }}>Coachable</span>
+              <img src={theme === "dark" ? whiteLogo : darkLogo} alt="Coachable" className="h-5 w-auto" />
             </button>
             <span className="rounded px-2 py-0.5 text-[10px] font-normal uppercase tracking-wider" style={{ backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }}>Admin</span>
             {dangerMinsDisplay && (
