@@ -1,4 +1,4 @@
-/* Admin-scoped design tokens — only active inside [data-admin-theme] wrappers.
+/* Admin-scoped design tokens - only active inside [data-admin-theme] wrappers.
    These cannot affect the Slate editor or app shell. */
 
 [data-admin-theme="dark"] {
@@ -25,7 +25,7 @@
   --adm-radius-sm:  6px;
   --adm-radius-lg:  14px;
 
-  /* Badge status colors — tuned for dark surfaces */
+  /* Badge status colors - tuned for dark surfaces */
   --adm-badge-blue-bg:    rgba(59,130,246,0.15);
   --adm-badge-blue-text:  #60a5fa;
   --adm-badge-green-bg:   rgba(74,222,128,0.15);
@@ -69,7 +69,7 @@
   --adm-radius-sm:  6px;
   --adm-radius-lg:  14px;
 
-  /* Badge status colors — darker, more saturated for light surfaces */
+  /* Badge status colors - darker, more saturated for light surfaces */
   --adm-badge-blue-bg:    rgba(29,78,216,0.12);
   --adm-badge-blue-text:  #1d4ed8;
   --adm-badge-green-bg:   rgba(22,163,74,0.12);

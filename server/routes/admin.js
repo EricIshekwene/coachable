@@ -863,6 +863,7 @@ function toPlatformPlayResponse(row) {
     isFeatured: row.is_featured,
     sortOrder: row.sort_order,
     createdBy: row.created_by || null,
+    creatorName: row.creator_name || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -894,16 +895,19 @@ function filterRowsBySportScope(actor, permPath, rows, getSport) {
 router.get("/plays", requireAdminOrStaff, requirePerm("plays.viewFolders"), async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      `SELECT p.*, f.sport AS folder_sport FROM platform_plays p
-       LEFT JOIN platform_play_folders f ON p.folder_id = f.id
-       WHERE is_community_submitted = false
-         AND p.id NOT IN (
-           SELECT psp.play_id
-           FROM playbook_section_plays psp
-           JOIN playbook_sections ps ON ps.id = psp.section_id
-           WHERE ps.is_default = false
-         )
-       ORDER BY p.sort_order ASC, p.created_at DESC`
+      `SELECT p.*, f.sport AS folder_sport,
+              COALESCE(u.name, u.email) AS creator_name
+         FROM platform_plays p
+         LEFT JOIN platform_play_folders f ON p.folder_id = f.id
+         LEFT JOIN users u ON u.id = p.created_by
+        WHERE is_community_submitted = false
+          AND p.id NOT IN (
+            SELECT psp.play_id
+            FROM playbook_section_plays psp
+            JOIN playbook_sections ps ON ps.id = psp.section_id
+            WHERE ps.is_default = false
+          )
+        ORDER BY p.sort_order ASC, p.created_at DESC`
     );
     const visibleRows = filterRowsBySportScope(
       req.actor,
@@ -1059,7 +1063,7 @@ router.post("/plays/:id/restore", requireOwnerOrLegacyAdmin, async (req, res, ne
   }
 });
 
-// DELETE /admin/plays/:id — delete a platform play (requires Danger Mode)
+// DELETE /admin/plays/:id — delete a platform play
 router.delete("/plays/:id", requireAdminOrStaff, async (req, res, next) => {
   try {
     const { rows: existingRows } = await pool.query(
@@ -1069,17 +1073,12 @@ router.delete("/plays/:id", requireAdminOrStaff, async (req, res, next) => {
     if (!existingRows.length) return res.status(404).json({ error: "Play not found" });
     const createdBy = existingRows[0].created_by;
 
-    // Authorization:
-    //  - Staff can delete a play they created. Deleting someone else's play
-    //    requires `plays.delete` (staff don't typically have this).
-    //  - Owner via legacy_admin session must be in Danger Mode (OTP elevated).
-    //  - Owner via owner_jwt can delete directly (no Danger Mode infra in JWT path).
+    // Staff can delete a play they created. Deleting someone else's play
+    // requires `plays.delete`. Owner can always delete (no Danger Mode).
     if (!req.actor.isOwner) {
       if (!actorOwnsResource(req.actor, createdBy) && !actorHasPerm(req.actor, "plays.delete")) {
         return res.status(403).json({ error: "Cannot delete plays you didn't create" });
       }
-    } else if (req.actor.authMode === "legacy_admin" && !isLegacyAdminElevated(req)) {
-      return res.status(403).json({ error: "Danger Mode required. Re-authenticate to perform this action." });
     }
 
     // Clear any page sections referencing this play before deleting

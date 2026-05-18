@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, Link } from "react-router-dom";
 import { useAdmin } from "../AdminContext";
 import { adminPath } from "../adminNav";
 import darkLogo from "../../assets/logos/full_Coachable_logo.png";
@@ -151,7 +151,9 @@ export default function AdminSidebar({ mobileOpen = false, onClose }) {
           className="flex h-14 shrink-0 items-center gap-3 px-5"
           style={{ borderBottom: "1px solid var(--adm-border)" }}
         >
-          <img src={theme === "dark" ? whiteLogo : darkLogo} alt="Coachable" className="h-6 w-auto" />
+          <Link to={basePath} className="flex-1 min-w-0">
+            <img src={theme === "dark" ? whiteLogo : darkLogo} alt="Coachable" className="h-6 w-auto" />
+          </Link>
           <button
             type="button"
             onClick={onClose}

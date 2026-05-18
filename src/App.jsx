@@ -348,7 +348,7 @@ export function AppRoutes() {
       <Route element={<StaffLayout />}>
         <Route path="/staff" element={<RequireStaffSession><StaffDashboard /></RequireStaffSession>} />
         <Route path="/staff/app" element={<RequireStaffSession><RequirePerm anyOf={["plays.viewFolders", "pageSections.manage", "playbooks.view", "presets.create", "presets.edit", "prefabs.manage"]}><AdminPlaysPage /></RequirePerm></RequireStaffSession>} />
-        <Route path="/staff/plays/:playId/edit" element={<RequireStaffSession><RequirePerm perm="plays.editContent"><AdminPlayEditPage /></RequirePerm></RequireStaffSession>} />
+        <Route path="/staff/plays/:playId/edit" element={<RequireStaffSession><RequirePerm anyOf={["plays.viewFolders", "plays.add", "plays.editContent", "plays.rename", "plays.editTags"]}><AdminPlayEditPage /></RequirePerm></RequireStaffSession>} />
         <Route path="/staff/presets/:sport" element={<RequireStaffSession><RequirePerm anyOf={["presets.create", "presets.edit"]}><AdminSportPresetsPage /></RequirePerm></RequireStaffSession>} />
         <Route path="/staff/presets/:sport/:presetId/edit" element={<RequireStaffSession><RequirePerm anyOf={["presets.create", "presets.edit"]}><AdminPresetEditPage /></RequirePerm></RequireStaffSession>} />
         <Route path="/staff/prefab-presets/:sport" element={<RequireStaffSession><RequirePerm perm="prefabs.manage"><AdminSportPrefabPresetsPage /></RequirePerm></RequireStaffSession>} />

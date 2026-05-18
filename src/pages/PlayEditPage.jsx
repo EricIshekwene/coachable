@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useMessagePopup } from "../components/messaging/useMessagePopup";
 import MessagePopup from "../components/MessagePopup/MessagePopup";
 import Slate from "../features/slate/Slate";
@@ -51,8 +51,10 @@ function clearLocalStorageCache(playId) {
 export default function PlayEditPage() {
   const { playId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const teamId = user?.teamId;
+  const modeFromState = location.state?.mode || null;
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
   const [ready, setReady] = useState(false);
   const [existingPlay, setExistingPlay] = useState(null);
@@ -132,6 +134,11 @@ export default function PlayEditPage() {
   // Determine initial data — prefer recovered localStorage data over server
   const initialPlayData = recoveredData?.playData ?? existingPlay?.playData ?? null;
   const initialPlayName = recoveredData?.playName ?? existingPlay?.title;
+  // For new plays: use the mode selected on the create page.
+  // For existing plays: restore from saved editorMode so reopening preserves the mode.
+  const savedEditorMode = initialPlayData?.play?.meta?.editorMode ?? null;
+  const editorMode = savedEditorMode ?? modeFromState ?? "keyframe";
+  const isDrawingMode = editorMode === "drawing";
 
   return (
     <div className="w-full bg-[#121212] flex flex-row justify-between relative overflow-hidden" style={{ height: "100dvh" }}>
@@ -166,6 +173,7 @@ export default function PlayEditPage() {
           testVariant
           onNavigateHome={handleNavigateHome}
           onReady={() => setReady(true)}
+          drawingMode={isDrawingMode}
         />
       </MobileViewOnlyGate>
     </div>

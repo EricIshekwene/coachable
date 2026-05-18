@@ -1032,6 +1032,9 @@ function PlayCard({
         <span className="flex items-center gap-1.5 text-[11px]" style={{ color: "var(--adm-muted)" }}>
           <FiClock className="text-[10px]" />
           {formatRelativeTime(play.createdAt)}
+          {play.creatorName && (
+            <span>by {play.creatorName}</span>
+          )}
         </span>
         {canEdit ? (
           <button
@@ -2262,6 +2265,15 @@ export default function AdminPlaysPage() {
     fetchSportPrefabPresets(session).then(setSportPrefabPresets).catch(() => {});
   }, [activeTab, session, canOpenPrefabPresetsTab]);
 
+  // Sport-scoped staff don't get an "All Plays" view; auto-select the first
+  // folder they can see so the right pane isn't an empty unfoldered placeholder.
+  useEffect(() => {
+    if (isOwner) return;
+    if (currentFolderId !== null) return;
+    if (!folders.length) return;
+    setCurrentFolderId(folders[0].id);
+  }, [isOwner, currentFolderId, folders]);
+
   // Strip any sport-name tags that were previously auto-applied.
   const SPORT_TAGS = new Set(["rugby", "soccer", "football", "lacrosse", "womens lacrosse", "basketball", "field hockey", "ice hockey", "blank"]);
   useEffect(() => {
@@ -2412,9 +2424,7 @@ export default function AdminPlaysPage() {
     navigate(adminPath(basePath, "/plays/new/edit"), { state: { sport: newPlaySport, mode } });
   };
 
-  const handleDelete = async (play) => {
-    const elevated = await ensureElevated();
-    if (!elevated) return;
+  const handleDelete = (play) => {
     setConfirmModal({ type: "play", item: play });
   };
 
@@ -2964,15 +2974,20 @@ export default function AdminPlaysPage() {
           {/* Folder sidebar */}
           <aside className="w-full shrink-0 lg:w-52">
             <p className="mb-2 px-1 text-[10px] font-normal uppercase tracking-wider" style={{ color: "var(--adm-muted)" }}>Folders</p>
-            <button
-              onClick={() => setCurrentFolderId(null)}
-              className="mb-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition"
-              style={currentFolderId === null ? { backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" } : { color: "var(--adm-muted)" }}
-            >
-              <FiFolder className="text-xs" />
-              <span className="flex-1">All Plays</span>
-              <span className="text-[10px] opacity-60">{plays.length}</span>
-            </button>
+            {/* "All Plays" only makes sense when the actor can see plays from every sport.
+                Sport-scoped staff (the owner restricted them to certain sports) get the
+                sport folders only. */}
+            {isOwner && (
+              <button
+                onClick={() => setCurrentFolderId(null)}
+                className="mb-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition"
+                style={currentFolderId === null ? { backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" } : { color: "var(--adm-muted)" }}
+              >
+                <FiFolder className="text-xs" />
+                <span className="flex-1">All Plays</span>
+                <span className="text-[10px] opacity-60">{plays.length}</span>
+              </button>
+            )}
             <div className="max-h-64 space-y-0.5 overflow-y-auto pr-1 lg:max-h-none lg:overflow-visible lg:pr-0">
               {folders.map((folder) => (
                 <FolderItem key={folder.id} folder={folder} isActive={currentFolderId === folder.id} onClick={() => setCurrentFolderId(folder.id)} onRename={isOwner && !folder.isSportFolder ? handleRenameFolder : null} onDelete={isOwner && !folder.isSportFolder ? handleDeleteFolder : null} />

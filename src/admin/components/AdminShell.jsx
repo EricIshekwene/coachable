@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAdmin } from "../AdminContext";
 import AdminSidebar from "./AdminSidebar";
 
@@ -11,7 +12,7 @@ import AdminSidebar from "./AdminSidebar";
  * @param {{ children: React.ReactNode, className?: string, sidebar?: boolean }} props
  */
 export default function AdminShell({ children, className = "", sidebar = true }) {
-  const { theme, setTheme } = useAdmin();
+  const { theme, setTheme, basePath } = useAdmin();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -69,9 +70,9 @@ export default function AdminShell({ children, className = "", sidebar = true })
             </svg>
           </button>
           <div className="min-w-0 flex-1">
-            <p className="truncate font-Manrope text-sm font-semibold" style={{ color: "var(--adm-text)" }}>
+            <Link to={basePath} className="truncate font-Manrope text-sm font-semibold" style={{ color: "var(--adm-text)" }}>
               Coachable Admin
-            </p>
+            </Link>
           </div>
           <button
             type="button"

@@ -1,4 +1,5 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+@source "./**/*.{js,jsx,ts,tsx}";
 
 :root {
     --app-viewport-height: 100dvh;
@@ -44,7 +45,7 @@ body {
     --color-BrandGreen: #4FA85D;
 }
 
-/* Light theme — only applies inside the app shell (.app-themed) */
+/* Light theme - only applies inside the app shell (.app-themed) */
 [data-theme="light"] .app-themed {
     --color-BrandBlack: #ffffff;
     --color-BrandBlack2: #fafbfc;

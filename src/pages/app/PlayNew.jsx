@@ -66,6 +66,7 @@ export default function PlayNew() {
   const [sportPresets, setSportPresets] = useState([]);
   const [selectedPresetId, setSelectedPresetId] = useState("blank");
   const [presetSearch, setPresetSearch] = useState("");
+  const [editorMode, setEditorMode] = useState("drawing");
   const inputRef = useRef(null);
   const navigate = useNavigate();
   const { showMessage } = useAppMessage();
@@ -198,12 +199,13 @@ export default function PlayNew() {
 
     setSubmitting(true);
     try {
+      const mode = fieldType === "Football" ? editorMode : "keyframe";
       const entry = await createPlay(user.teamId, {
         title: trimmedTitle,
         tags,
         playData,
       });
-      navigate(`/app/plays/${entry.id}/edit`);
+      navigate(`/app/plays/${entry.id}/edit`, { state: { mode } });
     } catch {
       showMessage("Save failed", "Could not create play. Please try again.", "error");
     } finally {
@@ -264,7 +266,7 @@ export default function PlayNew() {
           {/* Scrollable grid — fixed height ≈ 3 card rows, scrollbar hidden */}
           <div
             className="overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-            style={{ maxHeight: 456 }}
+            style={{ maxHeight: 304 }}
           >
             {filteredPresets.length === 0 ? (
               <p className="py-8 text-center text-sm text-BrandGray2">No presets match your search.</p>
@@ -314,6 +316,45 @@ export default function PlayNew() {
             )}
           </div>
         </div>
+
+        {/* Editor mode picker — Football only */}
+        {fieldType === "Football" && (
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-semibold">Editor Mode</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setEditorMode("drawing")}
+                className={`flex flex-1 flex-col items-center gap-1 rounded-xl border-2 px-3 py-3 text-sm font-medium transition-all duration-200 focus:outline-none ${
+                  editorMode === "drawing"
+                    ? "border-BrandOrange bg-BrandOrange/5 text-BrandOrange shadow-[0_0_0_4px_rgba(255,122,24,0.12)]"
+                    : "border-BrandGray2/20 bg-BrandBlack2/40 text-BrandGray hover:border-BrandGray2/50 hover:bg-BrandBlack2/70 hover:text-BrandText"
+                }`}
+              >
+                <span className="text-base">✏️</span>
+                Drawing
+                <span className={`text-xs font-normal ${editorMode === "drawing" ? "text-BrandOrange/70" : "text-BrandGray2"}`}>
+                  For simple routes
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditorMode("keyframe")}
+                className={`flex flex-1 flex-col items-center gap-1 rounded-xl border-2 px-3 py-3 text-sm font-medium transition-all duration-200 focus:outline-none ${
+                  editorMode === "keyframe"
+                    ? "border-BrandOrange bg-BrandOrange/5 text-BrandOrange shadow-[0_0_0_4px_rgba(255,122,24,0.12)]"
+                    : "border-BrandGray2/20 bg-BrandBlack2/40 text-BrandGray hover:border-BrandGray2/50 hover:bg-BrandBlack2/70 hover:text-BrandText"
+                }`}
+              >
+                <span className="text-base">⏱</span>
+                Keyframe
+                <span className={`text-xs font-normal ${editorMode === "keyframe" ? "text-BrandOrange/70" : "text-BrandGray2"}`}>
+                  For complex movement
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold">
