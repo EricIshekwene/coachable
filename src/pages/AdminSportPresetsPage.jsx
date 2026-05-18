@@ -1,18 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { FiEdit2, FiPlus, FiTrash2, FiEye, FiEyeOff, FiCopy } from "react-icons/fi";
+import { FiEdit2, FiPlus, FiTrash2, FiEye, FiEyeOff, FiCopy, FiDownload, FiUpload } from "react-icons/fi";
 import PlayPreviewCard from "../components/PlayPreviewCard";
 import ConfirmModal from "../components/subcomponents/ConfirmModal";
 import { useAdmin } from "../admin/AdminContext";
 import { adminPath } from "../admin/adminNav";
 import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
-import { AdminShell, AdminHeader, AdminPage, AdminBtn, AdminInput, AdminModal, AdminEmptyState, AdminSpinner } from "../admin/components";
+import { AdminShell, AdminHeader, AdminPage, AdminBtn, AdminEmptyState, AdminSpinner } from "../admin/components";
 import {
-  isAdminElevated,
-  getAdminElevatedUntil,
-  setAdminElevated,
-  clearAdminElevated,
-} from "../utils/adminElevation";
+  buildSportPresetBundle,
+  parseSportPresetBundle,
+  supportsSportPresetBundles,
+} from "../utils/sportPresetBundles";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -105,6 +104,18 @@ async function duplicatePreset(session, sport, name, playData) {
   return (await res.json()).preset;
 }
 
+async function createPreset(session, sport, name, playData) {
+  const res = await fetch(
+    `${API_URL}/admin/sport-presets/${encodeURIComponent(sport)}`,
+    adminFetchOptions({
+      method: "POST",
+      body: JSON.stringify({ name, playData }),
+    })
+  );
+  if (!res.ok) throw new Error("Failed to create preset");
+  return (await res.json()).preset;
+}
+
 /**
  * Per-sport preset list page. Shows all presets for a sport with edit/delete/create actions.
  * Supports drag-and-drop reordering. Accessible at /admin/presets/:sport.
@@ -121,37 +132,20 @@ export default function AdminSportPresetsPage() {
   );
   const canCreatePresets = isOwner || hasPerm("presets.create");
   const canEditPresets = isOwner || hasPerm("presets.edit");
+  const canUsePresetBundles = supportsSportPresetBundles(decodedSport);
 
   const [presets, setPresets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [confirmModal, setConfirmModal] = useState(null);
-  const [elevatedUntil, setElevatedUntil] = useState(() => getAdminElevatedUntil());
-  const [elevateModal, setElevateModal] = useState(false);
-  const [elevatePassword, setElevatePassword] = useState("");
-  const [elevateError, setElevateError] = useState("");
-  const [elevating, setElevating] = useState(false);
-  const [elevateStep, setElevateStep] = useState("password"); // "password" | "code"
-  const [elevateCode, setElevateCode] = useState("");
-  const [elevateMaskedEmail, setElevateMaskedEmail] = useState("");
   const [deletingId, setDeletingId] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
   const [duplicatingId, setDuplicatingId] = useState(null);
+  const [importing, setImporting] = useState(false);
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
-  const elevateResolveRef = useRef(null);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      const until = getAdminElevatedUntil();
-      setElevatedUntil(until);
-      if (until && Date.now() > until) {
-        clearAdminElevated();
-        setElevatedUntil(0);
-      }
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
+  const importInputRef = useRef(null);
 
   useEffect(() => {
     if (!session && basePath === "/admin") navigate(adminPath(basePath, ""), { replace: true });
@@ -174,64 +168,65 @@ export default function AdminSportPresetsPage() {
     } finally {
       setLoading(false);
     }
-  }, [session, decodedSport, navigate]);
+  }, [session, decodedSport, navigate, basePath]);
 
   useEffect(() => { load(); }, [load]);
 
-  /** Prompt for Danger Mode elevation, resolve with boolean. */
-  const openElevate = () =>
-    new Promise((resolve) => {
-      elevateResolveRef.current = resolve;
-      setElevatePassword("");
-      setElevateCode("");
-      setElevateError("");
-      setElevateStep("password");
-      setElevateModal(true);
-    });
-
-  const handleElevate = async () => {
-    setElevating(true);
-    setElevateError("");
+  const handleDownloadBundle = useCallback(() => {
     try {
-      if (elevateStep === "password") {
-        const res = await fetch(`${API_URL}/admin/elevate/request`, {
-          method: "POST",
-          credentials: "include",
-    headers: {"Content-Type": "application/json", "x-admin-session": session },
-          body: JSON.stringify({ password: elevatePassword }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || "Incorrect password.");
-        if (data.elevated) {
-          setAdminElevated(data.elevatedUntil);
-          setElevatedUntil(getAdminElevatedUntil());
-          setElevateModal(false);
-          elevateResolveRef.current?.(true);
-        } else {
-          setElevateMaskedEmail(data.maskedEmail || "");
-          setElevatePassword("");
-          setElevateStep("code");
-        }
-      } else {
-        const res = await fetch(`${API_URL}/admin/elevate/confirm`, {
-          method: "POST",
-          credentials: "include",
-    headers: {"Content-Type": "application/json", "x-admin-session": session },
-          body: JSON.stringify({ code: elevateCode }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || "Invalid code");
-        setAdminElevated(data.elevatedUntil);
-        setElevatedUntil(getAdminElevatedUntil());
-        setElevateModal(false);
-        elevateResolveRef.current?.(true);
-      }
-    } catch (err) {
-      setElevateError(err.message || "Request failed.");
-    } finally {
-      setElevating(false);
+      const bundle = buildSportPresetBundle(decodedSport, presets);
+      const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const safeSport = decodedSport.trim().toLowerCase().replace(/\s+/g, "-");
+      link.href = url;
+      link.download = `${safeSport}-presets-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setError("");
+      setNotice(`Downloaded ${presets.length} preset${presets.length === 1 ? "" : "s"} as JSON.`);
+    } catch {
+      setNotice("");
+      setError("Failed to download preset JSON.");
     }
-  };
+  }, [decodedSport, presets]);
+
+  const handleImportFileChange = useCallback(async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    setError("");
+    setNotice("");
+
+    let importedCount = 0;
+    try {
+      const text = await file.text();
+      const bundle = parseSportPresetBundle(text, decodedSport);
+
+      for (const preset of bundle.presets) {
+        const created = await createPreset(session, decodedSport, preset.name, preset.playData);
+        if (preset.isHidden === false) {
+          await togglePresetVisibility(session, decodedSport, created.id, false);
+        }
+        importedCount += 1;
+      }
+
+      await load();
+      setNotice(`Imported ${importedCount} preset${importedCount === 1 ? "" : "s"} from ${file.name}.`);
+    } catch (err) {
+      await load();
+      if (importedCount > 0) {
+        setNotice(`Imported ${importedCount} preset${importedCount === 1 ? "" : "s"} before the import stopped.`);
+      }
+      setError(err?.message || "Failed to import presets.");
+    } finally {
+      setImporting(false);
+      event.target.value = "";
+    }
+  }, [decodedSport, load, session]);
 
   /** Open confirmation modal and return promise resolving to boolean. */
   const openConfirm = (title, message) =>
@@ -242,10 +237,6 @@ export default function AdminSportPresetsPage() {
   const handleDelete = async (preset) => {
     if (!isOwner) return;
     if (deletingId) return;
-    if (!isAdminElevated()) {
-      const elevated = await openElevate();
-      if (!elevated) return;
-    }
     const confirmed = await openConfirm(
       "Delete Preset",
       `Delete "${preset.name}"? This cannot be undone.`
@@ -305,7 +296,7 @@ export default function AdminSportPresetsPage() {
     }
   };
 
-  // ── Drag-and-drop handlers ────────────────────────────────────────────────
+  // Drag-and-drop handlers
 
   const handleDragStart = (e, id) => {
     if (!canEditPresets) return;
@@ -350,20 +341,8 @@ export default function AdminSportPresetsPage() {
     setDragOverId(null);
   };
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // End drag-and-drop handlers
 
-  const handleLogout = () => {
-    sessionStorage.removeItem(SESSION_KEY);
-    navigate(adminPath(basePath, ""), { replace: true });
-  };
-
-  const dangerMinsDisplay = (() => {
-    if (!elevatedUntil) return null;
-    const secs = Math.max(0, Math.ceil((elevatedUntil - Date.now()) / 1000));
-    const mins = Math.floor(secs / 60);
-    const s = String(secs % 60).padStart(2, "0");
-    return `${mins}:${s}`;
-  })();
 
   if (basePath === "/staff" && sessionLoaded && !canAccessSport) {
     return <Navigate to={basePath} replace />;
@@ -381,42 +360,7 @@ export default function AdminSportPresetsPage() {
         />
       )}
 
-      <AdminModal open={elevateModal} onClose={() => { setElevateModal(false); elevateResolveRef.current?.(false); }} title="Danger Mode">
-        {elevateStep === "password" ? (
-          <>
-            <p className="mb-4 text-sm" style={{ color: "var(--adm-muted)" }}>Enter admin password to enable destructive actions for 10 minutes.</p>
-            <AdminInput
-              type="password"
-              value={elevatePassword}
-              onChange={(e) => setElevatePassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleElevate()}
-              placeholder="Password"
-              autoFocus
-              className="mb-3"
-            />
-          </>
-        ) : (
-          <>
-            <p className="mb-4 text-sm" style={{ color: "var(--adm-muted)" }}>A verification code was sent to {elevateMaskedEmail}. Enter it below.</p>
-            <AdminInput
-              type="text"
-              value={elevateCode}
-              onChange={(e) => setElevateCode(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleElevate()}
-              placeholder="6-digit code"
-              autoFocus
-              className="mb-3"
-            />
-          </>
-        )}
-        {elevateError && <p className="mb-3 text-xs" style={{ color: "var(--adm-danger)" }}>{elevateError}</p>}
-        <div className="flex gap-2">
-          <AdminBtn variant="danger" className="flex-1" onClick={handleElevate} disabled={elevating || (elevateStep === "password" ? !elevatePassword : !elevateCode)}>
-            {elevating ? "Verifying..." : elevateStep === "password" ? "Enable Danger Mode" : "Confirm Code"}
-          </AdminBtn>
-          <AdminBtn variant="secondary" onClick={() => { setElevateModal(false); elevateResolveRef.current?.(false); }}>Cancel</AdminBtn>
-        </div>
-      </AdminModal>
+
 
       <AdminHeader
         title={`${decodedSport} Presets`}
@@ -424,10 +368,37 @@ export default function AdminSportPresetsPage() {
         backTo={adminPath(basePath, "/app")}
         actions={
           <div className="flex items-center gap-2">
-            {dangerMinsDisplay && (
-              <span className="animate-pulse rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider" style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}>
-                ⚠ Danger · {dangerMinsDisplay}
-              </span>
+            {canUsePresetBundles && (
+              <>
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept="application/json,.json"
+                  className="hidden"
+                  onChange={handleImportFileChange}
+                />
+                <AdminBtn
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleDownloadBundle}
+                  disabled={loading || importing}
+                  title={`Download all ${decodedSport} presets as JSON`}
+                >
+                  <FiDownload className="text-[11px]" /> Download Play Data
+                </AdminBtn>
+                {canCreatePresets && (
+                  <AdminBtn
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => importInputRef.current?.click()}
+                    disabled={loading || importing}
+                    title={`Import ${decodedSport} presets from JSON`}
+                  >
+                    {importing ? <AdminSpinner size={12} /> : <FiUpload className="text-[11px]" />}
+                    {importing ? "Importing..." : "Import Presets"}
+                  </AdminBtn>
+                )}
+              </>
             )}
             {canCreatePresets && (
               <AdminBtn variant="primary" size="sm" onClick={() => navigate(`${adminPath(basePath, "/presets")}/${encodeURIComponent(decodedSport)}/new/edit`)}>
@@ -442,6 +413,16 @@ export default function AdminSportPresetsPage() {
         <p className="mb-6 text-xs" style={{ color: "var(--adm-muted)" }}>
           These presets appear as starting-canvas options for {decodedSport} users. Drag cards to reorder.
         </p>
+
+        {canUsePresetBundles && (
+          <div className="mb-6 rounded-[var(--adm-radius-sm)] px-4 py-3 text-sm" style={{ backgroundColor: "var(--adm-surface2)", color: "var(--adm-text2)", border: "1px solid var(--adm-border)" }}>
+            Download exports every current preset on this page into one JSON bundle. Import accepts that same bundle or a plain array of preset entries with Slate `playData`.
+          </div>
+        )}
+
+        {notice && (
+          <div className="mb-6 rounded-[var(--adm-radius-sm)] px-4 py-3 text-sm" style={{ backgroundColor: "var(--adm-badge-green-bg)", color: "var(--adm-success)" }}>{notice}</div>
+        )}
 
         {error && (
           <div className="mb-6 rounded-[var(--adm-radius-sm)] px-4 py-3 text-sm" style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}>{error}</div>

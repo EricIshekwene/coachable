@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { FiEdit2, FiPlus, FiTrash2, FiEye, FiEyeOff, FiCopy } from "react-icons/fi";
 import PlayPreviewCard from "../components/PlayPreviewCard";
@@ -6,14 +6,8 @@ import ConfirmModal from "../components/subcomponents/ConfirmModal";
 import { useAdmin } from "../admin/AdminContext";
 import { adminPath } from "../admin/adminNav";
 import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
-import { AdminShell, AdminHeader, AdminPage, AdminBtn, AdminInput, AdminModal, AdminEmptyState, AdminSpinner } from "../admin/components";
+import { AdminShell, AdminHeader, AdminPage, AdminBtn, AdminEmptyState, AdminSpinner } from "../admin/components";
 import { prefabToPreviewPlayData } from "../utils/sportPrefabPresets";
-import {
-  isAdminElevated,
-  getAdminElevatedUntil,
-  setAdminElevated,
-  clearAdminElevated,
-} from "../utils/adminElevation";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -148,14 +142,6 @@ export default function AdminSportPrefabPresetsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [confirmModal, setConfirmModal] = useState(null);
-  const [elevatedUntil, setElevatedUntil] = useState(() => getAdminElevatedUntil());
-  const [elevateModal, setElevateModal] = useState(false);
-  const [elevatePassword, setElevatePassword] = useState("");
-  const [elevateError, setElevateError] = useState("");
-  const [elevating, setElevating] = useState(false);
-  const [elevateStep, setElevateStep] = useState("password");
-  const [elevateCode, setElevateCode] = useState("");
-  const [elevateMaskedEmail, setElevateMaskedEmail] = useState("");
   const [deletingId, setDeletingId] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
   const [duplicatingId, setDuplicatingId] = useState(null);
@@ -165,19 +151,6 @@ export default function AdminSportPrefabPresetsPage() {
   // Empty/whitespace draft on commit is rejected; the row reverts to its prior name.
   const [renamingId, setRenamingId] = useState(null);
   const [renameValue, setRenameValue] = useState("");
-  const elevateResolveRef = useRef(null);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      const until = getAdminElevatedUntil();
-      setElevatedUntil(until);
-      if (until && Date.now() > until) {
-        clearAdminElevated();
-        setElevatedUntil(0);
-      }
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
 
   useEffect(() => {
     if (!session && basePath === "/admin") navigate(adminPath(basePath, ""), { replace: true });
@@ -204,61 +177,6 @@ export default function AdminSportPrefabPresetsPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  /** Prompt for Danger Mode elevation, resolve with boolean. */
-  const openElevate = () =>
-    new Promise((resolve) => {
-      elevateResolveRef.current = resolve;
-      setElevatePassword("");
-      setElevateCode("");
-      setElevateError("");
-      setElevateStep("password");
-      setElevateModal(true);
-    });
-
-  const handleElevate = async () => {
-    setElevating(true);
-    setElevateError("");
-    try {
-      if (elevateStep === "password") {
-        const res = await fetch(`${API_URL}/admin/elevate/request`, {
-          method: "POST",
-          credentials: "include",
-    headers: {"Content-Type": "application/json", "x-admin-session": session },
-          body: JSON.stringify({ password: elevatePassword }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || "Incorrect password.");
-        if (data.elevated) {
-          setAdminElevated(data.elevatedUntil);
-          setElevatedUntil(getAdminElevatedUntil());
-          setElevateModal(false);
-          elevateResolveRef.current?.(true);
-        } else {
-          setElevateMaskedEmail(data.maskedEmail || "");
-          setElevatePassword("");
-          setElevateStep("code");
-        }
-      } else {
-        const res = await fetch(`${API_URL}/admin/elevate/confirm`, {
-          method: "POST",
-          credentials: "include",
-    headers: {"Content-Type": "application/json", "x-admin-session": session },
-          body: JSON.stringify({ code: elevateCode }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || "Invalid code");
-        setAdminElevated(data.elevatedUntil);
-        setElevatedUntil(getAdminElevatedUntil());
-        setElevateModal(false);
-        elevateResolveRef.current?.(true);
-      }
-    } catch (err) {
-      setElevateError(err.message || "Request failed.");
-    } finally {
-      setElevating(false);
-    }
-  };
-
   /** Open confirmation modal and return promise resolving to boolean. */
   const openConfirm = (title, message) =>
     new Promise((resolve) => {
@@ -268,10 +186,6 @@ export default function AdminSportPrefabPresetsPage() {
   const handleDelete = async (preset) => {
     if (!isOwner) return;
     if (deletingId) return;
-    if (!isAdminElevated()) {
-      const elevated = await openElevate();
-      if (!elevated) return;
-    }
     const confirmed = await openConfirm(
       "Delete Prefab Preset",
       `Delete "${preset.name}"? This cannot be undone.`
@@ -398,13 +312,6 @@ export default function AdminSportPrefabPresetsPage() {
     setDragOverId(null);
   };
 
-  const dangerMinsDisplay = (() => {
-    if (!elevatedUntil) return null;
-    const secs = Math.max(0, Math.ceil((elevatedUntil - Date.now()) / 1000));
-    const mins = Math.floor(secs / 60);
-    const s = String(secs % 60).padStart(2, "0");
-    return `${mins}:${s}`;
-  })();
 
   const editPathBase = `${adminPath(basePath, "/prefab-presets")}/${encodeURIComponent(decodedSport)}`;
 
@@ -424,42 +331,7 @@ export default function AdminSportPrefabPresetsPage() {
         />
       )}
 
-      <AdminModal open={elevateModal} onClose={() => { setElevateModal(false); elevateResolveRef.current?.(false); }} title="Danger Mode">
-        {elevateStep === "password" ? (
-          <>
-            <p className="mb-4 text-sm" style={{ color: "var(--adm-muted)" }}>Enter admin password to enable destructive actions for 10 minutes.</p>
-            <AdminInput
-              type="password"
-              value={elevatePassword}
-              onChange={(e) => setElevatePassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleElevate()}
-              placeholder="Password"
-              autoFocus
-              className="mb-3"
-            />
-          </>
-        ) : (
-          <>
-            <p className="mb-4 text-sm" style={{ color: "var(--adm-muted)" }}>A verification code was sent to {elevateMaskedEmail}. Enter it below.</p>
-            <AdminInput
-              type="text"
-              value={elevateCode}
-              onChange={(e) => setElevateCode(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleElevate()}
-              placeholder="6-digit code"
-              autoFocus
-              className="mb-3"
-            />
-          </>
-        )}
-        {elevateError && <p className="mb-3 text-xs" style={{ color: "var(--adm-danger)" }}>{elevateError}</p>}
-        <div className="flex gap-2">
-          <AdminBtn variant="danger" className="flex-1" onClick={handleElevate} disabled={elevating || (elevateStep === "password" ? !elevatePassword : !elevateCode)}>
-            {elevating ? "Verifying..." : elevateStep === "password" ? "Enable Danger Mode" : "Confirm Code"}
-          </AdminBtn>
-          <AdminBtn variant="secondary" onClick={() => { setElevateModal(false); elevateResolveRef.current?.(false); }}>Cancel</AdminBtn>
-        </div>
-      </AdminModal>
+
 
       <AdminHeader
         title={`${decodedSport} Prefab Presets`}
@@ -467,11 +339,6 @@ export default function AdminSportPrefabPresetsPage() {
         backTo={`${adminPath(basePath, "/app")}`}
         actions={
           <div className="flex items-center gap-2">
-            {dangerMinsDisplay && (
-              <span className="animate-pulse rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider" style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}>
-                ⚠ Danger · {dangerMinsDisplay}
-              </span>
-            )}
             <AdminBtn variant="primary" size="sm" onClick={() => navigate(`${editPathBase}/new/edit`)}>
               <FiPlus className="mr-1 inline" /> New Prefab Preset
             </AdminBtn>
