@@ -2120,7 +2120,7 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError, can
  * and per-play shareable link copying. Redirects to /admin if not authenticated.
  */
 export default function AdminPlaysPage() {
-  const { basePath, hasPerm, hasSportScope, isOwner } = useAdmin();
+  const { basePath, hasPerm, hasSportScope, isOwner, ownsResource, canModifyResource } = useAdmin();
   const navigate = useNavigate();
   const location = useLocation();
   const session = (typeof window !== "undefined" && window.location.pathname.startsWith("/staff") ? null : sessionStorage.getItem(SESSION_KEY)) || "";
@@ -3072,14 +3072,17 @@ export default function AdminPlaysPage() {
                       onTagsUpdate={handleUpdateTags}
                       onRename={handleRenamePlay}
                       allTags={allTags}
-                      canEdit={canEditPlayContent}
-                      canDelete={isOwner}
+                      // Ownership: staff can edit/rename/retag/delete plays they created
+                      // without the corresponding "others" permission.
+                      canEdit={canModifyResource(play.createdBy, "plays.editContent")}
+                      canDelete={isOwner || ownsResource(play.createdBy) || hasPerm("plays.delete")}
                       canMove={isOwner}
                       canDuplicate={canAddPlays}
                       canAddToSection={canAddPlaysToPlaybooks}
-                      canEditTags={canEditPlayTags}
-                      canRename={canRenamePlays}
+                      canEditTags={canModifyResource(play.createdBy, "plays.editTags")}
+                      canRename={canModifyResource(play.createdBy, "plays.rename")}
                       canCopyShareLinks={canCopyShareLinks}
+                      isOwnPlay={ownsResource(play.createdBy)}
                     />
                   </div>
                 ))}

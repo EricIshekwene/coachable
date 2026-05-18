@@ -368,6 +368,37 @@ export function requirePerm(path) {
 }
 
 /**
+ * Returns true if the actor created the given resource (compares
+ * `createdBy` against the actor's user id). Owner short-circuits.
+ *
+ * @param {{ isOwner: boolean, userId: string | null }} actor
+ * @param {string | null | undefined} createdBy
+ * @returns {boolean}
+ */
+export function actorOwnsResource(actor, createdBy) {
+  if (!actor) return false;
+  if (actor.isOwner) return true;
+  if (!createdBy || !actor.userId) return false;
+  return createdBy === actor.userId;
+}
+
+/**
+ * Returns true if the actor may modify the resource — either because they
+ * created it (always allowed), they are the owner, or they hold the
+ * specified permission for editing/deleting others' resources.
+ *
+ * @param {{ isOwner: boolean, userId: string | null, permissions: object | null }} actor
+ * @param {string | null | undefined} createdBy
+ * @param {string} permPath
+ */
+export function actorCanModify(actor, createdBy, permPath) {
+  if (!actor) return false;
+  if (actor.isOwner) return true;
+  if (actorOwnsResource(actor, createdBy)) return true;
+  return actorHasPerm(actor, permPath);
+}
+
+/**
  * Factory: middleware that requires the actor has at least one of the listed
  * permissions. Useful for endpoints that accept multiple kinds of edits
  * (e.g. PATCH /admin/plays/:id which can rename, retag, or edit content —

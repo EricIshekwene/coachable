@@ -102,6 +102,7 @@ export function AdminProvider({ children, basePath = "/admin", mode = "admin" })
   const isOwner = isStaffMode
     ? Boolean(staffSession?.isOwner)
     : true; // /admin login is owner-equivalent
+  const userId = isStaffMode ? (staffSession?.userId || null) : null;
   const permissions = isStaffMode ? (staffSession?.permissions ?? null) : null;
   // Danger Mode only via legacy /admin
   const canDangerMode = !isStaffMode;
@@ -123,6 +124,29 @@ export function AdminProvider({ children, basePath = "/admin", mode = "admin" })
     return scope.some((s) => String(s ?? "").trim().toLowerCase() === target);
   }
 
+  /**
+   * Did the current actor create the given resource? Owner short-circuits true.
+   * @param {string | null | undefined} createdBy
+   * @returns {boolean}
+   */
+  function ownsResource(createdBy) {
+    if (isOwner) return true;
+    if (!createdBy || !userId) return false;
+    return createdBy === userId;
+  }
+
+  /**
+   * Can the current actor modify a resource — either because they own it
+   * (always allowed) or because they hold the listed "manage others'" perm.
+   * @param {string | null | undefined} createdBy
+   * @param {string} permPath
+   * @returns {boolean}
+   */
+  function canModifyResource(createdBy, permPath) {
+    if (ownsResource(createdBy)) return true;
+    return hasPerm(permPath);
+  }
+
   return (
     <AdminContext.Provider
       value={{
@@ -131,9 +155,12 @@ export function AdminProvider({ children, basePath = "/admin", mode = "admin" })
         basePath,
         authMode,
         isOwner,
+        userId,
         permissions,
         hasPerm,
         hasSportScope,
+        ownsResource,
+        canModifyResource,
         canDangerMode,
         sessionLoaded,
       }}

@@ -12,6 +12,8 @@ import {
   redactByPerm,
   actorHasPerm,
   actorHasSportScope,
+  actorOwnsResource,
+  actorCanModify,
   mergeStaffPermissions,
   writeAudit,
 } from "../middleware/staffAuth.js";
@@ -183,6 +185,24 @@ export function requireElevated(req, res, next) {
     return res.status(403).json({ error: "Danger Mode required. Re-authenticate to perform this action." });
   }
   next();
+}
+
+/**
+ * Boolean form of `requireElevated`. True only if the request carries a
+ * legacy admin session that has been elevated within ELEVATED_TTL_MS.
+ * Used by ownership-aware delete handlers that need to keep Danger Mode
+ * for owner deletions while still letting staff delete their own resources.
+ *
+ * @param {import('express').Request} req
+ * @returns {boolean}
+ */
+export function isLegacyAdminElevated(req) {
+  const sid = resolveSessionId(req);
+  if (!sid || !sessions.has(sid)) return false;
+  const session = sessions.get(sid);
+  if (Date.now() > session.expiresAt) return false;
+  if (!session.elevatedAt) return false;
+  return Date.now() - session.elevatedAt <= ELEVATED_TTL_MS;
 }
 
 // GET /admin/session — verify cookie-based session for auto-login
@@ -842,6 +862,7 @@ function toPlatformPlayResponse(row) {
     tags: row.tags || [],
     isFeatured: row.is_featured,
     sortOrder: row.sort_order,
+    createdBy: row.created_by || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -928,8 +949,8 @@ router.post("/plays", requireAdminOrStaff, requirePerm("plays.add"), requireSpor
 
     const { rows } = await pool.query(
       `INSERT INTO platform_plays
-         (title, description, sport, play_data, thumbnail_url, tags, is_featured, sort_order, folder_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         (title, description, sport, play_data, thumbnail_url, tags, is_featured, sort_order, folder_id, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
       [
         title.trim(),
@@ -941,8 +962,10 @@ router.post("/plays", requireAdminOrStaff, requirePerm("plays.add"), requireSpor
         isFeatured ?? false,
         sortOrder ?? 0,
         folderId || null,
+        req.actor?.userId || null,
       ]
     );
+    writeAudit(req, "play.create", { targetType: "platform_play", targetId: rows[0].id });
     res.status(201).json({ play: toPlatformPlayResponse(rows[0]) });
   } catch (err) {
     next(err);
@@ -950,18 +973,28 @@ router.post("/plays", requireAdminOrStaff, requirePerm("plays.add"), requireSpor
 });
 
 // PATCH /admin/plays/:id — update a platform play
-router.patch("/plays/:id", requireAdminOrStaff, requireAnyPerm(["plays.rename", "plays.editTags", "plays.editContent"]), requireSportScope("plays.sportScope", resolveSportForPlatformPlay), async (req, res, next) => {
+router.patch("/plays/:id", requireAdminOrStaff, requireSportScope("plays.sportScope", resolveSportForPlatformPlay), async (req, res, next) => {
   try {
     const { title, description, sport, playData, thumbnail, tags, isFeatured, sortOrder, folderId } = req.body;
     const actor = req.actor;
 
-    if (title !== undefined && !actorHasPerm(actor, "plays.rename")) {
+    // Load the play's creator so staff can edit their OWN plays without
+    // needing the per-field permission.
+    const { rows: existingRows } = await pool.query(
+      `SELECT created_by FROM platform_plays WHERE id = $1`,
+      [req.params.id]
+    );
+    if (!existingRows.length) return res.status(404).json({ error: "Play not found" });
+    const createdBy = existingRows[0].created_by;
+    const ownsResource = actorOwnsResource(actor, createdBy);
+
+    if (title !== undefined && !ownsResource && !actorHasPerm(actor, "plays.rename")) {
       return res.status(403).json({ error: "Forbidden", missingPermission: "plays.rename" });
     }
-    if (tags !== undefined && !actorHasPerm(actor, "plays.editTags")) {
+    if (tags !== undefined && !ownsResource && !actorHasPerm(actor, "plays.editTags")) {
       return res.status(403).json({ error: "Forbidden", missingPermission: "plays.editTags" });
     }
-    if ((description !== undefined || playData !== undefined || thumbnail !== undefined) && !actorHasPerm(actor, "plays.editContent")) {
+    if ((description !== undefined || playData !== undefined || thumbnail !== undefined) && !ownsResource && !actorHasPerm(actor, "plays.editContent")) {
       return res.status(403).json({ error: "Forbidden", missingPermission: "plays.editContent" });
     }
     if (!actor?.isOwner && (sport !== undefined || isFeatured !== undefined || sortOrder !== undefined || folderId !== undefined)) {
@@ -1027,8 +1060,28 @@ router.post("/plays/:id/restore", requireOwnerOrLegacyAdmin, async (req, res, ne
 });
 
 // DELETE /admin/plays/:id — delete a platform play (requires Danger Mode)
-router.delete("/plays/:id", requireElevated, async (req, res, next) => {
+router.delete("/plays/:id", requireAdminOrStaff, async (req, res, next) => {
   try {
+    const { rows: existingRows } = await pool.query(
+      `SELECT created_by FROM platform_plays WHERE id = $1`,
+      [req.params.id]
+    );
+    if (!existingRows.length) return res.status(404).json({ error: "Play not found" });
+    const createdBy = existingRows[0].created_by;
+
+    // Authorization:
+    //  - Staff can delete a play they created. Deleting someone else's play
+    //    requires `plays.delete` (staff don't typically have this).
+    //  - Owner via legacy_admin session must be in Danger Mode (OTP elevated).
+    //  - Owner via owner_jwt can delete directly (no Danger Mode infra in JWT path).
+    if (!req.actor.isOwner) {
+      if (!actorOwnsResource(req.actor, createdBy) && !actorHasPerm(req.actor, "plays.delete")) {
+        return res.status(403).json({ error: "Cannot delete plays you didn't create" });
+      }
+    } else if (req.actor.authMode === "legacy_admin" && !isLegacyAdminElevated(req)) {
+      return res.status(403).json({ error: "Danger Mode required. Re-authenticate to perform this action." });
+    }
+
     // Clear any page sections referencing this play before deleting
     const { rows: clearedSections } = await pool.query(
       `UPDATE page_sections SET play_id = NULL, updated_at = now()
@@ -1036,6 +1089,7 @@ router.delete("/plays/:id", requireElevated, async (req, res, next) => {
       [req.params.id]
     );
     await pool.query("DELETE FROM platform_plays WHERE id = $1", [req.params.id]);
+    writeAudit(req, "play.delete", { targetType: "platform_play", targetId: req.params.id, metadata: { wasCreatedBy: createdBy } });
     res.json({ ok: true, clearedSections });
   } catch (err) {
     next(err);
@@ -1684,12 +1738,13 @@ router.post("/prefabs", requireAdminOrStaff, requirePerm("prefabs.manage"), asyn
   }
   try {
     const { rows } = await pool.query(
-      `INSERT INTO admin_prefabs (label, prefab_data)
-       VALUES ($1, $2)
-       RETURNING id, label, prefab_data, created_at`,
-      [label, prefab_data]
+      `INSERT INTO admin_prefabs (label, prefab_data, created_by)
+       VALUES ($1, $2, $3)
+       RETURNING id, label, prefab_data, created_at, created_by`,
+      [label, prefab_data, req.actor?.userId || null]
     );
     const row = rows[0];
+    writeAudit(req, "adminPrefab.create", { targetType: "admin_prefab", targetId: row.id });
     res.status(201).json({
       prefab: {
         ...row.prefab_data,
@@ -1705,15 +1760,24 @@ router.post("/prefabs", requireAdminOrStaff, requirePerm("prefabs.manage"), asyn
 
 /**
  * DELETE /admin/prefabs/:id
- * Delete an admin prefab by ID.
+ * Staff can delete admin prefabs they created without `prefabs.manage`;
+ * deleting someone else's still requires the permission.
  */
-router.delete("/prefabs/:id", requireAdminOrStaff, requirePerm("prefabs.manage"), async (req, res, next) => {
+router.delete("/prefabs/:id", requireAdminOrStaff, async (req, res, next) => {
   try {
-    const { rowCount } = await pool.query(
-      `DELETE FROM admin_prefabs WHERE id = $1`,
+    const { rows: existingRows } = await pool.query(
+      `SELECT created_by FROM admin_prefabs WHERE id = $1`,
       [req.params.id]
     );
-    if (!rowCount) return res.status(404).json({ error: "Prefab not found" });
+    if (!existingRows.length) return res.status(404).json({ error: "Prefab not found" });
+    const createdBy = existingRows[0].created_by;
+
+    if (!actorCanModify(req.actor, createdBy, "prefabs.manage")) {
+      return res.status(403).json({ error: "Cannot delete prefabs you didn't create" });
+    }
+
+    await pool.query(`DELETE FROM admin_prefabs WHERE id = $1`, [req.params.id]);
+    writeAudit(req, "adminPrefab.delete", { targetType: "admin_prefab", targetId: req.params.id, metadata: { wasCreatedBy: createdBy } });
     res.json({ ok: true });
   } catch (err) {
     next(err);
@@ -1731,6 +1795,7 @@ function toSportPresetResponse(row) {
     playData: row.play_data,
     sortOrder: row.sort_order,
     isHidden: row.is_hidden ?? true,
+    createdBy: row.created_by || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -1823,11 +1888,12 @@ router.post("/sport-presets/:sport", requireAdminOrStaff, requirePerm("presets.c
     const { name, playData } = req.body;
     if (!playData) return res.status(400).json({ error: "playData is required" });
     const { rows } = await pool.query(
-      `INSERT INTO sport_presets (sport, name, play_data, sort_order)
-       VALUES ($1, $2, $3, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM sport_presets WHERE sport = $1))
+      `INSERT INTO sport_presets (sport, name, play_data, sort_order, created_by)
+       VALUES ($1, $2, $3, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM sport_presets WHERE sport = $1), $4)
        RETURNING *`,
-      [sport, (name || "Preset").trim(), JSON.stringify(playData)]
+      [sport, (name || "Preset").trim(), JSON.stringify(playData), req.actor?.userId || null]
     );
+    writeAudit(req, "preset.create", { targetType: "sport_preset", targetId: rows[0].id });
     res.status(201).json({ preset: toSportPresetResponse(rows[0]) });
   } catch (err) {
     next(err);
@@ -1838,10 +1904,21 @@ router.post("/sport-presets/:sport", requireAdminOrStaff, requirePerm("presets.c
  * Update an existing preset (play data and/or name).
  * @route PATCH /admin/sport-presets/:sport/:id
  */
-router.patch("/sport-presets/:sport/:id", requireAdminOrStaff, requirePerm("presets.edit"), requireSportScope("presets.sportScope"), async (req, res, next) => {
+router.patch("/sport-presets/:sport/:id", requireAdminOrStaff, requireSportScope("presets.sportScope"), async (req, res, next) => {
   try {
     const { sport, id } = req.params;
     const { name, playData, isHidden } = req.body;
+
+    // Ownership-aware: staff editing their own preset doesn't need presets.edit.
+    const { rows: existingRows } = await pool.query(
+      `SELECT created_by FROM sport_presets WHERE id = $1 AND LOWER(sport) = LOWER($2)`,
+      [id, sport]
+    );
+    if (!existingRows.length) return res.status(404).json({ error: "Preset not found" });
+    if (!actorCanModify(req.actor, existingRows[0].created_by, "presets.edit")) {
+      return res.status(403).json({ error: "Forbidden", missingPermission: "presets.edit" });
+    }
+
     const sets = [];
     const vals = [];
     if (name !== undefined) { sets.push(`name = $${vals.length + 1}`); vals.push(name.trim()); }
@@ -1855,6 +1932,7 @@ router.patch("/sport-presets/:sport/:id", requireAdminOrStaff, requirePerm("pres
       vals
     );
     if (!rows.length) return res.status(404).json({ error: "Preset not found" });
+    writeAudit(req, "preset.update", { targetType: "sport_preset", targetId: id });
     res.json({ preset: toSportPresetResponse(rows[0]) });
   } catch (err) {
     next(err);
@@ -1865,14 +1943,30 @@ router.patch("/sport-presets/:sport/:id", requireAdminOrStaff, requirePerm("pres
  * Delete a sport preset. Requires elevated (Danger Mode) session.
  * @route DELETE /admin/sport-presets/:sport/:id
  */
-router.delete("/sport-presets/:sport/:id", requireElevated, async (req, res, next) => {
+router.delete("/sport-presets/:sport/:id", requireAdminOrStaff, requireSportScope("presets.sportScope"), async (req, res, next) => {
   try {
     const { sport, id } = req.params;
-    const { rowCount } = await pool.query(
+
+    const { rows: existingRows } = await pool.query(
+      `SELECT created_by FROM sport_presets WHERE id = $1 AND LOWER(sport) = LOWER($2)`,
+      [id, sport]
+    );
+    if (!existingRows.length) return res.status(404).json({ error: "Preset not found" });
+    const createdBy = existingRows[0].created_by;
+
+    if (!req.actor.isOwner) {
+      if (!actorOwnsResource(req.actor, createdBy) && !actorHasPerm(req.actor, "presets.edit")) {
+        return res.status(403).json({ error: "Cannot delete presets you didn't create" });
+      }
+    } else if (req.actor.authMode === "legacy_admin" && !isLegacyAdminElevated(req)) {
+      return res.status(403).json({ error: "Danger Mode required. Re-authenticate to perform this action." });
+    }
+
+    await pool.query(
       "DELETE FROM sport_presets WHERE id = $1 AND LOWER(sport) = LOWER($2)",
       [id, sport]
     );
-    if (!rowCount) return res.status(404).json({ error: "Preset not found" });
+    writeAudit(req, "preset.delete", { targetType: "sport_preset", targetId: id, metadata: { wasCreatedBy: createdBy } });
     res.json({ ok: true });
   } catch (err) {
     next(err);
@@ -1893,6 +1987,7 @@ function toSportPrefabPresetResponse(row) {
     prefabData: row.prefab_data,
     sortOrder: row.sort_order,
     isHidden: row.is_hidden ?? true,
+    createdBy: row.created_by || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -1992,11 +2087,12 @@ router.post("/sport-prefab-presets/:sport", requireAdminOrStaff, requirePerm("pr
       return res.status(400).json({ error: "prefabData must include at least one player, ball, or cone" });
     }
     const { rows } = await pool.query(
-      `INSERT INTO sport_prefab_presets (sport, name, prefab_data, sort_order)
-       VALUES ($1, $2, $3, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM sport_prefab_presets WHERE sport = $1))
+      `INSERT INTO sport_prefab_presets (sport, name, prefab_data, sort_order, created_by)
+       VALUES ($1, $2, $3, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM sport_prefab_presets WHERE sport = $1), $4)
        RETURNING *`,
-      [sport, (name || "Prefab").trim(), JSON.stringify(prefabData)]
+      [sport, (name || "Prefab").trim(), JSON.stringify(prefabData), req.actor?.userId || null]
     );
+    writeAudit(req, "prefabPreset.create", { targetType: "sport_prefab_preset", targetId: rows[0].id });
     res.status(201).json({ preset: toSportPrefabPresetResponse(rows[0]) });
   } catch (err) {
     next(err);
@@ -2005,12 +2101,24 @@ router.post("/sport-prefab-presets/:sport", requireAdminOrStaff, requirePerm("pr
 
 /**
  * Update an existing prefab preset (name, prefab data, and/or hidden state).
+ * Staff can edit prefab presets they created without needing `prefabs.manage`;
+ * editing someone else's requires the permission.
  * @route PATCH /admin/sport-prefab-presets/:sport/:id
  */
-router.patch("/sport-prefab-presets/:sport/:id", requireAdminOrStaff, requirePerm("prefabs.manage"), requireSportScope("presets.sportScope"), async (req, res, next) => {
+router.patch("/sport-prefab-presets/:sport/:id", requireAdminOrStaff, requireSportScope("presets.sportScope"), async (req, res, next) => {
   try {
     const { sport, id } = req.params;
     const { name, prefabData, isHidden } = req.body;
+
+    const { rows: existingRows } = await pool.query(
+      `SELECT created_by FROM sport_prefab_presets WHERE id = $1 AND LOWER(sport) = LOWER($2)`,
+      [id, sport]
+    );
+    if (!existingRows.length) return res.status(404).json({ error: "Prefab preset not found" });
+    if (!actorCanModify(req.actor, existingRows[0].created_by, "prefabs.manage")) {
+      return res.status(403).json({ error: "Forbidden", missingPermission: "prefabs.manage" });
+    }
+
     const sets = [];
     const vals = [];
     if (name !== undefined) { sets.push(`name = $${vals.length + 1}`); vals.push(String(name).trim()); }
@@ -2045,14 +2153,30 @@ router.patch("/sport-prefab-presets/:sport/:id", requireAdminOrStaff, requirePer
  * Delete a sport prefab preset. Requires elevated (Danger Mode) session.
  * @route DELETE /admin/sport-prefab-presets/:sport/:id
  */
-router.delete("/sport-prefab-presets/:sport/:id", requireElevated, async (req, res, next) => {
+router.delete("/sport-prefab-presets/:sport/:id", requireAdminOrStaff, requireSportScope("presets.sportScope"), async (req, res, next) => {
   try {
     const { sport, id } = req.params;
-    const { rowCount } = await pool.query(
+
+    const { rows: existingRows } = await pool.query(
+      `SELECT created_by FROM sport_prefab_presets WHERE id = $1 AND LOWER(sport) = LOWER($2)`,
+      [id, sport]
+    );
+    if (!existingRows.length) return res.status(404).json({ error: "Prefab preset not found" });
+    const createdBy = existingRows[0].created_by;
+
+    if (!req.actor.isOwner) {
+      if (!actorOwnsResource(req.actor, createdBy) && !actorHasPerm(req.actor, "prefabs.manage")) {
+        return res.status(403).json({ error: "Cannot delete prefab presets you didn't create" });
+      }
+    } else if (req.actor.authMode === "legacy_admin" && !isLegacyAdminElevated(req)) {
+      return res.status(403).json({ error: "Danger Mode required. Re-authenticate to perform this action." });
+    }
+
+    await pool.query(
       "DELETE FROM sport_prefab_presets WHERE id = $1 AND LOWER(sport) = LOWER($2)",
       [id, sport]
     );
-    if (!rowCount) return res.status(404).json({ error: "Prefab preset not found" });
+    writeAudit(req, "prefabPreset.delete", { targetType: "sport_prefab_preset", targetId: id, metadata: { wasCreatedBy: createdBy } });
     res.json({ ok: true });
   } catch (err) {
     next(err);

@@ -636,6 +636,36 @@ CREATE TABLE IF NOT EXISTS sport_prefab_presets (
 CREATE INDEX IF NOT EXISTS sport_prefab_presets_sport_idx ON sport_prefab_presets(sport);
 
 -- ============================================================
+-- Ownership columns for admin-managed assets (staff_admins.md feature).
+-- created_by lets staff edit/delete their own creations without needing the
+-- broader "manage others' resources" permission. NULL = legacy (owner-created).
+-- ============================================================
+
+DO $$ BEGIN
+  ALTER TABLE platform_plays ADD COLUMN created_by UUID REFERENCES users(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+CREATE INDEX IF NOT EXISTS platform_plays_created_by_idx ON platform_plays(created_by);
+
+DO $$ BEGIN
+  ALTER TABLE sport_presets ADD COLUMN created_by UUID REFERENCES users(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+CREATE INDEX IF NOT EXISTS sport_presets_created_by_idx ON sport_presets(created_by);
+
+DO $$ BEGIN
+  ALTER TABLE sport_prefab_presets ADD COLUMN created_by UUID REFERENCES users(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+CREATE INDEX IF NOT EXISTS sport_prefab_presets_created_by_idx ON sport_prefab_presets(created_by);
+
+DO $$ BEGIN
+  ALTER TABLE admin_prefabs ADD COLUMN created_by UUID REFERENCES users(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+CREATE INDEX IF NOT EXISTS admin_prefabs_created_by_idx ON admin_prefabs(created_by);
+
+-- ============================================================
 -- Staff admins (scoped admin invites — see STAFF_ADMIN_PLAN.md)
 -- ============================================================
 
