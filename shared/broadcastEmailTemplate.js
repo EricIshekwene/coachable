@@ -19,6 +19,8 @@ const ALLOWED_TAGS = new Set([
 ]);
 
 const URL_PROTOCOLS = new Set(["http:", "https:", "mailto:", "tel:"]);
+const PLAY_EMBED_PLACEHOLDER = "__COACHABLE_PLAY_EMBED__";
+const PLAY_EMBED_TOKEN_PATTERN = /\{\{playembed\}\}?/gi;
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -201,15 +203,29 @@ export function getBroadcastBodyText(body) {
     .trim();
 }
 
-export function renderBroadcastBodyMarkup({ body = "", recipientName = "", recipientTeam = "" }) {
+export function renderBroadcastBodyMarkup({ body = "", recipientName = "", recipientTeam = "", playEmbedHtml = "" }) {
   const personalizedBody = personalizeMergeTags(body, recipientName, recipientTeam);
-  const sanitized = sanitizeBroadcastBodyMarkup(personalizedBody);
+  const placeholderBody = String(personalizedBody || "").replace(
+    PLAY_EMBED_TOKEN_PATTERN,
+    playEmbedHtml ? PLAY_EMBED_PLACEHOLDER : ""
+  );
+  const sanitized = sanitizeBroadcastBodyMarkup(placeholderBody);
 
   if (!sanitized) {
     return '<p style="margin:0;font-size:16px;line-height:1.75;color:#94a3b8;font-style:italic;">Your formatted message will appear here.</p>';
   }
 
-  return decorateMarkupForEmail(sanitized);
+  let decorated = decorateMarkupForEmail(sanitized);
+  if (playEmbedHtml) {
+    const standalonePattern = new RegExp(
+      `<p[^>]*>\\s*${PLAY_EMBED_PLACEHOLDER}\\s*<\\/p>`,
+      "gi"
+    );
+    decorated = decorated
+      .replace(standalonePattern, playEmbedHtml)
+      .replace(new RegExp(PLAY_EMBED_PLACEHOLDER, "g"), playEmbedHtml);
+  }
+  return decorated;
 }
 
 export function buildBroadcastEmailHtml({
@@ -223,20 +239,14 @@ export function buildBroadcastEmailHtml({
 }) {
   const personalizedSubheader = personalizeMergeTags(subheader, recipientName, recipientTeam).trim();
 
-  // Replace {{playEmbed}} sentinel in body with an inline play card HTML before rendering
   const safePlayGifUrl = playEmbed?.gifUrl ? sanitizeUrl(playEmbed.gifUrl) : "";
   const playCardHtml = playEmbed && safePlayGifUrl
-    ? `<div style="margin:0 0 18px;border:1px solid #ece7df;border-radius:12px;overflow:hidden;background:#ffffff;">` +
-      `<div style="padding:12px 16px 8px;border-bottom:1px solid #ece7df;">` +
-      `<p style="margin:0;font-size:13px;font-weight:700;color:#111111;letter-spacing:-0.01em;">${escapeHtml(playEmbed.title || "Play")}</p></div>` +
-      `<img src="${escapeAttribute(safePlayGifUrl)}" alt="${escapeAttribute(playEmbed.title || "Play")}" width="492" style="display:block;width:100%;max-width:492px;border:0;" /></div>`
+    ? `<div style="margin:0 0 18px;">` +
+      `<p style="margin:0 0 5px;font-size:13px;font-weight:700;color:#111111;letter-spacing:-0.01em;">${escapeHtml(playEmbed.title || "Play")}</p>` +
+      `<div style="width:32px;height:3px;border-radius:999px;background-color:#f97316;margin-bottom:10px;"></div>` +
+      `<img src="${escapeAttribute(safePlayGifUrl)}" alt="${escapeAttribute(playEmbed.title || "Play")}" width="492" style="display:block;width:100%;max-width:100%;border:0;border-radius:6px;" /></div>`
     : "";
-
-  const bodyWithEmbed = playCardHtml
-    ? String(body || "").replace(/\{\{playEmbed\}\}/g, playCardHtml)
-    : String(body || "").replace(/\{\{playEmbed\}\}/g, "");
-
-  const bodyHtml = renderBroadcastBodyMarkup({ body: bodyWithEmbed, recipientName, recipientTeam });
+  const bodyHtml = renderBroadcastBodyMarkup({ body, recipientName, recipientTeam, playEmbedHtml: playCardHtml });
   const videoId = extractYouTubeId(youtubeUrl);
   const safeYoutubeUrl = sanitizeUrl(youtubeUrl);
   const safeGifUrl = sanitizeUrl(gifUrl);
@@ -299,13 +309,13 @@ export function buildBroadcastEmailHtml({
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 </head>
-<body style="margin:0;padding:0;background-color:#f7f5f2;font-family:Arial,Helvetica,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f7f5f2;padding:32px 14px;">
+<body style="margin:0;padding:0;background-color:#ffffff;font-family:Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#ffffff;padding:32px 14px;">
     <tr>
       <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;background-color:#ffffff;border:1px solid #ece7df;border-radius:14px;overflow:hidden;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;background-color:#ffffff;">
           <tr>
-            <td style="padding:24px 24px 20px;border-bottom:1px solid #ece7df;background-color:#ffffff;">
+            <td style="padding:24px 24px 20px;background-color:#ffffff;">
               <p style="margin:0;font-size:24px;line-height:1.1;font-weight:700;letter-spacing:-0.03em;color:#111111;">Coachable</p>
               <div style="width:52px;height:3px;border-radius:999px;background-color:#f97316;margin-top:14px;"></div>
             </td>
@@ -325,7 +335,7 @@ export function buildBroadcastEmailHtml({
           </tr>
           <tr>
             <td style="padding:16px 24px 20px;text-align:center;">
-              <p style="margin:0;font-size:12px;line-height:1.5;color:#6b7280;">
+              <p style="margin:0;font-size:12px;line-height:1.5;color:#f97316;">
                 coachableplays.com
               </p>
             </td>

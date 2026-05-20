@@ -2922,7 +2922,7 @@ router.post(
       if (previewTo) {
         const result = await sendBroadcastEmails({
           recipients: [{ email: previewTo, name: "Preview" }],
-          subject: `[TEST] ${subject}`,
+          subject,
           subheader,
           body,
           youtubeUrl,

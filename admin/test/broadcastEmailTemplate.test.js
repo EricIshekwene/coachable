@@ -48,4 +48,58 @@ describe("broadcastEmailTemplate", () => {
     expect(text).toContain("Hello team");
     expect(text).toContain("Item one");
   });
+
+  it("renders an inline play embed when the body contains the sentinel", () => {
+    const html = buildBroadcastEmailHtml({
+      body: "<p>Install this play below:</p><p>{{playEmbed}}</p><p>Run it twice.</p>",
+      playEmbed: {
+        title: "10 Loop Inside Tip Shadow",
+        gifUrl: "https://cdn.example.com/play.gif",
+      },
+    });
+
+    expect(html).toContain("10 Loop Inside Tip Shadow");
+    expect(html).toContain('src="https://cdn.example.com/play.gif"');
+    expect(html).toContain("background-color:#f97316");
+    expect(html).not.toContain("{{playEmbed}}");
+  });
+
+  it("removes the play sentinel when no embed metadata is present", () => {
+    const html = buildBroadcastEmailHtml({
+      body: "<p>Hello</p><p>{{playEmbed}}</p><p>World</p>",
+    });
+
+    expect(html).toContain("Hello");
+    expect(html).toContain("World");
+    expect(html).not.toContain("{{playEmbed}}");
+    expect(html).not.toContain("Animated preview");
+  });
+
+  it("renders a play embed even when the token casing is lowercase", () => {
+    const html = buildBroadcastEmailHtml({
+      body: "<p>{{playembed}}</p>",
+      playEmbed: {
+        title: "Switch 10 Inside",
+        gifUrl: "https://cdn.example.com/switch.gif",
+      },
+    });
+
+    expect(html).toContain("Switch 10 Inside");
+    expect(html).toContain('src="https://cdn.example.com/switch.gif"');
+    expect(html).not.toContain("{{playembed}}");
+  });
+
+  it("renders a play embed when the stored token is missing the final brace", () => {
+    const html = buildBroadcastEmailHtml({
+      body: "<p>{{playembed}</p>",
+      playEmbed: {
+        title: "Switch 10 Inside",
+        gifUrl: "https://cdn.example.com/switch.gif",
+      },
+    });
+
+    expect(html).toContain("Switch 10 Inside");
+    expect(html).toContain('src="https://cdn.example.com/switch.gif"');
+    expect(html).not.toContain("{{playembed}");
+  });
 });
