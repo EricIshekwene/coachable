@@ -764,10 +764,13 @@ CREATE TABLE IF NOT EXISTS recurring_email_campaigns (
   active                  BOOLEAN NOT NULL DEFAULT true,
   next_send_at            TIMESTAMPTZ,
   last_sent_at            TIMESTAMPTZ,
+  play_embed              JSONB DEFAULT NULL,
   send_count              INT NOT NULL DEFAULT 0,
   created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE recurring_email_campaigns ADD COLUMN IF NOT EXISTS play_embed JSONB DEFAULT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_recurring_email_active_next
   ON recurring_email_campaigns(active, next_send_at)

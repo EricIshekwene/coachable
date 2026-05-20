@@ -2981,6 +2981,7 @@ export async function runRecurringEmailCampaigns() {
           body: campaign.body,
           youtubeUrl: campaign.youtube_url,
           gifUrl: campaign.gif_url,
+          playEmbed: campaign.play_embed || null,
         });
       }
 
@@ -3031,6 +3032,7 @@ router.post("/email/recurring", requireOwnerOrLegacyAdmin, async (req, res, next
       body,
       youtube_url = "",
       gif_url = "",
+      play_embed = null,
       audience_user_type = "onboarded",
       audience_sport = "",
       frequency_type,
@@ -3060,15 +3062,15 @@ router.post("/email/recurring", requireOwnerOrLegacyAdmin, async (req, res, next
 
     const { rows } = await pool.query(
       `INSERT INTO recurring_email_campaigns
-        (name, subject, subheader, body, youtube_url, gif_url,
+        (name, subject, subheader, body, youtube_url, gif_url, play_embed,
          audience_user_type, audience_sport,
          frequency_type, frequency_day_of_week, frequency_day_of_month,
          frequency_interval_days, frequency_hour, active, next_send_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
        RETURNING *`,
       [
         name.trim(), subject.trim(), subheader, body,
-        youtube_url, gif_url,
+        youtube_url, gif_url, play_embed ? JSON.stringify(play_embed) : null,
         audience_user_type, audience_sport,
         frequency_type, frequency_day_of_week, frequency_day_of_month,
         frequency_interval_days, frequency_hour, active, nextSendAt,
@@ -3094,6 +3096,7 @@ router.put("/email/recurring/:id", requireOwnerOrLegacyAdmin, async (req, res, n
       body,
       youtube_url = "",
       gif_url = "",
+      play_embed = null,
       audience_user_type = "onboarded",
       audience_sport = "",
       frequency_type,
@@ -3130,17 +3133,17 @@ router.put("/email/recurring/:id", requireOwnerOrLegacyAdmin, async (req, res, n
     const { rows } = await pool.query(
       `UPDATE recurring_email_campaigns
           SET name = $1, subject = $2, subheader = $3, body = $4,
-              youtube_url = $5, gif_url = $6,
-              audience_user_type = $7, audience_sport = $8,
-              frequency_type = $9, frequency_day_of_week = $10,
-              frequency_day_of_month = $11, frequency_interval_days = $12,
-              frequency_hour = $13, active = $14, next_send_at = $15,
+              youtube_url = $5, gif_url = $6, play_embed = $7,
+              audience_user_type = $8, audience_sport = $9,
+              frequency_type = $10, frequency_day_of_week = $11,
+              frequency_day_of_month = $12, frequency_interval_days = $13,
+              frequency_hour = $14, active = $15, next_send_at = $16,
               updated_at = NOW()
-        WHERE id = $16
+        WHERE id = $17
         RETURNING *`,
       [
         name.trim(), subject.trim(), subheader, body,
-        youtube_url, gif_url,
+        youtube_url, gif_url, play_embed ? JSON.stringify(play_embed) : null,
         audience_user_type, audience_sport,
         frequency_type, frequency_day_of_week, frequency_day_of_month,
         frequency_interval_days, frequency_hour, active, nextSendAt,
@@ -3198,6 +3201,7 @@ router.post("/email/recurring/:id/send-now", requireOwnerOrLegacyAdmin, async (r
         body: campaign.body,
         youtubeUrl: campaign.youtube_url,
         gifUrl: campaign.gif_url,
+        playEmbed: campaign.play_embed || null,
       });
     }
 

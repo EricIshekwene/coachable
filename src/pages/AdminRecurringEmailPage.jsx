@@ -1,14 +1,14 @@
 /**
  * Admin page for managing recurring email campaigns.
  * Each campaign has a frequency (weekly / monthly / custom interval), a full
- * broadcast composer, and a live countdown to the next scheduled send.
- * The server fires campaigns automatically every 15 minutes.
+ * broadcast composer with play GIF embed support, and a live countdown to
+ * the next scheduled send. The server fires campaigns automatically every 15 minutes.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  FiArrowLeft, FiClock, FiEdit2, FiMail, FiPause, FiPlay, FiPlus,
-  FiSend, FiTrash2, FiX,
+  FiArrowLeft, FiCheck, FiClock, FiEdit2, FiFilm, FiMail,
+  FiPause, FiPlay, FiPlus, FiSend, FiTrash2, FiX,
 } from "react-icons/fi";
 import { useAdmin } from "../admin/AdminContext";
 import { adminApi } from "../admin/adminTransport";
@@ -17,6 +17,8 @@ import {
   AdminSection, AdminSelect, AdminShell, AdminSpinner,
 } from "../admin/components";
 import ConfirmModal from "../components/subcomponents/ConfirmModal";
+import PlayPickerModal from "../components/PlayPickerModal";
+import Slate from "../features/slate/Slate";
 import { SUPPORTED_FIELD_TYPES } from "../features/slate/hooks/useAdvancedSettings";
 import {
   buildBroadcastEmailHtml,
@@ -24,6 +26,7 @@ import {
   getBroadcastBodyText,
   sanitizeBroadcastBodyMarkup,
 } from "../../shared/broadcastEmailTemplate.js";
+import { getLogs as getGifExportDebugLogs, log as logGifExport } from "../utils/gifExportDebugLogger";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -64,6 +67,10 @@ const EMPTY_FORMATS = {
   h2: false, quote: false, bullets: false, numbers: false, link: false,
 };
 
+const PLAY_EMBED_SENTINEL = "{{playEmbed}}";
+const PLAY_EMBED_TOKEN_REGEX = /\{\{playembed\}\}?/gi;
+const hasPlayEmbedToken = (v) => /\{\{playembed\}\}?/i.test(String(v || ""));
+
 const EMPTY_FORM = {
   name: "",
   subject: "",
@@ -71,6 +78,7 @@ const EMPTY_FORM = {
   body: "",
   youtubeUrl: "",
   gifUrl: "",
+  playEmbed: null,
   audienceUserType: "onboarded",
   audienceSport: "",
   frequencyType: "weekly",
@@ -152,21 +160,31 @@ function Countdown({ nextSendAt, active }) {
   return <span>{label}</span>;
 }
 
-// ── Rich text editor (shared with broadcast composer) ─────────────────────────
+// ── Rich text editor ──────────────────────────────────────────────────────────
 
 /**
- * Inline rich-text body editor with toolbar.
- * Calls onChange(html) whenever the content changes.
+ * Inline rich-text body editor with toolbar, merge tag buttons, and play embed support.
+ * Serializes play embed chips back to {{playEmbed}} sentinel on every sync.
+ *
+ * @param {{ value: string, onChange: (html: string) => void,
+ *           playEmbed: object|null, onPlayEmbedChange: (embed: object|null) => void,
+ *           onInsertPlay: () => void, isGenerating: boolean }} props
  */
-function RichBodyEditor({ value, onChange }) {
+function RichBodyEditor({ value, onChange, playEmbed, onPlayEmbedChange, onInsertPlay, isGenerating }) {
   const editorRef = useRef(null);
   const [focused, setFocused] = useState(false);
   const [formats, setFormats] = useState(EMPTY_FORMATS);
 
+  // Sync chip or sentinel into editor DOM whenever body value or playEmbed changes.
   useEffect(() => {
     const el = editorRef.current;
-    if (el && el.innerHTML !== value) el.innerHTML = value || "";
-  }, [value]);
+    if (!el) return;
+    const chipHtml = playEmbed
+      ? `<span data-play-embed="1" data-embed-title="${escapeHtml(playEmbed.title)}" contenteditable="false" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--adm-accent-dim,#fff3e8);border:1px solid color-mix(in srgb,var(--adm-accent,#f97316) 30%,transparent);color:var(--adm-accent,#f97316);font-size:12px;font-weight:600;cursor:default;user-select:none;">🎬 ${escapeHtml(playEmbed.title)} ✓</span>`
+      : PLAY_EMBED_SENTINEL;
+    const rehydrated = String(value || "").replace(PLAY_EMBED_TOKEN_REGEX, chipHtml);
+    if (el.innerHTML !== rehydrated) el.innerHTML = rehydrated;
+  }, [value, playEmbed]);
 
   const syncFormats = useCallback(() => {
     const el = editorRef.current;
@@ -195,9 +213,17 @@ function RichBodyEditor({ value, onChange }) {
   }, [syncFormats]);
 
   const sync = useCallback(() => {
-    onChange(editorRef.current?.innerHTML ?? "");
+    const raw = editorRef.current?.innerHTML ?? "";
+    // Serialize chip spans back to sentinel token for storage
+    const tokenized = raw.replace(
+      /<span[^>]*data-play-embed[^>]*>[\s\S]*?<\/span>/gi,
+      PLAY_EMBED_SENTINEL
+    );
+    onChange(tokenized);
+    // If sentinel was deleted by the user, clear the embed
+    if (!hasPlayEmbedToken(tokenized)) onPlayEmbedChange?.(null);
     syncFormats();
-  }, [onChange, syncFormats]);
+  }, [onChange, onPlayEmbedChange, syncFormats]);
 
   const focus = useCallback(() => editorRef.current?.focus(), []);
 
@@ -294,6 +320,25 @@ function RichBodyEditor({ value, onChange }) {
             {btn.label}
           </button>
         ))}
+
+        {/* + Play button */}
+        <button
+          type="button"
+          onClick={onInsertPlay}
+          disabled={isGenerating}
+          className={TOOLBAR_BTN_CLASS}
+          style={{
+            backgroundColor: "var(--adm-accent-dim)",
+            color: "var(--adm-accent)",
+            border: "1px solid color-mix(in srgb, var(--adm-accent) 30%, transparent)",
+            opacity: isGenerating ? 0.5 : 1,
+          }}
+        >
+          <span className="flex items-center gap-1">
+            <FiFilm className="text-xs" />
+            + Play
+          </span>
+        </button>
       </div>
 
       <div
@@ -331,8 +376,13 @@ function RichBodyEditor({ value, onChange }) {
 
 /**
  * Full-screen modal for creating or editing a recurring campaign.
+ * Includes play GIF embed support via the hidden Slate canvas.
+ *
+ * @param {{ campaign: object|null, plays: Array, folders: Array,
+ *           playsLoading: boolean, playsError: string,
+ *           onClose: () => void, onSaved: (campaign: object) => void }} props
  */
-function CampaignModal({ campaign, onClose, onSaved }) {
+function CampaignModal({ campaign, plays, folders, playsLoading, playsError, onClose, onSaved }) {
   const [form, setForm] = useState(() =>
     campaign
       ? {
@@ -342,6 +392,7 @@ function CampaignModal({ campaign, onClose, onSaved }) {
           body: campaign.body,
           youtubeUrl: campaign.youtube_url ?? "",
           gifUrl: campaign.gif_url ?? "",
+          playEmbed: campaign.play_embed ?? null,
           audienceUserType: campaign.audience_user_type ?? "onboarded",
           audienceSport: campaign.audience_sport ?? "",
           frequencyType: campaign.frequency_type,
@@ -356,24 +407,169 @@ function CampaignModal({ campaign, onClose, onSaved }) {
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [previewHtml, setPreviewHtml] = useState("");
 
+  // ── Play embed / GIF generation state ──────────────────────────────────────
+  const [showPlayPicker, setShowPlayPicker] = useState(false);
+  // "idle" | "mounting" | "generating" | "uploading" | "error"
+  const [gifPhase, setGifPhase] = useState("idle");
+  const [gifProgress, setGifProgress] = useState(0);
+  const [gifError, setGifError] = useState("");
+  const [gifDebugCopied, setGifDebugCopied] = useState(false);
+  const [slatePlayData, setSlatePlayData] = useState(null);
+  const slatePlayRef = useRef(null);
+  const gifExportRef = useRef(null);
+  const savedBodyRef = useRef(null); // body snapshot before modal opens, for chip insertion
+
+  const isGenerating = gifPhase === "mounting" || gifPhase === "generating" || gifPhase === "uploading";
+
+  // ── Derived ────────────────────────────────────────────────────────────────
   const youtubeId = extractYouTubeId(form.youtubeUrl);
   const bodyText = getBroadcastBodyText(form.body);
   const canSave = form.name.trim() && form.subject.trim() && bodyText.trim();
 
-  useEffect(() => {
-    setPreviewHtml(
+  const previewHtml = useMemo(
+    () =>
       buildBroadcastEmailHtml({
         subheader: form.subheader,
         body: form.body,
         youtubeUrl: form.youtubeUrl,
         gifUrl: form.gifUrl,
+        playEmbed: form.playEmbed,
         recipientName: "Alex Johnson",
         recipientTeam: "Example FC",
-      })
-    );
-  }, [form.subheader, form.body, form.youtubeUrl, form.gifUrl]);
+      }),
+    [form.subheader, form.body, form.youtubeUrl, form.gifUrl, form.playEmbed]
+  );
+
+  // ── GIF generation effect (same pipeline as AdminEmailPage) ────────────────
+  useEffect(() => {
+    if (!slatePlayData || gifPhase !== "mounting") return;
+
+    let cancelled = false;
+    const POLL_MS = 200;
+    const TIMEOUT_MS = 10_000;
+    const start = Date.now();
+    logGifExport(`CampaignModal: mounting hidden Slate for "${slatePlayRef.current?.title || "Play"}"`);
+
+    const poll = setInterval(async () => {
+      if (cancelled) return;
+      const api = gifExportRef.current;
+      const elapsed = Date.now() - start;
+
+      if (!api?.generateGIF || !api?.isCanvasReady?.()) {
+        if (elapsed > TIMEOUT_MS) {
+          clearInterval(poll);
+          if (!cancelled) {
+            setGifPhase("error");
+            setGifError("GIF export timed out waiting for canvas. Try again.");
+          }
+        }
+        return;
+      }
+
+      clearInterval(poll);
+      if (cancelled) return;
+
+      logGifExport("CampaignModal: canvas ready, generating GIF");
+      setGifPhase("generating");
+      try {
+        await new Promise((r) => setTimeout(r, 400));
+        const durationSec = Math.max(1, api.getDurationSec?.() || 10);
+        const preset = api.presets.medium;
+
+        const blob = await api.generateGIF(durationSec, {
+          fps: preset.fps,
+          width: preset.width,
+          onProgress: (p) => { if (!cancelled) setGifProgress(p); },
+        });
+
+        if (cancelled) return;
+        if (!blob) {
+          setGifPhase("error");
+          setGifError("GIF generation failed — canvas not ready. Try again.");
+          return;
+        }
+
+        setGifPhase("uploading");
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(",")[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+
+        const { url } = await adminApi("/admin/email/gif-asset", {
+          method: "POST",
+          body: JSON.stringify({ gif: base64, playTitle: slatePlayRef.current?.title || "" }),
+        });
+
+        if (cancelled) return;
+
+        const play = slatePlayRef.current;
+        const newEmbed = { id: play?.id, title: play?.title || "Play", gifUrl: url };
+
+        // Insert sentinel at the end of the body (or replace existing one)
+        setForm((f) => {
+          const hasExisting = hasPlayEmbedToken(f.body);
+          const newBody = hasExisting
+            ? f.body // sentinel already there, just update embed metadata
+            : f.body.trim()
+              ? `${f.body}<p>${PLAY_EMBED_SENTINEL}</p>`
+              : `<p>${PLAY_EMBED_SENTINEL}</p>`;
+          return { ...f, body: newBody, playEmbed: newEmbed };
+        });
+
+        setGifPhase("idle");
+        setSlatePlayData(null);
+        slatePlayRef.current = null;
+        logGifExport(`CampaignModal: GIF inserted url=${url}`);
+      } catch (err) {
+        if (!cancelled) {
+          logGifExport(`CampaignModal: pipeline failed ${err?.message || String(err)}`);
+          setGifPhase("error");
+          setGifError(err?.message || "GIF generation failed.");
+        }
+      }
+    }, POLL_MS);
+
+    return () => { cancelled = true; clearInterval(poll); };
+  }, [slatePlayData]);
+
+  // ── Play picker handlers ───────────────────────────────────────────────────
+
+  const handleOpenPlayPicker = useCallback(() => {
+    savedBodyRef.current = form.body;
+    setShowPlayPicker(true);
+  }, [form.body]);
+
+  const handleSelectPlay = useCallback((play) => {
+    setShowPlayPicker(false);
+    if (!play?.playData) {
+      setGifPhase("error");
+      setGifError("This play has no animation data.");
+      return;
+    }
+    setGifDebugCopied(false);
+    slatePlayRef.current = play;
+    setGifError("");
+    setGifProgress(0);
+    setSlatePlayData(play.playData);
+    setGifPhase("mounting");
+  }, []);
+
+  const handleCopyGifDebug = useCallback(async () => {
+    const lines = getGifExportDebugLogs(400);
+    const payload = lines.length ? lines.join("\n") : "[GIFEXPORT] no logs captured yet";
+    try {
+      await navigator.clipboard.writeText(payload);
+      setGifDebugCopied(true);
+      setTimeout(() => setGifDebugCopied(false), 1500);
+    } catch {
+      setGifDebugCopied(false);
+    }
+  }, []);
+
+  // ── Form helpers ───────────────────────────────────────────────────────────
 
   const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
@@ -389,6 +585,7 @@ function CampaignModal({ campaign, onClose, onSaved }) {
         body: form.body,
         youtube_url: form.youtubeUrl,
         gif_url: form.gifUrl,
+        play_embed: form.playEmbed || null,
         audience_user_type: form.audienceUserType,
         audience_sport: form.audienceSport,
         frequency_type: form.frequencyType,
@@ -420,10 +617,7 @@ function CampaignModal({ campaign, onClose, onSaved }) {
   }, [campaign, form, canSave, onSaved]);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex overflow-hidden"
-      style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
-    >
+    <div className="fixed inset-0 z-50 flex overflow-hidden" style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
       <div
         className="relative flex h-full w-full max-w-5xl flex-col overflow-hidden mx-auto my-4 rounded-[var(--adm-radius)]"
         style={{ backgroundColor: "var(--adm-bg)" }}
@@ -436,9 +630,7 @@ function CampaignModal({ campaign, onClose, onSaved }) {
           <span className="flex-1 text-base font-semibold" style={{ color: "var(--adm-text)" }}>
             {campaign ? "Edit Campaign" : "New Recurring Campaign"}
           </span>
-          <AdminBtn onClick={onClose} variant="ghost" className="!p-2">
-            <FiX />
-          </AdminBtn>
+          <AdminBtn onClick={onClose} variant="ghost" className="!p-2"><FiX /></AdminBtn>
         </div>
 
         {/* Modal body */}
@@ -457,9 +649,7 @@ function CampaignModal({ campaign, onClose, onSaved }) {
                   />
 
                   <div className="flex flex-col gap-2">
-                    <label className={LABEL_CLASS} style={{ color: "var(--adm-muted)" }}>
-                      Frequency
-                    </label>
+                    <label className={LABEL_CLASS} style={{ color: "var(--adm-muted)" }}>Frequency</label>
                     <div className="flex flex-wrap gap-2">
                       {[
                         { value: "weekly", label: "Weekly" },
@@ -485,7 +675,6 @@ function CampaignModal({ campaign, onClose, onSaved }) {
                     </div>
                   </div>
 
-                  {/* Frequency-specific fields */}
                   <div className="flex flex-wrap gap-3">
                     {form.frequencyType === "weekly" && (
                       <AdminSelect
@@ -494,12 +683,9 @@ function CampaignModal({ campaign, onClose, onSaved }) {
                         onChange={(e) => set("frequencyDayOfWeek", e.target.value)}
                         className="min-w-[140px]"
                       >
-                        {DAYS_OF_WEEK.map((d) => (
-                          <option key={d.value} value={d.value}>{d.label}</option>
-                        ))}
+                        {DAYS_OF_WEEK.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
                       </AdminSelect>
                     )}
-
                     {form.frequencyType === "monthly" && (
                       <AdminSelect
                         label="Day of month"
@@ -507,17 +693,12 @@ function CampaignModal({ campaign, onClose, onSaved }) {
                         onChange={(e) => set("frequencyDayOfMonth", e.target.value)}
                         className="min-w-[120px]"
                       >
-                        {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
-                          <option key={d} value={d}>{d}</option>
-                        ))}
+                        {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => <option key={d} value={d}>{d}</option>)}
                       </AdminSelect>
                     )}
-
                     {form.frequencyType === "custom" && (
                       <div className="flex flex-col gap-1">
-                        <label className={LABEL_CLASS} style={{ color: "var(--adm-muted)" }}>
-                          Every N days
-                        </label>
+                        <label className={LABEL_CLASS} style={{ color: "var(--adm-muted)" }}>Every N days</label>
                         <input
                           type="number"
                           min={1}
@@ -525,28 +706,20 @@ function CampaignModal({ campaign, onClose, onSaved }) {
                           value={form.frequencyIntervalDays}
                           onChange={(e) => set("frequencyIntervalDays", Math.max(1, Number(e.target.value)))}
                           className="w-24 rounded-[var(--adm-radius-sm)] px-3 py-2 text-sm outline-none"
-                          style={{
-                            backgroundColor: "var(--adm-surface)",
-                            border: "1px solid var(--adm-border2)",
-                            color: "var(--adm-text)",
-                          }}
+                          style={{ backgroundColor: "var(--adm-surface)", border: "1px solid var(--adm-border2)", color: "var(--adm-text)" }}
                         />
                       </div>
                     )}
-
                     <AdminSelect
                       label="Send time"
                       value={form.frequencyHour}
                       onChange={(e) => set("frequencyHour", e.target.value)}
                       className="min-w-[130px]"
                     >
-                      {HOURS.map((h) => (
-                        <option key={h.value} value={h.value}>{h.label}</option>
-                      ))}
+                      {HOURS.map((h) => <option key={h.value} value={h.value}>{h.label}</option>)}
                     </AdminSelect>
                   </div>
 
-                  {/* Active toggle */}
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
@@ -578,20 +751,15 @@ function CampaignModal({ campaign, onClose, onSaved }) {
                     onChange={(e) => set("audienceUserType", e.target.value)}
                     className="min-w-[160px]"
                   >
-                    {USER_TYPE_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
+                    {USER_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </AdminSelect>
-
                   <AdminSelect
                     label="Sport"
                     value={form.audienceSport}
                     onChange={(e) => set("audienceSport", e.target.value)}
                     className="min-w-[140px]"
                   >
-                    {SPORT_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
+                    {SPORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </AdminSelect>
                 </div>
               </AdminCard>
@@ -606,7 +774,6 @@ function CampaignModal({ campaign, onClose, onSaved }) {
                     onChange={(e) => set("subject", e.target.value)}
                     placeholder="Email subject…"
                   />
-
                   <AdminInput
                     label="Subheader (optional)"
                     value={form.subheader}
@@ -614,7 +781,80 @@ function CampaignModal({ campaign, onClose, onSaved }) {
                     placeholder="Short line above the body…"
                   />
 
-                  <RichBodyEditor value={form.body} onChange={(html) => set("body", html)} />
+                  <RichBodyEditor
+                    value={form.body}
+                    onChange={(html) => set("body", html)}
+                    playEmbed={form.playEmbed}
+                    onPlayEmbedChange={(embed) => set("playEmbed", embed)}
+                    onInsertPlay={handleOpenPlayPicker}
+                    isGenerating={isGenerating}
+                  />
+
+                  {/* Play embed status chip */}
+                  {form.playEmbed && (
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="flex items-center gap-1.5 rounded-full px-3 py-1"
+                        style={{ backgroundColor: "var(--adm-badge-green-bg)", border: "1px solid var(--adm-border)" }}
+                      >
+                        <FiFilm className="text-xs shrink-0" style={{ color: "var(--adm-badge-green-text)" }} />
+                        <span className="text-xs font-semibold" style={{ color: "var(--adm-badge-green-text)" }}>
+                          {form.playEmbed.title}
+                        </span>
+                        <FiCheck className="text-xs shrink-0" style={{ color: "var(--adm-badge-green-text)" }} />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setForm((f) => ({
+                          ...f,
+                          playEmbed: null,
+                          body: String(f.body || "").replace(PLAY_EMBED_TOKEN_REGEX, "").trim(),
+                        }))}
+                        className="text-xs transition-opacity hover:opacity-70"
+                        style={{ color: "var(--adm-muted)" }}
+                        title="Remove play embed"
+                      >
+                        <FiX />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* GIF generation progress */}
+                  {isGenerating && (
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between text-xs" style={{ color: "var(--adm-muted)" }}>
+                        <span className="flex items-center gap-1.5">
+                          <AdminSpinner size={12} />
+                          {gifPhase === "mounting" ? "Loading play…"
+                            : gifPhase === "generating" ? "Generating GIF…"
+                            : "Uploading…"}
+                        </span>
+                        {gifPhase === "generating" && <span>{Math.round(gifProgress * 100)}%</span>}
+                      </div>
+                      {gifPhase === "generating" && (
+                        <div className="h-1 w-full overflow-hidden rounded-full" style={{ backgroundColor: "var(--adm-border2)" }}>
+                          <div
+                            className="h-full rounded-full transition-[width] duration-150"
+                            style={{ width: `${Math.round(gifProgress * 100)}%`, backgroundColor: "var(--adm-accent)" }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {gifPhase === "error" && gifError && (
+                    <div className="flex flex-col gap-2">
+                      <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{gifError}</p>
+                      <button
+                        type="button"
+                        onClick={handleCopyGifDebug}
+                        className="self-start rounded-lg border px-2.5 py-1 text-xs font-medium transition-opacity hover:opacity-80"
+                        style={{ borderColor: "var(--adm-border)", color: "var(--adm-text)", backgroundColor: "var(--adm-surface2)" }}
+                      >
+                        {gifDebugCopied ? "Copied GIF debug" : "Copy GIF debug"}
+                      </button>
+                    </div>
+                  )}
 
                   <AdminInput
                     label="YouTube URL (optional)"
@@ -650,9 +890,7 @@ function CampaignModal({ campaign, onClose, onSaved }) {
               </AdminCard>
             </AdminSection>
 
-            {error && (
-              <p className="text-sm" style={{ color: "var(--adm-danger)" }}>{error}</p>
-            )}
+            {error && <p className="text-sm" style={{ color: "var(--adm-danger)" }}>{error}</p>}
           </div>
 
           {/* Right: preview */}
@@ -690,6 +928,36 @@ function CampaignModal({ campaign, onClose, onSaved }) {
           </AdminBtn>
         </div>
       </div>
+
+      {/* Play picker modal */}
+      {showPlayPicker && (
+        <PlayPickerModal
+          plays={plays}
+          folders={folders}
+          loading={playsLoading}
+          error={playsError}
+          onSelect={handleSelectPlay}
+          onClose={() => setShowPlayPicker(false)}
+        />
+      )}
+
+      {/* Hidden off-screen Slate for GIF capture */}
+      {slatePlayData && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: "fixed", top: 0, left: 0,
+            width: 1000, height: 700,
+            overflow: "hidden", opacity: 0,
+            pointerEvents: "none",
+            transform: "translateX(-200vw)",
+          }}
+        >
+          <div style={{ display: "flex", width: "100%", height: "100%" }}>
+            <Slate adminMode gifExportRef={gifExportRef} initialPlayData={slatePlayData} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -722,7 +990,6 @@ function CampaignCard({ campaign, onEdit, onDelete, onSendNow, onToggleActive })
   return (
     <AdminCard>
       <div className="flex flex-col gap-4">
-        {/* Header row */}
         <div className="flex items-start gap-3">
           <div className="flex flex-1 flex-col gap-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -739,13 +1006,15 @@ function CampaignCard({ campaign, onEdit, onDelete, onSendNow, onToggleActive })
               >
                 {campaign.active ? "Active" : "Paused"}
               </span>
+              {campaign.play_embed && (
+                <span className="flex items-center gap-1 shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold"
+                  style={{ backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }}>
+                  <FiFilm className="text-[10px]" /> Play GIF
+                </span>
+              )}
             </div>
-            <span className="text-xs truncate" style={{ color: "var(--adm-muted)" }}>
-              {describeFrequency(campaign)}
-            </span>
-            <span className="text-xs truncate" style={{ color: "var(--adm-muted)" }}>
-              Audience: {audienceLabel}
-            </span>
+            <span className="text-xs truncate" style={{ color: "var(--adm-muted)" }}>{describeFrequency(campaign)}</span>
+            <span className="text-xs truncate" style={{ color: "var(--adm-muted)" }}>Audience: {audienceLabel}</span>
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
@@ -779,7 +1048,6 @@ function CampaignCard({ campaign, onEdit, onDelete, onSendNow, onToggleActive })
           </div>
         </div>
 
-        {/* Subject */}
         <div
           className="rounded-[var(--adm-radius-sm)] px-3 py-2 text-sm"
           style={{ backgroundColor: "var(--adm-surface2)", color: "var(--adm-text2)" }}
@@ -788,12 +1056,9 @@ function CampaignCard({ campaign, onEdit, onDelete, onSendNow, onToggleActive })
           <span className="font-medium" style={{ color: "var(--adm-text)" }}>{campaign.subject}</span>
         </div>
 
-        {/* Countdown + stats row */}
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex flex-1 flex-col gap-0.5">
-            <span className="text-xs font-semibold" style={{ color: "var(--adm-muted)" }}>
-              Next send
-            </span>
+            <span className="text-xs font-semibold" style={{ color: "var(--adm-muted)" }}>Next send</span>
             <span
               className="text-lg font-bold tabular-nums"
               style={{ color: campaign.active && campaign.next_send_at ? "var(--adm-accent)" : "var(--adm-muted)" }}
@@ -809,14 +1074,9 @@ function CampaignCard({ campaign, onEdit, onDelete, onSendNow, onToggleActive })
               </span>
             )}
           </div>
-
           <div className="flex flex-col gap-0.5 text-right">
-            <span className="text-xs font-semibold" style={{ color: "var(--adm-muted)" }}>
-              Total sent
-            </span>
-            <span className="text-lg font-bold tabular-nums" style={{ color: "var(--adm-text)" }}>
-              {campaign.send_count ?? 0}
-            </span>
+            <span className="text-xs font-semibold" style={{ color: "var(--adm-muted)" }}>Total sent</span>
+            <span className="text-lg font-bold tabular-nums" style={{ color: "var(--adm-text)" }}>{campaign.send_count ?? 0}</span>
             {campaign.last_sent_at && (
               <span className="text-xs" style={{ color: "var(--adm-muted)" }}>
                 Last: {new Date(campaign.last_sent_at).toLocaleDateString()}
@@ -825,17 +1085,11 @@ function CampaignCard({ campaign, onEdit, onDelete, onSendNow, onToggleActive })
           </div>
         </div>
 
-        {/* Send now button + result */}
         <div className="flex items-center gap-3">
-          <AdminBtn
-            onClick={handleSendNow}
-            disabled={sendingNow}
-            className="text-xs"
-          >
+          <AdminBtn onClick={handleSendNow} disabled={sendingNow} className="text-xs">
             {sendingNow ? <AdminSpinner size={12} /> : <FiSend className="text-xs" />}
             {sendingNow ? "Sending…" : "Send now"}
           </AdminBtn>
-
           {sendResult && (
             <span className="text-xs font-semibold" style={{ color: "var(--adm-badge-green-text)" }}>
               Sent to {sendResult.sent} recipient{sendResult.sent !== 1 ? "s" : ""}
@@ -867,6 +1121,12 @@ export default function AdminRecurringEmailPage() {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Plays + folders fetched once; passed down to CampaignModal for the play picker
+  const [plays, setPlays] = useState([]);
+  const [folders, setFolders] = useState([]);
+  const [playsLoading, setPlaysLoading] = useState(false);
+  const [playsError, setPlaysError] = useState("");
+
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError("");
@@ -881,6 +1141,22 @@ export default function AdminRecurringEmailPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Fetch plays + folders for the play picker
+  useEffect(() => {
+    setPlaysLoading(true);
+    setPlaysError("");
+    Promise.all([
+      adminApi("/admin/plays?picker=1"),
+      adminApi("/admin/platform-folders"),
+    ])
+      .then(([playsRes, foldersRes]) => {
+        setPlays(playsRes.plays || []);
+        setFolders(foldersRes.folders || []);
+      })
+      .catch((err) => setPlaysError(err?.message || "Failed to load plays"))
+      .finally(() => setPlaysLoading(false));
+  }, []);
 
   const handleOpenNew = useCallback(() => {
     setEditingCampaign(null);
@@ -921,7 +1197,9 @@ export default function AdminRecurringEmailPage() {
   const handleSendNow = useCallback(async (id) => {
     const result = await adminApi(`/admin/email/recurring/${id}/send-now`, { method: "POST" });
     setCampaigns((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, last_sent_at: new Date().toISOString(), send_count: (c.send_count ?? 0) + 1, next_send_at: result.next_send_at } : c))
+      prev.map((c) => (c.id === id
+        ? { ...c, last_sent_at: new Date().toISOString(), send_count: (c.send_count ?? 0) + 1, next_send_at: result.next_send_at }
+        : c))
     );
     return result;
   }, []);
@@ -937,6 +1215,7 @@ export default function AdminRecurringEmailPage() {
           body: campaign.body,
           youtube_url: campaign.youtube_url,
           gif_url: campaign.gif_url,
+          play_embed: campaign.play_embed || null,
           audience_user_type: campaign.audience_user_type,
           audience_sport: campaign.audience_sport,
           frequency_type: campaign.frequency_type,
@@ -986,7 +1265,6 @@ export default function AdminRecurringEmailPage() {
 
       <AdminPage>
         <div className="flex flex-col gap-4 overflow-y-auto">
-          {/* Info strip */}
           <div
             className="flex items-start gap-3 rounded-[var(--adm-radius-sm)] px-4 py-3 text-sm"
             style={{ backgroundColor: "var(--adm-surface2)", border: "1px solid var(--adm-border)" }}
@@ -998,18 +1276,14 @@ export default function AdminRecurringEmailPage() {
             </p>
           </div>
 
-          {/* Loading / error */}
           {loading && (
             <div className="flex items-center gap-2 py-6">
               <AdminSpinner size={16} />
               <span className="text-sm" style={{ color: "var(--adm-muted)" }}>Loading campaigns…</span>
             </div>
           )}
-          {loadError && (
-            <p className="text-sm" style={{ color: "var(--adm-danger)" }}>{loadError}</p>
-          )}
+          {loadError && <p className="text-sm" style={{ color: "var(--adm-danger)" }}>{loadError}</p>}
 
-          {/* Empty state */}
           {!loading && !loadError && campaigns.length === 0 && (
             <div className="flex flex-col items-center gap-4 py-16">
               <FiMail className="text-4xl" style={{ color: "var(--adm-muted)" }} />
@@ -1026,7 +1300,6 @@ export default function AdminRecurringEmailPage() {
             </div>
           )}
 
-          {/* Campaign list */}
           {!loading && campaigns.map((c) => (
             <CampaignCard
               key={c.id}
@@ -1040,16 +1313,18 @@ export default function AdminRecurringEmailPage() {
         </div>
       </AdminPage>
 
-      {/* Create / edit modal */}
       {modalOpen && (
         <CampaignModal
           campaign={editingCampaign}
+          plays={plays}
+          folders={folders}
+          playsLoading={playsLoading}
+          playsError={playsError}
           onClose={() => { setModalOpen(false); setEditingCampaign(null); }}
           onSaved={handleSaved}
         />
       )}
 
-      {/* Delete confirmation */}
       <ConfirmModal
         open={Boolean(confirmDelete)}
         message={`Delete "${confirmDelete?.name}"?`}

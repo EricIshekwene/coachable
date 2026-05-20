@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FiCheck, FiChevronLeft, FiChevronRight, FiClock, FiFilm,
-  FiFolder, FiMail, FiSearch, FiSend, FiUsers, FiX,
+  FiMail, FiSend, FiUsers, FiX,
 } from "react-icons/fi";
 import { useAdmin } from "../admin/AdminContext";
 import { adminApi } from "../admin/adminTransport";
@@ -31,6 +31,8 @@ import {
   getBroadcastBodyText,
   sanitizeBroadcastBodyMarkup,
 } from "../../shared/broadcastEmailTemplate.js";
+import { getLogs as getGifExportDebugLogs, log as logGifExport } from "../utils/gifExportDebugLogger";
+import PlayPickerModal from "../components/PlayPickerModal";
 
 const USER_TYPE_OPTIONS = [
   { value: "all", label: "All verified users" },
@@ -59,6 +61,9 @@ const EMPTY_ACTIVE_FORMATS = {
   bold: false, italic: false, underline: false,
   h2: false, quote: false, bullets: false, numbers: false, link: false,
 };
+const PLAY_EMBED_SENTINEL = "{{playEmbed}}";
+const PLAY_EMBED_TOKEN_REGEX = /\{\{playembed\}\}?/gi;
+const hasPlayEmbedToken = (value) => /\{\{playembed\}\}?/i.test(String(value || ""));
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -72,208 +77,6 @@ function insertHtmlAtCursor(html) {
 
 function insertTextAtCursor(text) {
   document.execCommand("insertText", false, text);
-}
-
-// ── Play Picker Modal ─────────────────────────────────────────────────────────
-
-/**
- * Modal for browsing platform plays by folder and searching by title.
- * Calls onSelect(play) when the user confirms a play.
- */
-function PlayPickerModal({ plays, folders, loading, error, onSelect, onClose }) {
-  const [search, setSearch] = useState("");
-  const [activeFolderId, setActiveFolderId] = useState(null); // null = all
-  const [selectedPlay, setSelectedPlay] = useState(null);
-  const searchRef = useRef(null);
-
-  useEffect(() => { searchRef.current?.focus(); }, []);
-
-  const filteredPlays = useMemo(() => {
-    let list = plays;
-    if (activeFolderId !== null) {
-      list = list.filter((p) => p.folderId === activeFolderId);
-    }
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter((p) => p.title?.toLowerCase().includes(q));
-    }
-    return list;
-  }, [plays, activeFolderId, search]);
-
-  const handleConfirm = useCallback(() => {
-    if (!selectedPlay) return;
-    onSelect(selectedPlay);
-  }, [selectedPlay, onSelect]);
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div
-        className="flex w-full max-w-2xl flex-col overflow-hidden rounded-xl"
-        style={{
-          backgroundColor: "var(--adm-surface)",
-          border: "1px solid var(--adm-border)",
-          maxHeight: "80vh",
-          boxShadow: "0 24px 64px rgba(0,0,0,0.5)",
-        }}
-      >
-        {/* Header */}
-        <div
-          className="flex items-center justify-between px-5 py-4"
-          style={{ borderBottom: "1px solid var(--adm-border)" }}
-        >
-          <div className="flex items-center gap-2">
-            <FiFilm style={{ color: "var(--adm-accent)" }} />
-            <span className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>
-              Insert Play GIF
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-lg transition-opacity hover:opacity-70"
-            style={{ color: "var(--adm-muted)" }}
-          >
-            <FiX />
-          </button>
-        </div>
-
-        {/* Search */}
-        <div className="px-5 py-3" style={{ borderBottom: "1px solid var(--adm-border)" }}>
-          <div
-            className="flex items-center gap-2 rounded-lg px-3 py-2"
-            style={{ backgroundColor: "var(--adm-surface2)", border: "1px solid var(--adm-border2)" }}
-          >
-            <FiSearch className="shrink-0 text-sm" style={{ color: "var(--adm-muted)" }} />
-            <input
-              ref={searchRef}
-              type="text"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setActiveFolderId(null); }}
-              placeholder="Search plays…"
-              className="flex-1 bg-transparent text-xs outline-none"
-              style={{ color: "var(--adm-text)" }}
-            />
-            {search && (
-              <button type="button" onClick={() => setSearch("")} style={{ color: "var(--adm-muted)" }}>
-                <FiX className="text-xs" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Body: folders + plays */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Folder tree */}
-          {!search && (
-            <div
-              className="flex w-44 shrink-0 flex-col overflow-y-auto"
-              style={{ borderRight: "1px solid var(--adm-border)" }}
-            >
-              <button
-                type="button"
-                onClick={() => setActiveFolderId(null)}
-                className="px-4 py-2.5 text-left text-xs font-semibold transition-colors"
-                style={{
-                  color: activeFolderId === null ? "var(--adm-accent)" : "var(--adm-text)",
-                  backgroundColor: activeFolderId === null ? "var(--adm-accent-dim)" : "transparent",
-                }}
-              >
-                All plays
-              </button>
-              {folders.map((f) => (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => setActiveFolderId(f.id)}
-                  className="flex items-center gap-2 px-4 py-2.5 text-left text-xs transition-colors"
-                  style={{
-                    color: activeFolderId === f.id ? "var(--adm-accent)" : "var(--adm-text)",
-                    backgroundColor: activeFolderId === f.id ? "var(--adm-accent-dim)" : "transparent",
-                  }}
-                >
-                  <FiFolder className="shrink-0" />
-                  <span className="truncate">{f.name}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Play list */}
-          <div className="flex flex-1 flex-col overflow-y-auto">
-            {loading ? (
-              <div className="flex flex-1 items-center justify-center p-8 gap-2 text-xs" style={{ color: "var(--adm-muted)" }}>
-                <AdminSpinner size={14} /> Loading plays…
-              </div>
-            ) : error ? (
-              <div className="flex flex-1 flex-col items-center justify-center p-8 gap-1 text-xs" style={{ color: "var(--adm-danger)" }}>
-                <span className="font-semibold">Failed to load plays</span>
-                <span style={{ color: "var(--adm-muted)" }}>{error}</span>
-              </div>
-            ) : filteredPlays.length === 0 ? (
-              <div className="flex flex-1 items-center justify-center p-8 text-xs" style={{ color: "var(--adm-muted)" }}>
-                {search ? `No plays match "${search}"` : plays.length === 0 ? "No platform plays found" : "No plays in this folder"}
-              </div>
-            ) : (
-              filteredPlays.map((play) => {
-                const isSelected = selectedPlay?.id === play.id;
-                return (
-                  <button
-                    key={play.id}
-                    type="button"
-                    onClick={() => setSelectedPlay(isSelected ? null : play)}
-                    className="flex items-center gap-3 px-4 py-3 text-left transition-colors"
-                    style={{
-                      backgroundColor: isSelected ? "var(--adm-accent-dim)" : "transparent",
-                      borderBottom: "1px solid var(--adm-border)",
-                    }}
-                  >
-                    <div
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                      style={{ backgroundColor: isSelected ? "var(--adm-accent)" : "var(--adm-surface2)" }}
-                    >
-                      <FiFilm className="text-xs" style={{ color: isSelected ? "#fff" : "var(--adm-muted)" }} />
-                    </div>
-                    <div className="flex min-w-0 flex-col">
-                      <span className="truncate text-xs font-semibold" style={{ color: "var(--adm-text)" }}>
-                        {play.title}
-                      </span>
-                      {play.sport && (
-                        <span className="truncate text-[10px]" style={{ color: "var(--adm-muted)" }}>
-                          {play.sport}
-                        </span>
-                      )}
-                    </div>
-                    {isSelected && <FiCheck className="ml-auto shrink-0" style={{ color: "var(--adm-accent)" }} />}
-                  </button>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div
-          className="flex items-center justify-between px-5 py-4"
-          style={{ borderTop: "1px solid var(--adm-border)" }}
-        >
-          <span className="text-xs" style={{ color: "var(--adm-muted)" }}>
-            {selectedPlay ? `Selected: ${selectedPlay.title}` : "Select a play to insert"}
-          </span>
-          <div className="flex gap-2">
-            <AdminBtn onClick={onClose}>Cancel</AdminBtn>
-            <AdminBtn variant="primary" onClick={handleConfirm} disabled={!selectedPlay}>
-              <FiFilm className="text-sm" />
-              Generate &amp; Insert GIF
-            </AdminBtn>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -317,11 +120,14 @@ export default function AdminEmailPage() {
   const [gifPhase, setGifPhase] = useState("idle");
   const [gifProgress, setGifProgress] = useState(0);
   const [gifError, setGifError] = useState("");
+  const [gifDebugCopied, setGifDebugCopied] = useState(false);
   // Single inline play embed: { id, title, gifUrl } | null
   const [playEmbed, setPlayEmbed] = useState(null);
   const [slatePlayData, setSlatePlayData] = useState(null);
   const slatePlayRef = useRef(null); // full play object for current generation
   const gifExportRef = useRef(null);
+  const lastGifMetricSignatureRef = useRef("");
+  const lastGifWaitSecondRef = useRef(-1);
 
   // ── Derived ─────────────────────────────────────────────────────────────────
   const youtubeId = extractYouTubeId(youtubeUrl);
@@ -357,12 +163,20 @@ export default function AdminEmailPage() {
     // Rehydrate {{playEmbed}} sentinel back to a visual chip when syncing body to DOM
     const chipHtml = playEmbed
       ? `<span data-play-embed="1" data-embed-title="${escapeHtml(playEmbed.title)}" contenteditable="false" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--adm-accent-dim,#fff3e8);border:1px solid color-mix(in srgb,var(--adm-accent,#f97316) 30%,transparent);color:var(--adm-accent,#f97316);font-size:12px;font-weight:600;cursor:default;user-select:none;">🎬 ${escapeHtml(playEmbed.title)} ✓</span>`
-      : "{{playEmbed}}";
-    const rehydrated = (body || "").replace(/\{\{playEmbed\}\}/g, chipHtml);
-    if (editor.innerHTML !== rehydrated) {
-      editor.innerHTML = rehydrated;
-    }
+      : PLAY_EMBED_SENTINEL;
+    const rehydrated = String(body || "").replace(PLAY_EMBED_TOKEN_REGEX, chipHtml);
+      if (editor.innerHTML !== rehydrated) {
+        editor.innerHTML = rehydrated;
+      }
   }, [body, playEmbed]);
+
+  useEffect(() => {
+    if (!playEmbed) return;
+    logGifExport(
+      `AdminEmailPage: playEmbed state set title="${playEmbed.title || "Play"}" ` +
+      `gifUrl=${playEmbed.gifUrl || ""} bodyHasSentinel=${hasPlayEmbedToken(body)}`
+    );
+  }, [playEmbed, body]);
 
   // Fetch plays + folders once on mount
   useEffect(() => {
@@ -388,24 +202,52 @@ export default function AdminEmailPage() {
    * Triggered when gifPhase transitions to "mounting".
    */
   useEffect(() => {
-    if (gifPhase !== "mounting" || !slatePlayData) return;
+    if (!slatePlayData || gifPhase !== "mounting") return;
 
     let cancelled = false;
     const POLL_MS = 200;
-    const TIMEOUT_MS = 20_000;
+    const TIMEOUT_MS = 10_000;
     const start = Date.now();
+    lastGifMetricSignatureRef.current = "";
+    lastGifWaitSecondRef.current = -1;
+    logGifExport(`AdminEmailPage: mounting hidden Slate for "${slatePlayRef.current?.title || "Play"}"`);
 
     const poll = setInterval(async () => {
       if (cancelled) return;
 
       const api = gifExportRef.current;
-      // Wait until both generateGIF and the Konva capture API are ready
+      const metrics = api?.getCanvasMetrics?.();
+      const elapsedMs = Date.now() - start;
+      const elapsedSec = Math.floor(elapsedMs / 1000);
+      const metricSignature = metrics
+        ? `${metrics.stageWidth || 0}x${metrics.stageHeight || 0}|${metrics.captureWidth || 0}x${metrics.captureHeight || 0}|${metrics.ready ? "ready" : "waiting"}`
+        : "no-metrics";
+      if (metricSignature !== lastGifMetricSignatureRef.current) {
+        lastGifMetricSignatureRef.current = metricSignature;
+        logGifExport(
+          `AdminEmailPage: hidden Slate metrics stage=${metrics?.stageWidth || 0}x${metrics?.stageHeight || 0} ` +
+          `capture=${metrics?.captureWidth || 0}x${metrics?.captureHeight || 0} ready=${Boolean(metrics?.ready)}`
+        );
+      } else if (elapsedSec !== lastGifWaitSecondRef.current && elapsedSec > 0) {
+        lastGifWaitSecondRef.current = elapsedSec;
+        logGifExport(
+          `AdminEmailPage: still waiting for hidden Slate after ${elapsedSec}s ` +
+          `(stage=${metrics?.stageWidth || 0}x${metrics?.stageHeight || 0}, capture=${metrics?.captureWidth || 0}x${metrics?.captureHeight || 0})`
+        );
+      }
+      // Wait until the hidden Slate has a real measured stage and a valid crop rect,
+      // not just the presence of capture methods on the ref.
       if (!api?.generateGIF || !api?.isCanvasReady?.()) {
-        if (Date.now() - start > TIMEOUT_MS) {
+        if (elapsedMs > TIMEOUT_MS) {
           clearInterval(poll);
           if (!cancelled) {
             setGifPhase("error");
-            setGifError("Canvas timed out — try again.");
+            const metricText = metrics
+              ? ` Stage ${metrics.stageWidth || 0}x${metrics.stageHeight || 0}, capture ${metrics.captureWidth || 0}x${metrics.captureHeight || 0}.`
+              : "";
+            const message = `GIF export failed after 10 seconds while waiting for a valid hidden capture surface.${metricText}`;
+            logGifExport(message);
+            setGifError(message);
           }
         }
         return;
@@ -414,6 +256,7 @@ export default function AdminEmailPage() {
       clearInterval(poll);
       if (cancelled) return;
 
+      logGifExport("AdminEmailPage: hidden Slate ready, starting GIF generation");
       setGifPhase("generating");
       try {
         // Give the play one extra tick to finish loading
@@ -436,6 +279,7 @@ export default function AdminEmailPage() {
         }
 
         setGifPhase("uploading");
+        logGifExport(`AdminEmailPage: GIF blob ready size=${blob.size} bytes, starting upload`);
 
         // Convert blob → base64 for JSON transport
         const base64 = await new Promise((resolve, reject) => {
@@ -449,6 +293,7 @@ export default function AdminEmailPage() {
           method: "POST",
           body: JSON.stringify({ gif: base64, playTitle: slatePlayRef.current?.title || "" }),
         });
+        logGifExport(`AdminEmailPage: upload complete url=${url || ""}`);
 
         if (cancelled) return;
 
@@ -461,13 +306,14 @@ export default function AdminEmailPage() {
 
           // If a play embed already exists, replace its chip token in place.
           // Otherwise insert the sentinel at the saved cursor position.
-          const SENTINEL = "{{playEmbed}}";
+          const SENTINEL = PLAY_EMBED_SENTINEL;
           const CHIP_ATTR = "data-play-embed";
           const existingChip = editor.querySelector(`[${CHIP_ATTR}]`);
 
           if (existingChip) {
             // Replace existing chip with updated one
             existingChip.setAttribute("data-embed-title", play?.title || "Play");
+            logGifExport(`AdminEmailPage: updated existing play chip for "${play?.title || "Play"}"`);
           } else {
             // Insert chip at saved cursor (or body end)
             const chipHtml = `<span ${CHIP_ATTR}="1" data-embed-title="${escapeHtml(play?.title || "Play")}" contenteditable="false" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--adm-accent-dim,#fff3e8);border:1px solid color-mix(in srgb,var(--adm-accent,#f97316) 30%,transparent);color:var(--adm-accent,#f97316);font-size:12px;font-weight:600;cursor:default;user-select:none;">🎬 ${escapeHtml(play?.title || "Play")} ✓</span>`;
@@ -479,6 +325,7 @@ export default function AdminEmailPage() {
               sel.collapseToEnd();
             }
             document.execCommand("insertHTML", false, ` ${chipHtml} `);
+            logGifExport(`AdminEmailPage: inserted new play chip for "${play?.title || "Play"}"`);
           }
 
           // Serialize body — convert chip back to sentinel token for storage
@@ -488,6 +335,11 @@ export default function AdminEmailPage() {
             SENTINEL
           );
           setBody(tokenized);
+          logGifExport(
+            `AdminEmailPage: body tokenized bodyHasSentinel=${tokenized.includes(SENTINEL)} length=${tokenized.length}`
+          );
+        } else {
+          logGifExport("AdminEmailPage: editor ref missing after upload; play chip was not inserted");
         }
 
         setPlayEmbed({ id: play?.id, title: play?.title || "Play", gifUrl: url });
@@ -497,6 +349,7 @@ export default function AdminEmailPage() {
         savedRangeRef.current = null;
       } catch (err) {
         if (!cancelled) {
+          logGifExport(`AdminEmailPage: generation/upload pipeline failed ${err?.message || String(err)}`);
           setGifPhase("error");
           setGifError(err?.message || "GIF generation failed.");
         }
@@ -507,7 +360,7 @@ export default function AdminEmailPage() {
       cancelled = true;
       clearInterval(poll);
     };
-  }, [gifPhase, slatePlayData]);
+  }, [slatePlayData]);
 
   // ── Editor helpers ───────────────────────────────────────────────────────────
 
@@ -554,11 +407,11 @@ export default function AdminEmailPage() {
     const raw = editor.innerHTML;
     const tokenized = raw.replace(
       /<span[^>]*data-play-embed[^>]*>[\s\S]*?<\/span>/gi,
-      "{{playEmbed}}"
+      PLAY_EMBED_SENTINEL
     );
     setBody(tokenized);
     // If the sentinel was removed by the user, clear playEmbed state
-    if (!tokenized.includes("{{playEmbed}}")) {
+    if (!hasPlayEmbedToken(tokenized)) {
       setPlayEmbed(null);
     }
     updateActiveFormats();
@@ -627,11 +480,24 @@ export default function AdminEmailPage() {
       setGifError("This play has no animation data.");
       return;
     }
+    setGifDebugCopied(false);
     slatePlayRef.current = play;
     setGifError("");
     setGifProgress(0);
     setSlatePlayData(play.playData);
     setGifPhase("mounting");
+  }, []);
+
+  const handleCopyGifDebug = useCallback(async () => {
+    const lines = getGifExportDebugLogs(400);
+    const payload = lines.length ? lines.join("\n") : "[GIFEXPORT] no logs captured yet";
+    try {
+      await navigator.clipboard.writeText(payload);
+      setGifDebugCopied(true);
+      setTimeout(() => setGifDebugCopied(false), 1500);
+    } catch {
+      setGifDebugCopied(false);
+    }
   }, []);
 
   // ── Audience / send ─────────────────────────────────────────────────────────
@@ -668,7 +534,7 @@ export default function AdminEmailPage() {
     } finally {
       setSending(false);
     }
-  }, [subject, subheader, body, youtubeUrl, gifUrl, userType, sport, testEmail]);
+  }, [subject, subheader, body, youtubeUrl, gifUrl, playEmbed, userType, sport, testEmail]);
 
   const handleSendToAll = useCallback(async () => {
     setConfirmOpen(false); setSending(true); setSendResult(null); setSendError("");
@@ -683,7 +549,7 @@ export default function AdminEmailPage() {
     } finally {
       setSending(false);
     }
-  }, [subject, subheader, body, youtubeUrl, gifUrl, userType, sport]);
+  }, [subject, subheader, body, youtubeUrl, gifUrl, playEmbed, userType, sport]);
 
   const isGenerating = gifPhase === "mounting" || gifPhase === "generating" || gifPhase === "uploading";
 
@@ -898,7 +764,7 @@ export default function AdminEmailPage() {
                           type="button"
                           onClick={() => {
                             setPlayEmbed(null);
-                            setBody((prev) => prev.replace(/\{\{playEmbed\}\}/g, "").trim());
+                            setBody((prev) => String(prev || "").replace(PLAY_EMBED_TOKEN_REGEX, "").trim());
                           }}
                           className="text-xs transition-opacity hover:opacity-70"
                           style={{ color: "var(--adm-muted)" }}
@@ -935,7 +801,23 @@ export default function AdminEmailPage() {
                     )}
 
                     {gifPhase === "error" && gifError && (
-                      <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{gifError}</p>
+                      <div className="flex flex-col gap-2">
+                        <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{gifError}</p>
+                        <div>
+                          <button
+                            type="button"
+                            onClick={handleCopyGifDebug}
+                            className="rounded-lg border px-2.5 py-1 text-xs font-medium transition-opacity hover:opacity-80"
+                            style={{
+                              borderColor: "var(--adm-border)",
+                              color: "var(--adm-text)",
+                              backgroundColor: "var(--adm-surface2)",
+                            }}
+                          >
+                            {gifDebugCopied ? "Copied GIF debug" : "Copy GIF debug"}
+                          </button>
+                        </div>
+                      </div>
                     )}
 
                     <p className="text-xs leading-relaxed" style={{ color: "var(--adm-muted)" }}>
@@ -1126,6 +1008,8 @@ export default function AdminEmailPage() {
               <iframe
                 srcDoc={previewHtml}
                 title="Email preview"
+                // Keep scripts disabled in preview. about:srcdoc sandbox warnings are
+                // expected noise here and are not the underlying GIF export failure.
                 sandbox="allow-same-origin"
                 className="h-full w-full border-0 bg-white"
               />
@@ -1168,19 +1052,23 @@ export default function AdminEmailPage() {
           aria-hidden="true"
           style={{
             position: "fixed",
-            left: -2000,
             top: 0,
+            left: 0,
             width: 1000,
             height: 700,
             overflow: "hidden",
+            opacity: 0,
             pointerEvents: "none",
+            transform: "translateX(-200vw)",
           }}
         >
-          <Slate
-            adminMode
-            gifExportRef={gifExportRef}
-            initialPlayData={slatePlayData}
-          />
+          <div style={{ display: "flex", width: "100%", height: "100%" }}>
+            <Slate
+              adminMode
+              gifExportRef={gifExportRef}
+              initialPlayData={slatePlayData}
+            />
+          </div>
         </div>
       )}
     </AdminShell>
