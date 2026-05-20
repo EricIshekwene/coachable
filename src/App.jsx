@@ -33,12 +33,15 @@ import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminUserIssues from "./pages/AdminUserIssues";
 import AdminMobileView from "./pages/AdminMobileView";
 import AdminTestSlate from "./pages/AdminTestSlate";
+import AdminGIFTest from "./pages/AdminGIFTest";
 import AdminDemoVideos from "./pages/AdminDemoVideos";
 import AdminOnePage from "./pages/AdminOnePage";
 import StaffLogin from "./pages/StaffLogin";
 import StaffAcceptInvite from "./pages/StaffAcceptInvite";
 import StaffDashboard from "./pages/StaffDashboard";
 import AdminStaff from "./pages/AdminStaff";
+import AdminEmailPage from "./pages/AdminEmailPage";
+import AdminRecurringEmailPage from "./pages/AdminRecurringEmailPage";
 import RequirePerm from "./admin/RequirePerm";
 import AppLayout from "./layouts/AppLayout";
 import Plays from "./pages/app/Plays";
@@ -337,9 +340,12 @@ export function AppRoutes() {
         <Route path="/admin/user-issues" element={<RequireAdminSession><AdminUserIssues /></RequireAdminSession>} />
         <Route path="/admin/mobile-view" element={<RequireAdminSession><AdminMobileView /></RequireAdminSession>} />
         <Route path="/admin/test" element={<RequireAdminSession><AdminTestSlate /></RequireAdminSession>} />
+        <Route path="/admin/gif-test" element={<RequireAdminSession><AdminGIFTest /></RequireAdminSession>} />
         <Route path="/admin/demo-videos" element={<RequireAdminSession><AdminDemoVideos /></RequireAdminSession>} />
         <Route path="/admin/one-page" element={<RequireAdminSession><AdminOnePage /></RequireAdminSession>} />
         <Route path="/admin/staff" element={<RequireAdminSession><AdminStaff /></RequireAdminSession>} />
+        <Route path="/admin/email" element={<RequireAdminSession><AdminEmailPage /></RequireAdminSession>} />
+        <Route path="/admin/email/recurring" element={<RequireAdminSession><AdminRecurringEmailPage /></RequireAdminSession>} />
       </Route>
 
       {/* Staff admin tree — scoped sub-admins (see STAFF_ADMIN_PLAN.md). */}

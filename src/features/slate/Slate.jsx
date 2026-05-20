@@ -43,7 +43,9 @@ import { getLogs as getAnimDebugLogs, log as logAnimDebug } from "../../animatio
 import { getLogs as getDrawDebugLogs, log as logDrawDebug } from "../../canvas/drawDebugLogger";
 import { getLogs as getKeyToolDebugLogs, log as logKeyToolDebug } from "../../canvas/keyboardToolDebugLogger";
 import { getLogs as getVideoExportDebugLogs, log as logVideoExport } from "../../utils/videoExportDebugLogger";
+import { getLogs as getGifExportDebugLogs } from "../../utils/gifExportDebugLogger";
 import { supportsWebCodecsMP4, createMP4Encoder, isIOSDevice, convertWebMToMP4 } from "../../utils/videoEncoder";
+import { encodeCanvasFramesToGIF, GIF_PRESETS } from "../../utils/gifEncoder";
 import { samplePathAtT } from "../../canvas/drawingGeometry";
 import { getStepColor } from "../../utils/stepColor";
 import { reportError } from "../../utils/errorReporter";
@@ -212,6 +214,12 @@ function Slate({
    * page is responsible for persisting via the admin sport-prefab-presets API.
    */
   onPrefabPresetChange = null,
+  /**
+   * Optional ref populated with `{ generateGIF(durationSec, options) }` once the
+   * canvas capture API is ready. Used by the admin email composer to generate a
+   * GIF from the currently-loaded play without adding UI to the editor itself.
+   */
+  gifExportRef = null,
 }) {
   // When the host page provides `onPrefabPresetChange`, the prefab editor is
   // the entire flow — its autosave persists everything automatically. Hide
@@ -2087,6 +2095,196 @@ function Slate({
       setExportProgress(null);
     }
   }, [playName, onShowMessage, clearSelectionsForCapture, restoreSelections, renderPoseAtTime]);
+
+  /**
+   * Capture every animation frame and encode them into a looping GIF.
+   * Uses the same capture API as video export but outputs `image/gif` via FFmpeg.
+   * Not wired to any editor UI — exposed via `gifExportRef` for the email composer.
+   *
+   * @param {Object} worldRect - Field world-space bounds `{ x, y, width, height }`.
+   * @param {number} [durationSec=10] - How many seconds of animation to capture.
+   * @param {Object} [options] - GIF options forwarded to `encodeCanvasFramesToGIF`.
+   * @param {number} [options.fps=10] - Frames per second (8–15 recommended).
+   * @param {number} [options.width=480] - Output pixel width; height scales to match.
+   * @returns {Promise<Blob|null>} GIF Blob, or null on failure.
+   */
+  const recordGIFExport = useCallback(async (worldRect, durationSec = 10, options = {}) => {
+    const api = screenshotApiRef.current;
+    if (!api?.captureContentCanvas || !api?.setFitCameraForCapture || !api?.restoreCameraAfterCapture ||
+        !api?.hideOverlays || !api?.showOverlays) {
+      onShowMessage?.("GIF export failed", "Capture API not ready.", "error");
+      return null;
+    }
+
+    // Compute content bounds from player/ball positions only — same algorithm as
+    // PlayPreviewCard "fit-distribution". Field bounds are the fallback when there
+    // are no player points, not always included.
+    const fieldRect = worldRect ?? api.getFieldWorldBounds?.();
+    const contentBounds = (() => {
+      const points = [];
+      // All keyframe positions from every track
+      const tracks = animationDataRef.current?.tracks || {};
+      Object.values(tracks).forEach((track) => {
+        (track?.keyframes || []).forEach((kf) => {
+          if (kf?.x != null) points.push({ x: kf.x, y: kf.y ?? 0 });
+        });
+      });
+      // Current player positions (covers plays with no keyframes)
+      Object.values(playersByIdRef.current || {}).forEach((p) => {
+        if (p?.x != null) points.push({ x: p.x, y: p.y ?? 0 });
+      });
+      const ball = ballsByIdRef.current?.["ball-1"];
+      if (ball?.x != null) points.push({ x: ball.x, y: ball.y ?? 0 });
+
+      // Fall back to full field when no player data exists
+      if (!points.length) return fieldRect;
+
+      let left = Number.POSITIVE_INFINITY;
+      let right = Number.NEGATIVE_INFINITY;
+      let top = Number.POSITIVE_INFINITY;
+      let bottom = Number.NEGATIVE_INFINITY;
+      points.forEach(({ x, y }) => {
+        if (x < left) left = x;
+        if (x > right) right = x;
+        if (y < top) top = y;
+        if (y > bottom) bottom = y;
+      });
+
+      // 7% padding around the player bounding box (in world units)
+      const spanW = Math.max(right - left, 1);
+      const spanH = Math.max(bottom - top, 1);
+      const padW = spanW * 0.07;
+      const padH = spanH * 0.07;
+      return { x: left - padW, y: top - padH, width: spanW + padW * 2, height: spanH + padH * 2 };
+    })();
+
+    if (!contentBounds) {
+      onShowMessage?.("GIF export failed", "Field not ready — wait for the canvas to finish loading.", "error");
+      return null;
+    }
+
+    const skipDownload = Boolean(options.skipDownload);
+    const fps = Math.min(15, Math.max(5, Number(options.fps) || GIF_PRESETS.medium.fps));
+    const width = Number(options.width) || GIF_PRESETS.medium.width;
+    const playDurationMs = Math.max(
+      1,
+      Number(animationDataRef.current?.durationMs) || LOOP_SECONDS * 1000
+    );
+    const requestedDurationSec = Math.max(1, Number(durationSec) || 10);
+    const totalFrames = Math.max(1, Math.ceil(fps * requestedDurationSec));
+
+    if (!skipDownload) {
+      setIsExporting(true);
+      setExportProgress(0);
+      setExportError(null);
+    }
+
+    let selectionSaved = null;
+    let cameraSaved = null;
+    let screenRect = null;
+    try {
+      selectionSaved = clearSelectionsForCapture();
+      engineRef.current?.pause?.({ shouldLog: false });
+
+      await waitForAnimationFrame();
+      await waitForAnimationFrame();
+
+      api.hideOverlays();
+      api.flushRender?.();
+
+      // Fit all content into the viewport and get the tight crop rect
+      const fitResult = api.setFitCameraForCapture(contentBounds);
+      cameraSaved = fitResult?.saved ?? null;
+      screenRect = fitResult?.screenRect ?? null;
+
+      const externalOnProgress = typeof options.onProgress === "function" ? options.onProgress : null;
+
+      // Capture all frames first (0–50% progress)
+      const frames = [];
+      for (let i = 0; i < totalFrames; i++) {
+        const playTimeMs = (i / totalFrames) * playDurationMs;
+        renderPoseAtTime(playTimeMs, { flushRenderer: true });
+        api.flushRender?.();
+
+        const canvas = api.captureContentCanvas(screenRect, { pixelRatio: 1, flush: true });
+        if (!canvas) throw new Error(`captureContentCanvas null at frame ${i}/${totalFrames}`);
+        frames.push(canvas);
+
+        if (i % 3 === 0) {
+          const p = (i + 1) / totalFrames * 0.5;
+          setExportProgress(p);
+          externalOnProgress?.(p);
+          await waitForAnimationFrame();
+        }
+      }
+
+      // Encode frames to GIF (50–100% progress)
+      const gifBlob = await encodeCanvasFramesToGIF(frames, {
+        fps,
+        width,
+        onProgress: (p) => {
+          const combined = 0.5 + p * 0.5;
+          setExportProgress(combined);
+          externalOnProgress?.(combined);
+        },
+      });
+
+      if (!skipDownload) {
+        onShowMessage?.("GIF exported", "Download starting...", "success");
+        const url = URL.createObjectURL(gifBlob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${playName || "play"}.gif`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      }
+
+      return gifBlob;
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      if (!skipDownload) setExportError(errorMsg);
+      onShowMessage?.("GIF export failed", errorMsg, "error");
+      return null;
+    } finally {
+      if (cameraSaved) api.restoreCameraAfterCapture?.({ saved: cameraSaved });
+      api.showOverlays?.();
+      if (selectionSaved) restoreSelections(selectionSaved);
+      if (!skipDownload) {
+        setIsExporting(false);
+        setExportProgress(null);
+      }
+    }
+  }, [playName, onShowMessage, clearSelectionsForCapture, restoreSelections, renderPoseAtTime]);
+
+  // Populate gifExportRef so the email composer can trigger GIF generation
+  // without adding any UI to the editor itself.
+  useEffect(() => {
+    if (!gifExportRef) return;
+    gifExportRef.current = {
+      /**
+       * Generate a GIF from the full field bounds of the currently-loaded play.
+       * @param {number} [durationSec=10]
+       * @param {Object} [options] - Forwarded to `encodeCanvasFramesToGIF`.
+       * @returns {Promise<Blob|null>}
+       */
+      generateGIF: (durationSec, options) => {
+        // Bounds are resolved inside recordGIFExport — no need to pass them here.
+        // skipDownload: true prevents the browser file-download trigger and Slate
+        // export UI state from firing; the email page uploads the blob itself.
+        return recordGIFExport(null, durationSec, { ...options, skipDownload: true });
+      },
+      /** Returns the loaded animation duration in seconds (0 if no animation). */
+      getDurationSec: () => (animationDataRef.current?.durationMs || 0) / 1000,
+      /** True once the Konva canvas capture API is fully initialised. */
+      isCanvasReady: () => !!(screenshotApiRef.current?.captureContentCanvas),
+      /** Convenience: the GIF quality presets. */
+      presets: GIF_PRESETS,
+    };
+    return () => {
+      if (gifExportRef) gifExportRef.current = null;
+    };
+  }, [gifExportRef, recordGIFExport]);
+
   const handleExportModalSubmit = useCallback(({ format, region, durationSec, quality }) => {
     setExportModalOpen(false);
     const config = { format, region, durationSec, quality };
@@ -2371,6 +2569,18 @@ function Slate({
     } catch (error) {
       logVideoExport(`copyVideoExportDebug failed err=${error?.message || "clipboard unavailable"}`);
       onShowMessage("Copy video export debug failed", "Clipboard access was denied.", "error");
+      return false;
+    }
+  }, [onShowMessage]);
+
+  const handleCopyGifExportDebug = useCallback(async () => {
+    const lines = getGifExportDebugLogs(400);
+    const payload = lines.length ? lines.join("\n") : "[GIFEXPORT] no logs captured yet";
+    try {
+      await navigator.clipboard.writeText(payload);
+      return true;
+    } catch (error) {
+      onShowMessage("Copy GIF export debug failed", "Clipboard access was denied.", "error");
       return false;
     }
   }, [onShowMessage]);
@@ -4498,6 +4708,7 @@ function Slate({
           onCopyPrefabDebug={handleCopyPrefabDebug}
           onCopyPlaceBallDebug={handleCopyPlaceBallDebug}
           onCopyVideoExportDebug={handleCopyVideoExportDebug}
+          onCopyGifExportDebug={handleCopyGifExportDebug}
           onCopyRecordingDebug={handleCopyRecordingDebug}
           onCopyKfMoveDebug={handleCopyKfMoveDebug}
           onCopyRotationDebug={handleCopyRotationDebug}

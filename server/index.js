@@ -12,7 +12,7 @@ import playRoutes from "./routes/plays.js";
 import folderRoutes from "./routes/folders.js";
 import userRoutes from "./routes/users.js";
 import verificationRoutes from "./routes/verification.js";
-import adminRoutes, { cleanupStaleAccounts, cleanupDeletedTeams } from "./routes/admin.js";
+import adminRoutes, { cleanupStaleAccounts, cleanupDeletedTeams, runRecurringEmailCampaigns } from "./routes/admin.js";
 import sharedRoutes from "./routes/shared.js";
 import errorReportRoutes from "./routes/errorReports.js";
 import platformPlaysRoutes from "./routes/platformPlays.js";
@@ -155,4 +155,17 @@ autoMigrate()
   };
   setTimeout(runTeamCleanup, 60_000); // first run 60s after startup
   setInterval(runTeamCleanup, TEAM_CLEANUP_INTERVAL_MS);
+
+  // Recurring email campaigns: check every 15 minutes for due campaigns
+  const RECURRING_EMAIL_INTERVAL_MS = 15 * 60 * 1000;
+  const runRecurringEmails = () => {
+    runRecurringEmailCampaigns()
+      .then((r) => {
+        if (r.fired > 0) console.log(`Recurring emails: fired ${r.fired} campaign(s)`);
+        if (r.errors.length > 0) r.errors.forEach((e) => console.error("Recurring email error:", e));
+      })
+      .catch((err) => console.error("Recurring email runner error:", err.message));
+  };
+  setTimeout(runRecurringEmails, 90_000); // first run 90s after startup
+  setInterval(runRecurringEmails, RECURRING_EMAIL_INTERVAL_MS);
 });

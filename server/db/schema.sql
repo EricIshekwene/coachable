@@ -736,3 +736,39 @@ CREATE INDEX IF NOT EXISTS idx_audit_actor
   ON admin_audit_log(actor_user_id, occurred_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_action
   ON admin_audit_log(action, occurred_at DESC);
+
+-- ============================================================
+-- Recurring email campaigns (admin-only, owner-gated)
+-- frequency_type: 'weekly' | 'monthly' | 'custom'
+-- weekly:  frequency_day_of_week (0=Sun..6=Sat) + frequency_hour
+-- monthly: frequency_day_of_month (1-31) + frequency_hour
+-- custom:  frequency_interval_days + frequency_hour
+-- All times are stored/computed in UTC.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS recurring_email_campaigns (
+  id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name                    TEXT NOT NULL,
+  subject                 TEXT NOT NULL,
+  subheader               TEXT NOT NULL DEFAULT '',
+  body                    TEXT NOT NULL,
+  youtube_url             TEXT NOT NULL DEFAULT '',
+  gif_url                 TEXT NOT NULL DEFAULT '',
+  audience_user_type      TEXT NOT NULL DEFAULT 'onboarded',
+  audience_sport          TEXT NOT NULL DEFAULT '',
+  frequency_type          TEXT NOT NULL,
+  frequency_day_of_week   INT,
+  frequency_day_of_month  INT,
+  frequency_interval_days INT,
+  frequency_hour          INT NOT NULL DEFAULT 9,
+  active                  BOOLEAN NOT NULL DEFAULT true,
+  next_send_at            TIMESTAMPTZ,
+  last_sent_at            TIMESTAMPTZ,
+  send_count              INT NOT NULL DEFAULT 0,
+  created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_recurring_email_active_next
+  ON recurring_email_campaigns(active, next_send_at)
+  WHERE active = true;

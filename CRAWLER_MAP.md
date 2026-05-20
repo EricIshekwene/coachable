@@ -145,6 +145,7 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 | "export play to JSON", "download play" | [src/utils/exportPlay.js](src/utils/exportPlay.js) |
 | "import play" | [src/utils/importPlay.js](src/utils/importPlay.js) |
 | "video export" | [src/utils/videoEncoder.js](src/utils/videoEncoder.js) |
+| "GIF export", "gif encoder", "play to GIF" | [src/utils/gifEncoder.js](src/utils/gifEncoder.js) |
 | "save play to server" (API client) | [src/utils/apiPlays.js](src/utils/apiPlays.js) |
 | "folders API client" | [src/utils/apiFolders.js](src/utils/apiFolders.js) |
 | "prefabs API client" | [src/utils/prefabsApi.js](src/utils/prefabsApi.js) |
@@ -248,6 +249,7 @@ All under [src/animation/](src/animation/), [src/canvas/](src/canvas/), [src/fea
 | `/admin/user-issues` | [AdminUserIssues.jsx](src/pages/AdminUserIssues.jsx) |
 | `/admin/mobile-view` | [AdminMobileView.jsx](src/pages/AdminMobileView.jsx) |
 | `/admin/test` | [AdminTestSlate.jsx](src/pages/AdminTestSlate.jsx) |
+| `/admin/gif-test` | [AdminGIFTest.jsx](src/pages/AdminGIFTest.jsx) |
 | `/admin/demo-videos` | [AdminDemoVideos.jsx](src/pages/AdminDemoVideos.jsx) |
 | `/admin/one-page` | [AdminOnePage.jsx](src/pages/AdminOnePage.jsx) |
 

@@ -2,7 +2,9 @@ import { Router } from "express";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import pool from "../db/pool.js";
-import { generateCode, sendDangerModeEmail, sendAccountDeletedEmail } from "../lib/email.js";
+import { generateCode, sendDangerModeEmail, sendAccountDeletedEmail, sendBroadcastEmails } from "../lib/email.js";
+import { storeGifAsset, getGifAsset } from "../lib/gifAssetStore.js";
+import { computeNextSendAt } from "../utils/computeNextSendAt.js";
 import {
   requireAdminOrStaff,
   requireOwnerOrLegacyAdmin,
@@ -894,6 +896,9 @@ function filterRowsBySportScope(actor, permPath, rows, getSport) {
 // GET /admin/plays — list admin-curated platform plays only (excludes community submissions)
 router.get("/plays", requireAdminOrStaff, requirePerm("plays.viewFolders"), async (req, res, next) => {
   try {
+    // ?picker=1 — skip the playbook-section exclusion so all platform plays are returned
+    // (used by the email composer play picker which needs the full catalogue)
+    const isPicker = req.query.picker === "1";
     const { rows } = await pool.query(
       `SELECT p.*, f.sport AS folder_sport,
               COALESCE(u.name, u.email) AS creator_name
@@ -901,12 +906,12 @@ router.get("/plays", requireAdminOrStaff, requirePerm("plays.viewFolders"), asyn
          LEFT JOIN platform_play_folders f ON p.folder_id = f.id
          LEFT JOIN users u ON u.id = p.created_by
         WHERE is_community_submitted = false
-          AND p.id NOT IN (
+          ${!isPicker ? `AND p.id NOT IN (
             SELECT psp.play_id
             FROM playbook_section_plays psp
             JOIN playbook_sections ps ON ps.id = psp.section_id
             WHERE ps.is_default = false
-          )
+          )` : ""}
         ORDER BY p.sort_order ASC, p.created_at DESC`
     );
     const visibleRows = filterRowsBySportScope(
@@ -2812,6 +2817,445 @@ router.get("/analytics", requireAdminOrStaff, requirePerm("dashboard.viewAnalyti
       recentErrors:     recentErrorsResult.rows,
       recentIssues:     recentIssuesResult.rows,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Email broadcast ──────────────────────────────────────────────────────────
+
+const EMAIL_MAX_RECIPIENTS = 2000;
+
+/**
+ * Resolve the list of users to target for a broadcast email based on filter config.
+ * Always requires email_verified_at to avoid sending to unverified accounts.
+ *
+ * @param {Object} filters
+ * @param {"all"|"onboarded"|"beta"} [filters.userType="all"] - User scope
+ * @param {string} [filters.sport=""] - Restrict to users with a team in this sport
+ * @returns {Promise<{ id: string, name: string, email: string }[]>}
+ */
+async function resolveEmailRecipients({ userType = "all", sport = "" } = {}) {
+  const conditions = [
+    "u.email IS NOT NULL",
+    "u.email != ''",
+    "u.email_verified_at IS NOT NULL",
+  ];
+  const params = [];
+
+  if (userType === "onboarded") {
+    conditions.push("u.onboarded_at IS NOT NULL");
+  } else if (userType === "beta") {
+    conditions.push("u.is_beta_tester = true");
+  }
+
+  let joinSql = "";
+  if (sport) {
+    params.push(sport);
+    joinSql = `
+      JOIN team_memberships tm ON tm.user_id = u.id
+      JOIN teams t ON t.id = tm.team_id`;
+    conditions.push(`t.sport = $${params.length}`);
+  }
+
+  const { rows } = await pool.query(
+    `SELECT DISTINCT ON (u.id) u.id, u.name, u.email,
+            (SELECT t2.name FROM teams t2
+               JOIN team_memberships tm2 ON tm2.team_id = t2.id
+              WHERE tm2.user_id = u.id AND (t2.deleted_at IS NULL OR t2.deleted_at > now())
+              ORDER BY tm2.joined_at
+              LIMIT 1) AS team_name
+       FROM users u${joinSql}
+      WHERE ${conditions.join(" AND ")}
+      ORDER BY u.id`,
+    params
+  );
+  return rows;
+}
+
+/**
+ * POST /admin/email/preview-recipients
+ * Returns a count + first 8 email addresses matching the given filters.
+ * Used by the admin composer to show the audience size before sending.
+ */
+router.post(
+  "/email/preview-recipients",
+  requireOwnerOrLegacyAdmin,
+  async (req, res, next) => {
+    try {
+      const { filters = {} } = req.body;
+      const recipients = await resolveEmailRecipients(filters);
+      const preview = recipients.slice(0, 8).map((r) => ({ name: r.name, email: r.email, team_name: r.team_name || "" }));
+      res.json({ count: recipients.length, preview });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * POST /admin/email/send
+ * Send a broadcast email to all users matching the supplied filters.
+ * Pass `previewTo` to send a single test message to that address instead.
+ *
+ * Body: { subject, subheader?, body, youtubeUrl?, gifUrl?, filters, previewTo? }
+ */
+router.post(
+  "/email/send",
+  requireOwnerOrLegacyAdmin,
+  async (req, res, next) => {
+    try {
+      const {
+        subject,
+        subheader = "",
+        body,
+        youtubeUrl = "",
+        gifUrl = "",
+        playEmbed = null,
+        filters = {},
+        previewTo,
+      } = req.body;
+
+      if (!subject?.trim()) return res.status(400).json({ error: "Subject is required" });
+      if (!body?.trim()) return res.status(400).json({ error: "Body is required" });
+
+      if (previewTo) {
+        const result = await sendBroadcastEmails({
+          recipients: [{ email: previewTo, name: "Preview" }],
+          subject: `[TEST] ${subject}`,
+          subheader,
+          body,
+          youtubeUrl,
+          gifUrl,
+          playEmbed,
+        });
+        return res.json({ ...result, preview: true });
+      }
+
+      const recipients = await resolveEmailRecipients(filters);
+      if (recipients.length === 0) {
+        return res.status(400).json({ error: "No recipients match the selected filters" });
+      }
+      if (recipients.length > EMAIL_MAX_RECIPIENTS) {
+        return res.status(400).json({
+          error: `Too many recipients (${recipients.length}). Max per send: ${EMAIL_MAX_RECIPIENTS}.`,
+        });
+      }
+
+      const result = await sendBroadcastEmails({ recipients, subject, subheader, body, youtubeUrl, gifUrl, playEmbed });
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ── Recurring email campaigns ─────────────────────────────────────────────────
+
+/**
+ * Fire all active recurring campaigns whose next_send_at has passed.
+ * Called by the server's interval timer. Returns a summary of what was sent.
+ * @returns {Promise<{ fired: number, errors: string[] }>}
+ */
+export async function runRecurringEmailCampaigns() {
+  const { rows: due } = await pool.query(
+    `SELECT * FROM recurring_email_campaigns
+      WHERE active = true AND next_send_at IS NOT NULL AND next_send_at <= NOW()`
+  );
+
+  let fired = 0;
+  const errors = [];
+
+  for (const campaign of due) {
+    try {
+      const recipients = await resolveEmailRecipients({
+        userType: campaign.audience_user_type,
+        sport: campaign.audience_sport,
+      });
+
+      if (recipients.length > 0) {
+        await sendBroadcastEmails({
+          recipients,
+          subject: campaign.subject,
+          subheader: campaign.subheader,
+          body: campaign.body,
+          youtubeUrl: campaign.youtube_url,
+          gifUrl: campaign.gif_url,
+        });
+      }
+
+      const nextSendAt = computeNextSendAt(campaign, new Date());
+      await pool.query(
+        `UPDATE recurring_email_campaigns
+            SET last_sent_at = NOW(),
+                next_send_at = $1,
+                send_count   = send_count + 1,
+                updated_at   = NOW()
+          WHERE id = $2`,
+        [nextSendAt, campaign.id]
+      );
+      fired++;
+    } catch (err) {
+      errors.push(`Campaign "${campaign.name}" (${campaign.id}): ${err.message}`);
+    }
+  }
+
+  return { fired, errors };
+}
+
+/**
+ * GET /admin/email/recurring
+ * List all recurring email campaigns.
+ */
+router.get("/email/recurring", requireOwnerOrLegacyAdmin, async (_req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM recurring_email_campaigns ORDER BY created_at DESC`
+    );
+    res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /admin/email/recurring
+ * Create a new recurring email campaign.
+ */
+router.post("/email/recurring", requireOwnerOrLegacyAdmin, async (req, res, next) => {
+  try {
+    const {
+      name,
+      subject,
+      subheader = "",
+      body,
+      youtube_url = "",
+      gif_url = "",
+      audience_user_type = "onboarded",
+      audience_sport = "",
+      frequency_type,
+      frequency_day_of_week = null,
+      frequency_day_of_month = null,
+      frequency_interval_days = null,
+      frequency_hour = 9,
+      active = true,
+    } = req.body;
+
+    if (!name?.trim()) return res.status(400).json({ error: "Name is required" });
+    if (!subject?.trim()) return res.status(400).json({ error: "Subject is required" });
+    if (!body?.trim()) return res.status(400).json({ error: "Body is required" });
+    if (!["weekly", "monthly", "custom"].includes(frequency_type)) {
+      return res.status(400).json({ error: "frequency_type must be weekly, monthly, or custom" });
+    }
+
+    const draft = {
+      frequency_type,
+      frequency_day_of_week,
+      frequency_day_of_month,
+      frequency_interval_days,
+      frequency_hour,
+      last_sent_at: null,
+    };
+    const nextSendAt = active ? computeNextSendAt(draft) : null;
+
+    const { rows } = await pool.query(
+      `INSERT INTO recurring_email_campaigns
+        (name, subject, subheader, body, youtube_url, gif_url,
+         audience_user_type, audience_sport,
+         frequency_type, frequency_day_of_week, frequency_day_of_month,
+         frequency_interval_days, frequency_hour, active, next_send_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+       RETURNING *`,
+      [
+        name.trim(), subject.trim(), subheader, body,
+        youtube_url, gif_url,
+        audience_user_type, audience_sport,
+        frequency_type, frequency_day_of_week, frequency_day_of_month,
+        frequency_interval_days, frequency_hour, active, nextSendAt,
+      ]
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PUT /admin/email/recurring/:id
+ * Update an existing recurring email campaign.
+ */
+router.put("/email/recurring/:id", requireOwnerOrLegacyAdmin, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const {
+      name,
+      subject,
+      subheader = "",
+      body,
+      youtube_url = "",
+      gif_url = "",
+      audience_user_type = "onboarded",
+      audience_sport = "",
+      frequency_type,
+      frequency_day_of_week = null,
+      frequency_day_of_month = null,
+      frequency_interval_days = null,
+      frequency_hour = 9,
+      active = true,
+    } = req.body;
+
+    if (!name?.trim()) return res.status(400).json({ error: "Name is required" });
+    if (!subject?.trim()) return res.status(400).json({ error: "Subject is required" });
+    if (!body?.trim()) return res.status(400).json({ error: "Body is required" });
+    if (!["weekly", "monthly", "custom"].includes(frequency_type)) {
+      return res.status(400).json({ error: "frequency_type must be weekly, monthly, or custom" });
+    }
+
+    const { rows: existing } = await pool.query(
+      "SELECT last_sent_at FROM recurring_email_campaigns WHERE id = $1",
+      [id]
+    );
+    if (!existing.length) return res.status(404).json({ error: "Campaign not found" });
+
+    const draft = {
+      frequency_type,
+      frequency_day_of_week,
+      frequency_day_of_month,
+      frequency_interval_days,
+      frequency_hour,
+      last_sent_at: existing[0].last_sent_at,
+    };
+    const nextSendAt = active ? computeNextSendAt(draft) : null;
+
+    const { rows } = await pool.query(
+      `UPDATE recurring_email_campaigns
+          SET name = $1, subject = $2, subheader = $3, body = $4,
+              youtube_url = $5, gif_url = $6,
+              audience_user_type = $7, audience_sport = $8,
+              frequency_type = $9, frequency_day_of_week = $10,
+              frequency_day_of_month = $11, frequency_interval_days = $12,
+              frequency_hour = $13, active = $14, next_send_at = $15,
+              updated_at = NOW()
+        WHERE id = $16
+        RETURNING *`,
+      [
+        name.trim(), subject.trim(), subheader, body,
+        youtube_url, gif_url,
+        audience_user_type, audience_sport,
+        frequency_type, frequency_day_of_week, frequency_day_of_month,
+        frequency_interval_days, frequency_hour, active, nextSendAt,
+        id,
+      ]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Campaign not found" });
+    res.json(rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * DELETE /admin/email/recurring/:id
+ * Delete a recurring email campaign.
+ */
+router.delete("/email/recurring/:id", requireOwnerOrLegacyAdmin, async (req, res, next) => {
+  try {
+    const { rowCount } = await pool.query(
+      "DELETE FROM recurring_email_campaigns WHERE id = $1",
+      [req.params.id]
+    );
+    if (!rowCount) return res.status(404).json({ error: "Campaign not found" });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /admin/email/recurring/:id/send-now
+ * Manually fire a campaign immediately and reset its next_send_at.
+ */
+router.post("/email/recurring/:id/send-now", requireOwnerOrLegacyAdmin, async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT * FROM recurring_email_campaigns WHERE id = $1",
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Campaign not found" });
+
+    const campaign = rows[0];
+    const recipients = await resolveEmailRecipients({
+      userType: campaign.audience_user_type,
+      sport: campaign.audience_sport,
+    });
+
+    let sendResult = { sent: 0, batches: 0, errors: [] };
+    if (recipients.length > 0) {
+      sendResult = await sendBroadcastEmails({
+        recipients,
+        subject: campaign.subject,
+        subheader: campaign.subheader,
+        body: campaign.body,
+        youtubeUrl: campaign.youtube_url,
+        gifUrl: campaign.gif_url,
+      });
+    }
+
+    const nextSendAt = campaign.active ? computeNextSendAt({ ...campaign, last_sent_at: new Date() }) : null;
+    await pool.query(
+      `UPDATE recurring_email_campaigns
+          SET last_sent_at = NOW(), next_send_at = $1,
+              send_count = send_count + 1, updated_at = NOW()
+        WHERE id = $2`,
+      [nextSendAt, campaign.id]
+    );
+
+    res.json({ ...sendResult, next_send_at: nextSendAt });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Email GIF assets ─────────────────────────────────────────────────────────
+
+/**
+ * GET /admin/gif-asset/:id — serve a generated GIF by its UUID.
+ * Intentionally auth-free so email clients can load the image.
+ * UUIDs are cryptographically random, providing access security equivalent
+ * to a pre-signed URL.
+ */
+router.get("/gif-asset/:id", (req, res) => {
+  const buf = getGifAsset(req.params.id);
+  if (!buf) return res.status(404).json({ error: "GIF not found or expired" });
+  res.set({
+    "Content-Type": "image/gif",
+    "Content-Length": buf.length,
+    "Cache-Control": "public, max-age=86400",
+  });
+  res.send(buf);
+});
+
+/**
+ * POST /admin/email/gif-asset — accept a base64-encoded GIF, store it,
+ * and return a publicly accessible URL usable in broadcast emails.
+ *
+ * @body {{ gif: string, playTitle?: string }} gif - base64-encoded GIF data
+ * @returns {{ url: string }}
+ */
+router.post("/email/gif-asset", requireAdminOrStaff, async (req, res, next) => {
+  try {
+    const { gif } = req.body;
+    if (!gif || typeof gif !== "string") {
+      return res.status(400).json({ error: "gif (base64 string) is required" });
+    }
+    const buffer = Buffer.from(gif, "base64");
+    if (buffer.length > 20 * 1024 * 1024) {
+      return res.status(413).json({ error: "GIF exceeds 20 MB limit" });
+    }
+    const id = crypto.randomUUID();
+    storeGifAsset(id, buffer);
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    res.json({ url: `${baseUrl}/admin/gif-asset/${id}` });
   } catch (err) {
     next(err);
   }

@@ -7,6 +7,7 @@ export default function LoggerSettingsSection({
   onCopyPlaceBallDebug,
   onCopyPrefabDebug,
   onCopyVideoExportDebug,
+  onCopyGifExportDebug,
   onCopyRecordingDebug,
   onCopyKfMoveDebug,
   onCopyRotationDebug,
@@ -19,6 +20,7 @@ export default function LoggerSettingsSection({
   const [copyPlaceBallState, setCopyPlaceBallState] = useState("idle");
   const [copyPrefabState, setCopyPrefabState] = useState("idle");
   const [copyVideoExportState, setCopyVideoExportState] = useState("idle");
+  const [copyGifExportState, setCopyGifExportState] = useState("idle");
   const [copyRecordingState, setCopyRecordingState] = useState("idle");
   const [copyKfMoveState, setCopyKfMoveState] = useState("idle");
   const [copyRotationState, setCopyRotationState] = useState("idle");
@@ -29,6 +31,7 @@ export default function LoggerSettingsSection({
   const copyPlaceBallResetRef = useRef(null);
   const copyPrefabResetRef = useRef(null);
   const copyVideoExportResetRef = useRef(null);
+  const copyGifExportResetRef = useRef(null);
   const copyRecordingResetRef = useRef(null);
   const copyKfMoveResetRef = useRef(null);
   const copyRotationResetRef = useRef(null);
@@ -55,6 +58,10 @@ export default function LoggerSettingsSection({
       if (copyVideoExportResetRef.current) {
         clearTimeout(copyVideoExportResetRef.current);
         copyVideoExportResetRef.current = null;
+      }
+      if (copyGifExportResetRef.current) {
+        clearTimeout(copyGifExportResetRef.current);
+        copyGifExportResetRef.current = null;
       }
       if (copyRecordingResetRef.current) {
         clearTimeout(copyRecordingResetRef.current);
@@ -149,6 +156,24 @@ export default function LoggerSettingsSection({
     copyVideoExportResetRef.current = setTimeout(() => {
       setCopyVideoExportState("idle");
       copyVideoExportResetRef.current = null;
+    }, 1500);
+  };
+
+  const handleCopyGifExportDebug = async (event) => {
+    event.stopPropagation();
+    if (!onCopyGifExportDebug) return;
+    try {
+      const ok = await onCopyGifExportDebug();
+      setCopyGifExportState(ok ? "copied" : "error");
+    } catch {
+      setCopyGifExportState("error");
+    }
+    if (copyGifExportResetRef.current) {
+      clearTimeout(copyGifExportResetRef.current);
+    }
+    copyGifExportResetRef.current = setTimeout(() => {
+      setCopyGifExportState("idle");
+      copyGifExportResetRef.current = null;
     }, 1500);
   };
 
@@ -317,6 +342,17 @@ export default function LoggerSettingsSection({
           : copyVideoExportState === "error"
             ? "Copy Failed"
             : "Copy Video Export Debug"}
+      </button>
+      <button
+        type="button"
+        onClick={handleCopyGifExportDebug}
+        className="h-6 sm:h-7 w-full bg-BrandBlack2 border border-BrandGray text-BrandOrange rounded-md px-2 text-[10px] sm:text-[11px] md:text-[12px] font-DmSans cursor-pointer"
+      >
+        {copyGifExportState === "copied"
+          ? "Copied"
+          : copyGifExportState === "error"
+            ? "Copy Failed"
+            : "Copy GIF Export Debug"}
       </button>
       <button
         type="button"

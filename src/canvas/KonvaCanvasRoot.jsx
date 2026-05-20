@@ -688,6 +688,109 @@ function KonvaCanvasRoot({
         };
       },
 
+      /**
+       * Temporarily override all worldOrigin groups so that `contentRect` fills
+       * the canvas at the best-fit zoom. Call once before a capture loop.
+       *
+       * Returns `{ saved, screenRect }`:
+       * - `saved`      — array of original transforms; pass to restoreCameraAfterCapture().
+       * - `screenRect` — CSS-pixel rect `{ x, y, width, height }` of the content on the
+       *                  canvas after fitting. Pass to captureContentCanvas() to crop tightly.
+       *
+       * @param {{ x, y, width, height }} contentRect - World-space rect to fit.
+       * @returns {{ saved: Array, screenRect: {x,y,width,height} }|null}
+       */
+      setFitCameraForCapture: (contentRect) => {
+        const stage = stageRef.current;
+        if (!stage || !contentRect || contentRect.width <= 0 || contentRect.height <= 0) return null;
+
+        const PADDING = 0.04; // 4% breathing room on each side
+        const fitScale = Math.min(
+          (size.width * (1 - PADDING * 2)) / contentRect.width,
+          (size.height * (1 - PADDING * 2)) / contentRect.height
+        );
+        const cx = contentRect.x + contentRect.width / 2;
+        const cy = contentRect.y + contentRect.height / 2;
+        const fitOX = size.width / 2 - cx * fitScale;
+        const fitOY = size.height / 2 - cy * fitScale;
+
+        const saved = [];
+        for (const layer of stage.getLayers()) {
+          if (!layer.visible()) continue;
+          const children = layer.getChildren();
+          if (!children.length) continue;
+          const g = children[0];
+          if (!g || g.nodeType !== "Group") continue;
+          saved.push({ node: g, x: g.x(), y: g.y(), sx: g.scaleX(), sy: g.scaleY() });
+          g.x(fitOX);
+          g.y(fitOY);
+          g.scaleX(fitScale);
+          g.scaleY(fitScale);
+        }
+        stage.draw();
+
+        // CSS-pixel rect of the content after fitting (centered, with PADDING on each edge)
+        const screenRect = {
+          x: size.width / 2 - (contentRect.width * fitScale) / 2,
+          y: size.height / 2 - (contentRect.height * fitScale) / 2,
+          width: contentRect.width * fitScale,
+          height: contentRect.height * fitScale,
+        };
+
+        return { saved, screenRect };
+      },
+
+      /**
+       * Restore worldOrigin groups from the saved state returned by setFitCameraForCapture.
+       * @param {{ saved: Array }|Array|null} savedOrResult - Result from setFitCameraForCapture,
+       *   or the raw saved array (both forms accepted for backwards compatibility).
+       */
+      restoreCameraAfterCapture: (savedOrResult) => {
+        const saved = Array.isArray(savedOrResult) ? savedOrResult : savedOrResult?.saved;
+        if (!saved) return;
+        for (const { node, x, y, sx, sy } of saved) {
+          node.x(x);
+          node.y(y);
+          node.scaleX(sx);
+          node.scaleY(sy);
+        }
+        stageRef.current?.draw();
+      },
+
+      /**
+       * Capture the stage cropped to a CSS-pixel rect (from setFitCameraForCapture's screenRect).
+       * Removes letterbox/pillarbox empty space so the output is tightly framed to content.
+       *
+       * @param {{ x, y, width, height }} screenRect - CSS-pixel crop region on the canvas.
+       * @param {{ pixelRatio?: number, flush?: boolean }} opts
+       * @returns {HTMLCanvasElement|null}
+       */
+      captureContentCanvas: (screenRect, { pixelRatio = 1, flush = false } = {}) => {
+        const stage = stageRef.current;
+        if (!stage || !screenRect || screenRect.width <= 0 || screenRect.height <= 0) return null;
+        if (flush) stage.draw();
+
+        const dpr = window.devicePixelRatio || 1;
+        const sx = Math.round(screenRect.x * dpr);
+        const sy = Math.round(screenRect.y * dpr);
+        const sw = Math.round(screenRect.width * dpr);
+        const sh = Math.round(screenRect.height * dpr);
+        const outW = Math.round(screenRect.width * pixelRatio);
+        const outH = Math.round(screenRect.height * pixelRatio);
+
+        const out = document.createElement("canvas");
+        out.width = outW;
+        out.height = outH;
+        const ctx = out.getContext("2d");
+
+        for (const layer of stage.getLayers()) {
+          if (!layer.visible()) continue;
+          const c = layer.getCanvas()._canvas;
+          ctx.drawImage(c, sx, sy, sw, sh, 0, 0, outW, outH);
+        }
+        return out;
+      },
+
       hideOverlays,
       showOverlays,
       flushRender: () => {

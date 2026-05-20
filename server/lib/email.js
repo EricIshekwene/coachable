@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { buildBroadcastEmailHtml as buildSharedBroadcastEmailHtml } from "./broadcastEmailTemplate.js";
 
 const FROM_EMAIL = process.env.FROM_EMAIL || "Coachable <noreply@tcutss.com>";
 
@@ -630,6 +631,198 @@ export async function sendStaffAdminInviteEmail({ toEmail, inviteUrl, ownerName,
   });
 
   if (error) throw new Error(error.message || "Failed to send staff invite email");
+}
+
+// ── Broadcast email helpers ───────────────────────────────────────────────
+
+/**
+ * Extract a YouTube video ID from a URL or bare 11-char ID string.
+ * Supports watch?v=, youtu.be/, embed/, and shorts/ URL formats.
+ * @param {string} input
+ * @returns {string|null}
+ */
+function extractYouTubeIdFromUrl(input) {
+  if (!input) return null;
+  const trimmed = input.trim();
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
+  try {
+    const u = new URL(trimmed);
+    if (u.hostname === "youtu.be") return u.pathname.slice(1).split("?")[0];
+    if (u.searchParams.has("v")) return u.searchParams.get("v");
+    const m = u.pathname.match(/\/(?:embed|shorts)\/([a-zA-Z0-9_-]+)/);
+    if (m) return m[1];
+  } catch { /* not a parseable URL */ }
+  return null;
+}
+
+/**
+ * Build the HTML body for a broadcast email.
+ * Body text supports `{{firstName}}` for per-recipient personalisation and
+ * double-newlines as paragraph breaks. Optionally appends a YouTube thumbnail
+ * section and/or an inline GIF image.
+ *
+ * @param {Object} opts
+ * @param {string} opts.body           - Plain-text body (double-newline = paragraph break)
+ * @param {string} [opts.youtubeUrl]   - YouTube link; renders a thumbnail + watch link
+ * @param {string} [opts.gifUrl]       - Publicly hosted GIF URL; renders inline
+ * @param {string} [opts.recipientName] - Recipient display name for `{{firstName}}` substitution
+ * @returns {string} Full HTML email string
+ */
+export function buildBroadcastEmailHtml({ body = "", youtubeUrl = "", gifUrl = "", recipientName = "", recipientTeam = "" }) {
+  const nameParts = (recipientName || "").trim().split(/\s+/);
+  const firstName = nameParts[0] || "there";
+  const lastName  = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
+  const personalizedBody = body
+    .replace(/\{\{firstName\}\}/g, firstName)
+    .replace(/\{\{lastName\}\}/g, lastName)
+    .replace(/\{\{teamName\}\}/g, recipientTeam || "your team");
+
+  const paragraphsHtml = personalizedBody
+    .split(/\n\n+/)
+    .filter(Boolean)
+    .map(
+      (p) =>
+        `<p style="margin:0 0 16px;font-size:15px;color:#4b5157;line-height:1.7;">${p
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/\n/g, "<br>")}</p>`
+    )
+    .join("");
+
+  let youtubeHtml = "";
+  const videoId = extractYouTubeIdFromUrl(youtubeUrl);
+  if (videoId) {
+    youtubeHtml = `
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;">
+        <tr>
+          <td align="center">
+            <a href="${youtubeUrl}" style="display:inline-block;">
+              <img src="https://img.youtube.com/vi/${videoId}/hqdefault.jpg" alt="Watch video" width="480" style="max-width:100%;border-radius:8px;display:block;" />
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding-top:8px;">
+            <a href="${youtubeUrl}" style="color:#FF7A18;font-size:14px;font-weight:600;text-decoration:none;">&#9654; Watch on YouTube</a>
+          </td>
+        </tr>
+      </table>`;
+  }
+
+  let gifHtml = "";
+  if (gifUrl) {
+    gifHtml = `
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;">
+        <tr>
+          <td align="center">
+            <img src="${gifUrl}" alt="Play animation" width="480" style="max-width:100%;border-radius:8px;display:block;" />
+          </td>
+        </tr>
+      </table>`;
+  }
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+<body style="margin:0;padding:0;background-color:#f5f5f5;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f5f5;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
+          <tr>
+            <td style="background-color:#121212;padding:32px 40px;text-align:center;">
+              <span style="font-size:24px;font-weight:700;color:#FF7A18;letter-spacing:-0.5px;">coachable</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:40px 40px 24px;">
+              ${paragraphsHtml}
+              ${youtubeHtml}
+              ${gifHtml}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 40px;">
+              <div style="border-top:1px solid #e9ecef;margin:4px 0 20px;"></div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 40px 32px;text-align:center;">
+              <p style="margin:0;font-size:12px;color:#9AA0A6;line-height:1.5;">
+                Coachable — The modern playbook platform for coaches and teams.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+/**
+ * Send a broadcast email to a list of recipients using Resend's batch API.
+ * Recipients are processed in chunks of 100 (Resend batch limit) with a
+ * small delay between chunks to stay within rate limits.
+ *
+ * @param {Object} opts
+ * @param {{ email: string, name: string }[]} opts.recipients - Target recipients
+ * @param {string} opts.subject  - Email subject line
+ * @param {string} [opts.subheader] - Optional short line above the body (supports merge tags)
+ * @param {string} opts.body     - Rich-text or plain-text body content (supports merge tags)
+ * @param {string} [opts.youtubeUrl] - Optional YouTube URL for thumbnail section
+ * @param {string} [opts.gifUrl]     - Optional GIF URL for inline image section
+ * @returns {Promise<{ sent: number, batches: number, errors: Array }>}
+ */
+export async function sendBroadcastEmails({ recipients, subject, subheader = "", body, youtubeUrl = "", gifUrl = "", playEmbed = null }) {
+  if (!recipients || recipients.length === 0) return { sent: 0, batches: 0, errors: [] };
+
+  const resend = getResend();
+  const BATCH_SIZE = 100;
+  let sent = 0;
+  let batches = 0;
+  const errors = [];
+
+  for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
+    const chunk = recipients.slice(i, i + BATCH_SIZE);
+    const messages = chunk.map((r) => ({
+      from: FROM_EMAIL,
+      to: r.email,
+      subject,
+      html: buildSharedBroadcastEmailHtml({
+        subheader,
+        body,
+        youtubeUrl,
+        gifUrl,
+        playEmbed,
+        recipientName: r.name,
+        recipientTeam: r.team_name || "",
+      }),
+    }));
+
+    try {
+      const { error } = await resend.batch.send(messages);
+      if (error) {
+        errors.push({ batchIndex: batches, error: error.message || String(error) });
+      } else {
+        sent += chunk.length;
+      }
+    } catch (err) {
+      errors.push({ batchIndex: batches, error: err instanceof Error ? err.message : String(err) });
+    }
+
+    batches += 1;
+    if (i + BATCH_SIZE < recipients.length) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+  }
+
+  return { sent, batches, errors };
 }
 
 export async function sendMemberRemovedEmail({ toEmail, memberName, teamName, removedByName }) {

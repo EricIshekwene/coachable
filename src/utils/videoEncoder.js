@@ -57,8 +57,7 @@ const DEFAULT_CHUNK_COLOR_SPACE = {
   matrix: "bt709",
   fullRange: false,
 };
-const FFMPEG_CORE_VERSION = "0.12.9";
-const FFMPEG_CORE_BASE_URL = `https://unpkg.com/@ffmpeg/core@${FFMPEG_CORE_VERSION}/dist/umd`;
+const FFMPEG_CORE_BASE_URL = "/ffmpeg";
 
 /**
  * Clamp dimensions so neither exceeds MAX_ENCODE_DIMENSION, preserving aspect ratio.
