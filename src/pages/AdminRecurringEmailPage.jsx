@@ -51,6 +51,13 @@ const USER_TYPE_OPTIONS = [
   { value: "beta", label: "Beta testers" },
 ];
 
+const ROLE_OPTIONS = [
+  { value: "owner", label: "Owner" },
+  { value: "coach", label: "Coach" },
+  { value: "assistant_coach", label: "Assistant Coach" },
+  { value: "player", label: "Player" },
+];
+
 const SPORT_OPTIONS = [
   { value: "", label: "All sports" },
   ...SUPPORTED_FIELD_TYPES
@@ -81,6 +88,7 @@ const EMPTY_FORM = {
   playEmbed: null,
   audienceUserType: "onboarded",
   audienceSport: "",
+  audienceRoles: [],
   frequencyType: "weekly",
   frequencyDayOfWeek: 1,
   frequencyDayOfMonth: 1,
@@ -395,6 +403,7 @@ function CampaignModal({ campaign, plays, folders, playsLoading, playsError, onC
           playEmbed: campaign.play_embed ?? null,
           audienceUserType: campaign.audience_user_type ?? "onboarded",
           audienceSport: campaign.audience_sport ?? "",
+          audienceRoles: campaign.audience_roles ?? [],
           frequencyType: campaign.frequency_type,
           frequencyDayOfWeek: campaign.frequency_day_of_week ?? 1,
           frequencyDayOfMonth: campaign.frequency_day_of_month ?? 1,
@@ -589,6 +598,7 @@ function CampaignModal({ campaign, plays, folders, playsLoading, playsError, onC
         play_embed: form.playEmbed || null,
         audience_user_type: form.audienceUserType,
         audience_sport: form.audienceSport,
+        audience_roles: form.audienceRoles,
         frequency_type: form.frequencyType,
         frequency_day_of_week: form.frequencyType === "weekly" ? Number(form.frequencyDayOfWeek) : null,
         frequency_day_of_month: form.frequencyType === "monthly" ? Number(form.frequencyDayOfMonth) : null,
@@ -745,23 +755,54 @@ function CampaignModal({ campaign, plays, folders, playsLoading, playsError, onC
 
             <AdminSection title="Audience">
               <AdminCard>
-                <div className="flex flex-wrap gap-3">
-                  <AdminSelect
-                    label="User type"
-                    value={form.audienceUserType}
-                    onChange={(e) => set("audienceUserType", e.target.value)}
-                    className="min-w-[160px]"
-                  >
-                    {USER_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </AdminSelect>
-                  <AdminSelect
-                    label="Sport"
-                    value={form.audienceSport}
-                    onChange={(e) => set("audienceSport", e.target.value)}
-                    className="min-w-[140px]"
-                  >
-                    {SPORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </AdminSelect>
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-wrap gap-3">
+                    <AdminSelect
+                      label="User type"
+                      value={form.audienceUserType}
+                      onChange={(e) => set("audienceUserType", e.target.value)}
+                      className="min-w-[160px]"
+                    >
+                      {USER_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </AdminSelect>
+                    <AdminSelect
+                      label="Sport"
+                      value={form.audienceSport}
+                      onChange={(e) => set("audienceSport", e.target.value)}
+                      className="min-w-[140px]"
+                    >
+                      {SPORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </AdminSelect>
+                  </div>
+                  {/* Role checkboxes */}
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-xs font-semibold" style={{ color: "var(--adm-muted)" }}>
+                      Role (leave unchecked for all roles)
+                    </span>
+                    <div className="flex flex-wrap gap-3">
+                      {ROLE_OPTIONS.map((ro) => {
+                        const checked = (form.audienceRoles || []).includes(ro.value);
+                        return (
+                          <label key={ro.value} className="flex cursor-pointer items-center gap-1.5 select-none">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => {
+                                const prev = form.audienceRoles || [];
+                                set("audienceRoles", checked
+                                  ? prev.filter((r) => r !== ro.value)
+                                  : [...prev, ro.value]
+                                );
+                              }}
+                              className="h-3.5 w-3.5 rounded"
+                              style={{ accentColor: "var(--adm-accent)" }}
+                            />
+                            <span className="text-xs" style={{ color: "var(--adm-text)" }}>{ro.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               </AdminCard>
             </AdminSection>

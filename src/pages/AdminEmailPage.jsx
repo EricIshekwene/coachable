@@ -40,6 +40,13 @@ const USER_TYPE_OPTIONS = [
   { value: "beta", label: "Beta testers" },
 ];
 
+const ROLE_OPTIONS = [
+  { value: "owner", label: "Owner" },
+  { value: "coach", label: "Coach" },
+  { value: "assistant_coach", label: "Assistant Coach" },
+  { value: "player", label: "Player" },
+];
+
 const SPORT_OPTIONS = [
   { value: "", label: "All sports" },
   ...SUPPORTED_FIELD_TYPES
@@ -87,6 +94,7 @@ export default function AdminEmailPage() {
 
   const [userType, setUserType] = useState("onboarded");
   const [sport, setSport] = useState("");
+  const [roles, setRoles] = useState([]);
 
   const [audienceData, setAudienceData] = useState(null);
   const [loadingAudience, setLoadingAudience] = useState(false);
@@ -512,7 +520,7 @@ export default function AdminEmailPage() {
     try {
       const data = await adminApi("/admin/email/preview-recipients", {
         method: "POST",
-        body: JSON.stringify({ filters: { userType, sport } }),
+        body: JSON.stringify({ filters: { userType, sport, roles } }),
       });
       setAudienceData(data);
     } catch (err) {
@@ -520,7 +528,7 @@ export default function AdminEmailPage() {
     } finally {
       setLoadingAudience(false);
     }
-  }, [userType, sport]);
+  }, [userType, sport, roles]);
 
   const handleSendTest = useCallback(async () => {
     if (!testEmail.trim()) { setSendError("Enter a test email address first"); return; }
@@ -528,7 +536,7 @@ export default function AdminEmailPage() {
     try {
       const data = await adminApi("/admin/email/send", {
         method: "POST",
-        body: JSON.stringify({ subject, subheader, body, youtubeUrl, gifUrl, playEmbed: playEmbed || undefined, filters: { userType, sport }, previewTo: testEmail.trim() }),
+        body: JSON.stringify({ subject, subheader, body, youtubeUrl, gifUrl, playEmbed: playEmbed || undefined, filters: { userType, sport, roles }, previewTo: testEmail.trim() }),
       });
       setSendResult({ ...data, testEmail: testEmail.trim() });
     } catch (err) {
@@ -536,14 +544,14 @@ export default function AdminEmailPage() {
     } finally {
       setSending(false);
     }
-  }, [subject, subheader, body, youtubeUrl, gifUrl, playEmbed, userType, sport, testEmail]);
+  }, [subject, subheader, body, youtubeUrl, gifUrl, playEmbed, userType, sport, roles, testEmail]);
 
   const handleSendToAll = useCallback(async () => {
     setConfirmOpen(false); setSending(true); setSendResult(null); setSendError("");
     try {
       const data = await adminApi("/admin/email/send", {
         method: "POST",
-        body: JSON.stringify({ subject, subheader, body, youtubeUrl, gifUrl, playEmbed: playEmbed || undefined, filters: { userType, sport } }),
+        body: JSON.stringify({ subject, subheader, body, youtubeUrl, gifUrl, playEmbed: playEmbed || undefined, filters: { userType, sport, roles } }),
       });
       setSendResult(data);
     } catch (err) {
@@ -551,7 +559,7 @@ export default function AdminEmailPage() {
     } finally {
       setSending(false);
     }
-  }, [subject, subheader, body, youtubeUrl, gifUrl, playEmbed, userType, sport]);
+  }, [subject, subheader, body, youtubeUrl, gifUrl, playEmbed, userType, sport, roles]);
 
   const isGenerating = gifPhase === "mounting" || gifPhase === "generating" || gifPhase === "uploading";
 
@@ -612,6 +620,34 @@ export default function AdminEmailPage() {
                       {loadingAudience ? <AdminSpinner size={14} /> : <FiUsers className="text-sm" />}
                       {loadingAudience ? "Loading..." : "Preview recipients"}
                     </AdminBtn>
+                  </div>
+                  {/* Role checkboxes */}
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-xs font-semibold" style={{ color: "var(--adm-muted)" }}>
+                      Role (leave unchecked for all roles)
+                    </span>
+                    <div className="flex flex-wrap gap-3">
+                      {ROLE_OPTIONS.map((ro) => {
+                        const checked = roles.includes(ro.value);
+                        return (
+                          <label key={ro.value} className="flex cursor-pointer items-center gap-1.5 select-none">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => {
+                                setRoles((prev) =>
+                                  checked ? prev.filter((r) => r !== ro.value) : [...prev, ro.value]
+                                );
+                                setAudienceData(null);
+                              }}
+                              className="h-3.5 w-3.5 rounded"
+                              style={{ accentColor: "var(--adm-accent)" }}
+                            />
+                            <span className="text-xs" style={{ color: "var(--adm-text)" }}>{ro.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
                   </div>
                   {audienceError && <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{audienceError}</p>}
                   {audienceData && (

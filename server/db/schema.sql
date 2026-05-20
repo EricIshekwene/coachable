@@ -771,6 +771,7 @@ CREATE TABLE IF NOT EXISTS recurring_email_campaigns (
 );
 
 ALTER TABLE recurring_email_campaigns ADD COLUMN IF NOT EXISTS play_embed JSONB DEFAULT NULL;
+ALTER TABLE recurring_email_campaigns ADD COLUMN IF NOT EXISTS audience_roles TEXT[] DEFAULT '{}';
 
 CREATE INDEX IF NOT EXISTS idx_recurring_email_active_next
   ON recurring_email_campaigns(active, next_send_at)

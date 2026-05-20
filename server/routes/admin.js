@@ -2835,7 +2835,17 @@ const EMAIL_MAX_RECIPIENTS = 2000;
  * @param {string} [filters.sport=""] - Restrict to users with a team in this sport
  * @returns {Promise<{ id: string, name: string, email: string }[]>}
  */
-async function resolveEmailRecipients({ userType = "all", sport = "" } = {}) {
+const VALID_ROLES = new Set(["owner", "coach", "assistant_coach", "player"]);
+
+/**
+ * Resolve broadcast email recipients from audience filters.
+ * @param {Object} opts
+ * @param {string} [opts.userType="all"] - "all" | "onboarded" | "beta"
+ * @param {string} [opts.sport=""] - Sport name; empty = all sports
+ * @param {string[]} [opts.roles=[]] - Role whitelist; empty = all roles
+ * @returns {Promise<Array<{id, name, email, team_name}>>}
+ */
+async function resolveEmailRecipients({ userType = "all", sport = "", roles = [] } = {}) {
   const conditions = [
     "u.email IS NOT NULL",
     "u.email != ''",
@@ -2849,13 +2859,25 @@ async function resolveEmailRecipients({ userType = "all", sport = "" } = {}) {
     conditions.push("u.is_beta_tester = true");
   }
 
+  // Determine whether we need the team_memberships + teams join.
+  // Required when filtering by sport or by role.
+  const validRoles = (Array.isArray(roles) ? roles : []).filter((r) => VALID_ROLES.has(r));
+  const needsTeamJoin = Boolean(sport || validRoles.length);
+
   let joinSql = "";
-  if (sport) {
-    params.push(sport);
+  if (needsTeamJoin) {
     joinSql = `
       JOIN team_memberships tm ON tm.user_id = u.id
-      JOIN teams t ON t.id = tm.team_id`;
-    conditions.push(`t.sport = $${params.length}`);
+      JOIN teams t ON t.id = tm.team_id AND (t.deleted_at IS NULL OR t.deleted_at > now())`;
+    if (sport) {
+      params.push(sport);
+      // ILIKE for case-insensitive match in case teams stored sport with different casing
+      conditions.push(`t.sport ILIKE $${params.length}`);
+    }
+    if (validRoles.length) {
+      params.push(validRoles);
+      conditions.push(`tm.role = ANY($${params.length}::team_role[])`);
+    }
   }
 
   const { rows } = await pool.query(
@@ -2971,6 +2993,7 @@ export async function runRecurringEmailCampaigns() {
       const recipients = await resolveEmailRecipients({
         userType: campaign.audience_user_type,
         sport: campaign.audience_sport,
+        roles: campaign.audience_roles || [],
       });
 
       if (recipients.length > 0) {
@@ -3035,6 +3058,7 @@ router.post("/email/recurring", requireOwnerOrLegacyAdmin, async (req, res, next
       play_embed = null,
       audience_user_type = "onboarded",
       audience_sport = "",
+      audience_roles = [],
       frequency_type,
       frequency_day_of_week = null,
       frequency_day_of_month = null,
@@ -3050,6 +3074,8 @@ router.post("/email/recurring", requireOwnerOrLegacyAdmin, async (req, res, next
       return res.status(400).json({ error: "frequency_type must be weekly, monthly, or custom" });
     }
 
+    const safeRoles = (Array.isArray(audience_roles) ? audience_roles : []).filter((r) => VALID_ROLES.has(r));
+
     const draft = {
       frequency_type,
       frequency_day_of_week,
@@ -3063,15 +3089,15 @@ router.post("/email/recurring", requireOwnerOrLegacyAdmin, async (req, res, next
     const { rows } = await pool.query(
       `INSERT INTO recurring_email_campaigns
         (name, subject, subheader, body, youtube_url, gif_url, play_embed,
-         audience_user_type, audience_sport,
+         audience_user_type, audience_sport, audience_roles,
          frequency_type, frequency_day_of_week, frequency_day_of_month,
          frequency_interval_days, frequency_hour, active, next_send_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
        RETURNING *`,
       [
         name.trim(), subject.trim(), subheader, body,
         youtube_url, gif_url, play_embed ? JSON.stringify(play_embed) : null,
-        audience_user_type, audience_sport,
+        audience_user_type, audience_sport, safeRoles,
         frequency_type, frequency_day_of_week, frequency_day_of_month,
         frequency_interval_days, frequency_hour, active, nextSendAt,
       ]
@@ -3099,6 +3125,7 @@ router.put("/email/recurring/:id", requireOwnerOrLegacyAdmin, async (req, res, n
       play_embed = null,
       audience_user_type = "onboarded",
       audience_sport = "",
+      audience_roles = [],
       frequency_type,
       frequency_day_of_week = null,
       frequency_day_of_month = null,
@@ -3113,6 +3140,8 @@ router.put("/email/recurring/:id", requireOwnerOrLegacyAdmin, async (req, res, n
     if (!["weekly", "monthly", "custom"].includes(frequency_type)) {
       return res.status(400).json({ error: "frequency_type must be weekly, monthly, or custom" });
     }
+
+    const safeRoles = (Array.isArray(audience_roles) ? audience_roles : []).filter((r) => VALID_ROLES.has(r));
 
     const { rows: existing } = await pool.query(
       "SELECT last_sent_at FROM recurring_email_campaigns WHERE id = $1",
@@ -3134,17 +3163,17 @@ router.put("/email/recurring/:id", requireOwnerOrLegacyAdmin, async (req, res, n
       `UPDATE recurring_email_campaigns
           SET name = $1, subject = $2, subheader = $3, body = $4,
               youtube_url = $5, gif_url = $6, play_embed = $7,
-              audience_user_type = $8, audience_sport = $9,
-              frequency_type = $10, frequency_day_of_week = $11,
-              frequency_day_of_month = $12, frequency_interval_days = $13,
-              frequency_hour = $14, active = $15, next_send_at = $16,
+              audience_user_type = $8, audience_sport = $9, audience_roles = $10,
+              frequency_type = $11, frequency_day_of_week = $12,
+              frequency_day_of_month = $13, frequency_interval_days = $14,
+              frequency_hour = $15, active = $16, next_send_at = $17,
               updated_at = NOW()
-        WHERE id = $17
+        WHERE id = $18
         RETURNING *`,
       [
         name.trim(), subject.trim(), subheader, body,
         youtube_url, gif_url, play_embed ? JSON.stringify(play_embed) : null,
-        audience_user_type, audience_sport,
+        audience_user_type, audience_sport, safeRoles,
         frequency_type, frequency_day_of_week, frequency_day_of_month,
         frequency_interval_days, frequency_hour, active, nextSendAt,
         id,
@@ -3190,6 +3219,7 @@ router.post("/email/recurring/:id/send-now", requireOwnerOrLegacyAdmin, async (r
     const recipients = await resolveEmailRecipients({
       userType: campaign.audience_user_type,
       sport: campaign.audience_sport,
+      roles: campaign.audience_roles || [],
     });
 
     let sendResult = { sent: 0, batches: 0, errors: [] };
