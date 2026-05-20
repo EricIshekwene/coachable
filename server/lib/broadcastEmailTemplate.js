@@ -19,6 +19,8 @@ const ALLOWED_TAGS = new Set([
 ]);
 
 const URL_PROTOCOLS = new Set(["http:", "https:", "mailto:", "tel:"]);
+const PLAY_EMBED_PLACEHOLDER = "__COACHABLE_PLAY_EMBED__";
+const PLAY_EMBED_TOKEN_PATTERN = /\{\{playembed\}\}?/gi;
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -201,15 +203,29 @@ export function getBroadcastBodyText(body) {
     .trim();
 }
 
-export function renderBroadcastBodyMarkup({ body = "", recipientName = "", recipientTeam = "" }) {
+export function renderBroadcastBodyMarkup({ body = "", recipientName = "", recipientTeam = "", playEmbedHtml = "" }) {
   const personalizedBody = personalizeMergeTags(body, recipientName, recipientTeam);
-  const sanitized = sanitizeBroadcastBodyMarkup(personalizedBody);
+  const placeholderBody = String(personalizedBody || "").replace(
+    PLAY_EMBED_TOKEN_PATTERN,
+    playEmbedHtml ? PLAY_EMBED_PLACEHOLDER : ""
+  );
+  const sanitized = sanitizeBroadcastBodyMarkup(placeholderBody);
 
   if (!sanitized) {
     return '<p style="margin:0;font-size:16px;line-height:1.75;color:#94a3b8;font-style:italic;">Your formatted message will appear here.</p>';
   }
 
-  return decorateMarkupForEmail(sanitized);
+  let decorated = decorateMarkupForEmail(sanitized);
+  if (playEmbedHtml) {
+    const standalonePattern = new RegExp(
+      `<p[^>]*>\\s*${PLAY_EMBED_PLACEHOLDER}\\s*<\\/p>`,
+      "gi"
+    );
+    decorated = decorated
+      .replace(standalonePattern, playEmbedHtml)
+      .replace(new RegExp(PLAY_EMBED_PLACEHOLDER, "g"), playEmbedHtml);
+  }
+  return decorated;
 }
 
 export function buildBroadcastEmailHtml({
@@ -231,11 +247,7 @@ export function buildBroadcastEmailHtml({
       `<img src="${escapeAttribute(safePlayGifUrl)}" alt="${escapeAttribute(playEmbed.title || "Play")}" width="492" style="display:block;width:100%;max-width:492px;border:0;" /></div>`
     : "";
 
-  const bodyWithEmbed = playCardHtml
-    ? String(body || "").replace(/\{\{playEmbed\}\}/g, playCardHtml)
-    : String(body || "").replace(/\{\{playEmbed\}\}/g, "");
-
-  const bodyHtml = renderBroadcastBodyMarkup({ body: bodyWithEmbed, recipientName, recipientTeam });
+  const bodyHtml = renderBroadcastBodyMarkup({ body, recipientName, recipientTeam, playEmbedHtml: playCardHtml });
   const videoId = extractYouTubeId(youtubeUrl);
   const safeYoutubeUrl = sanitizeUrl(youtubeUrl);
   const safeGifUrl = sanitizeUrl(gifUrl);
