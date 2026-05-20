@@ -109,6 +109,7 @@ const WHEEL_PAN_FACTOR = 1;
 const GUIDELINE_OFFSET = 5;
 const SCREENSHOT_HANDLE_SIZE_PX = 10;
 const SCREENSHOT_HANDLE_HIT_PADDING_PX = 16;
+const MIN_CAPTURE_DIMENSION_PX = 64;
 
 /**
  * Main Konva canvas component. Renders the Stage with field image, player/ball items,
@@ -599,6 +600,74 @@ function KonvaCanvasRoot({
         height: worldRect.height * scale,
       };
     };
+    const getCaptureViewportSize = () => {
+      const stage = stageRef.current;
+      const stageContainerRect = stage?.container?.()?.getBoundingClientRect?.();
+      const containerRect = containerRef.current?.getBoundingClientRect?.();
+      const stageWidth = Math.max(
+        1,
+        Math.round(stageContainerRect?.width || containerRect?.width || stage?.width?.() || size.width || 0)
+      );
+      const stageHeight = Math.max(
+        1,
+        Math.round(stageContainerRect?.height || containerRect?.height || stage?.height?.() || size.height || 0)
+      );
+      return { stageWidth, stageHeight };
+    };
+    const getFitCapturePlan = (contentRect) => {
+      if (!contentRect) return null;
+      const rectX = Number(contentRect.x);
+      const rectY = Number(contentRect.y);
+      const rectWidth = Number(contentRect.width);
+      const rectHeight = Number(contentRect.height);
+      if (
+        !Number.isFinite(rectX) ||
+        !Number.isFinite(rectY) ||
+        !Number.isFinite(rectWidth) ||
+        !Number.isFinite(rectHeight) ||
+        rectWidth <= 0 ||
+        rectHeight <= 0
+      ) {
+        return null;
+      }
+
+      const { stageWidth, stageHeight } = getCaptureViewportSize();
+      if (stageWidth <= 1 || stageHeight <= 1) return null;
+
+      const PADDING = 0.04; // 4% breathing room on each side
+      const fitScale = Math.min(
+        (stageWidth * (1 - PADDING * 2)) / rectWidth,
+        (stageHeight * (1 - PADDING * 2)) / rectHeight
+      );
+      if (!Number.isFinite(fitScale) || fitScale <= 0) return null;
+
+      const cx = rectX + rectWidth / 2;
+      const cy = rectY + rectHeight / 2;
+      const fitOX = stageWidth / 2 - cx * fitScale;
+      const fitOY = stageHeight / 2 - cy * fitScale;
+      const screenRect = {
+        x: stageWidth / 2 - (rectWidth * fitScale) / 2,
+        y: stageHeight / 2 - (rectHeight * fitScale) / 2,
+        width: rectWidth * fitScale,
+        height: rectHeight * fitScale,
+      };
+      const captureWidth = Math.round(screenRect.width);
+      const captureHeight = Math.round(screenRect.height);
+      const screenRectIsFinite = Object.values(screenRect).every((value) => Number.isFinite(value));
+      if (!screenRectIsFinite || captureWidth <= 0 || captureHeight <= 0) return null;
+
+      return {
+        fitOX,
+        fitOY,
+        fitScale,
+        stageWidth,
+        stageHeight,
+        screenRect,
+        captureWidth,
+        captureHeight,
+        ready: captureWidth >= MIN_CAPTURE_DIMENSION_PX && captureHeight >= MIN_CAPTURE_DIMENSION_PX,
+      };
+    };
 
     screenshotApiRef.current = {
       captureRegion: (worldRect, { pixelRatio = 2 } = {}) => {
@@ -702,17 +771,8 @@ function KonvaCanvasRoot({
        */
       setFitCameraForCapture: (contentRect) => {
         const stage = stageRef.current;
-        if (!stage || !contentRect || contentRect.width <= 0 || contentRect.height <= 0) return null;
-
-        const PADDING = 0.04; // 4% breathing room on each side
-        const fitScale = Math.min(
-          (size.width * (1 - PADDING * 2)) / contentRect.width,
-          (size.height * (1 - PADDING * 2)) / contentRect.height
-        );
-        const cx = contentRect.x + contentRect.width / 2;
-        const cy = contentRect.y + contentRect.height / 2;
-        const fitOX = size.width / 2 - cx * fitScale;
-        const fitOY = size.height / 2 - cy * fitScale;
+        const plan = getFitCapturePlan(contentRect);
+        if (!stage || !plan) return null;
 
         const saved = [];
         for (const layer of stage.getLayers()) {
@@ -722,22 +782,40 @@ function KonvaCanvasRoot({
           const g = children[0];
           if (!g || g.nodeType !== "Group") continue;
           saved.push({ node: g, x: g.x(), y: g.y(), sx: g.scaleX(), sy: g.scaleY() });
-          g.x(fitOX);
-          g.y(fitOY);
-          g.scaleX(fitScale);
-          g.scaleY(fitScale);
+          g.x(plan.fitOX);
+          g.y(plan.fitOY);
+          g.scaleX(plan.fitScale);
+          g.scaleY(plan.fitScale);
         }
         stage.draw();
-
-        // CSS-pixel rect of the content after fitting (centered, with PADDING on each edge)
-        const screenRect = {
-          x: size.width / 2 - (contentRect.width * fitScale) / 2,
-          y: size.height / 2 - (contentRect.height * fitScale) / 2,
-          width: contentRect.width * fitScale,
-          height: contentRect.height * fitScale,
+        return {
+          saved,
+          screenRect: plan.screenRect,
+          stageWidth: plan.stageWidth,
+          stageHeight: plan.stageHeight,
+          captureWidth: plan.captureWidth,
+          captureHeight: plan.captureHeight,
         };
+      },
 
-        return { saved, screenRect };
+      /**
+       * Inspect the current stage + fitted crop rect without mutating the camera.
+       * The admin email composer uses this to wait for a real hidden-canvas size.
+       *
+       * @param {{ x, y, width, height }} contentRect - World-space rect to fit.
+       * @returns {{ ready: boolean, stageWidth: number, stageHeight: number, captureWidth: number, captureHeight: number }}
+       */
+      getCaptureCanvasMetrics: (contentRect) => {
+        const stage = stageRef.current;
+        const viewport = getCaptureViewportSize();
+        const plan = getFitCapturePlan(contentRect);
+        return {
+          ready: Boolean(stage && plan?.ready),
+          stageWidth: plan?.stageWidth ?? viewport.stageWidth,
+          stageHeight: plan?.stageHeight ?? viewport.stageHeight,
+          captureWidth: plan?.captureWidth ?? 0,
+          captureHeight: plan?.captureHeight ?? 0,
+        };
       },
 
       /**
@@ -767,21 +845,33 @@ function KonvaCanvasRoot({
        */
       captureContentCanvas: (screenRect, { pixelRatio = 1, flush = false } = {}) => {
         const stage = stageRef.current;
-        if (!stage || !screenRect || screenRect.width <= 0 || screenRect.height <= 0) return null;
+        if (
+          !stage ||
+          !screenRect ||
+          !Number.isFinite(screenRect.x) ||
+          !Number.isFinite(screenRect.y) ||
+          !Number.isFinite(screenRect.width) ||
+          !Number.isFinite(screenRect.height) ||
+          screenRect.width <= 0 ||
+          screenRect.height <= 0
+        ) {
+          return null;
+        }
         if (flush) stage.draw();
 
         const dpr = window.devicePixelRatio || 1;
-        const sx = Math.round(screenRect.x * dpr);
-        const sy = Math.round(screenRect.y * dpr);
-        const sw = Math.round(screenRect.width * dpr);
-        const sh = Math.round(screenRect.height * dpr);
-        const outW = Math.round(screenRect.width * pixelRatio);
-        const outH = Math.round(screenRect.height * pixelRatio);
+        const sx = Math.max(0, Math.round(screenRect.x * dpr));
+        const sy = Math.max(0, Math.round(screenRect.y * dpr));
+        const sw = Math.max(1, Math.round(screenRect.width * dpr));
+        const sh = Math.max(1, Math.round(screenRect.height * dpr));
+        const outW = Math.max(1, Math.round(screenRect.width * pixelRatio));
+        const outH = Math.max(1, Math.round(screenRect.height * pixelRatio));
 
         const out = document.createElement("canvas");
         out.width = outW;
         out.height = outH;
         const ctx = out.getContext("2d");
+        if (!ctx) return null;
 
         for (const layer of stage.getLayers()) {
           if (!layer.visible()) continue;
@@ -801,7 +891,7 @@ function KonvaCanvasRoot({
     return () => {
       if (screenshotApiRef.current) screenshotApiRef.current = null;
     };
-  }, [screenshotApiRef, worldOrigin, fieldBounds]);
+  }, [screenshotApiRef, worldOrigin, fieldBounds, size.width, size.height]);
 
   useEffect(() => {
     if (!screenshotMode) {

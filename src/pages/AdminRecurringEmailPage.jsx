@@ -454,9 +454,10 @@ function CampaignModal({ campaign, plays, folders, playsLoading, playsError, onC
     const poll = setInterval(async () => {
       if (cancelled) return;
       const api = gifExportRef.current;
+      const metrics = api?.getCanvasMetrics?.();
       const elapsed = Date.now() - start;
 
-      if (!api?.generateGIF || !api?.isCanvasReady?.()) {
+      if (!api?.generateGIF || !metrics?.stageReady) {
         if (elapsed > TIMEOUT_MS) {
           clearInterval(poll);
           if (!cancelled) {

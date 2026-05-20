@@ -43,7 +43,7 @@ import { getLogs as getAnimDebugLogs, log as logAnimDebug } from "../../animatio
 import { getLogs as getDrawDebugLogs, log as logDrawDebug } from "../../canvas/drawDebugLogger";
 import { getLogs as getKeyToolDebugLogs, log as logKeyToolDebug } from "../../canvas/keyboardToolDebugLogger";
 import { getLogs as getVideoExportDebugLogs, log as logVideoExport } from "../../utils/videoExportDebugLogger";
-import { getLogs as getGifExportDebugLogs } from "../../utils/gifExportDebugLogger";
+import { getLogs as getGifExportDebugLogs, log as logGifExport } from "../../utils/gifExportDebugLogger";
 import { supportsWebCodecsMP4, createMP4Encoder, isIOSDevice, convertWebMToMP4 } from "../../utils/videoEncoder";
 import { encodeCanvasFramesToGIF, GIF_PRESETS } from "../../utils/gifEncoder";
 import { samplePathAtT } from "../../canvas/drawingGeometry";
@@ -90,6 +90,7 @@ const VIDEO_EXPORT_TIMESLICE_MS = 1000;
 const VIDEO_EXPORT_HIGH_LOAD_PIXELS = 2_500_000;
 const VIDEO_EXPORT_MAX_FPS_HIGH_LOAD = 24;
 const VIDEO_EXPORT_MAX_BITRATE_HIGH_LOAD = 8_000_000;
+const MIN_GIF_CAPTURE_DIMENSION = 64;
 const DEFAULT_PLAY_NAME = "Untitled";
 /** Minimum gap (ms) between keyframes — prevents placing keyframes too close together. */
 const KEYFRAME_MIN_GAP_MS = 500;
@@ -2108,6 +2109,88 @@ function Slate({
    * @param {number} [options.width=480] - Output pixel width; height scales to match.
    * @returns {Promise<Blob|null>} GIF Blob, or null on failure.
    */
+  const getGifContentBounds = useCallback((worldRect = null) => {
+    const api = screenshotApiRef.current;
+    const fieldRect = worldRect ?? api?.getFieldWorldBounds?.() ?? null;
+    const points = [];
+    const tracks = animationDataRef.current?.tracks || {};
+
+    Object.values(tracks).forEach((track) => {
+      (track?.keyframes || []).forEach((kf) => {
+        if (kf?.x != null) points.push({ x: kf.x, y: kf.y ?? 0 });
+      });
+    });
+
+    Object.values(playersByIdRef.current || {}).forEach((player) => {
+      if (player?.x != null) points.push({ x: player.x, y: player.y ?? 0 });
+    });
+
+    Object.values(ballsByIdRef.current || {}).forEach((ball) => {
+      if (ball?.x != null) points.push({ x: ball.x, y: ball.y ?? 0 });
+    });
+
+    if (!points.length) return fieldRect;
+
+    let left = Number.POSITIVE_INFINITY;
+    let right = Number.NEGATIVE_INFINITY;
+    let top = Number.POSITIVE_INFINITY;
+    let bottom = Number.NEGATIVE_INFINITY;
+    points.forEach(({ x, y }) => {
+      if (x < left) left = x;
+      if (x > right) right = x;
+      if (y < top) top = y;
+      if (y > bottom) bottom = y;
+    });
+
+    const spanW = Math.max(right - left, 1);
+    const spanH = Math.max(bottom - top, 1);
+    const padW = spanW * 0.07;
+    const padH = spanH * 0.07;
+    return {
+      x: left - padW,
+      y: top - padH,
+      width: spanW + padW * 2,
+      height: spanH + padH * 2,
+    };
+  }, []);
+
+  const getGifCaptureMetrics = useCallback((worldRect = null) => {
+    const api = screenshotApiRef.current;
+    const contentBounds = getGifContentBounds(worldRect);
+    const rawMetrics = api?.getCaptureCanvasMetrics?.(contentBounds) || null;
+    const stageWidth = Number(rawMetrics?.stageWidth) || 0;
+    const stageHeight = Number(rawMetrics?.stageHeight) || 0;
+    const captureWidth = Number(rawMetrics?.captureWidth) || 0;
+    const captureHeight = Number(rawMetrics?.captureHeight) || 0;
+    // stageReady: Konva is initialized and the stage has real pixel dimensions.
+    // Used by the poll in the email composer to know when capture is safe to start.
+    // Does NOT require contentBounds/captureWidth — those depend on animation data
+    // which may load after the stage is ready.
+    const stageReady = Boolean(
+      rawMetrics &&
+      stageWidth >= MIN_GIF_CAPTURE_DIMENSION &&
+      stageHeight >= MIN_GIF_CAPTURE_DIMENSION
+    );
+    // ready: full capture plan is valid (stage + content bounds + capture rect).
+    const ready = Boolean(
+      rawMetrics?.ready &&
+      stageWidth >= MIN_GIF_CAPTURE_DIMENSION &&
+      stageHeight >= MIN_GIF_CAPTURE_DIMENSION &&
+      captureWidth >= MIN_GIF_CAPTURE_DIMENSION &&
+      captureHeight >= MIN_GIF_CAPTURE_DIMENSION &&
+      contentBounds
+    );
+    return {
+      ready,
+      stageReady,
+      contentBounds,
+      stageWidth,
+      stageHeight,
+      captureWidth,
+      captureHeight,
+    };
+  }, [getGifContentBounds]);
+
   const recordGIFExport = useCallback(async (worldRect, durationSec = 10, options = {}) => {
     const api = screenshotApiRef.current;
     if (!api?.captureContentCanvas || !api?.setFitCameraForCapture || !api?.restoreCameraAfterCapture ||
@@ -2115,51 +2198,22 @@ function Slate({
       onShowMessage?.("GIF export failed", "Capture API not ready.", "error");
       return null;
     }
-
-    // Compute content bounds from player/ball positions only — same algorithm as
-    // PlayPreviewCard "fit-distribution". Field bounds are the fallback when there
-    // are no player points, not always included.
-    const fieldRect = worldRect ?? api.getFieldWorldBounds?.();
-    const contentBounds = (() => {
-      const points = [];
-      // All keyframe positions from every track
-      const tracks = animationDataRef.current?.tracks || {};
-      Object.values(tracks).forEach((track) => {
-        (track?.keyframes || []).forEach((kf) => {
-          if (kf?.x != null) points.push({ x: kf.x, y: kf.y ?? 0 });
-        });
-      });
-      // Current player positions (covers plays with no keyframes)
-      Object.values(playersByIdRef.current || {}).forEach((p) => {
-        if (p?.x != null) points.push({ x: p.x, y: p.y ?? 0 });
-      });
-      const ball = ballsByIdRef.current?.["ball-1"];
-      if (ball?.x != null) points.push({ x: ball.x, y: ball.y ?? 0 });
-
-      // Fall back to full field when no player data exists
-      if (!points.length) return fieldRect;
-
-      let left = Number.POSITIVE_INFINITY;
-      let right = Number.NEGATIVE_INFINITY;
-      let top = Number.POSITIVE_INFINITY;
-      let bottom = Number.NEGATIVE_INFINITY;
-      points.forEach(({ x, y }) => {
-        if (x < left) left = x;
-        if (x > right) right = x;
-        if (y < top) top = y;
-        if (y > bottom) bottom = y;
-      });
-
-      // 7% padding around the player bounding box (in world units)
-      const spanW = Math.max(right - left, 1);
-      const spanH = Math.max(bottom - top, 1);
-      const padW = spanW * 0.07;
-      const padH = spanH * 0.07;
-      return { x: left - padW, y: top - padH, width: spanW + padW * 2, height: spanH + padH * 2 };
-    })();
+    const captureMetrics = getGifCaptureMetrics(worldRect);
+    const contentBounds = captureMetrics.contentBounds;
 
     if (!contentBounds) {
       onShowMessage?.("GIF export failed", "Field not ready — wait for the canvas to finish loading.", "error");
+      return null;
+    }
+
+    logGifExport(
+      `recordGIFExport: capture metrics stage=${captureMetrics.stageWidth}x${captureMetrics.stageHeight} ` +
+      `capture=${captureMetrics.captureWidth}x${captureMetrics.captureHeight}`
+    );
+    if (!captureMetrics.ready) {
+      const metricSummary = `${captureMetrics.stageWidth}x${captureMetrics.stageHeight}, capture ${captureMetrics.captureWidth}x${captureMetrics.captureHeight}`;
+      const message = `GIF capture failed: hidden canvas initialized with invalid dimensions (${metricSummary})`;
+      onShowMessage?.("GIF export failed", message, "error");
       return null;
     }
 
@@ -2196,6 +2250,20 @@ function Slate({
       const fitResult = api.setFitCameraForCapture(contentBounds);
       cameraSaved = fitResult?.saved ?? null;
       screenRect = fitResult?.screenRect ?? null;
+      if (
+        !screenRect ||
+        !Number.isFinite(screenRect.width) ||
+        !Number.isFinite(screenRect.height) ||
+        screenRect.width < MIN_GIF_CAPTURE_DIMENSION ||
+        screenRect.height < MIN_GIF_CAPTURE_DIMENSION
+      ) {
+        throw new Error(
+          `GIF capture failed: hidden canvas initialized with invalid dimensions (${Math.round(screenRect?.width || 0)}x${Math.round(screenRect?.height || 0)})`
+        );
+      }
+      logGifExport(
+        `recordGIFExport: fitted rect ${Math.round(screenRect.width)}x${Math.round(screenRect.height)}`
+      );
 
       const externalOnProgress = typeof options.onProgress === "function" ? options.onProgress : null;
 
@@ -2208,6 +2276,14 @@ function Slate({
 
         const canvas = api.captureContentCanvas(screenRect, { pixelRatio: 1, flush: true });
         if (!canvas) throw new Error(`captureContentCanvas null at frame ${i}/${totalFrames}`);
+        if (i === 0) {
+          logGifExport(`recordGIFExport: first frame ${canvas.width}x${canvas.height}`);
+          if (canvas.width < MIN_GIF_CAPTURE_DIMENSION || canvas.height < MIN_GIF_CAPTURE_DIMENSION) {
+            throw new Error(
+              `GIF capture failed: hidden canvas initialized with invalid dimensions (${canvas.width}x${canvas.height})`
+            );
+          }
+        }
         frames.push(canvas);
 
         if (i % 3 === 0) {
@@ -2275,15 +2351,17 @@ function Slate({
       },
       /** Returns the loaded animation duration in seconds (0 if no animation). */
       getDurationSec: () => (animationDataRef.current?.durationMs || 0) / 1000,
-      /** True once the Konva canvas capture API is fully initialised. */
-      isCanvasReady: () => !!(screenshotApiRef.current?.captureContentCanvas),
+      /** Capture readiness + dimensions for hidden admin-composer exports. */
+      getCanvasMetrics: () => getGifCaptureMetrics(null),
+      /** True once the Konva stage is initialized with real pixel dimensions. */
+      isCanvasReady: () => getGifCaptureMetrics(null).stageReady,
       /** Convenience: the GIF quality presets. */
       presets: GIF_PRESETS,
     };
     return () => {
       if (gifExportRef) gifExportRef.current = null;
     };
-  }, [gifExportRef, recordGIFExport]);
+  }, [gifExportRef, recordGIFExport, getGifCaptureMetrics]);
 
   const handleExportModalSubmit = useCallback(({ format, region, durationSec, quality }) => {
     setExportModalOpen(false);

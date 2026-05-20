@@ -219,25 +219,27 @@ export default function AdminEmailPage() {
       const metrics = api?.getCanvasMetrics?.();
       const elapsedMs = Date.now() - start;
       const elapsedSec = Math.floor(elapsedMs / 1000);
+      const isReady = Boolean(api?.generateGIF && metrics?.stageReady);
       const metricSignature = metrics
-        ? `${metrics.stageWidth || 0}x${metrics.stageHeight || 0}|${metrics.captureWidth || 0}x${metrics.captureHeight || 0}|${metrics.ready ? "ready" : "waiting"}`
+        ? `${metrics.stageWidth || 0}x${metrics.stageHeight || 0}|${metrics.captureWidth || 0}x${metrics.captureHeight || 0}|${isReady ? "ready" : "waiting"}`
         : "no-metrics";
       if (metricSignature !== lastGifMetricSignatureRef.current) {
         lastGifMetricSignatureRef.current = metricSignature;
         logGifExport(
           `AdminEmailPage: hidden Slate metrics stage=${metrics?.stageWidth || 0}x${metrics?.stageHeight || 0} ` +
-          `capture=${metrics?.captureWidth || 0}x${metrics?.captureHeight || 0} ready=${Boolean(metrics?.ready)}`
+          `capture=${metrics?.captureWidth || 0}x${metrics?.captureHeight || 0} stageReady=${Boolean(metrics?.stageReady)}`
         );
       } else if (elapsedSec !== lastGifWaitSecondRef.current && elapsedSec > 0) {
         lastGifWaitSecondRef.current = elapsedSec;
         logGifExport(
           `AdminEmailPage: still waiting for hidden Slate after ${elapsedSec}s ` +
-          `(stage=${metrics?.stageWidth || 0}x${metrics?.stageHeight || 0}, capture=${metrics?.captureWidth || 0}x${metrics?.captureHeight || 0})`
+          `(stage=${metrics?.stageWidth || 0}x${metrics?.stageHeight || 0}, stageReady=${Boolean(metrics?.stageReady)})`
         );
       }
-      // Wait until the hidden Slate has a real measured stage and a valid crop rect,
-      // not just the presence of capture methods on the ref.
-      if (!api?.generateGIF || !api?.isCanvasReady?.()) {
+      // Proceed once the Konva stage has real pixel dimensions. contentBounds and
+      // captureWidth are computed fresh inside recordGIFExport so they don't need
+      // to be valid here.
+      if (!isReady) {
         if (elapsedMs > TIMEOUT_MS) {
           clearInterval(poll);
           if (!cancelled) {
