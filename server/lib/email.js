@@ -670,12 +670,12 @@ function extractYouTubeIdFromUrl(input) {
  */
 export function buildBroadcastEmailHtml({ body = "", youtubeUrl = "", gifUrl = "", recipientName = "", recipientTeam = "" }) {
   const nameParts = (recipientName || "").trim().split(/\s+/);
-  const firstName = nameParts[0] || "there";
+  const firstName = nameParts[0] || "";
   const lastName  = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
   const personalizedBody = body
     .replace(/\{\{firstName\}\}/g, firstName)
     .replace(/\{\{lastName\}\}/g, lastName)
-    .replace(/\{\{teamName\}\}/g, recipientTeam || "your team");
+    .replace(/\{\{teamName\}\}/g, recipientTeam || "");
 
   const paragraphsHtml = personalizedBody
     .split(/\n\n+/)
@@ -802,6 +802,7 @@ export async function sendBroadcastEmails({ recipients, subject, subheader = "",
         playEmbed,
         recipientName: r.name,
         recipientTeam: r.team_name || "",
+        recipientEmail: r.email || "",
       }),
     }));
 

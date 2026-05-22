@@ -43,6 +43,15 @@ function OnePageIcon() {
   );
 }
 
+function DesignRulesIcon() {
+  return (
+    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 4.5h9A1.5 1.5 0 0118 6v12a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 016 18V6A1.5 1.5 0 017.5 4.5z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 8.25h6M9 12h6M9 15.75h3.75" />
+    </svg>
+  );
+}
+
 function ErrorsIcon() {
   return (
     <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -83,6 +92,14 @@ function EmailIcon() {
   );
 }
 
+function NotificationsIcon() {
+  return (
+    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+    </svg>
+  );
+}
+
 function StaffIcon() {
   return (
     <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -113,12 +130,14 @@ const NAV_ITEMS = [
   { label: "Plays", path: "/app", icon: <PlaysIcon />, anyOf: ["plays.viewFolders", "pageSections.manage", "playbooks.view", "presets.create", "presets.edit", "prefabs.manage"] },
   { label: "Users", path: "/users", icon: <UsersIcon />, perm: "users.viewTable" },
   { label: "One Page", path: "/one-page", icon: <OnePageIcon />, perm: "pageSections.manage" },
+  { label: "Design Rules", path: "/design-rules", icon: <DesignRulesIcon />, adminOnly: true },
   { label: "Errors", path: "/errors", icon: <ErrorsIcon />, perm: "errors.viewReports" },
   { label: "Issues", path: "/user-issues", icon: <IssuesIcon />, perm: "issues.view" },
   { label: "Videos", path: "/demo-videos", icon: <VideosIcon />, perm: "videos.addDemo" },
   { label: "Tests", path: "/tests", icon: <TestsIcon />, perm: "tests.run" },
   { label: "Email", path: "/email", icon: <EmailIcon />, ownerOnly: true },
   { label: "Recurring", path: "/email/recurring", icon: <EmailIcon />, ownerOnly: true },
+  { label: "Notifications", path: "/notifications", icon: <NotificationsIcon />, ownerOnly: true },
   { label: "Staff", path: "/staff", icon: <StaffIcon />, ownerOnly: true },
 ];
 
@@ -134,6 +153,7 @@ export default function AdminSidebar({ mobileOpen = false, onClose }) {
   const { basePath, theme, setTheme, hasPerm, isOwner, sessionLoaded } = useAdmin();
   const visibleItems = sessionLoaded
     ? NAV_ITEMS.filter((item) => {
+        if (item.adminOnly && basePath !== "/admin") return false;
         if (item.ownerOnly) return isOwner;
         if (isOwner) return true;
         if (item.perm) return hasPerm(item.perm);
@@ -178,7 +198,7 @@ export default function AdminSidebar({ mobileOpen = false, onClose }) {
         </div>
 
         {/* Nav items */}
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+        <nav className="hide-scroll flex flex-1 flex-col gap-1 overflow-y-auto p-3">
           {visibleItems.map(({ label, path, icon }) => (
             <NavLink
               key={path}

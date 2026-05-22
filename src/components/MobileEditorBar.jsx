@@ -789,8 +789,12 @@ export default function MobileEditorBar({
   onDownload,
   onImport,
   adminMode,
+  previewMode = false,
+  initialActiveSheet = null,
 }) {
-  const [activeSheet, setActiveSheet] = useState(null);
+  const [activeSheet, setActiveSheet] = useState(initialActiveSheet);
+  const chromePositionClass = previewMode ? "absolute" : "fixed";
+  const overlayPositionClass = previewMode ? "absolute" : "fixed";
 
   const openSheet = (id) => setActiveSheet((prev) => (prev === id ? null : id));
   const closeSheet = () => setActiveSheet(null);
@@ -806,7 +810,7 @@ export default function MobileEditorBar({
 
       {/* ── Top nav bar + drop-down sheets (fixed to top of screen) ── */}
       <div
-        className="fixed top-0 inset-x-0 z-60"
+        className={`${chromePositionClass} top-0 inset-x-0 z-60`}
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
         {/* Tab row */}
@@ -902,14 +906,14 @@ export default function MobileEditorBar({
       {/* Backdrop — closes sheet when tapping canvas */}
       {activeSheet && (
         <div
-          className="fixed inset-0 z-55 bg-black/50"
+          className={`${overlayPositionClass} inset-0 z-55 bg-black/50`}
           onClick={closeSheet}
         />
       )}
 
       {/* ── Bottom timeline bar (fixed to bottom of screen) ── */}
       <div
-        className="fixed bottom-0 inset-x-0 z-60"
+        className={`${chromePositionClass} bottom-0 inset-x-0 z-60`}
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <MobileTimeline

@@ -1,9 +1,22 @@
+import { FIELD_SIZE_STYLES, getFieldTone, applyFieldFocus, clearFieldFocus } from "./adminFieldStyles";
+
 /**
  * Styled admin text/password/number/email input.
  *
  * @param {{ label?: string, className?: string } & React.InputHTMLAttributes<HTMLInputElement>} props
  */
-export default function AdminInput({ label, className = "", ...inputProps }) {
+export default function AdminInput({
+  label,
+  hint,
+  error,
+  className = "",
+  size = "md",
+  inputClassName = "",
+  ...inputProps
+}) {
+  const tone = getFieldTone({ disabled: inputProps.disabled, invalid: Boolean(error) || inputProps["aria-invalid"] === true });
+  const sizeStyles = FIELD_SIZE_STYLES[size] ?? FIELD_SIZE_STYLES.md;
+
   return (
     <div className={`flex flex-col gap-1 ${className}`}>
       {label && (
@@ -16,22 +29,34 @@ export default function AdminInput({ label, className = "", ...inputProps }) {
       )}
       <input
         {...inputProps}
-        className="w-full rounded-[var(--adm-radius-sm)] px-3.5 py-2.5 text-sm outline-none transition-colors"
+        aria-invalid={inputProps["aria-invalid"] ?? Boolean(error)}
+        className={`w-full rounded-[var(--adm-radius-md)] outline-none transition-all ${sizeStyles.inputClassName} ${inputClassName}`}
         style={{
-          backgroundColor: "var(--adm-surface)",
-          border: "1px solid var(--adm-border2)",
-          color: "var(--adm-text)",
-          "--placeholder-color": "var(--adm-muted)",
+          backgroundColor: tone.backgroundColor,
+          border: `1px solid ${tone.borderColor}`,
+          color: tone.color,
         }}
         onFocus={(e) => {
-          e.currentTarget.style.borderColor = "var(--adm-accent)";
+          applyFieldFocus(e.currentTarget, { invalid: Boolean(error) || inputProps["aria-invalid"] === true });
           inputProps.onFocus?.(e);
         }}
         onBlur={(e) => {
-          e.currentTarget.style.borderColor = "var(--adm-border2)";
+          clearFieldFocus(e.currentTarget, {
+            invalid: Boolean(error) || inputProps["aria-invalid"] === true,
+            disabled: inputProps.disabled,
+          });
           inputProps.onBlur?.(e);
         }}
       />
+      {error ? (
+        <p className="text-xs" style={{ color: "var(--adm-danger)" }}>
+          {error}
+        </p>
+      ) : hint ? (
+        <p className="text-xs" style={{ color: "var(--adm-text3)" }}>
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }

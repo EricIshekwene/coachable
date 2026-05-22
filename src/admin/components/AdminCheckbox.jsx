@@ -8,22 +8,36 @@
  *   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void,
  * } & React.InputHTMLAttributes<HTMLInputElement>} props
  */
-export default function AdminCheckbox({ label, className = "", checked, onChange, ...inputProps }) {
+export default function AdminCheckbox({
+  label,
+  description,
+  className = "",
+  checked,
+  onChange,
+  disabled = false,
+  ...inputProps
+}) {
   return (
-    <label className={`flex cursor-pointer select-none items-center gap-2 ${className}`}>
-      <span className="relative flex h-4 w-4 shrink-0">
+    <label className={`flex select-none items-start gap-2.5 ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"} ${className}`}>
+      <span className="relative flex h-4 w-4 shrink-0 translate-y-0.5">
         <input
           type="checkbox"
           checked={checked}
           onChange={onChange}
+          disabled={disabled}
           className="sr-only"
           {...inputProps}
         />
         <span
-          className="flex h-4 w-4 items-center justify-center rounded-[3px] transition-colors"
+          className="flex h-4 w-4 items-center justify-center rounded-[4px] transition-colors"
           style={{
-            backgroundColor: checked ? "var(--adm-accent)" : "var(--adm-surface2)",
+            backgroundColor: checked
+              ? "var(--adm-accent)"
+              : disabled
+                ? "var(--adm-surface2)"
+                : "var(--adm-surface)",
             border: checked ? "1px solid transparent" : "1px solid var(--adm-border2)",
+            boxShadow: checked ? "0 8px 20px color-mix(in srgb, var(--adm-accent-dim) 96%, transparent)" : "none",
           }}
         >
           {checked && (
@@ -33,9 +47,18 @@ export default function AdminCheckbox({ label, className = "", checked, onChange
           )}
         </span>
       </span>
-      {label && (
-        <span className="text-sm" style={{ color: "var(--adm-text)" }}>
-          {label}
+      {(label || description) && (
+        <span className="flex flex-col gap-0.5">
+          {label ? (
+            <span className="text-sm" style={{ color: "var(--adm-text)" }}>
+              {label}
+            </span>
+          ) : null}
+          {description ? (
+            <span className="text-xs" style={{ color: "var(--adm-text3)" }}>
+              {description}
+            </span>
+          ) : null}
         </span>
       )}
     </label>

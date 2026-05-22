@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FiCheck, FiChevronLeft, FiChevronRight, FiClock, FiFilm,
-  FiMail, FiSend, FiUsers, FiX,
+  FiMail, FiPlus, FiSend, FiUsers, FiX,
 } from "react-icons/fi";
 import { useAdmin } from "../admin/AdminContext";
 import { adminApi } from "../admin/adminTransport";
@@ -33,6 +33,7 @@ import {
 } from "../../shared/broadcastEmailTemplate.js";
 import { getLogs as getGifExportDebugLogs, log as logGifExport } from "../utils/gifExportDebugLogger";
 import PlayPickerModal from "../components/PlayPickerModal";
+import RecipientPicker from "../components/RecipientPicker";
 
 const USER_TYPE_OPTIONS = [
   { value: "all", label: "All verified users" },
@@ -53,6 +54,8 @@ const SPORT_OPTIONS = [
     .filter((sport) => sport !== "Blank")
     .map((sport) => ({ value: sport, label: sport })),
 ];
+
+const EMPTY_FILTER_GROUP = { userType: "onboarded", sport: "", roles: [] };
 
 const PLACEHOLDER_RECIPIENT = {
   name: "Alex Johnson",
@@ -92,9 +95,8 @@ export default function AdminEmailPage() {
   const { isOwner } = useAdmin();
   const navigate = useNavigate();
 
-  const [userType, setUserType] = useState("onboarded");
-  const [sport, setSport] = useState("");
-  const [roles, setRoles] = useState([]);
+  const [filterGroups, setFilterGroups] = useState([{ ...EMPTY_FILTER_GROUP }]);
+  const [extraRecipients, setExtraRecipients] = useState([]);
 
   const [audienceData, setAudienceData] = useState(null);
   const [loadingAudience, setLoadingAudience] = useState(false);
@@ -141,10 +143,16 @@ export default function AdminEmailPage() {
   const youtubeId = extractYouTubeId(youtubeUrl);
   const bodyText = useMemo(() => getBroadcastBodyText(body), [body]);
   const canCompose = subject.trim() && bodyText.trim();
-  const canSend = canCompose && audienceData && audienceData.count > 0;
+  // Allow send when: filter audience was previewed and has matches, OR only extraRecipients are set
+  const canSend = canCompose && (
+    (audienceData && audienceData.count > 0) ||
+    (filterGroups.length === 0 && extraRecipients.length > 0)
+  );
 
   const previewRecipients = audienceData?.preview?.length
     ? audienceData.preview
+    : extraRecipients.length > 0
+    ? extraRecipients
     : [PLACEHOLDER_RECIPIENT];
   const clampedIndex = Math.min(previewIndex, previewRecipients.length - 1);
   const currentPreviewRecipient = previewRecipients[clampedIndex];
@@ -157,8 +165,9 @@ export default function AdminEmailPage() {
         youtubeUrl,
         gifUrl,
         playEmbed,
-        recipientName: currentPreviewRecipient.name,
+        recipientName: currentPreviewRecipient.name || "",
         recipientTeam: currentPreviewRecipient.team_name || "",
+        recipientEmail: currentPreviewRecipient.email || "",
       }),
     [subheader, body, youtubeUrl, gifUrl, playEmbed, currentPreviewRecipient]
   );
@@ -512,6 +521,22 @@ export default function AdminEmailPage() {
 
   // ── Audience / send ─────────────────────────────────────────────────────────
 
+  /** Update a single field on a filter group by index. */
+  const updateFilterGroup = useCallback((idx, key, value) => {
+    setFilterGroups((prev) => prev.map((g, i) => i === idx ? { ...g, [key]: value } : g));
+    setAudienceData(null);
+  }, []);
+
+  const addFilterGroup = useCallback(() => {
+    setFilterGroups((prev) => [...prev, { ...EMPTY_FILTER_GROUP }]);
+    setAudienceData(null);
+  }, []);
+
+  const removeFilterGroup = useCallback((idx) => {
+    setFilterGroups((prev) => prev.filter((_, i) => i !== idx));
+    setAudienceData(null);
+  }, []);
+
   const handlePreviewAudience = useCallback(async () => {
     setLoadingAudience(true);
     setAudienceData(null);
@@ -520,7 +545,7 @@ export default function AdminEmailPage() {
     try {
       const data = await adminApi("/admin/email/preview-recipients", {
         method: "POST",
-        body: JSON.stringify({ filters: { userType, sport, roles } }),
+        body: JSON.stringify({ filterGroups, extraRecipients }),
       });
       setAudienceData(data);
     } catch (err) {
@@ -528,7 +553,7 @@ export default function AdminEmailPage() {
     } finally {
       setLoadingAudience(false);
     }
-  }, [userType, sport, roles]);
+  }, [filterGroups, extraRecipients]);
 
   const handleSendTest = useCallback(async () => {
     if (!testEmail.trim()) { setSendError("Enter a test email address first"); return; }
@@ -536,7 +561,7 @@ export default function AdminEmailPage() {
     try {
       const data = await adminApi("/admin/email/send", {
         method: "POST",
-        body: JSON.stringify({ subject, subheader, body, youtubeUrl, gifUrl, playEmbed: playEmbed || undefined, filters: { userType, sport, roles }, previewTo: testEmail.trim() }),
+        body: JSON.stringify({ subject, subheader, body, youtubeUrl, gifUrl, playEmbed: playEmbed || undefined, filterGroups, extraRecipients, previewTo: testEmail.trim() }),
       });
       setSendResult({ ...data, testEmail: testEmail.trim() });
     } catch (err) {
@@ -544,14 +569,14 @@ export default function AdminEmailPage() {
     } finally {
       setSending(false);
     }
-  }, [subject, subheader, body, youtubeUrl, gifUrl, playEmbed, userType, sport, roles, testEmail]);
+  }, [subject, subheader, body, youtubeUrl, gifUrl, playEmbed, filterGroups, extraRecipients, testEmail]);
 
   const handleSendToAll = useCallback(async () => {
     setConfirmOpen(false); setSending(true); setSendResult(null); setSendError("");
     try {
       const data = await adminApi("/admin/email/send", {
         method: "POST",
-        body: JSON.stringify({ subject, subheader, body, youtubeUrl, gifUrl, playEmbed: playEmbed || undefined, filters: { userType, sport, roles } }),
+        body: JSON.stringify({ subject, subheader, body, youtubeUrl, gifUrl, playEmbed: playEmbed || undefined, filterGroups, extraRecipients }),
       });
       setSendResult(data);
     } catch (err) {
@@ -559,7 +584,7 @@ export default function AdminEmailPage() {
     } finally {
       setSending(false);
     }
-  }, [subject, subheader, body, youtubeUrl, gifUrl, playEmbed, userType, sport, roles]);
+  }, [subject, subheader, body, youtubeUrl, gifUrl, playEmbed, filterGroups, extraRecipients]);
 
   const isGenerating = gifPhase === "mounting" || gifPhase === "generating" || gifPhase === "uploading";
 
@@ -595,61 +620,135 @@ export default function AdminEmailPage() {
             {/* Audience */}
             <AdminSection
               title="Audience"
-              subtitle="Choose which users receive this email. Click 'Preview' to see the count."
+              subtitle="Add specific recipients and/or filter groups. All groups are unioned together."
             >
               <AdminCard>
-                <div className="flex flex-col gap-4">
-                  <div className="flex flex-wrap items-end gap-3">
-                    <AdminSelect
-                      label="User type"
-                      value={userType}
-                      onChange={(e) => { setUserType(e.target.value); setAudienceData(null); }}
-                      className="min-w-[160px]"
+                <div className="flex flex-col gap-5">
+                  {/* Outlook-style individual recipient picker */}
+                  <RecipientPicker
+                    recipients={extraRecipients}
+                    onChange={(next) => { setExtraRecipients(next); setAudienceData(null); }}
+                    audienceEmails={audienceData?.preview?.map((r) => r.email) ?? []}
+                  />
+
+                  {/* Filter groups */}
+                  {filterGroups.length > 0 && (
+                    <div className="flex flex-col gap-3">
+                      <div style={{ borderTop: "1px solid var(--adm-border)" }} />
+                      <span className="text-xs font-semibold" style={{ color: "var(--adm-muted)" }}>
+                        Audience filters {filterGroups.length > 1 ? `(${filterGroups.length} groups — recipients from all groups are combined)` : ""}
+                      </span>
+
+                      {filterGroups.map((group, idx) => (
+                        <div
+                          key={idx}
+                          className="flex flex-col gap-3 rounded-[var(--adm-radius-sm)] p-3"
+                          style={{ backgroundColor: "var(--adm-surface2)", border: "1px solid var(--adm-border)" }}
+                        >
+                          {/* Group header */}
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold" style={{ color: "var(--adm-text2)" }}>
+                              {filterGroups.length > 1 ? `Group ${idx + 1}` : "Filter"}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => removeFilterGroup(idx)}
+                              className="flex h-5 w-5 items-center justify-center rounded transition-opacity hover:opacity-70"
+                              style={{ color: "var(--adm-muted)" }}
+                              aria-label="Remove filter group"
+                            >
+                              <FiX className="text-xs" />
+                            </button>
+                          </div>
+
+                          {/* Dropdowns */}
+                          <div className="flex flex-wrap items-end gap-3">
+                            <AdminSelect
+                              label="User type"
+                              value={group.userType}
+                              onChange={(e) => updateFilterGroup(idx, "userType", e.target.value)}
+                              className="min-w-[150px]"
+                            >
+                              {USER_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </AdminSelect>
+                            <AdminSelect
+                              label="Sport"
+                              value={group.sport}
+                              onChange={(e) => updateFilterGroup(idx, "sport", e.target.value)}
+                              className="min-w-[130px]"
+                            >
+                              {SPORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </AdminSelect>
+                          </div>
+
+                          {/* Role checkboxes */}
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs" style={{ color: "var(--adm-muted)" }}>
+                              Role (leave unchecked for all roles)
+                            </span>
+                            <div className="flex flex-wrap gap-3">
+                              {ROLE_OPTIONS.map((ro) => {
+                                const checked = group.roles.includes(ro.value);
+                                return (
+                                  <label key={ro.value} className="flex cursor-pointer items-center gap-1.5 select-none">
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={() =>
+                                        updateFilterGroup(idx, "roles",
+                                          checked
+                                            ? group.roles.filter((r) => r !== ro.value)
+                                            : [...group.roles, ro.value]
+                                        )
+                                      }
+                                      className="h-3.5 w-3.5 rounded"
+                                      style={{ accentColor: "var(--adm-accent)" }}
+                                    />
+                                    <span className="text-xs" style={{ color: "var(--adm-text)" }}>{ro.label}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Empty state */}
+                  {filterGroups.length === 0 && extraRecipients.length === 0 && (
+                    <p className="text-xs font-medium" style={{ color: "var(--adm-danger)" }}>
+                      Add at least one filter group or recipient above before sending.
+                    </p>
+                  )}
+
+                  {/* Actions row */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={addFilterGroup}
+                      className="flex items-center gap-1.5 rounded-[var(--adm-radius-sm)] px-3 py-1.5 text-xs font-semibold transition-opacity hover:opacity-80"
+                      style={{
+                        backgroundColor: "var(--adm-surface2)",
+                        border: "1px solid var(--adm-border)",
+                        color: "var(--adm-text2)",
+                      }}
                     >
-                      {USER_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </AdminSelect>
-                    <AdminSelect
-                      label="Sport"
-                      value={sport}
-                      onChange={(e) => { setSport(e.target.value); setAudienceData(null); }}
-                      className="min-w-[140px]"
+                      <FiPlus className="text-xs" />
+                      Add filter group
+                    </button>
+
+                    <AdminBtn
+                      onClick={handlePreviewAudience}
+                      disabled={loadingAudience || (filterGroups.length === 0 && extraRecipients.length === 0)}
                     >
-                      {SPORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </AdminSelect>
-                    <AdminBtn onClick={handlePreviewAudience} disabled={loadingAudience} className="self-end">
                       {loadingAudience ? <AdminSpinner size={14} /> : <FiUsers className="text-sm" />}
                       {loadingAudience ? "Loading..." : "Preview recipients"}
                     </AdminBtn>
                   </div>
-                  {/* Role checkboxes */}
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-xs font-semibold" style={{ color: "var(--adm-muted)" }}>
-                      Role (leave unchecked for all roles)
-                    </span>
-                    <div className="flex flex-wrap gap-3">
-                      {ROLE_OPTIONS.map((ro) => {
-                        const checked = roles.includes(ro.value);
-                        return (
-                          <label key={ro.value} className="flex cursor-pointer items-center gap-1.5 select-none">
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => {
-                                setRoles((prev) =>
-                                  checked ? prev.filter((r) => r !== ro.value) : [...prev, ro.value]
-                                );
-                                setAudienceData(null);
-                              }}
-                              className="h-3.5 w-3.5 rounded"
-                              style={{ accentColor: "var(--adm-accent)" }}
-                            />
-                            <span className="text-xs" style={{ color: "var(--adm-text)" }}>{ro.label}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
+
                   {audienceError && <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{audienceError}</p>}
+
                   {audienceData && (
                     <div
                       className="flex flex-col gap-1 rounded-[var(--adm-radius-sm)] px-4 py-3"
@@ -691,6 +790,7 @@ export default function AdminEmailPage() {
                           { label: "First name", tag: "{{firstName}}" },
                           { label: "Last name", tag: "{{lastName}}" },
                           { label: "Team", tag: "{{teamName}}" },
+                          { label: "Email", tag: "{{email}}" },
                         ].map(({ label, tag }) => (
                           <button
                             key={tag} type="button" onClick={() => insertTag(tag)}
@@ -960,8 +1060,40 @@ export default function AdminEmailPage() {
                     </div>
                   )}
 
+                  {/* Debug payload log */}
+                  <div
+                    className="flex flex-col gap-2 rounded-[var(--adm-radius-sm)] px-3 py-2.5"
+                    style={{ backgroundColor: "var(--adm-surface2)", border: "1px solid var(--adm-border)" }}
+                  >
+                    <span className="text-xs font-semibold" style={{ color: "var(--adm-muted)" }}>Debug</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const payload = {
+                          email: { subject, subheader, youtubeUrl, gifUrl, playEmbed },
+                          filterGroups,
+                          extraRecipients,
+                          audience: audienceData
+                            ? { count: audienceData.count, preview: audienceData.preview }
+                            : null,
+                        };
+                        // eslint-disable-next-line no-console
+                        console.log("[EMAIL DEBUG] Send payload:", JSON.stringify(payload, null, 2));
+                      }}
+                      className="self-start rounded-[var(--adm-radius-sm)] px-2.5 py-1 text-xs font-medium transition-opacity hover:opacity-80"
+                      style={{
+                        backgroundColor: "var(--adm-surface)",
+                        border: "1px solid var(--adm-border2)",
+                        color: "var(--adm-text2)",
+                        fontFamily: "monospace",
+                      }}
+                    >
+                      Log send payload to console
+                    </button>
+                  </div>
+
                   <div className="flex items-center justify-between">
-                    {!audienceData && (
+                    {!audienceData && filterGroups.length > 0 && extraRecipients.length === 0 && (
                       <p className="text-xs" style={{ color: "var(--adm-muted)" }}>
                         Preview recipients first to enable broadcast.
                       </p>
@@ -973,7 +1105,7 @@ export default function AdminEmailPage() {
                       className="ml-auto"
                     >
                       {sending ? <AdminSpinner size={14} /> : <FiSend className="text-sm" />}
-                      Send to {audienceData?.count ?? "?"} recipient{(audienceData?.count ?? 0) !== 1 ? "s" : ""}
+                      Send to {audienceData ? audienceData.count : filterGroups.length === 0 ? extraRecipients.length : "?"} recipient{((audienceData?.count ?? (filterGroups.length === 0 ? extraRecipients.length : 0)) !== 1) ? "s" : ""}
                     </AdminBtn>
                   </div>
                 </div>
@@ -1064,7 +1196,11 @@ export default function AdminEmailPage() {
 
       <ConfirmModal
         open={confirmOpen}
-        message={`Send "${subject}" to ${audienceData?.count ?? 0} recipient${(audienceData?.count ?? 0) !== 1 ? "s" : ""}?`}
+        message={`Send "${subject}" to ${audienceData ? audienceData.count : extraRecipients.length} recipient${((audienceData?.count ?? extraRecipients.length) !== 1) ? "s" : ""}?`}
+        subtitle={filterGroups.length === 0
+          ? "This will send to the specific recipients listed above only."
+          : "This will send the email immediately to all matching users. This cannot be undone."
+        }
         subtitle="This will send the email immediately to all matching users. This cannot be undone."
         confirmLabel="Send now"
         cancelLabel="Cancel"

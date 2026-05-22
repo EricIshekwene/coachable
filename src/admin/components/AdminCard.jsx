@@ -8,16 +8,24 @@
  *   onClick?: () => void,
  * }} props
  */
-export default function AdminCard({ children, className = "", padding = true, onClick }) {
+export default function AdminCard({ children, className = "", padding = true, onClick, style, ...cardProps }) {
+  const paddingClasses = typeof padding === "string"
+    ? padding
+    : padding
+      ? "p-5"
+      : "";
+
   return (
     <div
       onClick={onClick}
-      className={`rounded-[var(--adm-radius)] ${padding ? "p-5" : ""} ${onClick ? "cursor-pointer transition-opacity hover:opacity-90" : ""} ${className}`}
+      className={`rounded-[var(--adm-radius-lg)] ${paddingClasses} ${onClick ? "cursor-pointer transition-all hover:-translate-y-0.5 hover:opacity-95" : ""} ${className}`}
       style={{
         backgroundColor: "var(--adm-surface)",
         border: "1px solid var(--adm-border)",
         boxShadow: "var(--adm-shadow-sm)",
+        ...style,
       }}
+      {...cardProps}
     >
       {children}
     </div>

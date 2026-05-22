@@ -1,9 +1,22 @@
+import { FIELD_SIZE_STYLES, getFieldTone, applyFieldFocus, clearFieldFocus } from "./adminFieldStyles";
+
 /**
  * Styled admin select dropdown.
  *
  * @param {{ label?: string, className?: string } & React.SelectHTMLAttributes<HTMLSelectElement>} props
  */
-export default function AdminSelect({ label, className = "", children, ...selectProps }) {
+export default function AdminSelect({
+  label,
+  hint,
+  error,
+  className = "",
+  size = "md",
+  children,
+  ...selectProps
+}) {
+  const tone = getFieldTone({ disabled: selectProps.disabled, invalid: Boolean(error) || selectProps["aria-invalid"] === true });
+  const sizeStyles = FIELD_SIZE_STYLES[size] ?? FIELD_SIZE_STYLES.md;
+
   return (
     <div className={`flex flex-col gap-1 ${className}`}>
       {label && (
@@ -14,18 +27,22 @@ export default function AdminSelect({ label, className = "", children, ...select
       <div className="relative">
         <select
           {...selectProps}
-          className="w-full appearance-none rounded-[var(--adm-radius-sm)] py-2 pl-3.5 pr-8 text-sm outline-none transition-colors"
+          aria-invalid={selectProps["aria-invalid"] ?? Boolean(error)}
+          className={`w-full appearance-none rounded-[var(--adm-radius-md)] outline-none transition-all ${sizeStyles.selectClassName}`}
           style={{
-            backgroundColor: "var(--adm-surface)",
-            border: "1px solid var(--adm-border2)",
-            color: "var(--adm-text)",
+            backgroundColor: tone.backgroundColor,
+            border: `1px solid ${tone.borderColor}`,
+            color: tone.color,
           }}
           onFocus={(e) => {
-            e.currentTarget.style.borderColor = "var(--adm-accent)";
+            applyFieldFocus(e.currentTarget, { invalid: Boolean(error) || selectProps["aria-invalid"] === true });
             selectProps.onFocus?.(e);
           }}
           onBlur={(e) => {
-            e.currentTarget.style.borderColor = "var(--adm-border2)";
+            clearFieldFocus(e.currentTarget, {
+              invalid: Boolean(error) || selectProps["aria-invalid"] === true,
+              disabled: selectProps.disabled,
+            });
             selectProps.onBlur?.(e);
           }}
         >
@@ -43,6 +60,15 @@ export default function AdminSelect({ label, className = "", children, ...select
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </div>
+      {error ? (
+        <p className="text-xs" style={{ color: "var(--adm-danger)" }}>
+          {error}
+        </p>
+      ) : hint ? (
+        <p className="text-xs" style={{ color: "var(--adm-text3)" }}>
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }

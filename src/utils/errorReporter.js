@@ -34,6 +34,11 @@ const GLOBAL_IGNORED_MESSAGES = [
   // Cross-origin scripts sanitize all error details to "Script error." with no stack.
   // There is nothing actionable here — filtering it reduces noise in the error log.
   "Script error.",
+  // Chrome-internal IndexedDB IPC error thrown by Emscripten's compiled WASM runtime
+  // (inside @ffmpeg/ffmpeg) when it tries to cache a compiled native module to IndexedDB
+  // and the transaction is stale or the entry no longer exists. FFmpeg falls back
+  // gracefully — this error is not actionable from application code.
+  "Object Not Found Matching Id",
 ];
 
 function normalizeErrorMessage(value) {

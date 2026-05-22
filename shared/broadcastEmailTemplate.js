@@ -35,15 +35,16 @@ function escapeAttribute(value) {
   return escapeHtml(value).replace(/`/g, "&#96;");
 }
 
-function personalizeMergeTags(value, recipientName = "", recipientTeam = "") {
+function personalizeMergeTags(value, recipientName = "", recipientTeam = "", recipientEmail = "") {
   const nameParts = String(recipientName || "").trim().split(/\s+/).filter(Boolean);
-  const firstName = nameParts[0] || "there";
+  const firstName = nameParts[0] || "";
   const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
 
   return String(value || "")
     .replace(/\{\{firstName\}\}/g, firstName)
     .replace(/\{\{lastName\}\}/g, lastName)
-    .replace(/\{\{teamName\}\}/g, recipientTeam || "your team");
+    .replace(/\{\{teamName\}\}/g, recipientTeam || "")
+    .replace(/\{\{email\}\}/g, recipientEmail || "");
 }
 
 function sanitizeUrl(rawUrl) {
@@ -203,8 +204,8 @@ export function getBroadcastBodyText(body) {
     .trim();
 }
 
-export function renderBroadcastBodyMarkup({ body = "", recipientName = "", recipientTeam = "", playEmbedHtml = "" }) {
-  const personalizedBody = personalizeMergeTags(body, recipientName, recipientTeam);
+export function renderBroadcastBodyMarkup({ body = "", recipientName = "", recipientTeam = "", recipientEmail = "", playEmbedHtml = "" }) {
+  const personalizedBody = personalizeMergeTags(body, recipientName, recipientTeam, recipientEmail);
   const placeholderBody = String(personalizedBody || "").replace(
     PLAY_EMBED_TOKEN_PATTERN,
     playEmbedHtml ? PLAY_EMBED_PLACEHOLDER : ""
@@ -236,8 +237,9 @@ export function buildBroadcastEmailHtml({
   playEmbed = null,
   recipientName = "",
   recipientTeam = "",
+  recipientEmail = "",
 }) {
-  const personalizedSubheader = personalizeMergeTags(subheader, recipientName, recipientTeam).trim();
+  const personalizedSubheader = personalizeMergeTags(subheader, recipientName, recipientTeam, recipientEmail).trim();
 
   const safePlayGifUrl = playEmbed?.gifUrl ? sanitizeUrl(playEmbed.gifUrl) : "";
   const playCardHtml = playEmbed && safePlayGifUrl
@@ -246,7 +248,7 @@ export function buildBroadcastEmailHtml({
       `<div style="width:32px;height:3px;border-radius:999px;background-color:#f97316;margin-bottom:10px;"></div>` +
       `<img src="${escapeAttribute(safePlayGifUrl)}" alt="${escapeAttribute(playEmbed.title || "Play")}" width="492" style="display:block;width:100%;max-width:100%;border:0;border-radius:6px;" /></div>`
     : "";
-  const bodyHtml = renderBroadcastBodyMarkup({ body, recipientName, recipientTeam, playEmbedHtml: playCardHtml });
+  const bodyHtml = renderBroadcastBodyMarkup({ body, recipientName, recipientTeam, recipientEmail, playEmbedHtml: playCardHtml });
   const videoId = extractYouTubeId(youtubeUrl);
   const safeYoutubeUrl = sanitizeUrl(youtubeUrl);
   const safeGifUrl = sanitizeUrl(gifUrl);

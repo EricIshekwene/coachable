@@ -452,6 +452,34 @@ router.get("/users", requireAdminOrStaff, requirePerm("users.viewTable"), redact
   }
 });
 
+/**
+ * GET /admin/users/search
+ * Typeahead search for the email recipient picker.
+ * Returns up to 10 users whose name or email contains the query string.
+ *
+ * @query {string} q - search term (min 2 chars)
+ * @returns {{ users: Array<{id, name, email}> }}
+ */
+router.get("/users/search", requireOwnerOrLegacyAdmin, async (req, res, next) => {
+  try {
+    const q = String(req.query.q || "").trim();
+    if (q.length < 2) return res.json({ users: [] });
+
+    const { rows } = await pool.query(
+      `SELECT id, name, email
+         FROM users
+        WHERE email IS NOT NULL AND email != ''
+          AND (name ILIKE $1 OR email ILIKE $1)
+        ORDER BY name
+        LIMIT 10`,
+      [`%${q}%`]
+    );
+    res.json({ users: rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /admin/users/:id/activity - detail + recent activity for a single user
 router.get("/users/:id/activity", requireAdminOrStaff, requirePerm("users.viewTable"), redactByPerm({
   email: { perm: "users.viewEmails", mask: "email" },
@@ -2825,6 +2853,7 @@ router.get("/analytics", requireAdminOrStaff, requirePerm("dashboard.viewAnalyti
 // ── Email broadcast ──────────────────────────────────────────────────────────
 
 const EMAIL_MAX_RECIPIENTS = 2000;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * Resolve the list of users to target for a broadcast email based on filter config.
@@ -2896,6 +2925,30 @@ async function resolveEmailRecipients({ userType = "all", sport = "", roles = []
 }
 
 /**
+ * Resolve recipients for an array of filter groups and union the results by email.
+ * Each group is resolved independently; duplicates across groups are removed.
+ *
+ * @param {Array<{userType?, sport?, roles?}>} filterGroups
+ * @returns {Promise<Array<{id, name, email, team_name}>>}
+ */
+async function resolveEmailRecipientsForGroups(filterGroups = []) {
+  if (!Array.isArray(filterGroups) || filterGroups.length === 0) return [];
+  const resultsByGroup = await Promise.all(filterGroups.map((f) => resolveEmailRecipients(f)));
+  const seen = new Set();
+  const combined = [];
+  for (const group of resultsByGroup) {
+    for (const r of group) {
+      const key = r.email.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        combined.push(r);
+      }
+    }
+  }
+  return combined;
+}
+
+/**
  * POST /admin/email/preview-recipients
  * Returns a count + first 8 email addresses matching the given filters.
  * Used by the admin composer to show the audience size before sending.
@@ -2905,10 +2958,20 @@ router.post(
   requireOwnerOrLegacyAdmin,
   async (req, res, next) => {
     try {
-      const { filters = {} } = req.body;
-      const recipients = await resolveEmailRecipients(filters);
-      const preview = recipients.slice(0, 8).map((r) => ({ name: r.name, email: r.email, team_name: r.team_name || "" }));
-      res.json({ count: recipients.length, preview });
+      const { filterGroups, filters, extraRecipients = [] } = req.body;
+      // Use filterGroups (new multi-group format) when present; fall back to legacy
+      // single-filters object only when filterGroups is explicitly undefined.
+      // An empty array [] means "no filter groups" → zero filter-based recipients.
+      const filterRecipients = Array.isArray(filterGroups)
+        ? await resolveEmailRecipientsForGroups(filterGroups)
+        : await resolveEmailRecipients(filters || {});
+      const filterEmails = new Set(filterRecipients.map((r) => r.email.toLowerCase()));
+      const safeExtra = (Array.isArray(extraRecipients) ? extraRecipients : [])
+        .filter((r) => r?.email && EMAIL_RE.test(r.email) && !filterEmails.has(r.email.toLowerCase()))
+        .map((r) => ({ email: r.email.trim(), name: r.name || r.email.trim() }));
+      const allRecipients = [...filterRecipients, ...safeExtra];
+      const preview = allRecipients.slice(0, 8).map((r) => ({ name: r.name, email: r.email, team_name: r.team_name || "" }));
+      res.json({ count: allRecipients.length, preview });
     } catch (err) {
       next(err);
     }
@@ -2934,7 +2997,9 @@ router.post(
         youtubeUrl = "",
         gifUrl = "",
         playEmbed = null,
+        filterGroups,
         filters = {},
+        extraRecipients = [],
         previewTo,
       } = req.body;
 
@@ -2954,9 +3019,19 @@ router.post(
         return res.json({ ...result, preview: true });
       }
 
-      const recipients = await resolveEmailRecipients(filters);
+      // Use filterGroups (new multi-group format) when present; fall back to legacy
+      // single-filters object only when filterGroups is explicitly undefined.
+      const filterRecipients = Array.isArray(filterGroups)
+        ? await resolveEmailRecipientsForGroups(filterGroups)
+        : await resolveEmailRecipients(filters || {});
+      const filterEmails = new Set(filterRecipients.map((r) => r.email.toLowerCase()));
+      // Merge manually-added recipients, deduplicating against the filter audience.
+      const safeExtra = (Array.isArray(extraRecipients) ? extraRecipients : [])
+        .filter((r) => r?.email && EMAIL_RE.test(r.email) && !filterEmails.has(r.email.toLowerCase()))
+        .map((r) => ({ email: r.email.trim(), name: r.name || r.email.trim() }));
+      const recipients = [...filterRecipients, ...safeExtra];
       if (recipients.length === 0) {
-        return res.status(400).json({ error: "No recipients match the selected filters" });
+        return res.status(400).json({ error: "No recipients match the selected filters or additional list" });
       }
       if (recipients.length > EMAIL_MAX_RECIPIENTS) {
         return res.status(400).json({

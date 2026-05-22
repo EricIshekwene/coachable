@@ -50,7 +50,7 @@ export default function AdminShell({ children, className = "", sidebar = true })
         mobileOpen={mobileSidebarOpen}
         onClose={() => setMobileSidebarOpen(false)}
       />
-      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+      <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
         <div
           className="sticky top-0 z-40 flex h-14 items-center gap-3 px-4 lg:hidden"
           style={{
