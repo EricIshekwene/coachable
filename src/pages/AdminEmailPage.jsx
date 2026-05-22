@@ -89,6 +89,162 @@ function insertTextAtCursor(text) {
   document.execCommand("insertText", false, text);
 }
 
+// ── GIF debug panel ───────────────────────────────────────────────────────────
+
+/**
+ * Always-visible panel at the bottom of the Send card that surfaces drawing-mode
+ * GIF rendering diagnostics: editorMode, motion drawings, animation tracks, and
+ * live canvas metrics. Helps diagnose why a drawing-mode play GIF looks wrong.
+ *
+ * @param {{ playEmbed: object|null, slatePlayRef: React.RefObject, gifExportRef: React.RefObject, gifPhase: string, gifError: string }} props
+ */
+function GifDebugPanel({ playEmbed, slatePlayRef, gifExportRef, gifPhase, gifError }) {
+  const [metrics, setMetrics] = useState(null);
+
+  // Refresh canvas metrics from gifExportRef every 500 ms while a play is being processed
+  useEffect(() => {
+    const tick = () => setMetrics(gifExportRef.current?.getCanvasMetrics?.() || null);
+    tick();
+    const id = setInterval(tick, 500);
+    return () => clearInterval(id);
+  }, [gifExportRef]);
+
+  const play = slatePlayRef.current;
+  const innerPlay = play?.playData?.play;
+  const editorMode = innerPlay?.meta?.editorMode || null;
+  const isDrawing = editorMode === "drawing";
+  const animation = innerPlay?.animation;
+  const tracks = animation?.tracks || {};
+  const motionDrawings = innerPlay?.motionDrawings || [];
+  const annotationDrawings = innerPlay?.annotationDrawings || [];
+
+  const ROW = "flex items-start gap-2 text-xs";
+  const LABEL = "shrink-0 font-semibold w-36";
+  const val = (v) => (
+    <span style={{ color: "var(--adm-text)", fontFamily: "monospace" }}>{String(v ?? "(none)")}</span>
+  );
+  const badge = (text, ok) => (
+    <span
+      style={{
+        display: "inline-block",
+        padding: "1px 7px",
+        borderRadius: 999,
+        fontSize: 11,
+        fontWeight: 700,
+        background: ok ? "var(--adm-badge-green-bg)" : "var(--adm-danger-dim, #fef2f2)",
+        color: ok ? "var(--adm-badge-green-text)" : "var(--adm-danger)",
+        border: `1px solid ${ok ? "var(--adm-border)" : "var(--adm-danger)"}`,
+      }}
+    >
+      {text}
+    </span>
+  );
+
+  return (
+    <div
+      className="flex flex-col gap-2 rounded-[var(--adm-radius-sm)] px-3 py-2.5 mt-1"
+      style={{ backgroundColor: "var(--adm-surface)", border: "1px solid var(--adm-border2)" }}
+    >
+      <span className="text-xs font-semibold" style={{ color: "var(--adm-muted)" }}>GIF rendering debug</span>
+
+      {/* Embedded play */}
+      <div className={ROW}>
+        <span className={LABEL} style={{ color: "var(--adm-muted)" }}>Embedded play</span>
+        {playEmbed ? val(`${playEmbed.title} (${playEmbed.id})`) : <span style={{ color: "var(--adm-muted)", fontFamily: "monospace" }}>(none)</span>}
+      </div>
+      <div className={ROW}>
+        <span className={LABEL} style={{ color: "var(--adm-muted)" }}>GIF URL</span>
+        {playEmbed?.gifUrl
+          ? <a href={playEmbed.gifUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--adm-accent)", fontFamily: "monospace", fontSize: 11, wordBreak: "break-all" }}>{playEmbed.gifUrl}</a>
+          : <span style={{ color: "var(--adm-muted)", fontFamily: "monospace" }}>(none)</span>}
+      </div>
+
+      {/* Source play data (populated while generating or after error) */}
+      {play && (
+        <>
+          <div style={{ borderTop: "1px solid var(--adm-border)", margin: "2px 0" }} />
+          <div className={ROW}>
+            <span className={LABEL} style={{ color: "var(--adm-muted)" }}>Source play</span>
+            {val(`${play.title} (${play.id})`)}
+          </div>
+          <div className={ROW}>
+            <span className={LABEL} style={{ color: "var(--adm-muted)" }}>editorMode</span>
+            <span className="flex items-center gap-2">
+              {val(editorMode)}
+              {isDrawing ? badge("drawing mode", true) : badge("keyframe mode", true)}
+            </span>
+          </div>
+          <div className={ROW}>
+            <span className={LABEL} style={{ color: "var(--adm-muted)" }}>drawingMode prop</span>
+            {isDrawing ? badge("true ✓", true) : badge("false", true)}
+          </div>
+          <div className={ROW}>
+            <span className={LABEL} style={{ color: "var(--adm-muted)" }}>Duration</span>
+            {val(animation?.durationMs != null ? `${animation.durationMs} ms` : null)}
+          </div>
+          <div className={ROW}>
+            <span className={LABEL} style={{ color: "var(--adm-muted)" }}>Tracks</span>
+            <span className="flex flex-col gap-0.5">
+              {Object.keys(tracks).length === 0
+                ? <span style={{ color: "var(--adm-muted)", fontFamily: "monospace" }}>(none)</span>
+                : Object.entries(tracks).map(([id, track]) => {
+                    const kfs = track?.keyframes || [];
+                    return (
+                      <span key={id} style={{ fontFamily: "monospace", fontSize: 11, color: "var(--adm-text2)" }}>
+                        {id}: {kfs.length} kf{kfs.length !== 1 ? "s" : ""}{kfs.length ? ` [${kfs.map((k) => `${Math.round(k.timeMs)}ms`).join(", ")}]` : ""}
+                      </span>
+                    );
+                  })}
+            </span>
+          </div>
+          <div className={ROW}>
+            <span className={LABEL} style={{ color: "var(--adm-muted)" }}>Motion drawings</span>
+            <span className="flex flex-col gap-0.5">
+              {motionDrawings.length === 0
+                ? <span style={{ color: isDrawing ? "var(--adm-danger)" : "var(--adm-muted)", fontFamily: "monospace" }}>
+                    {isDrawing ? "⚠ 0 — drawing mode play has no motion paths" : "(none)"}
+                  </span>
+                : motionDrawings.map((d, i) => {
+                    const attached = d.attachedEntityId || d.attachedPlayerId || "?";
+                    return (
+                      <span key={i} style={{ fontFamily: "monospace", fontSize: 11, color: "var(--adm-text2)" }}>
+                        [{i}] entity={attached} pts={d.points?.length ?? 0} start={d.stepStartMs ?? "?"}ms end={d.stepEndMs ?? "?"}ms src={d.source || "?"}
+                      </span>
+                    );
+                  })}
+            </span>
+          </div>
+          <div className={ROW}>
+            <span className={LABEL} style={{ color: "var(--adm-muted)" }}>Annotation drawings</span>
+            {val(annotationDrawings.length)}
+          </div>
+        </>
+      )}
+
+      {/* Canvas metrics */}
+      <div style={{ borderTop: "1px solid var(--adm-border)", margin: "2px 0" }} />
+      <div className={ROW}>
+        <span className={LABEL} style={{ color: "var(--adm-muted)" }}>Canvas metrics</span>
+        {metrics
+          ? <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--adm-text2)" }}>
+              stage {metrics.stageWidth}×{metrics.stageHeight} · capture {metrics.captureWidth}×{metrics.captureHeight} · {metrics.stageReady ? badge("ready", true) : badge("not ready", false)}
+            </span>
+          : <span style={{ color: "var(--adm-muted)", fontFamily: "monospace" }}>(no hidden Slate mounted)</span>}
+      </div>
+      <div className={ROW}>
+        <span className={LABEL} style={{ color: "var(--adm-muted)" }}>GIF phase</span>
+        {val(gifPhase)}
+      </div>
+      {gifError && (
+        <div className={ROW}>
+          <span className={LABEL} style={{ color: "var(--adm-danger)" }}>Error</span>
+          <span style={{ color: "var(--adm-danger)", fontFamily: "monospace", fontSize: 11 }}>{gifError}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function AdminEmailPage() {
@@ -1214,6 +1370,15 @@ export default function AdminEmailPage() {
                     >
                       Log send payload to console
                     </button>
+
+                    {/* GIF rendering debug — always visible so drawing mode issues are caught early */}
+                    <GifDebugPanel
+                      playEmbed={playEmbed}
+                      slatePlayRef={slatePlayRef}
+                      gifExportRef={gifExportRef}
+                      gifPhase={gifPhase}
+                      gifError={gifError}
+                    />
                   </div>
 
                   <div className="flex items-center justify-between">
