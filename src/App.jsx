@@ -81,7 +81,7 @@ const SPORT_HOME_ROUTES = {
   "womens lacrosse": "/womens-lacrosse",
 };
 
-export function SlateRoot({ adminMode = false, sport = null }) {
+export function SlateRoot({ adminMode = false, sport = null, initialPlayData = null, drawingMode = false }) {
   const navigate = useNavigate();
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
   useThemeColor("#121212");
@@ -109,6 +109,8 @@ export function SlateRoot({ adminMode = false, sport = null }) {
           adminMode={adminMode}
           sport={sport}
           onNavigateHome={navigateHome}
+          initialPlayData={initialPlayData}
+          drawingMode={drawingMode}
           testVariant
         />
       </MobileViewOnlyGate>
@@ -176,10 +178,19 @@ export function SlateRecordRoot() {
   );
 }
 
-/** Reads the :sport param from the URL and passes it to SlateRoot. */
+/** Reads the :sport param and optional preset/mode from location state, then renders SlateRoot. */
 export function SlateWithSportParam({ adminMode = false }) {
   const { sport } = useParams();
-  return <SlateRoot adminMode={adminMode} sport={sport} />;
+  const location = useLocation();
+  const { presetPlayData = null, mode = "keyframe" } = location.state ?? {};
+  return (
+    <SlateRoot
+      adminMode={adminMode}
+      sport={sport}
+      initialPlayData={presetPlayData}
+      drawingMode={mode === "drawing"}
+    />
+  );
 }
 
 /**

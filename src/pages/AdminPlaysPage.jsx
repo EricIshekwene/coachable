@@ -2198,7 +2198,7 @@ export default function AdminPlaysPage() {
   const [confirmModal, setConfirmModal] = useState(null);
   const [newPlayModal, setNewPlayModal] = useState(false);
   const [newPlaySport, setNewPlaySport] = useState("Rugby");
-  const [newPlayMode, setNewPlayMode] = useState("keyframe");
+  const [newPlayMode, setNewPlayMode] = useState("drawing");
   const [dragSrcId, setDragSrcId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const [playSort, setPlaySort] = useState("updated");
@@ -2412,7 +2412,7 @@ export default function AdminPlaysPage() {
       }
     } else {
       setNewPlaySport("Rugby");
-      setNewPlayMode("keyframe");
+      setNewPlayMode("drawing");
       setNewPlayModal(true);
     }
   };
@@ -2664,7 +2664,7 @@ export default function AdminPlaysPage() {
           value={newPlaySport}
           onChange={(e) => {
             setNewPlaySport(e.target.value);
-            if (e.target.value !== "Football") setNewPlayMode("keyframe");
+            setNewPlayMode(e.target.value === "Football" ? "drawing" : "keyframe");
           }}
           className="mb-4 w-full"
         >
@@ -2678,20 +2678,6 @@ export default function AdminPlaysPage() {
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => setNewPlayMode("keyframe")}
-                className="flex flex-1 flex-col items-center gap-1 rounded-lg border p-3 text-sm font-medium transition-colors"
-                style={{
-                  borderColor: newPlayMode === "keyframe" ? "var(--adm-accent)" : "var(--adm-border)",
-                  backgroundColor: newPlayMode === "keyframe" ? "color-mix(in srgb, var(--adm-accent) 10%, transparent)" : "var(--adm-surface)",
-                  color: newPlayMode === "keyframe" ? "var(--adm-accent)" : "var(--adm-text2)",
-                }}
-              >
-                <span className="text-base">⏱</span>
-                Keyframe
-                <span className="text-xs font-normal" style={{ color: "var(--adm-muted)" }}>Animate players on a timeline</span>
-              </button>
-              <button
-                type="button"
                 onClick={() => setNewPlayMode("drawing")}
                 className="flex flex-1 flex-col items-center gap-1 rounded-lg border p-3 text-sm font-medium transition-colors"
                 style={{
@@ -2703,6 +2689,20 @@ export default function AdminPlaysPage() {
                 <span className="text-base">✏️</span>
                 Drawing
                 <span className="text-xs font-normal" style={{ color: "var(--adm-muted)" }}>Draw animated routes on players</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setNewPlayMode("keyframe")}
+                className="flex flex-1 flex-col items-center gap-1 rounded-lg border p-3 text-sm font-medium transition-colors"
+                style={{
+                  borderColor: newPlayMode === "keyframe" ? "var(--adm-accent)" : "var(--adm-border)",
+                  backgroundColor: newPlayMode === "keyframe" ? "color-mix(in srgb, var(--adm-accent) 10%, transparent)" : "var(--adm-surface)",
+                  color: newPlayMode === "keyframe" ? "var(--adm-accent)" : "var(--adm-text2)",
+                }}
+              >
+                <span className="text-base">⏱</span>
+                Keyframe
+                <span className="text-xs font-normal" style={{ color: "var(--adm-muted)" }}>Animate players on a timeline</span>
               </button>
             </div>
           </div>

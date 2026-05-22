@@ -1,6 +1,8 @@
 # API service (resplendent-inspiration) is built from RAILWAY_ROOT_DIRECTORY=server
 # and does not need any of the frontend tree. Excluding these shrinks the
 # Railway snapshot upload, which was failing with TLS resets on Windows.
+node_modules/
+**/node_modules/
 src/
 public/
 admin/
