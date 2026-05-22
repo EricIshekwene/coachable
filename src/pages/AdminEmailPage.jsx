@@ -546,8 +546,64 @@ export default function AdminEmailPage() {
   }, []);
 
   const handleCopyGifDebug = useCallback(async () => {
-    const lines = getGifExportDebugLogs(400);
-    const payload = lines.length ? lines.join("\n") : "[GIFEXPORT] no logs captured yet";
+    const play = slatePlayRef.current;
+    const playData = play?.playData;
+    const innerPlay = playData?.play;
+    const animation = innerPlay?.animation;
+    const motionDrawings = innerPlay?.motionDrawings || [];
+    const annotationDrawings = innerPlay?.annotationDrawings || [];
+    const tracks = animation?.tracks || {};
+    const metrics = gifExportRef.current?.getCanvasMetrics?.() || null;
+
+    const trackSummary = Object.entries(tracks).map(([id, track]) => {
+      const kfs = track?.keyframes || [];
+      return `  ${id}: ${kfs.length} keyframes${kfs.length ? ` [${kfs.map((k) => `${Math.round(k.timeMs)}ms`).join(", ")}]` : ""}`;
+    });
+
+    const motionSummary = motionDrawings.map((d, i) => {
+      const attached = d.attachedEntityId || d.attachedPlayerId || "(none)";
+      return (
+        `  [${i}] attached=${attached} points=${d.points?.length ?? 0}` +
+        ` stepStartMs=${d.stepStartMs ?? "?"} stepEndMs=${d.stepEndMs ?? "?"}` +
+        ` source=${d.source || "?"}`
+      );
+    });
+
+    const sections = [
+      "=== GIF DEBUG DUMP ===",
+      "",
+      "── Play ──",
+      `title: ${play?.title || "(none)"}`,
+      `id: ${play?.id || "(none)"}`,
+      `editorMode: ${innerPlay?.meta?.editorMode || "(none)"}`,
+      `drawingModePropPassed: ${innerPlay?.meta?.editorMode === "drawing"}`,
+      "",
+      "── Animation ──",
+      `durationMs: ${animation?.durationMs ?? "(none)"}`,
+      `trackCount: ${Object.keys(tracks).length}`,
+      ...trackSummary,
+      "",
+      "── Motion drawings ──",
+      `count: ${motionDrawings.length}`,
+      ...motionSummary,
+      "",
+      "── Annotation drawings ──",
+      `count: ${annotationDrawings.length}`,
+      "",
+      "── Canvas metrics ──",
+      metrics
+        ? `stage: ${metrics.stageWidth}x${metrics.stageHeight}  capture: ${metrics.captureWidth}x${metrics.captureHeight}  stageReady: ${metrics.stageReady}`
+        : "(gifExportRef not populated)",
+      "",
+      "── GIF phase ──",
+      `phase: ${gifPhase}`,
+      `error: ${gifError || "(none)"}`,
+      "",
+      "── Export logs ──",
+      ...(getGifExportDebugLogs(400).length ? getGifExportDebugLogs(400) : ["(no logs)"]),
+    ];
+
+    const payload = sections.join("\n");
     try {
       await navigator.clipboard.writeText(payload);
       setGifDebugCopied(true);
@@ -555,7 +611,7 @@ export default function AdminEmailPage() {
     } catch {
       setGifDebugCopied(false);
     }
-  }, []);
+  }, [gifPhase, gifError]);
 
   // ── Audience / send ─────────────────────────────────────────────────────────
 
@@ -1308,7 +1364,7 @@ export default function AdminEmailPage() {
               adminMode
               gifExportRef={gifExportRef}
               initialPlayData={slatePlayData}
-              drawingMode={slatePlayData?.editorMode === "drawing"}
+              drawingMode={slatePlayData?.play?.meta?.editorMode === "drawing"}
             />
           </div>
         </div>

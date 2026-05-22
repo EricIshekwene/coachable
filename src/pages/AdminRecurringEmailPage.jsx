@@ -1064,7 +1064,7 @@ function CampaignModal({ campaign, plays, folders, playsLoading, playsError, onC
           }}
         >
           <div style={{ display: "flex", width: "100%", height: "100%" }}>
-            <Slate adminMode gifExportRef={gifExportRef} initialPlayData={slatePlayData} drawingMode={slatePlayData?.editorMode === "drawing"} />
+            <Slate adminMode gifExportRef={gifExportRef} initialPlayData={slatePlayData} drawingMode={slatePlayData?.play?.meta?.editorMode === "drawing"} />
           </div>
         </div>
       )}
