@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  FiArrowLeft, FiCheck, FiClock, FiEdit2, FiFilm, FiMail,
+  FiArrowLeft, FiCheck, FiClock, FiEdit2, FiFilm, FiImage, FiMail,
   FiPause, FiPlay, FiPlus, FiSend, FiTrash2, FiX,
 } from "react-icons/fi";
 import { useAdmin } from "../admin/AdminContext";
@@ -171,7 +171,7 @@ function Countdown({ nextSendAt, active }) {
 // ── Rich text editor ──────────────────────────────────────────────────────────
 
 /**
- * Inline rich-text body editor with toolbar, merge tag buttons, and play embed support.
+ * Inline rich-text body editor with toolbar, merge tag buttons, play embed, and image upload.
  * Serializes play embed chips back to {{playEmbed}} sentinel on every sync.
  *
  * @param {{ value: string, onChange: (html: string) => void,
@@ -180,8 +180,11 @@ function Countdown({ nextSendAt, active }) {
  */
 function RichBodyEditor({ value, onChange, playEmbed, onPlayEmbedChange, onInsertPlay, isGenerating }) {
   const editorRef = useRef(null);
+  const imageInputRef = useRef(null);
   const [focused, setFocused] = useState(false);
   const [formats, setFormats] = useState(EMPTY_FORMATS);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState("");
 
   // Sync chip or sentinel into editor DOM whenever body value or playEmbed changes.
   useEffect(() => {
@@ -269,6 +272,41 @@ function RichBodyEditor({ value, onChange, playEmbed, onPlayEmbedChange, onInser
     sync();
   }, [focus, sync]);
 
+  /**
+   * Handle image file selection — reads as base64, uploads to R2, inserts <img> at cursor.
+   * @param {React.ChangeEvent<HTMLInputElement>} e
+   */
+  const handleImageFileSelected = useCallback(async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setImageUploadError("Only image files are supported.");
+      return;
+    }
+    setImageUploading(true);
+    setImageUploadError("");
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const { url } = await adminApi("/admin/email/image-asset", {
+        method: "POST",
+        body: JSON.stringify({ image: base64, mimeType: file.type }),
+      });
+      focus();
+      document.execCommand("insertHTML", false, `<img src="${url}" style="display:block;max-width:100%;border-radius:4px;margin:0 0 18px;">`);
+      sync();
+    } catch (err) {
+      setImageUploadError(err?.message || "Image upload failed.");
+    } finally {
+      setImageUploading(false);
+    }
+  }, [focus, sync]);
+
   const TOOLBAR = [
     { key: "bold", label: "B", action: () => cmd("bold") },
     { key: "italic", label: "I", action: () => cmd("italic") },
@@ -347,7 +385,37 @@ function RichBodyEditor({ value, onChange, playEmbed, onPlayEmbedChange, onInser
             + Play
           </span>
         </button>
+
+        {/* + Image button */}
+        <button
+          type="button"
+          onClick={() => imageInputRef.current?.click()}
+          disabled={imageUploading}
+          className={TOOLBAR_BTN_CLASS}
+          style={{
+            backgroundColor: "var(--adm-surface2)",
+            color: "var(--adm-text)",
+            border: "1px solid var(--adm-border)",
+            opacity: imageUploading ? 0.5 : 1,
+          }}
+        >
+          <span className="flex items-center gap-1">
+            {imageUploading ? <AdminSpinner size={10} /> : <FiImage className="text-xs" />}
+            {imageUploading ? "Uploading…" : "+ Image"}
+          </span>
+        </button>
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleImageFileSelected}
+        />
       </div>
+
+      {imageUploadError && (
+        <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{imageUploadError}</p>
+      )}
 
       <div
         className="relative overflow-hidden rounded-[var(--adm-radius-sm)]"
@@ -996,7 +1064,7 @@ function CampaignModal({ campaign, plays, folders, playsLoading, playsError, onC
           }}
         >
           <div style={{ display: "flex", width: "100%", height: "100%" }}>
-            <Slate adminMode gifExportRef={gifExportRef} initialPlayData={slatePlayData} />
+            <Slate adminMode gifExportRef={gifExportRef} initialPlayData={slatePlayData} drawingMode={slatePlayData?.editorMode === "drawing"} />
           </div>
         </div>
       )}

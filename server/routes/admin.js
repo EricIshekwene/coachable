@@ -4,6 +4,7 @@ import crypto from "crypto";
 import pool from "../db/pool.js";
 import { generateCode, sendDangerModeEmail, sendAccountDeletedEmail, sendBroadcastEmails } from "../lib/email.js";
 import { storeGifAsset, getGifAsset } from "../lib/gifAssetStore.js";
+import { uploadToR2 } from "../lib/r2Upload.js";
 import { computeNextSendAt } from "../utils/computeNextSendAt.js";
 import {
   requireAdminOrStaff,
@@ -3345,6 +3346,43 @@ router.get("/gif-asset/:id", (req, res) => {
 });
 
 /**
+ * POST /admin/email/image-asset — accept a base64-encoded image, upload it to
+ * Cloudflare R2, and return a permanent public CDN URL for use in email HTML.
+ *
+ * @body {{ image: string, mimeType: string }} base64-encoded image + MIME type
+ * @returns {{ url: string }}
+ */
+router.post("/email/image-asset", requireAdminOrStaff, async (req, res, next) => {
+  try {
+    const { image, mimeType } = req.body;
+    if (!image || typeof image !== "string") {
+      return res.status(400).json({ error: "image (base64 string) is required" });
+    }
+    if (!mimeType || typeof mimeType !== "string") {
+      return res.status(400).json({ error: "mimeType is required" });
+    }
+    const ALLOWED_TYPES = {
+      "image/jpeg": "jpg",
+      "image/png": "png",
+      "image/gif": "gif",
+      "image/webp": "webp",
+    };
+    const ext = ALLOWED_TYPES[mimeType];
+    if (!ext) {
+      return res.status(400).json({ error: "Unsupported image type. Allowed: jpeg, png, gif, webp" });
+    }
+    const buffer = Buffer.from(image, "base64");
+    if (buffer.length > 10 * 1024 * 1024) {
+      return res.status(413).json({ error: "Image exceeds 10 MB limit" });
+    }
+    const url = await uploadToR2(buffer, mimeType, ext);
+    res.json({ url });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * POST /admin/email/gif-asset — accept a base64-encoded GIF, store it,
  * and return a publicly accessible URL usable in broadcast emails.
  *
@@ -3368,6 +3406,268 @@ router.post("/email/gif-asset", requireAdminOrStaff, async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+// ── In-app notifications (owner-gated authoring) ──────────────────────────────
+
+/**
+ * Build the SQL WHERE clause + params for a notification audience filter.
+ * @param {{mode?, sport?, playFilter?, signupFrom?, signupTo?}} audience
+ * @returns {{ where: string, params: any[] }}
+ */
+function buildNotifAudienceSql(audience = {}) {
+  const { mode = "all", sport = "", playFilter = "any", signupFrom = "", signupTo = "" } = audience || {};
+  const conditions = ["u.email IS NOT NULL", "u.email != ''"];
+  const params = [];
+
+  const teamJoin =
+    "FROM team_memberships tm JOIN teams t ON t.id = tm.team_id AND (t.deleted_at IS NULL OR t.deleted_at > now())";
+  const activeExpr =
+    "EXISTS (SELECT 1 FROM plays p WHERE p.created_by_user_id = u.id AND p.updated_at > now() - interval '30 days')";
+  const coachExpr =
+    `EXISTS (SELECT 1 ${teamJoin} WHERE tm.user_id = u.id AND tm.role IN ('owner','coach','assistant_coach'))`;
+  const playerExpr =
+    `EXISTS (SELECT 1 ${teamJoin} WHERE tm.user_id = u.id AND tm.role = 'player')`;
+
+  if (mode === "active") conditions.push(activeExpr);
+  else if (mode === "inactive") conditions.push(`NOT ${activeExpr}`);
+  else if (mode === "coaches") conditions.push(coachExpr);
+  else if (mode === "players") conditions.push(playerExpr);
+
+  if (sport) {
+    params.push(sport);
+    conditions.push(`EXISTS (SELECT 1 ${teamJoin} WHERE tm.user_id = u.id AND t.sport ILIKE $${params.length})`);
+  }
+
+  if (playFilter === "has_plays") {
+    conditions.push("EXISTS (SELECT 1 FROM plays p WHERE p.created_by_user_id = u.id)");
+  } else if (playFilter === "no_plays") {
+    conditions.push("NOT EXISTS (SELECT 1 FROM plays p WHERE p.created_by_user_id = u.id)");
+  }
+
+  if (signupFrom) { params.push(signupFrom); conditions.push(`u.created_at >= $${params.length}`); }
+  if (signupTo) { params.push(signupTo); conditions.push(`u.created_at <= ($${params.length}::date + interval '1 day')`); }
+
+  return { where: conditions.join(" AND "), params };
+}
+
+/**
+ * Resolve the list of users matching a notification audience filter.
+ * @param {object} audience
+ * @returns {Promise<Array<{id, name, email, team_name}>>}
+ */
+async function resolveNotificationRecipients(audience = {}) {
+  const { where, params } = buildNotifAudienceSql(audience);
+  const { rows } = await pool.query(
+    `SELECT u.id, u.name, u.email,
+            (SELECT t2.name FROM teams t2
+               JOIN team_memberships tm2 ON tm2.team_id = t2.id
+              WHERE tm2.user_id = u.id AND (t2.deleted_at IS NULL OR t2.deleted_at > now())
+              ORDER BY tm2.joined_at LIMIT 1) AS team_name
+       FROM users u
+      WHERE ${where}
+      ORDER BY u.created_at DESC`,
+    params
+  );
+  return rows;
+}
+
+/** Human-readable label for an audience filter (mirrors the composer). */
+function buildNotifAudienceLabel(audience = {}) {
+  const { mode = "all", sport = "", playFilter = "any", signupFrom = "", signupTo = "" } = audience || {};
+  const modeLabel = {
+    all: "All users", active: "Active users", inactive: "Inactive users",
+    coaches: "Coaches", players: "Players",
+  }[mode] || "All users";
+  const parts = [modeLabel];
+  if (sport) parts.push(sport);
+  if (playFilter === "has_plays") parts.push("has plays");
+  else if (playFilter === "no_plays") parts.push("no plays");
+  if (signupFrom || signupTo) parts.push(`joined ${signupFrom || "…"}–${signupTo || "…"}`);
+  return parts.join(" · ");
+}
+
+/**
+ * Aggregate raw responses into per-question summaries for the admin detail view.
+ * @param {Array} blocks notification block list
+ * @param {Array<{answers: object}>} responseRows
+ */
+function aggregateNotifResponses(blocks, responseRows) {
+  const questions = (Array.isArray(blocks) ? blocks : []).filter((b) => b?.kind === "question");
+  const CHOICE = new Set(["multiple", "checkboxes", "dropdown", "yes_no"]);
+  const RATING = new Set(["scale", "rating"]);
+
+  return questions.map((q) => {
+    const answers = responseRows
+      .map((r) => (r.answers || {})[q.id])
+      .filter((v) => v !== undefined && v !== null && v !== "");
+
+    if (CHOICE.has(q.type)) {
+      const options = q.type === "yes_no" ? ["Yes", "No"] : (q.options || []);
+      const counts = {};
+      for (const o of options) counts[o] = 0;
+      for (const a of answers) {
+        for (const v of (Array.isArray(a) ? a : [a])) counts[v] = (counts[v] || 0) + 1;
+      }
+      return { id: q.id, label: q.label || "Untitled question", type: q.type,
+        distribution: Object.entries(counts).map(([name, value]) => ({ name, value })) };
+    }
+
+    if (RATING.has(q.type)) {
+      const nums = answers.map(Number).filter((n) => !Number.isNaN(n));
+      const max = q.type === "rating" ? 5 : (q.scaleMax || 5);
+      const counts = {};
+      for (let i = 1; i <= max; i++) counts[i] = 0;
+      for (const n of nums) counts[n] = (counts[n] || 0) + 1;
+      const average = nums.length ? nums.reduce((s, n) => s + n, 0) / nums.length : 0;
+      const suffix = q.type === "rating" ? "★" : "";
+      return { id: q.id, label: q.label || "Untitled question", type: q.type,
+        average: Number(average.toFixed(2)),
+        distribution: Object.entries(counts).map(([name, value]) => ({ name: name + suffix, value })) };
+    }
+
+    return { id: q.id, label: q.label || "Untitled question", type: q.type,
+      samples: answers.slice(-30).reverse().map(String) };
+  });
+}
+
+/** POST /admin/notifications/preview-audience — count + sample of matching users. */
+router.post("/notifications/preview-audience", requireOwnerOrLegacyAdmin, async (req, res, next) => {
+  try {
+    const audience = req.body?.audience || {};
+    const recipients = await resolveNotificationRecipients(audience);
+    res.json({
+      count: recipients.length,
+      label: buildNotifAudienceLabel(audience),
+      preview: recipients.slice(0, 8).map((r) => ({ name: r.name, email: r.email, team_name: r.team_name || "" })),
+    });
+  } catch (err) { next(err); }
+});
+
+/**
+ * POST /admin/notifications/send
+ * Body: { title, subject?, priority?, blocks, audience, testRecipient? }
+ * With testRecipient.email → deliver only to that registered user (is_test).
+ * Otherwise → resolve audience and fan out to every matching user.
+ */
+router.post("/notifications/send", requireOwnerOrLegacyAdmin, async (req, res, next) => {
+  try {
+    const { title, subject = "", priority = "normal", blocks = [], audience = {}, testRecipient = null } = req.body || {};
+    if (!title?.trim()) return res.status(400).json({ error: "Title is required" });
+    const safePriority = ["normal", "high", "critical"].includes(priority) ? priority : "normal";
+    const safeBlocks = Array.isArray(blocks) ? blocks : [];
+
+    if (testRecipient?.email) {
+      const email = String(testRecipient.email).trim().toLowerCase();
+      const { rows: urows } = await pool.query(
+        "SELECT id, name, email FROM users WHERE lower(email) = $1 LIMIT 1", [email]
+      );
+      if (!urows.length) {
+        return res.status(404).json({
+          error: `No Coachable account found for ${testRecipient.email}. In-app test sends require a registered user — try your own account email.`,
+        });
+      }
+      const user = urows[0];
+      const { rows: nrows } = await pool.query(
+        `INSERT INTO notifications (title, subject, priority, blocks, audience, audience_label, is_test, recipient_count, created_by)
+         VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6,true,1,$7) RETURNING id`,
+        [title.trim(), subject, safePriority, JSON.stringify(safeBlocks), JSON.stringify({ test: true }), `Test → ${user.email}`, req.userId || null]
+      );
+      await pool.query(
+        "INSERT INTO notification_recipients (notification_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING",
+        [nrows[0].id, user.id]
+      );
+      return res.json({ test: true, delivered: 1, recipient: { name: user.name, email: user.email }, notificationId: nrows[0].id });
+    }
+
+    const recipients = await resolveNotificationRecipients(audience);
+    if (recipients.length === 0) {
+      return res.status(400).json({ error: "No users match the selected audience filters." });
+    }
+    const label = buildNotifAudienceLabel(audience);
+    const { rows: nrows } = await pool.query(
+      `INSERT INTO notifications (title, subject, priority, blocks, audience, audience_label, is_test, recipient_count, created_by)
+       VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6,false,$7,$8) RETURNING id`,
+      [title.trim(), subject, safePriority, JSON.stringify(safeBlocks), JSON.stringify(audience || {}), label, recipients.length, req.userId || null]
+    );
+    await pool.query(
+      `INSERT INTO notification_recipients (notification_id, user_id)
+       SELECT $1, unnest($2::uuid[]) ON CONFLICT DO NOTHING`,
+      [nrows[0].id, recipients.map((r) => r.id)]
+    );
+    res.json({ id: nrows[0].id, recipientCount: recipients.length, audienceLabel: label });
+  } catch (err) { next(err); }
+});
+
+/** GET /admin/notifications — past notifications with delivery + response counts. */
+router.get("/notifications", requireOwnerOrLegacyAdmin, async (_req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT n.id, n.title, n.subject, n.priority, n.audience_label, n.is_test,
+              n.recipient_count, n.created_at,
+              (SELECT count(*) FROM notification_recipients r WHERE r.notification_id = n.id AND r.read_at IS NOT NULL) AS read_count,
+              (SELECT count(*) FROM notification_responses resp WHERE resp.notification_id = n.id) AS response_count
+         FROM notifications n
+        ORDER BY n.created_at DESC
+        LIMIT 200`
+    );
+    res.json({
+      notifications: rows.map((r) => ({
+        id: r.id, title: r.title, subject: r.subject, priority: r.priority,
+        status: "sent", isTest: r.is_test, sentAt: r.created_at,
+        audienceLabel: r.audience_label,
+        recipientCount: Number(r.recipient_count),
+        openCount: Number(r.read_count), clickCount: 0,
+        responseCount: Number(r.response_count),
+      })),
+    });
+  } catch (err) { next(err); }
+});
+
+/** GET /admin/notifications/:id — full detail with charts + response aggregation. */
+router.get("/notifications/:id", requireOwnerOrLegacyAdmin, async (req, res, next) => {
+  try {
+    const { rows: nrows } = await pool.query("SELECT * FROM notifications WHERE id = $1", [req.params.id]);
+    if (!nrows.length) return res.status(404).json({ error: "Notification not found" });
+    const n = nrows[0];
+
+    const { rows: recipRows } = await pool.query(
+      `SELECT count(*)::int AS total,
+              count(*) FILTER (WHERE read_at IS NOT NULL)::int AS read_count
+         FROM notification_recipients WHERE notification_id = $1`, [req.params.id]
+    );
+    const { rows: respRows } = await pool.query(
+      "SELECT user_id, answers, created_at FROM notification_responses WHERE notification_id = $1 ORDER BY created_at",
+      [req.params.id]
+    );
+    const { rows: opensRows } = await pool.query(
+      `SELECT to_char(date_trunc('day', read_at), 'Mon DD') AS day, count(*)::int AS opens
+         FROM notification_recipients
+        WHERE notification_id = $1 AND read_at IS NOT NULL
+        GROUP BY 1, date_trunc('day', read_at)
+        ORDER BY date_trunc('day', read_at)`, [req.params.id]
+    );
+
+    const total = recipRows[0]?.total || 0;
+    const readCount = recipRows[0]?.read_count || 0;
+    const bodyHtml = (Array.isArray(n.blocks) ? n.blocks : [])
+      .filter((b) => b?.kind === "text").map((b) => b.html || "").join("");
+
+    res.json({
+      id: n.id, title: n.title, subject: n.subject, priority: n.priority,
+      status: "sent", isTest: n.is_test, sentAt: n.created_at,
+      audienceLabel: n.audience_label,
+      recipientCount: total, openCount: readCount, clickCount: 0,
+      responseCount: respRows.length,
+      body: bodyHtml || "<p style=\"opacity:.6\">No body text — questions only.</p>",
+      opensByDay: opensRows,
+      readBreakdown: [
+        { name: "Read", value: readCount },
+        { name: "Unread", value: Math.max(0, total - readCount) },
+      ],
+      responseSummary: aggregateNotifResponses(n.blocks, respRows),
+    });
+  } catch (err) { next(err); }
 });
 
 export default router;

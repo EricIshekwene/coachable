@@ -776,3 +776,54 @@ ALTER TABLE recurring_email_campaigns ADD COLUMN IF NOT EXISTS audience_roles TE
 CREATE INDEX IF NOT EXISTS idx_recurring_email_active_next
   ON recurring_email_campaigns(active, next_send_at)
   WHERE active = true;
+
+-- ============================================================
+-- In-app notifications (admin-authored, owner-gated)
+-- A notification is an ordered list of blocks (text + question blocks).
+-- Each send fans out one notification_recipients row per targeted user.
+-- Recipients can answer embedded question blocks → notification_responses.
+-- See src/pages/NOTIFICATIONS_PAGE.md for the end-to-end design.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title           TEXT NOT NULL,
+  subject         TEXT NOT NULL DEFAULT '',
+  priority        TEXT NOT NULL DEFAULT 'normal' CHECK (priority IN ('normal', 'high', 'critical')),
+  blocks          JSONB NOT NULL DEFAULT '[]'::jsonb,
+  audience        JSONB NOT NULL DEFAULT '{}'::jsonb,
+  audience_label  TEXT NOT NULL DEFAULT '',
+  is_test         BOOLEAN NOT NULL DEFAULT false,
+  recipient_count INT NOT NULL DEFAULT 0,
+  created_by      UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS notifications_created_at_idx ON notifications(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS notification_recipients (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  notification_id UUID NOT NULL REFERENCES notifications(id) ON DELETE CASCADE,
+  user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  read_at         TIMESTAMPTZ,
+  responded_at    TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (notification_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS notification_recipients_user_idx
+  ON notification_recipients(user_id, read_at);
+CREATE INDEX IF NOT EXISTS notification_recipients_notif_idx
+  ON notification_recipients(notification_id);
+
+CREATE TABLE IF NOT EXISTS notification_responses (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  notification_id UUID NOT NULL REFERENCES notifications(id) ON DELETE CASCADE,
+  user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  answers         JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (notification_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS notification_responses_notif_idx
+  ON notification_responses(notification_id);

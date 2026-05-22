@@ -9,6 +9,7 @@ const ALLOWED_TAGS = new Set([
   "h3",
   "hr",
   "i",
+  "img",
   "li",
   "ol",
   "p",
@@ -64,6 +65,11 @@ function sanitizeUrl(rawUrl) {
 
 function getHrefAttribute(rawAttrs) {
   const match = String(rawAttrs || "").match(/\bhref\s*=\s*("([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/i);
+  return match?.[2] || match?.[3] || match?.[4] || "";
+}
+
+function getSrcAttribute(rawAttrs) {
+  const match = String(rawAttrs || "").match(/\bsrc\s*=\s*("([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/i);
   return match?.[2] || match?.[3] || match?.[4] || "";
 }
 
@@ -129,6 +135,13 @@ function sanitizeRichMarkup(value) {
       const href = sanitizeUrl(getHrefAttribute(rawAttrs));
       if (!href) continue;
       result += `<a href="${escapeAttribute(href)}">`;
+      continue;
+    }
+
+    if (tag === "img") {
+      const src = sanitizeUrl(getSrcAttribute(rawAttrs));
+      if (!src) continue;
+      result += `<img src="${escapeAttribute(src)}" style="display:block;max-width:100%;border:0;border-radius:4px;margin:0 0 18px;">`;
       continue;
     }
 

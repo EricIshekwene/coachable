@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FiCheck, FiChevronLeft, FiChevronRight, FiClock, FiFilm,
-  FiMail, FiPlus, FiSend, FiUsers, FiX,
+  FiImage, FiMail, FiPlus, FiSend, FiUsers, FiX,
 } from "react-icons/fi";
 import { useAdmin } from "../admin/AdminContext";
 import { adminApi } from "../admin/adminTransport";
@@ -112,6 +112,9 @@ export default function AdminEmailPage() {
   const [activeFormats, setActiveFormats] = useState(EMPTY_ACTIVE_FORMATS);
   const editorRef = useRef(null);
   const savedRangeRef = useRef(null); // cursor position before modal opens
+  const imageInputRef = useRef(null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState("");
 
   const [previewIndex, setPreviewIndex] = useState(0);
 
@@ -462,6 +465,41 @@ export default function AdminEmailPage() {
       insertHtmlAtCursor(`<a href="${escapeHtml(url.trim())}">${escapeHtml(url.trim())}</a>`);
     }
     syncBodyFromEditor();
+  }, [focusEditor, syncBodyFromEditor]);
+
+  /**
+   * Handle image file selection — reads as base64, uploads to R2, inserts <img> at cursor.
+   * @param {React.ChangeEvent<HTMLInputElement>} event
+   */
+  const handleImageFileSelected = useCallback(async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setImageUploadError("Only image files are supported.");
+      return;
+    }
+    setImageUploading(true);
+    setImageUploadError("");
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const { url } = await adminApi("/admin/email/image-asset", {
+        method: "POST",
+        body: JSON.stringify({ image: base64, mimeType: file.type }),
+      });
+      focusEditor();
+      insertHtmlAtCursor(`<img src="${url}" style="display:block;max-width:100%;border-radius:4px;margin:0 0 18px;">`);
+      syncBodyFromEditor();
+    } catch (err) {
+      setImageUploadError(err?.message || "Image upload failed.");
+    } finally {
+      setImageUploading(false);
+    }
   }, [focusEditor, syncBodyFromEditor]);
 
   const handlePaste = useCallback((event) => {
@@ -851,6 +889,32 @@ export default function AdminEmailPage() {
                           + Play
                         </span>
                       </button>
+
+                      {/* + Image button */}
+                      <button
+                        type="button"
+                        onClick={() => imageInputRef.current?.click()}
+                        disabled={imageUploading}
+                        className={TOOLBAR_BTN_CLASS}
+                        style={{
+                          backgroundColor: "var(--adm-surface2)",
+                          color: "var(--adm-text)",
+                          border: "1px solid var(--adm-border)",
+                          opacity: imageUploading ? 0.5 : 1,
+                        }}
+                      >
+                        <span className="flex items-center gap-1">
+                          {imageUploading ? <AdminSpinner size={10} /> : <FiImage className="text-xs" />}
+                          {imageUploading ? "Uploading…" : "+ Image"}
+                        </span>
+                      </button>
+                      <input
+                        ref={imageInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageFileSelected}
+                      />
                     </div>
 
                     {/* Contenteditable body */}
@@ -936,6 +1000,10 @@ export default function AdminEmailPage() {
                           </div>
                         )}
                       </div>
+                    )}
+
+                    {imageUploadError && (
+                      <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{imageUploadError}</p>
                     )}
 
                     {gifPhase === "error" && gifError && (
@@ -1240,6 +1308,7 @@ export default function AdminEmailPage() {
               adminMode
               gifExportRef={gifExportRef}
               initialPlayData={slatePlayData}
+              drawingMode={slatePlayData?.editorMode === "drawing"}
             />
           </div>
         </div>
