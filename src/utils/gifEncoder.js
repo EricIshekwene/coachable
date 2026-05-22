@@ -2,20 +2,27 @@
  * GIF encoder using FFmpeg WASM.
  * Converts an array of canvas frames into a palette-optimized, looping GIF.
  *
- * FFmpeg is intentionally loaded via a <script> tag (not as an ES import) so
- * that Vite never touches the FFmpeg UMD bundle or its internal worker chunk.
- * When loaded this way, FFmpeg's self-hosted worker at /ffmpeg/814.ffmpeg.js
- * is fetched as a classic worker without any Vite transformation, allowing
+ * The FFmpeg UMD bundle is intentionally loaded via a <script> tag (not as an
+ * ES import) so that Vite never touches it or its internal worker chunk. When
+ * loaded this way, FFmpeg's self-hosted worker at /ffmpeg/814.ffmpeg.js is
+ * fetched as a classic worker without any Vite transformation, allowing
  * importScripts() to work correctly inside it.
+ *
+ * The core (~31 MB wasm) is loaded from a CDN, not self-hosted: Cloudflare Pages
+ * rejects any single asset over 25 MiB. toBlobURL fetches core.js + wasm
+ * cross-origin then wraps them as same-origin blob URLs, so they stay usable
+ * under cross-origin isolation. Pinned to the installed @ffmpeg/core version.
  *
  * @module gifEncoder
  */
 
 import { log as logGif } from "./gifExportDebugLogger";
+import { toBlobURL } from "@ffmpeg/util";
 
 const FFMPEG_SCRIPT_URL  = "/ffmpeg/ffmpeg.js";
-const FFMPEG_CORE_URL    = "/ffmpeg/ffmpeg-core.js";
-const FFMPEG_WASM_URL    = "/ffmpeg/ffmpeg-core.wasm";
+const FFMPEG_CORE_BASE   = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd";
+const FFMPEG_CORE_URL    = `${FFMPEG_CORE_BASE}/ffmpeg-core.js`;
+const FFMPEG_WASM_URL    = `${FFMPEG_CORE_BASE}/ffmpeg-core.wasm`;
 
 /**
  * Quality presets optimised for email embedding.
@@ -107,7 +114,13 @@ export async function getSharedFFmpeg() {
     });
 
     try {
-      await ffmpeg.load({ coreURL: FFMPEG_CORE_URL, wasmURL: FFMPEG_WASM_URL });
+      // Wrap the CDN-hosted core in same-origin blob URLs so the FFmpeg worker
+      // can load them under cross-origin isolation (COEP) without CORP headers.
+      const [coreURL, wasmURL] = await Promise.all([
+        toBlobURL(FFMPEG_CORE_URL, "text/javascript"),
+        toBlobURL(FFMPEG_WASM_URL, "application/wasm"),
+      ]);
+      await ffmpeg.load({ coreURL, wasmURL });
       logGif("getSharedFFmpeg: load() succeeded — FFmpeg ready");
       _ffmpeg = ffmpeg;
       return ffmpeg;

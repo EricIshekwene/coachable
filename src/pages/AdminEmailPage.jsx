@@ -1201,7 +1201,6 @@ export default function AdminEmailPage() {
           ? "This will send to the specific recipients listed above only."
           : "This will send the email immediately to all matching users. This cannot be undone."
         }
-        subtitle="This will send the email immediately to all matching users. This cannot be undone."
         confirmLabel="Send now"
         cancelLabel="Cancel"
         onConfirm={handleSendToAll}

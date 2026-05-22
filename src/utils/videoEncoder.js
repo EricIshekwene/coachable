@@ -57,7 +57,12 @@ const DEFAULT_CHUNK_COLOR_SPACE = {
   matrix: "bt709",
   fullRange: false,
 };
-const FFMPEG_CORE_BASE_URL = "/ffmpeg";
+// FFmpeg core (~31 MB wasm) is loaded from a CDN rather than self-hosted: Cloudflare
+// Pages rejects any single asset over 25 MiB, so the wasm cannot ship in /public.
+// toBlobURL (in getFFmpeg) fetches these cross-origin then wraps them as same-origin
+// blob URLs, keeping them usable under cross-origin isolation. Pinned to the installed
+// @ffmpeg/core version so ffmpeg-core.js and ffmpeg-core.wasm always match.
+const FFMPEG_CORE_BASE_URL = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd";
 
 /**
  * Clamp dimensions so neither exceeds MAX_ENCODE_DIMENSION, preserving aspect ratio.
