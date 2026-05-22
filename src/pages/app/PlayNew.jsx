@@ -195,11 +195,26 @@ export default function PlayNew() {
     }
 
     const chosen = sportPresets.find((p) => p.id === selectedPresetId);
-    const playData = chosen?.playData ?? null;
+    const mode = fieldType === "Football" ? editorMode : "keyframe";
+
+    // Presets only supply object positioning — never the editor mode. Each preset
+    // bundle bakes in its own `meta.editorMode` (usually "keyframe"); left as-is it
+    // would override the creation mode the user just picked above (the saved value
+    // wins in PlayEditPage). Stamp the chosen mode onto the preset data so it both
+    // opens and reopens in the right mode.
+    let playData = chosen?.playData ?? null;
+    if (playData?.play) {
+      playData = {
+        ...playData,
+        play: {
+          ...playData.play,
+          meta: { ...(playData.play.meta || {}), editorMode: mode },
+        },
+      };
+    }
 
     setSubmitting(true);
     try {
-      const mode = fieldType === "Football" ? editorMode : "keyframe";
       const entry = await createPlay(user.teamId, {
         title: trimmedTitle,
         tags,
