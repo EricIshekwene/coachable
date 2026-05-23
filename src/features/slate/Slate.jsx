@@ -2112,6 +2112,11 @@ function Slate({
   const getGifContentBounds = useCallback((worldRect = null) => {
     const api = screenshotApiRef.current;
     const fieldRect = worldRect ?? api?.getFieldWorldBounds?.() ?? null;
+    logGifExport(
+      `getGifContentBounds: fieldRect x=${fieldRect?.x?.toFixed(1)} y=${fieldRect?.y?.toFixed(1)} ` +
+      `w=${fieldRect?.width?.toFixed(1)} h=${fieldRect?.height?.toFixed(1)} ` +
+      `motionPaths=${drawingsRef.current.length} tracks=${Object.keys(animationDataRef.current?.tracks || {}).length}`
+    );
     const points = [];
     const tracks = animationDataRef.current?.tracks || {};
 
@@ -2129,6 +2134,14 @@ function Slate({
       if (ball?.x != null) points.push({ x: ball.x, y: ball.y ?? 0 });
     });
 
+    // In drawing mode, keyframes are empty — include all motion path points so
+    // the crop covers the full range of player movement, not just start positions.
+    drawingsRef.current.forEach((d) => {
+      (d.points || []).forEach((pt) => {
+        if (pt?.x != null) points.push({ x: pt.x, y: pt.y ?? 0 });
+      });
+    });
+
     if (!points.length) return fieldRect;
 
     let left = Number.POSITIVE_INFINITY;
@@ -2142,10 +2155,14 @@ function Slate({
       if (y > bottom) bottom = y;
     });
 
+    logGifExport(
+      `getGifContentBounds: point extent x=${left.toFixed(1)}→${right.toFixed(1)} y=${top.toFixed(1)}→${bottom.toFixed(1)} (${points.length} pts)`
+    );
+
     const spanW = Math.max(right - left, 1);
     const spanH = Math.max(bottom - top, 1);
-    const padW = spanW * 0.07;
-    const padH = spanH * 0.07;
+    const padW = spanW * 0.15;
+    const padH = spanH * 0.15;
     return {
       x: left - padW,
       y: top - padH,
@@ -2206,9 +2223,11 @@ function Slate({
       return null;
     }
 
+    const cb = contentBounds;
     logGifExport(
       `recordGIFExport: capture metrics stage=${captureMetrics.stageWidth}x${captureMetrics.stageHeight} ` +
-      `capture=${captureMetrics.captureWidth}x${captureMetrics.captureHeight}`
+      `capture=${captureMetrics.captureWidth}x${captureMetrics.captureHeight} ` +
+      `contentBounds x=${cb?.x?.toFixed(1)} y=${cb?.y?.toFixed(1)} w=${cb?.width?.toFixed(1)} h=${cb?.height?.toFixed(1)}`
     );
     if (!captureMetrics.ready) {
       const metricSummary = `${captureMetrics.stageWidth}x${captureMetrics.stageHeight}, capture ${captureMetrics.captureWidth}x${captureMetrics.captureHeight}`;
@@ -2246,8 +2265,48 @@ function Slate({
       api.hideOverlays();
       api.flushRender?.();
 
+      // Sample actual rendered positions across the full play duration so the
+      // crop frame covers where players really end up, not just stored control
+      // points. Control points only have path endpoints; curved paths and
+      // keyframe interpolation can produce positions well outside those bounds.
+      const SAMPLE_COUNT = 30;
+      let sampledLeft = Number.POSITIVE_INFINITY;
+      let sampledRight = Number.NEGATIVE_INFINITY;
+      let sampledTop = Number.POSITIVE_INFINITY;
+      let sampledBottom = Number.NEGATIVE_INFINITY;
+      for (let s = 0; s <= SAMPLE_COUNT; s++) {
+        const sampleMs = (s / SAMPLE_COUNT) * playDurationMs;
+        renderPoseAtTime(sampleMs);
+        Object.values(latestPosesRef.current || {}).forEach((pose) => {
+          if (pose?.x == null) return;
+          if (pose.x < sampledLeft) sampledLeft = pose.x;
+          if (pose.x > sampledRight) sampledRight = pose.x;
+          if ((pose.y ?? 0) < sampledTop) sampledTop = pose.y ?? 0;
+          if ((pose.y ?? 0) > sampledBottom) sampledBottom = pose.y ?? 0;
+        });
+      }
+      renderPoseAtTime(0);
+      api.flushRender?.();
+
+      // Build sampled bounds with padding; fall back to contentBounds if no poses were found.
+      let cropBounds = contentBounds;
+      if (Number.isFinite(sampledLeft) && Number.isFinite(sampledTop)) {
+        const sw = Math.max(sampledRight - sampledLeft, 1);
+        const sh = Math.max(sampledBottom - sampledTop, 1);
+        const pw = sw * 0.12;
+        const ph = sh * 0.12;
+        cropBounds = { x: sampledLeft - pw, y: sampledTop - ph, width: sw + pw * 2, height: sh + ph * 2 };
+        logGifExport(
+          `recordGIFExport: sampled bounds x=${sampledLeft.toFixed(1)}→${sampledRight.toFixed(1)} ` +
+          `y=${sampledTop.toFixed(1)}→${sampledBottom.toFixed(1)} → cropBounds ` +
+          `x=${cropBounds.x.toFixed(1)} y=${cropBounds.y.toFixed(1)} w=${cropBounds.width.toFixed(1)} h=${cropBounds.height.toFixed(1)}`
+        );
+      } else {
+        logGifExport(`recordGIFExport: no sampled poses — falling back to contentBounds`);
+      }
+
       // Fit all content into the viewport and get the tight crop rect
-      const fitResult = api.setFitCameraForCapture(contentBounds);
+      const fitResult = api.setFitCameraForCapture(cropBounds);
       cameraSaved = fitResult?.saved ?? null;
       screenRect = fitResult?.screenRect ?? null;
       if (

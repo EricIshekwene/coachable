@@ -756,7 +756,7 @@ export default function Plays() {
               } ${
                 bulkMode && bulkSelected.has(play.id)
                   ? "border-BrandOrange/50 bg-BrandOrange/6 shadow-[0_0_0_1px_rgba(255,122,24,0.16)]"
-                  : "border-BrandGray2/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0)),rgba(24,26,31,0.96)] hover:border-BrandOrange/25 hover:shadow-[0_18px_50px_rgba(0,0,0,0.22)]"
+                  : "border-BrandGray2/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0)),rgba(24,26,31,0.96)] hover:border-BrandOrange/25 hover:shadow-[0_4px_16px_rgba(0,0,0,0.14)]"
               }`}
               onClick={bulkMode ? () => toggleBulkSelect(play.id) : undefined}
             >

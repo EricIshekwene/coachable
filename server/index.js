@@ -24,6 +24,7 @@ import prefabsRoutes from "./routes/prefabs.js";
 import sportPresetsRoutes from "./routes/sportPresets.js";
 import sportPrefabPresetsRoutes from "./routes/sportPrefabPresets.js";
 import staffRoutes from "./routes/staff.js";
+import notificationsRoutes from "./routes/notifications.js";
 import { syncSports } from "./utils/syncSports.js";
 import { syncPlaybookDefaults } from "./utils/syncPlaybookDefaults.js";
 
@@ -84,6 +85,7 @@ app.use("/prefabs", prefabsRoutes);
 app.use("/sport-presets", sportPresetsRoutes);
 app.use("/sport-prefab-presets", sportPrefabPresetsRoutes);
 app.use("/staff", staffRoutes);
+app.use("/notifications", notificationsRoutes);
 
 // --------------- Static files ---------------
 

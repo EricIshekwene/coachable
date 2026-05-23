@@ -275,7 +275,7 @@ const ANALYTICS_PANEL_TONES = {
 const PLAY_CARD_PANEL_STYLE = {
   backgroundColor: "var(--adm-surface)",
   border: "1px solid var(--adm-border)",
-  boxShadow: "var(--adm-shadow-sm)",
+  boxShadow: "0 1px 4px rgba(0,0,0,0.10)",
 };
 
 const ADMIN_MENU_STYLE = {

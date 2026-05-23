@@ -22,6 +22,9 @@ const ALLOWED_TAGS = new Set([
 const URL_PROTOCOLS = new Set(["http:", "https:", "mailto:", "tel:"]);
 const PLAY_EMBED_PLACEHOLDER = "__COACHABLE_PLAY_EMBED__";
 const PLAY_EMBED_TOKEN_PATTERN = /\{\{playembed\}\}?/gi;
+// Matches {{URL: Display text}} — the colon+space separates URL from label.
+// Supports bare domains (coachableplays.com) and full URLs (https://...).
+const INLINE_LINK_TOKEN_PATTERN = /\{\{(https?:\/\/[^}\s]+|[^}:]+?):\s*([^}]+?)\}\}/g;
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -71,6 +74,34 @@ function getHrefAttribute(rawAttrs) {
 function getSrcAttribute(rawAttrs) {
   const match = String(rawAttrs || "").match(/\bsrc\s*=\s*("([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/i);
   return match?.[2] || match?.[3] || match?.[4] || "";
+}
+
+/**
+ * Prepends https:// to bare domains, then runs through sanitizeUrl.
+ * @param {string} rawUrl
+ * @returns {string} safe absolute URL, or "" if invalid
+ */
+function resolveInlineLinkUrl(rawUrl) {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return "";
+  const withProtocol = /^[a-z][a-z0-9+\-.]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  return sanitizeUrl(withProtocol);
+}
+
+/**
+ * Converts {{URL: Display text}} tokens to <a> tags before sanitization.
+ * @param {string} value
+ * @returns {string}
+ */
+function resolveInlineLinkTokens(value) {
+  return String(value || "").replace(
+    INLINE_LINK_TOKEN_PATTERN,
+    (_, rawUrl, displayText) => {
+      const href = resolveInlineLinkUrl(rawUrl);
+      if (!href) return displayText.trim();
+      return `<a href="${escapeAttribute(href)}">${displayText.trim()}</a>`;
+    }
+  );
 }
 
 function looksLikeHtml(value) {
@@ -219,7 +250,8 @@ export function getBroadcastBodyText(body) {
 
 export function renderBroadcastBodyMarkup({ body = "", recipientName = "", recipientTeam = "", recipientEmail = "", playEmbedHtml = "" }) {
   const personalizedBody = personalizeMergeTags(body, recipientName, recipientTeam, recipientEmail);
-  const placeholderBody = String(personalizedBody || "").replace(
+  const bodyWithLinks = resolveInlineLinkTokens(personalizedBody);
+  const placeholderBody = String(bodyWithLinks || "").replace(
     PLAY_EMBED_TOKEN_PATTERN,
     playEmbedHtml ? PLAY_EMBED_PLACEHOLDER : ""
   );

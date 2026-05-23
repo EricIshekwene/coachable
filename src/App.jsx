@@ -56,6 +56,7 @@ import Profile from "./pages/app/Profile";
 import ProfileEmailVerification from "./pages/app/ProfileEmailVerification";
 import Settings from "./pages/app/Settings";
 import ReportIssue from "./pages/app/ReportIssue";
+import Notifications from "./pages/app/Notifications";
 import Playbooks from "./pages/app/Playbooks";
 import DemoVideos from "./pages/app/DemoVideos";
 import MobileViewOnlyGate from "./components/MobileViewOnlyGate";
@@ -412,6 +413,7 @@ export function AppRoutes() {
         <Route path="profile/verify-email" element={<ProfileEmailVerification />} />
         <Route path="settings" element={<Settings />} />
         <Route path="report-issue" element={<ReportIssue />} />
+        <Route path="notifications" element={<Notifications />} />
         <Route path="playbooks" element={<Playbooks />} />
         <Route path="playbooks/:sectionId" element={<Playbooks />} />
         <Route path="videos" element={<DemoVideos />} />

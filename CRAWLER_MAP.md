@@ -96,6 +96,7 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 | "recording mode toggle" (right panel) | [src/components/rightPanel/RecordingModeToggle.jsx](src/components/rightPanel/RecordingModeToggle.jsx) |
 | "recording player list" (right panel) | [src/components/rightPanel/RecordingPlayerList.jsx](src/components/rightPanel/RecordingPlayerList.jsx) |
 | "debug panel" (right panel) | [src/components/rightPanel/DebugPanel.jsx](src/components/rightPanel/DebugPanel.jsx) |
+| "notification bell" (app shell nav) | [src/components/NotificationBell.jsx](src/components/NotificationBell.jsx) |
 | "mobile editor bar" | [src/components/MobileEditorBar.jsx](src/components/MobileEditorBar.jsx) |
 | "view-only controls" | [src/components/ViewOnlyControls.jsx](src/components/ViewOnlyControls.jsx) |
 
@@ -150,6 +151,7 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 | "folders API client" | [src/utils/apiFolders.js](src/utils/apiFolders.js) |
 | "prefabs API client" | [src/utils/prefabsApi.js](src/utils/prefabsApi.js) |
 | "playbook sections API client" | [src/utils/playbookSectionsApi.js](src/utils/playbookSectionsApi.js) |
+| "notifications API client" | [src/utils/notificationsApi.js](src/utils/notificationsApi.js) |
 | "generic API helper / fetch" | [src/utils/api.js](src/utils/api.js) |
 | "local autosave for plays" | [src/utils/appPlaysStorage.js](src/utils/appPlaysStorage.js) |
 | "playbook localStorage" | [src/utils/playbookStorage.js](src/utils/playbookStorage.js) |
@@ -158,10 +160,22 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 | "data contracts / shape validation" | [src/utils/dataContracts.js](src/utils/dataContracts.js) |
 | "input validation" | [src/utils/inputValidation.js](src/utils/inputValidation.js) |
 
+### Notifications (in-app inbox)
+| User says... | Primary file(s) | Notes |
+|---|---|---|
+| "notification bell", "bell badge", "bell dropdown" | [src/components/NotificationBell.jsx](src/components/NotificationBell.jsx) | Bell icon + unread badge + dropdown panel in the app shell nav |
+| "notifications context", "notifications provider", "unread count" | [src/context/NotificationsContext.jsx](src/context/NotificationsContext.jsx) | Shared state: list, unreadCount, markRead, markAllRead, respond; polls every 60 s |
+| "notifications page", "app inbox" | [src/pages/app/Notifications.jsx](src/pages/app/Notifications.jsx) | Master/detail inbox at `/app/notifications`; inline response forms |
+| "notifications API client" | [src/utils/notificationsApi.js](src/utils/notificationsApi.js) | apiFetch wrappers for `/notifications/*` endpoints |
+| "notifications server route" | [server/routes/notifications.js](server/routes/notifications.js) | `GET /notifications`, `GET /notifications/unread-count`, `POST /notifications/read-all`, `POST /:id/read`, `POST /:id/respond` |
+| "notification audience helpers", "notifAudienceSql" | [server/lib/notificationAudience.js](server/lib/notificationAudience.js) | Pure: `buildNotifAudienceSql`, `buildNotifAudienceLabel`, `aggregateNotifResponses` |
+| "admin notifications composer" | [src/pages/AdminNotificationsPage.jsx](src/pages/AdminNotificationsPage.jsx) | Owner-only authoring page at `/admin/notifications`; see [NOTIFICATIONS_PAGE.md](src/pages/NOTIFICATIONS_PAGE.md) |
+
 ### Auth / context / routing
 | User says... | Primary file(s) |
 |---|---|
 | "auth context", "current user", "login state" | [src/context/AuthContext.jsx](src/context/AuthContext.jsx) |
+| "notifications context" | [src/context/NotificationsContext.jsx](src/context/NotificationsContext.jsx) |
 | "app-wide messages" | [src/context/AppMessageContext.jsx](src/context/AppMessageContext.jsx) |
 | "routes", "router", "all pages" | [src/App.jsx](src/App.jsx) |
 | "app shell layout" (nav chrome) | [src/layouts/AppLayout.jsx](src/layouts/AppLayout.jsx) |
@@ -229,6 +243,7 @@ All under [src/animation/](src/animation/), [src/canvas/](src/canvas/), [src/fea
 | `/app/report-issue` | [pages/app/ReportIssue.jsx](src/pages/app/ReportIssue.jsx) |
 | `/app/playbooks` (+`/:sectionId`) | [pages/app/Playbooks.jsx](src/pages/app/Playbooks.jsx) |
 | `/app/videos` | [pages/app/DemoVideos.jsx](src/pages/app/DemoVideos.jsx) |
+| `/app/notifications` (in-app inbox) | [pages/app/Notifications.jsx](src/pages/app/Notifications.jsx) |
 
 ### Admin (`/admin/*`)
 | Path | File |
@@ -252,6 +267,7 @@ All under [src/animation/](src/animation/), [src/canvas/](src/canvas/), [src/fea
 | `/admin/gif-test` | [AdminGIFTest.jsx](src/pages/AdminGIFTest.jsx) |
 | `/admin/demo-videos` | [AdminDemoVideos.jsx](src/pages/AdminDemoVideos.jsx) |
 | `/admin/one-page` | [AdminOnePage.jsx](src/pages/AdminOnePage.jsx) |
+| `/admin/notifications` (owner-only) | [AdminNotificationsPage.jsx](src/pages/AdminNotificationsPage.jsx) — see [NOTIFICATIONS_PAGE.md](src/pages/NOTIFICATIONS_PAGE.md) |
 
 ### Staff admin (`/staff/*`)
 Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PLAN.md). Pages reuse the existing Admin* components with `basePath="/staff"` and `mode="staff"` on `<AdminProvider>`.
@@ -310,6 +326,7 @@ Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PL
 | `/prefabs` | [routes/prefabs.js](server/routes/prefabs.js) |
 | `/sport-presets` | [routes/sportPresets.js](server/routes/sportPresets.js) |
 | `/sport-prefab-presets` | [routes/sportPrefabPresets.js](server/routes/sportPrefabPresets.js) |
+| `/notifications` (user-facing in-app inbox; admin authoring lives under `/admin/notifications`) | [routes/notifications.js](server/routes/notifications.js) |
 
 ### Middleware / lib / utils / config
 - [middleware/auth.js](server/middleware/auth.js) — JWT/session middleware (also exports `verifySessionToken`, `readSessionToken` for compositional auth)
@@ -317,6 +334,7 @@ Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PL
 - [routes/staff.js](server/routes/staff.js) — public-or-JWT staff endpoints: `GET /staff/session`, `POST /staff/accept-invite`
 - [lib/email.js](server/lib/email.js) — Resend email helpers
 - [lib/userTeams.js](server/lib/userTeams.js) — user↔team queries
+- [lib/notificationAudience.js](server/lib/notificationAudience.js) — pure notification helpers: `buildNotifAudienceSql`, `buildNotifAudienceLabel`, `aggregateNotifResponses` (used by `/admin/notifications/*`)
 - [utils/syncSports.js](server/utils/syncSports.js) — startup sport seed
 - [utils/syncPlaybookDefaults.js](server/utils/syncPlaybookDefaults.js) — startup playbook seed
 - [config/sports.js](server/config/sports.js) — sport definitions / field configs
@@ -327,7 +345,7 @@ Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PL
 - [db/migrate.js](server/db/migrate.js) — standalone migration runner
 - [db/pool.js](server/db/pool.js) — `pg` Pool export
 
-**Tables** (from schema.sql): `users`, `email_verification_codes`, `user_preferences`, `teams`, `team_settings`, `team_memberships`, `team_invite_codes`, `team_invites`, `team_join_requests`, `play_folders`, `plays`, `play_tags`, `play_tag_links`, `play_favorites`, `play_share_links`, `folder_share_links`, `error_reports`, `password_reset_codes`, `platform_play_folders`, `platform_plays`, `page_sections`, `user_issues`, `playbook_sections`, `playbook_section_plays`, `demo_videos`, `user_prefabs`, `admin_prefabs`, `sport_presets`, `sport_prefab_presets`, `staff_admins`, `staff_admin_invites`, `admin_audit_log`.
+**Tables** (from schema.sql): `users`, `email_verification_codes`, `user_preferences`, `teams`, `team_settings`, `team_memberships`, `team_invite_codes`, `team_invites`, `team_join_requests`, `play_folders`, `plays`, `play_tags`, `play_tag_links`, `play_favorites`, `play_share_links`, `folder_share_links`, `error_reports`, `password_reset_codes`, `platform_play_folders`, `platform_plays`, `page_sections`, `user_issues`, `playbook_sections`, `playbook_section_plays`, `demo_videos`, `user_prefabs`, `admin_prefabs`, `sport_presets`, `sport_prefab_presets`, `staff_admins`, `staff_admin_invites`, `admin_audit_log`, `notifications`, `notification_recipients`, `notification_responses`.
 
 ---
 
@@ -338,7 +356,7 @@ All run via Vitest. One file per feature; create new ones here when adding tests
 - Admin shell: `adminBtn.test.js`, `adminModal.test.js`, `adminNav.test.js`, `adminShell.test.js`, `adminDangerMode.test.js`, `analyticsDashboard.test.js`, `usersHideFilters.test.js`
 - Plays/folders/playbooks: `localStorageAutosave.test.js`, `platformPlays.test.js`, `playbookFolderBrowse.test.js`, `playbookSections.test.js`, `landingPlaybooksNav.test.js`, `playPreviewCardCones.test.js`, `playPreviewPlayer.test.js`, `playCopyAnalytics.test.js`, `sportPresets.test.js`, `presetBallCycle.test.js`, `presetEditorMode.test.js`, `hideFromPlayers.test.js`, `sportNavContext.test.js`, `syncSports.test.js`
 - Drawing/keyframe: `keyframeStyling.test.js`, `drawingModePreviewAnimation.test.js`, `drawingFlipReflect.test.js`, `drawingModeUndoRedo.test.js`, `drawingScopeSeparation.test.js`, `annotationDrawingVisibility.test.js`, `drawingExportV3Migration.test.js`
-- Misc: `videoEncoder.test.js`, `errorReporter.test.js`, `demoVideos.test.js`
+- Misc: `videoEncoder.test.js`, `errorReporter.test.js`, `demoVideos.test.js`, `adminNotifications.test.js` (notification audience SQL + response aggregation)
 
 In-source unit suite for canvas geometry: [src/canvas/__tests__/drawingGeometry.test.js](src/canvas/__tests__/drawingGeometry.test.js).
 Suites used by the admin test runner: [src/testing/suites/](src/testing/suites/) (animationSchema, drawingGeometry, importExport, interpolate) and [src/testing/testRunner.js](src/testing/testRunner.js).

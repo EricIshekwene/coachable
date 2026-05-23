@@ -100,8 +100,8 @@ function insertTextAtCursor(text) {
  */
 function GifDebugPanel({ playEmbed, slatePlayRef, gifExportRef, gifPhase, gifError }) {
   const [metrics, setMetrics] = useState(null);
+  const [copied, setCopied] = useState(false);
 
-  // Refresh canvas metrics from gifExportRef every 500 ms while a play is being processed
   useEffect(() => {
     const tick = () => setMetrics(gifExportRef.current?.getCanvasMetrics?.() || null);
     tick();
@@ -117,27 +117,112 @@ function GifDebugPanel({ playEmbed, slatePlayRef, gifExportRef, gifPhase, gifErr
   const tracks = animation?.tracks || {};
   const motionDrawings = innerPlay?.motionDrawings || [];
   const annotationDrawings = innerPlay?.annotationDrawings || [];
+  const playersById = innerPlay?.entities?.playersById || {};
+  const ballsById = innerPlay?.entities?.ballsById || {};
+  const cb = metrics?.contentBounds;
+
+  // Compute bounding box of all motion path points for display
+  const pathBounds = (() => {
+    if (!motionDrawings.length) return null;
+    let left = Infinity, right = -Infinity, top = Infinity, bottom = -Infinity;
+    motionDrawings.forEach((d) => {
+      (d.points || []).forEach((pt) => {
+        if (pt?.x == null) return;
+        if (pt.x < left) left = pt.x;
+        if (pt.x > right) right = pt.x;
+        if (pt.y < top) top = pt.y;
+        if (pt.y > bottom) bottom = pt.y;
+      });
+    });
+    return Number.isFinite(left) ? { left, right, top, bottom } : null;
+  })();
+
+  const handleCopy = useCallback(async () => {
+    const lines = [
+      "=== GIF RENDERING DEBUG ===",
+      "",
+      "── Embedded play ──",
+      `title: ${playEmbed?.title || "(none)"}`,
+      `id:    ${playEmbed?.id || "(none)"}`,
+      `gifUrl: ${playEmbed?.gifUrl || "(none)"}`,
+      "",
+      "── Source play ──",
+      `title:      ${play?.title || "(none)"}`,
+      `id:         ${play?.id || "(none)"}`,
+      `editorMode: ${editorMode || "(none)"}`,
+      `drawingMode prop passed: ${isDrawing}`,
+      "",
+      "── Animation ──",
+      `durationMs: ${animation?.durationMs ?? "(none)"}`,
+      `tracks (${Object.keys(tracks).length}):`,
+      ...Object.entries(tracks).map(([id, track]) => {
+        const kfs = track?.keyframes || [];
+        return `  ${id}: ${kfs.length} keyframes${kfs.length ? ` [${kfs.map((k) => `${Math.round(k.timeMs)}ms (${Math.round(k.x)},${Math.round(k.y)})`).join(", ")}]` : ""}`;
+      }),
+      "",
+      "── Player start positions ──",
+      ...Object.entries(playersById).map(([id, p]) =>
+        `  ${id} (#${p.number ?? "?"}): x=${Math.round(p.x ?? 0)} y=${Math.round(p.y ?? 0)}`
+      ),
+      ...Object.entries(ballsById).map(([id, b]) =>
+        `  ${id} (ball): x=${Math.round(b.x ?? 0)} y=${Math.round(b.y ?? 0)}`
+      ),
+      "",
+      "── Motion drawings ──",
+      `count: ${motionDrawings.length}`,
+      ...motionDrawings.map((d, i) => {
+        const attached = d.attachedEntityId || d.attachedPlayerId || "?";
+        const pts = d.points || [];
+        const first = pts[0];
+        const last = pts[pts.length - 1];
+        return [
+          `  [${i}] entity=${attached} pts=${pts.length} stepStart=${d.stepStartMs ?? "?"}ms stepEnd=${d.stepEndMs ?? "?"}ms src=${d.source || "?"}`,
+          first ? `       first pt: x=${Math.round(first.x)} y=${Math.round(first.y)}` : null,
+          last && pts.length > 1 ? `       last pt:  x=${Math.round(last.x)} y=${Math.round(last.y)}` : null,
+        ].filter(Boolean).join("\n");
+      }),
+      pathBounds
+        ? `  path extent: x ${Math.round(pathBounds.left)}→${Math.round(pathBounds.right)}  y ${Math.round(pathBounds.top)}→${Math.round(pathBounds.bottom)}`
+        : "  path extent: (no points)",
+      "",
+      "── Capture frame (contentBounds) ──",
+      cb
+        ? `x=${cb.x?.toFixed(1)} y=${cb.y?.toFixed(1)} w=${cb.width?.toFixed(1)} h=${cb.height?.toFixed(1)}`
+        : "(not yet computed — hidden Slate not mounted or not ready)",
+      "",
+      "── Canvas metrics ──",
+      metrics
+        ? `stage ${metrics.stageWidth}x${metrics.stageHeight}  capture ${metrics.captureWidth}x${metrics.captureHeight}  stageReady=${metrics.stageReady}  ready=${metrics.ready}`
+        : "(no hidden Slate mounted)",
+      "",
+      "── GIF phase ──",
+      `phase: ${gifPhase}`,
+      `error: ${gifError || "(none)"}`,
+      "",
+      "── Export logs ──",
+      ...getGifExportDebugLogs(400),
+    ];
+    try {
+      await navigator.clipboard.writeText(lines.join("\n"));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch { /* ignore */ }
+  }, [play, playEmbed, editorMode, isDrawing, animation, tracks, playersById, ballsById,
+      motionDrawings, pathBounds, cb, metrics, gifPhase, gifError]);
 
   const ROW = "flex items-start gap-2 text-xs";
-  const LABEL = "shrink-0 font-semibold w-36";
-  const val = (v) => (
-    <span style={{ color: "var(--adm-text)", fontFamily: "monospace" }}>{String(v ?? "(none)")}</span>
+  const LABEL = "shrink-0 font-semibold w-40";
+  const mono = (v) => (
+    <span style={{ color: "var(--adm-text)", fontFamily: "monospace", fontSize: 11 }}>{String(v ?? "(none)")}</span>
   );
   const badge = (text, ok) => (
-    <span
-      style={{
-        display: "inline-block",
-        padding: "1px 7px",
-        borderRadius: 999,
-        fontSize: 11,
-        fontWeight: 700,
-        background: ok ? "var(--adm-badge-green-bg)" : "var(--adm-danger-dim, #fef2f2)",
-        color: ok ? "var(--adm-badge-green-text)" : "var(--adm-danger)",
-        border: `1px solid ${ok ? "var(--adm-border)" : "var(--adm-danger)"}`,
-      }}
-    >
-      {text}
-    </span>
+    <span style={{
+      display: "inline-block", padding: "1px 7px", borderRadius: 999,
+      fontSize: 11, fontWeight: 700,
+      background: ok ? "var(--adm-badge-green-bg)" : "#fef2f2",
+      color: ok ? "var(--adm-badge-green-text)" : "var(--adm-danger)",
+      border: `1px solid ${ok ? "var(--adm-border)" : "var(--adm-danger)"}`,
+    }}>{text}</span>
   );
 
   return (
@@ -145,33 +230,44 @@ function GifDebugPanel({ playEmbed, slatePlayRef, gifExportRef, gifPhase, gifErr
       className="flex flex-col gap-2 rounded-[var(--adm-radius-sm)] px-3 py-2.5 mt-1"
       style={{ backgroundColor: "var(--adm-surface)", border: "1px solid var(--adm-border2)" }}
     >
-      <span className="text-xs font-semibold" style={{ color: "var(--adm-muted)" }}>GIF rendering debug</span>
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold" style={{ color: "var(--adm-muted)" }}>GIF rendering debug</span>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="rounded px-2 py-0.5 text-xs font-semibold transition-opacity hover:opacity-80"
+          style={{ backgroundColor: "var(--adm-surface2)", border: "1px solid var(--adm-border2)", color: "var(--adm-text2)" }}
+        >
+          {copied ? "Copied ✓" : "Copy all"}
+        </button>
+      </div>
 
       {/* Embedded play */}
       <div className={ROW}>
         <span className={LABEL} style={{ color: "var(--adm-muted)" }}>Embedded play</span>
-        {playEmbed ? val(`${playEmbed.title} (${playEmbed.id})`) : <span style={{ color: "var(--adm-muted)", fontFamily: "monospace" }}>(none)</span>}
+        {playEmbed ? mono(`${playEmbed.title} (${playEmbed.id})`) : mono(null)}
       </div>
       <div className={ROW}>
         <span className={LABEL} style={{ color: "var(--adm-muted)" }}>GIF URL</span>
         {playEmbed?.gifUrl
           ? <a href={playEmbed.gifUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--adm-accent)", fontFamily: "monospace", fontSize: 11, wordBreak: "break-all" }}>{playEmbed.gifUrl}</a>
-          : <span style={{ color: "var(--adm-muted)", fontFamily: "monospace" }}>(none)</span>}
+          : mono(null)}
       </div>
 
-      {/* Source play data (populated while generating or after error) */}
       {play && (
         <>
           <div style={{ borderTop: "1px solid var(--adm-border)", margin: "2px 0" }} />
+
+          {/* Play identity */}
           <div className={ROW}>
             <span className={LABEL} style={{ color: "var(--adm-muted)" }}>Source play</span>
-            {val(`${play.title} (${play.id})`)}
+            {mono(`${play.title} (${play.id})`)}
           </div>
           <div className={ROW}>
             <span className={LABEL} style={{ color: "var(--adm-muted)" }}>editorMode</span>
             <span className="flex items-center gap-2">
-              {val(editorMode)}
-              {isDrawing ? badge("drawing mode", true) : badge("keyframe mode", true)}
+              {mono(editorMode)}
+              {isDrawing ? badge("drawing ✓", true) : badge("keyframe", true)}
             </span>
           </div>
           <div className={ROW}>
@@ -180,60 +276,108 @@ function GifDebugPanel({ playEmbed, slatePlayRef, gifExportRef, gifPhase, gifErr
           </div>
           <div className={ROW}>
             <span className={LABEL} style={{ color: "var(--adm-muted)" }}>Duration</span>
-            {val(animation?.durationMs != null ? `${animation.durationMs} ms` : null)}
+            {mono(animation?.durationMs != null ? `${animation.durationMs} ms` : null)}
           </div>
+
+          {/* Tracks */}
           <div className={ROW}>
             <span className={LABEL} style={{ color: "var(--adm-muted)" }}>Tracks</span>
             <span className="flex flex-col gap-0.5">
               {Object.keys(tracks).length === 0
-                ? <span style={{ color: "var(--adm-muted)", fontFamily: "monospace" }}>(none)</span>
+                ? <span style={{ color: "var(--adm-muted)", fontFamily: "monospace", fontSize: 11 }}>(none)</span>
                 : Object.entries(tracks).map(([id, track]) => {
                     const kfs = track?.keyframes || [];
                     return (
                       <span key={id} style={{ fontFamily: "monospace", fontSize: 11, color: "var(--adm-text2)" }}>
-                        {id}: {kfs.length} kf{kfs.length !== 1 ? "s" : ""}{kfs.length ? ` [${kfs.map((k) => `${Math.round(k.timeMs)}ms`).join(", ")}]` : ""}
+                        {id}: {kfs.length} kf{kfs.length !== 1 ? "s" : ""}
+                        {kfs.length ? ` [${kfs.map((k) => `${Math.round(k.timeMs)}ms(${Math.round(k.x)},${Math.round(k.y)})`).join(" ")}]` : ""}
                       </span>
                     );
                   })}
             </span>
           </div>
+
+          {/* Player start positions */}
+          <div className={ROW}>
+            <span className={LABEL} style={{ color: "var(--adm-muted)" }}>Player start pos</span>
+            <span className="flex flex-col gap-0.5">
+              {[...Object.entries(playersById), ...Object.entries(ballsById)].length === 0
+                ? <span style={{ color: "var(--adm-muted)", fontFamily: "monospace", fontSize: 11 }}>(none)</span>
+                : <>
+                    {Object.entries(playersById).map(([id, p]) => (
+                      <span key={id} style={{ fontFamily: "monospace", fontSize: 11, color: "var(--adm-text2)" }}>
+                        {id} #{p.number ?? "?"}: x={Math.round(p.x ?? 0)} y={Math.round(p.y ?? 0)}
+                      </span>
+                    ))}
+                    {Object.entries(ballsById).map(([id, b]) => (
+                      <span key={id} style={{ fontFamily: "monospace", fontSize: 11, color: "var(--adm-text2)" }}>
+                        {id} (ball): x={Math.round(b.x ?? 0)} y={Math.round(b.y ?? 0)}
+                      </span>
+                    ))}
+                  </>}
+            </span>
+          </div>
+
+          {/* Motion drawings */}
           <div className={ROW}>
             <span className={LABEL} style={{ color: "var(--adm-muted)" }}>Motion drawings</span>
             <span className="flex flex-col gap-0.5">
               {motionDrawings.length === 0
-                ? <span style={{ color: isDrawing ? "var(--adm-danger)" : "var(--adm-muted)", fontFamily: "monospace" }}>
-                    {isDrawing ? "⚠ 0 — drawing mode play has no motion paths" : "(none)"}
+                ? <span style={{ color: isDrawing ? "var(--adm-danger)" : "var(--adm-muted)", fontFamily: "monospace", fontSize: 11 }}>
+                    {isDrawing ? "⚠ 0 — no motion paths!" : "(none)"}
                   </span>
                 : motionDrawings.map((d, i) => {
                     const attached = d.attachedEntityId || d.attachedPlayerId || "?";
+                    const pts = d.points || [];
+                    const first = pts[0];
+                    const last = pts[pts.length - 1];
                     return (
                       <span key={i} style={{ fontFamily: "monospace", fontSize: 11, color: "var(--adm-text2)" }}>
-                        [{i}] entity={attached} pts={d.points?.length ?? 0} start={d.stepStartMs ?? "?"}ms end={d.stepEndMs ?? "?"}ms src={d.source || "?"}
+                        [{i}] {attached} pts={pts.length} {d.stepStartMs ?? "?"}→{d.stepEndMs ?? "?"}ms
+                        {first ? ` start(${Math.round(first.x)},${Math.round(first.y)})` : ""}
+                        {last && pts.length > 1 ? ` end(${Math.round(last.x)},${Math.round(last.y)})` : ""}
                       </span>
                     );
                   })}
+              {pathBounds && (
+                <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--adm-muted)" }}>
+                  path extent x:{Math.round(pathBounds.left)}→{Math.round(pathBounds.right)} y:{Math.round(pathBounds.top)}→{Math.round(pathBounds.bottom)}
+                </span>
+              )}
             </span>
           </div>
           <div className={ROW}>
             <span className={LABEL} style={{ color: "var(--adm-muted)" }}>Annotation drawings</span>
-            {val(annotationDrawings.length)}
+            {mono(annotationDrawings.length)}
           </div>
         </>
       )}
 
-      {/* Canvas metrics */}
+      {/* Capture frame */}
       <div style={{ borderTop: "1px solid var(--adm-border)", margin: "2px 0" }} />
+      <div className={ROW}>
+        <span className={LABEL} style={{ color: "var(--adm-muted)" }}>Capture frame</span>
+        {cb
+          ? <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--adm-text2)" }}>
+              x={cb.x?.toFixed(1)} y={cb.y?.toFixed(1)} w={cb.width?.toFixed(1)} h={cb.height?.toFixed(1)}
+            </span>
+          : <span style={{ color: "var(--adm-muted)", fontFamily: "monospace", fontSize: 11 }}>
+              {metrics ? "(computed when Slate mounts)" : "(no hidden Slate mounted)"}
+            </span>}
+      </div>
+
+      {/* Canvas metrics */}
       <div className={ROW}>
         <span className={LABEL} style={{ color: "var(--adm-muted)" }}>Canvas metrics</span>
         {metrics
           ? <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--adm-text2)" }}>
               stage {metrics.stageWidth}×{metrics.stageHeight} · capture {metrics.captureWidth}×{metrics.captureHeight} · {metrics.stageReady ? badge("ready", true) : badge("not ready", false)}
             </span>
-          : <span style={{ color: "var(--adm-muted)", fontFamily: "monospace" }}>(no hidden Slate mounted)</span>}
+          : <span style={{ color: "var(--adm-muted)", fontFamily: "monospace", fontSize: 11 }}>(no hidden Slate mounted)</span>}
       </div>
       <div className={ROW}>
         <span className={LABEL} style={{ color: "var(--adm-muted)" }}>GIF phase</span>
-        {val(gifPhase)}
+        {mono(gifPhase)}
       </div>
       {gifError && (
         <div className={ROW}>
@@ -262,7 +406,6 @@ export default function AdminEmailPage() {
   const [subheader, setSubheader] = useState("");
   const [body, setBody] = useState("");
   const [youtubeUrl, setYoutubeUrl] = useState("");
-  const [gifUrl, setGifUrl] = useState("");
   const [testEmail, setTestEmail] = useState("founder@coachableplays.com");
   const [editorFocused, setEditorFocused] = useState(false);
   const [activeFormats, setActiveFormats] = useState(EMPTY_ACTIVE_FORMATS);
@@ -322,13 +465,12 @@ export default function AdminEmailPage() {
         subheader,
         body,
         youtubeUrl,
-        gifUrl,
         playEmbed,
         recipientName: currentPreviewRecipient.name || "",
         recipientTeam: currentPreviewRecipient.team_name || "",
         recipientEmail: currentPreviewRecipient.email || "",
       }),
-    [subheader, body, youtubeUrl, gifUrl, playEmbed, currentPreviewRecipient]
+    [subheader, body, youtubeUrl, playEmbed, currentPreviewRecipient]
   );
 
   // ── Effects ─────────────────────────────────────────────────────────────────
@@ -610,18 +752,29 @@ export default function AdminEmailPage() {
     syncBodyFromEditor();
   }, [focusEditor, syncBodyFromEditor]);
 
+  /**
+   * Inserts an inline link token at the cursor. The user edits it directly in the body.
+   * Format: {{URL: Display text}} — rendered as <a> when the email is built.
+   */
   const handleLinkInsert = useCallback(() => {
-    const url = window.prompt("Enter a link URL");
-    if (!url?.trim()) return;
     focusEditor();
-    const selectionText = window.getSelection?.()?.toString().trim();
-    if (selectionText) {
-      document.execCommand("createLink", false, url.trim());
-    } else {
-      insertHtmlAtCursor(`<a href="${escapeHtml(url.trim())}">${escapeHtml(url.trim())}</a>`);
-    }
+    insertTextAtCursor("{{coachableplays.com: Link Text}}");
     syncBodyFromEditor();
   }, [focusEditor, syncBodyFromEditor]);
+
+  /**
+   * Strips all formatting from the editor body, converting content to plain paragraphs.
+   */
+  const handleClearFormatting = useCallback(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const text = (editor.innerText || editor.textContent || "").trim();
+    editor.focus();
+    editor.innerHTML = text
+      ? text.split(/\n{2,}/).map((p) => `<p>${escapeHtml(p.trim()).replace(/\n/g, "<br>")}</p>`).join("")
+      : "";
+    syncBodyFromEditor();
+  }, [syncBodyFromEditor]);
 
   /**
    * Handle image file selection — reads as base64, uploads to R2, inserts <img> at cursor.
@@ -811,7 +964,7 @@ export default function AdminEmailPage() {
     try {
       const data = await adminApi("/admin/email/send", {
         method: "POST",
-        body: JSON.stringify({ subject, subheader, body, youtubeUrl, gifUrl, playEmbed: playEmbed || undefined, filterGroups, extraRecipients, previewTo: testEmail.trim() }),
+        body: JSON.stringify({ subject, subheader, body, youtubeUrl, playEmbed: playEmbed || undefined, filterGroups, extraRecipients, previewTo: testEmail.trim() }),
       });
       setSendResult({ ...data, testEmail: testEmail.trim() });
     } catch (err) {
@@ -819,14 +972,14 @@ export default function AdminEmailPage() {
     } finally {
       setSending(false);
     }
-  }, [subject, subheader, body, youtubeUrl, gifUrl, playEmbed, filterGroups, extraRecipients, testEmail]);
+  }, [subject, subheader, body, youtubeUrl, playEmbed, filterGroups, extraRecipients, testEmail]);
 
   const handleSendToAll = useCallback(async () => {
     setConfirmOpen(false); setSending(true); setSendResult(null); setSendError("");
     try {
       const data = await adminApi("/admin/email/send", {
         method: "POST",
-        body: JSON.stringify({ subject, subheader, body, youtubeUrl, gifUrl, playEmbed: playEmbed || undefined, filterGroups, extraRecipients }),
+        body: JSON.stringify({ subject, subheader, body, youtubeUrl, playEmbed: playEmbed || undefined, filterGroups, extraRecipients }),
       });
       setSendResult(data);
     } catch (err) {
@@ -834,7 +987,7 @@ export default function AdminEmailPage() {
     } finally {
       setSending(false);
     }
-  }, [subject, subheader, body, youtubeUrl, gifUrl, playEmbed, filterGroups, extraRecipients]);
+  }, [subject, subheader, body, youtubeUrl, playEmbed, filterGroups, extraRecipients]);
 
   const isGenerating = gifPhase === "mounting" || gifPhase === "generating" || gifPhase === "uploading";
 
@@ -1068,7 +1221,7 @@ export default function AdminEmailPage() {
                         { key: "numbers", label: "Numbers", onClick: () => runEditorCommand("insertOrderedList") },
                         { key: "link", label: "Link", onClick: handleLinkInsert },
                         { key: "rule", label: "Rule", onClick: () => { focusEditor(); insertHtmlAtCursor("<hr>"); syncBodyFromEditor(); } },
-                        { label: "Clear", onClick: () => runEditorCommand("removeFormat") },
+                        { label: "Clear", onClick: handleClearFormatting },
                       ].map((btn) => (
                         <button
                           key={btn.label} type="button" onClick={btn.onClick}
@@ -1243,54 +1396,6 @@ export default function AdminEmailPage() {
                     </p>
                   </div>
 
-                  {/* YouTube URL */}
-                  <div className="flex flex-col gap-2">
-                    <AdminInput
-                      label="YouTube URL (optional)"
-                      value={youtubeUrl}
-                      onChange={(e) => setYoutubeUrl(e.target.value)}
-                      placeholder="https://youtube.com/watch?v=..."
-                      type="url"
-                    />
-                    {youtubeId && (
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={`https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`}
-                          alt="YouTube thumbnail"
-                          className="rounded-lg object-cover"
-                          style={{ width: 160, height: 90 }}
-                        />
-                        <span className="text-xs" style={{ color: "var(--adm-muted)" }}>
-                          Renders as a richer video card with a direct watch button.
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Manual GIF URL */}
-                  <div className="flex flex-col gap-2">
-                    <AdminInput
-                      label="GIF URL (optional)"
-                      value={gifUrl}
-                      onChange={(e) => setGifUrl(e.target.value)}
-                      placeholder="https://example.com/play-animation.gif"
-                      type="url"
-                    />
-                    {gifUrl && (
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={gifUrl}
-                          alt="GIF preview"
-                          className="rounded-lg"
-                          style={{ maxWidth: 200, maxHeight: 150, objectFit: "contain" }}
-                          onError={(e) => { e.currentTarget.style.display = "none"; }}
-                        />
-                        <span className="text-xs" style={{ color: "var(--adm-muted)" }}>
-                          Renders inside its own card below the message body.
-                        </span>
-                      </div>
-                    )}
-                  </div>
                 </div>
               </AdminCard>
             </AdminSection>
@@ -1350,7 +1455,7 @@ export default function AdminEmailPage() {
                       type="button"
                       onClick={() => {
                         const payload = {
-                          email: { subject, subheader, youtubeUrl, gifUrl, playEmbed },
+                          email: { subject, subheader, youtubeUrl, playEmbed },
                           filterGroups,
                           extraRecipients,
                           audience: audienceData

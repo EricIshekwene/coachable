@@ -4,8 +4,9 @@
  * Full notification command center: compose, target, preview, test-send,
  * broadcast, and review past sent notifications with analytics.
  *
- * Uses demo/mock data for past notifications since no backend endpoint
- * exists yet. Live send actions are wired to real API calls.
+ * Wired end-to-end to the live API: audience preview, send (test + broadcast),
+ * past-notification list, and per-notification response analytics all hit
+ * /admin/notifications/* endpoints backed by Postgres.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -129,167 +130,6 @@ const EMPTY_ACTIVE_FORMATS = {
   bold: false, italic: false, underline: false,
   h2: false, quote: false, ul: false, ol: false, link: false,
 };
-
-// ── Demo past notifications ──────────────────────────────────────────────────
-
-const DEMO_PAST = [
-  {
-    id: "n-001",
-    title: "Welcome to the new Coachable!",
-    subject: "Your coaching experience just got better",
-    type: "email",
-    priority: "normal",
-    status: "sent",
-    sentAt: "2026-05-10T14:32:00Z",
-    audienceLabel: "All onboarded users",
-    recipientCount: 1247,
-    openCount: 834,
-    clickCount: 312,
-    responseCount: 89,
-    body: "<p>We've launched new features to make building plays faster than ever. Check out the new drawing tools and GIF export.</p>",
-    opensByDay: [
-      { day: "May 10", opens: 440 },
-      { day: "May 11", opens: 215 },
-      { day: "May 12", opens: 98 },
-      { day: "May 13", opens: 51 },
-      { day: "May 14", opens: 30 },
-    ],
-    deviceBreakdown: [
-      { name: "Desktop", value: 62 },
-      { name: "Mobile",  value: 31 },
-      { name: "Tablet",  value: 7 },
-    ],
-    responseSummary: [
-      {
-        id: "q1", label: "How would you rate the new update?", type: "rating", average: 4.1,
-        distribution: [
-          { name: "5★", value: 41 }, { name: "4★", value: 28 },
-          { name: "3★", value: 12 }, { name: "2★", value: 5 }, { name: "1★", value: 3 },
-        ],
-      },
-      {
-        id: "q2", label: "Which feature are you most excited about?", type: "multiple",
-        distribution: [
-          { name: "Drawing tools", value: 38 },
-          { name: "GIF export",    value: 31 },
-          { name: "New presets",   value: 20 },
-        ],
-      },
-      {
-        id: "q3", label: "Any other feedback?", type: "paragraph",
-        samples: [
-          "Love the new drawing tools — way faster than before!",
-          "GIF export is a game changer for sharing plays with parents.",
-          "Would be great to have more rugby presets out of the box.",
-          "The mobile experience feels much smoother now.",
-        ],
-      },
-    ],
-  },
-  {
-    id: "n-002",
-    title: "New Rugby Preset Packs Available",
-    subject: "6 new formation presets — free for your team",
-    type: "email",
-    priority: "normal",
-    status: "sent",
-    sentAt: "2026-04-28T10:15:00Z",
-    audienceLabel: "Rugby coaches",
-    recipientCount: 386,
-    openCount: 270,
-    clickCount: 144,
-    responseCount: 22,
-    body: "<p>We added 6 new rugby formation presets. Access them from the Presets tab in any play.</p>",
-    opensByDay: [
-      { day: "Apr 28", opens: 175 },
-      { day: "Apr 29", opens: 68 },
-      { day: "Apr 30", opens: 27 },
-    ],
-    deviceBreakdown: [
-      { name: "Desktop", value: 71 },
-      { name: "Mobile",  value: 22 },
-      { name: "Tablet",  value: 7 },
-    ],
-    responseSummary: [
-      {
-        id: "q1", label: "Will you use the new presets?", type: "yes_no",
-        distribution: [{ name: "Yes", value: 19 }, { name: "No", value: 3 }],
-      },
-      {
-        id: "q2", label: "Rate the preset quality (1–5)", type: "scale", average: 4.0,
-        distribution: [
-          { name: "5", value: 9 }, { name: "4", value: 7 },
-          { name: "3", value: 4 }, { name: "2", value: 1 }, { name: "1", value: 1 },
-        ],
-      },
-    ],
-  },
-  {
-    id: "n-003",
-    title: "Maintenance: downtime 12–1 AM Sunday",
-    subject: "Scheduled maintenance this Sunday",
-    type: "in_app",
-    priority: "high",
-    status: "sent",
-    sentAt: "2026-04-19T08:00:00Z",
-    audienceLabel: "All users",
-    recipientCount: 1389,
-    openCount: 610,
-    clickCount: 0,
-    responseCount: 0,
-    body: "<p>Coachable will be offline for scheduled maintenance from 12:00 AM to 1:00 AM this Sunday. Thanks for your patience.</p>",
-    opensByDay: [
-      { day: "Apr 19", opens: 390 },
-      { day: "Apr 20", opens: 140 },
-      { day: "Apr 21", opens: 80 },
-    ],
-    deviceBreakdown: [
-      { name: "Desktop", value: 55 },
-      { name: "Mobile",  value: 38 },
-      { name: "Tablet",  value: 7 },
-    ],
-  },
-  {
-    id: "n-004",
-    title: "Beta Feature: Recording Mode",
-    subject: "You're invited to try Recording Mode",
-    type: "email",
-    priority: "normal",
-    status: "sent",
-    sentAt: "2026-03-14T16:45:00Z",
-    audienceLabel: "Beta testers",
-    recipientCount: 74,
-    openCount: 62,
-    clickCount: 47,
-    responseCount: 18,
-    body: "<p>Recording Mode is now live in beta. Record player-by-player animations and compile them into full play walkthroughs.</p>",
-    opensByDay: [
-      { day: "Mar 14", opens: 45 },
-      { day: "Mar 15", opens: 12 },
-      { day: "Mar 16", opens: 5 },
-    ],
-    deviceBreakdown: [
-      { name: "Desktop", value: 68 },
-      { name: "Mobile",  value: 25 },
-      { name: "Tablet",  value: 7 },
-    ],
-    responseSummary: [
-      {
-        id: "q1", label: "Did Recording Mode work for you?", type: "yes_no",
-        distribution: [{ name: "Yes", value: 14 }, { name: "No", value: 4 }],
-      },
-      {
-        id: "q2", label: "What should we improve?", type: "paragraph",
-        samples: [
-          "Needs a way to re-record a single player without starting over.",
-          "Ghost trails of already-recorded players would help a lot.",
-          "Please add ball recording support.",
-          "Smooth! Compiled walkthrough looked great.",
-        ],
-      },
-    ],
-  },
-];
 
 const PIE_COLORS = ["#FF7A18", "#3b82f6", "#10b981"];
 
@@ -1142,7 +982,7 @@ function BlockComposer({ blocks, onChange }) {
  *
  * @param {{ mode, sport, playFilter, signupFrom, signupTo, onUpdate }} props
  */
-function AudienceSelector({ mode, sport, playFilter, signupFrom, signupTo, onUpdate }) {
+function AudienceSelector({ mode, sport, playFilter, signupFrom, signupTo, onUpdate, reach }) {
   const [expanded, setExpanded] = useState(false);
   return (
     <div className="flex flex-col gap-4">
@@ -1249,12 +1089,11 @@ function AudienceSelector({ mode, sport, playFilter, signupFrom, signupTo, onUpd
         <FiUsers className="text-xs" />
         Estimated audience:
         <span style={{ color: "var(--adm-text)" }}>
-          {mode === "all"      ? "~1,389 users"
-          : mode === "active"  ? "~712 users"
-          : mode === "inactive" ? "~677 users"
-          : mode === "coaches" ? "~534 users"
-          : mode === "players" ? "~855 users"
-          : "Calculating..."}
+          {reach?.loading
+            ? "Calculating…"
+            : reach?.count != null
+            ? `${reach.count.toLocaleString()} user${reach.count === 1 ? "" : "s"}`
+            : "—"}
         </span>
       </div>
     </div>
@@ -1545,7 +1384,9 @@ function NotifDetailModal({ notif, onClose }) {
   if (!notif) return null;
   const accent = "#FF7A18";
   const openRate = notif.recipientCount ? ((notif.openCount / notif.recipientCount) * 100).toFixed(1) : 0;
-  const clickRate = notif.openCount ? ((notif.clickCount / notif.openCount) * 100).toFixed(1) : 0;
+  const responseRate = notif.recipientCount ? ((notif.responseCount / notif.recipientCount) * 100).toFixed(1) : 0;
+  const readBreakdown = notif.readBreakdown || [];
+  const hasReadData = readBreakdown.some((d) => d.value > 0);
 
   return (
     <AdminModal open={!!notif} onClose={onClose} title={notif.title} width="max-w-2xl">
@@ -1553,19 +1394,18 @@ function NotifDetailModal({ notif, onClose }) {
         {/* Meta row */}
         <div className="flex flex-wrap items-center gap-3">
           <AdminBadge status="info">In-App</AdminBadge>
-          <AdminBadge status="resolved">Sent</AdminBadge>
+          {notif.isTest ? <AdminBadge status="warning">Test</AdminBadge> : <AdminBadge status="resolved">Sent</AdminBadge>}
           <span className="text-xs" style={{ color: "var(--adm-muted)" }}>
             {fmtDate(notif.sentAt)} · {notif.audienceLabel}
           </span>
         </div>
 
         {/* KPI strip */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-3 gap-3">
           {[
             { label: "Recipients",  value: notif.recipientCount.toLocaleString() },
-            { label: "Opens",       value: notif.openCount.toLocaleString(),     sub: openRate + "%" },
-            { label: "Clicks",      value: notif.clickCount.toLocaleString(),    sub: clickRate + "%" },
-            { label: "Responses",   value: notif.responseCount.toLocaleString() },
+            { label: "Read",        value: notif.openCount.toLocaleString(),     sub: openRate + "%" },
+            { label: "Responses",   value: notif.responseCount.toLocaleString(), sub: responseRate + "%" },
           ].map(({ label, value, sub }) => (
             <div
               key={label}
@@ -1585,11 +1425,12 @@ function NotifDetailModal({ notif, onClose }) {
           ))}
         </div>
 
-        {/* Opens by day chart */}
+        {/* Reads by day chart */}
         <div>
           <p className="mb-3 text-xs font-bold uppercase tracking-widest" style={{ color: "var(--adm-muted)" }}>
-            Opens by day
+            Reads by day
           </p>
+          {notif.opensByDay?.length ? (
           <ResponsiveContainer width="100%" height={160}>
             <AreaChart data={notif.opensByDay} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <defs>
@@ -1613,32 +1454,39 @@ function NotifDetailModal({ notif, onClose }) {
               <Area type="monotone" dataKey="opens" stroke={accent} strokeWidth={2} fill="url(#openGrad)" dot={false} activeDot={{ r: 4, fill: accent }} />
             </AreaChart>
           </ResponsiveContainer>
+          ) : (
+            <p className="text-xs" style={{ color: "var(--adm-muted)" }}>No reads yet.</p>
+          )}
         </div>
 
-        {/* Device breakdown */}
+        {/* Read status + body */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div>
             <p className="mb-3 text-xs font-bold uppercase tracking-widest" style={{ color: "var(--adm-muted)" }}>
-              Device breakdown
+              Read status
             </p>
-            <div className="flex items-center gap-6">
-              <PieChart width={110} height={110}>
-                <Pie data={notif.deviceBreakdown} cx={50} cy={50} innerRadius={30} outerRadius={48} dataKey="value" paddingAngle={3}>
-                  {notif.deviceBreakdown.map((_, i) => (
-                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+            {hasReadData ? (
+              <div className="flex items-center gap-6">
+                <PieChart width={110} height={110}>
+                  <Pie data={readBreakdown} cx={50} cy={50} innerRadius={30} outerRadius={48} dataKey="value" paddingAngle={3}>
+                    {readBreakdown.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                </PieChart>
+                <div className="flex flex-col gap-2">
+                  {readBreakdown.map((d, i) => (
+                    <div key={d.name} className="flex items-center gap-2 text-xs">
+                      <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                      <span style={{ color: "var(--adm-text2)" }}>{d.name}</span>
+                      <span className="font-semibold" style={{ color: "var(--adm-text)" }}>{d.value.toLocaleString()}</span>
+                    </div>
                   ))}
-                </Pie>
-              </PieChart>
-              <div className="flex flex-col gap-2">
-                {notif.deviceBreakdown.map((d, i) => (
-                  <div key={d.name} className="flex items-center gap-2 text-xs">
-                    <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
-                    <span style={{ color: "var(--adm-text2)" }}>{d.name}</span>
-                    <span className="font-semibold" style={{ color: "var(--adm-text)" }}>{d.value}%</span>
-                  </div>
-                ))}
+                </div>
               </div>
-            </div>
+            ) : (
+              <p className="text-xs" style={{ color: "var(--adm-muted)" }}>No reads yet.</p>
+            )}
           </div>
 
           <div>
@@ -1719,6 +1567,12 @@ export default function AdminNotificationsPage() {
   // Past notifications
   const [searchQ,        setSearchQ]        = useState("");
   const [detailNotif,    setDetailNotif]    = useState(null);
+  const [detailLoading,  setDetailLoading]  = useState(false);
+  const [pastNotifs,     setPastNotifs]     = useState([]);
+  const [pastLoading,    setPastLoading]    = useState(true);
+
+  // Live audience reach (from /admin/notifications/preview-audience)
+  const [reach, setReach] = useState({ count: null, loading: false });
 
   // ── Derived ─────────────────────────────────────────────────────────────
   const hasContent = blocks.some(
@@ -1736,18 +1590,51 @@ export default function AdminNotificationsPage() {
     : "Selected audience";
 
   const filteredPast = useMemo(() => {
-    if (!searchQ.trim()) return DEMO_PAST;
+    if (!searchQ.trim()) return pastNotifs;
     const q = searchQ.toLowerCase();
-    return DEMO_PAST.filter(
-      (n) => n.title.toLowerCase().includes(q) || n.subject.toLowerCase().includes(q) || n.audienceLabel.toLowerCase().includes(q)
+    return pastNotifs.filter(
+      (n) => n.title.toLowerCase().includes(q) || (n.subject || "").toLowerCase().includes(q) || (n.audienceLabel || "").toLowerCase().includes(q)
     );
-  }, [searchQ]);
+  }, [searchQ, pastNotifs]);
 
-  // ── Overall KPIs from demo data ──────────────────────────────────────────
-  const totalSent       = DEMO_PAST.reduce((s, n) => s + n.recipientCount, 0);
-  const totalOpens      = DEMO_PAST.reduce((s, n) => s + n.openCount, 0);
+  // ── Overall KPIs from live data ───────────────────────────────────────────
+  const totalSent       = pastNotifs.reduce((s, n) => s + n.recipientCount, 0);
+  const totalOpens      = pastNotifs.reduce((s, n) => s + n.openCount, 0);
   const avgOpenRate     = totalSent ? ((totalOpens / totalSent) * 100).toFixed(1) : 0;
-  const totalNotifs     = DEMO_PAST.length;
+  const totalNotifs     = pastNotifs.length;
+
+  // ── Data loading ──────────────────────────────────────────────────────────
+  const loadPast = useCallback(async () => {
+    setPastLoading(true);
+    try {
+      const data = await adminApi("/admin/notifications");
+      setPastNotifs(data.notifications || []);
+    } catch {
+      setPastNotifs([]);
+    } finally {
+      setPastLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadPast(); }, [loadPast]);
+
+  // Live audience count — debounced refetch whenever the filters change.
+  useEffect(() => {
+    let cancelled = false;
+    setReach((r) => ({ ...r, loading: true }));
+    const t = setTimeout(async () => {
+      try {
+        const data = await adminApi("/admin/notifications/preview-audience", {
+          method: "POST",
+          body: JSON.stringify({ audience: { mode: audMode, sport: audSport, playFilter: audPlayFilter, signupFrom: audSignupFrom, signupTo: audSignupTo } }),
+        });
+        if (!cancelled) setReach({ count: data.count, loading: false });
+      } catch {
+        if (!cancelled) setReach({ count: null, loading: false });
+      }
+    }, 400);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [audMode, audSport, audPlayFilter, audSignupFrom, audSignupTo]);
 
   // ── Handlers ────────────────────────────────────────────────────────────
   const handleAudUpdate = useCallback((key, val) => {
@@ -1758,28 +1645,41 @@ export default function AdminNotificationsPage() {
     if (key === "signupTo")   setAudSignupTo(val);
   }, []);
 
+  const openDetail = useCallback(async (id) => {
+    setDetailLoading(true);
+    try {
+      const data = await adminApi(`/admin/notifications/${id}`);
+      setDetailNotif(data);
+    } catch {
+      setDetailNotif(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
+
   const handleTestSend = useCallback(async ({ email, name, team }) => {
     setSending(true);
     setSendResult(null);
     setSendError("");
     try {
-      await adminApi("/admin/notifications/send", {
+      const res = await adminApi("/admin/notifications/send", {
         method: "POST",
         body: JSON.stringify({
-          title, subject, notifType: "in_app", priority, blocks,
+          title, subject, priority, blocks,
           audience: { mode: audMode, sport: audSport, playFilter: audPlayFilter, signupFrom: audSignupFrom, signupTo: audSignupTo },
           testRecipient: { email, name, team },
         }),
       });
-      setSendResult({ type: "test", email });
+      setSendResult({ type: "test", email: res?.recipient?.email || email });
+      loadPast();
     } catch (err) {
-      setSendError(err?.message || "Test send failed — API endpoint not yet wired.");
+      setSendError(err?.message || "Test send failed.");
       setSendResult({ type: "test_error" });
     } finally {
       setSending(false);
       setTestSendOpen(false);
     }
-  }, [title, subject, priority, blocks, audMode, audSport, audPlayFilter, audSignupFrom, audSignupTo]);
+  }, [title, subject, priority, blocks, audMode, audSport, audPlayFilter, audSignupFrom, audSignupTo, loadPast]);
 
   const handleSendAll = useCallback(async () => {
     setConfirmOpen(false);
@@ -1787,20 +1687,21 @@ export default function AdminNotificationsPage() {
     setSendResult(null);
     setSendError("");
     try {
-      await adminApi("/admin/notifications/send", {
+      const res = await adminApi("/admin/notifications/send", {
         method: "POST",
         body: JSON.stringify({
-          title, subject, notifType: "in_app", priority, blocks,
+          title, subject, priority, blocks,
           audience: { mode: audMode, sport: audSport, playFilter: audPlayFilter, signupFrom: audSignupFrom, signupTo: audSignupTo },
         }),
       });
-      setSendResult({ type: "broadcast" });
+      setSendResult({ type: "broadcast", count: res?.recipientCount });
+      loadPast();
     } catch (err) {
-      setSendError(err?.message || "Broadcast failed — API endpoint not yet wired.");
+      setSendError(err?.message || "Broadcast failed.");
     } finally {
       setSending(false);
     }
-  }, [title, subject, priority, blocks, audMode, audSport, audPlayFilter, audSignupFrom, audSignupTo]);
+  }, [title, subject, priority, blocks, audMode, audSport, audPlayFilter, audSignupFrom, audSignupTo, loadPast]);
 
   if (!isOwner) {
     return (
@@ -1908,6 +1809,7 @@ export default function AdminNotificationsPage() {
                     signupFrom={audSignupFrom}
                     signupTo={audSignupTo}
                     onUpdate={handleAudUpdate}
+                    reach={reach}
                   />
                 </div>
               </AdminCard>
@@ -2056,11 +1958,13 @@ export default function AdminNotificationsPage() {
             </div>
 
             <AdminCard padding={false}>
-              {filteredPast.length === 0 ? (
+              {pastLoading ? (
+                <div className="flex justify-center py-16"><AdminSpinner /></div>
+              ) : filteredPast.length === 0 ? (
                 <AdminEmptyState
                   icon={<FiBell />}
-                  title="No notifications found"
-                  subtitle="Try adjusting your search query."
+                  title={searchQ ? "No notifications found" : "No notifications sent yet"}
+                  subtitle={searchQ ? "Try adjusting your search query." : "Compose and send your first notification above — it'll appear here with delivery and response analytics."}
                 />
               ) : (
                 <div className="overflow-x-auto">
@@ -2134,7 +2038,7 @@ export default function AdminNotificationsPage() {
                             <AdminBtn
                               size="sm"
                               variant="ghost"
-                              onClick={() => setDetailNotif(n)}
+                              onClick={() => openDetail(n.id)}
                             >
                               <FiBarChart2 />
                               Details

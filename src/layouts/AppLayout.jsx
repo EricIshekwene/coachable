@@ -3,9 +3,11 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-do
 import { useAuth } from "../context/AuthContext";
 import darkLogo from "../assets/logos/White_Coachable_Logo.png";
 import lightLogo from "../assets/logos/coachable_Logo.png";
-import { FiBookOpen, FiUsers, FiUser, FiLogOut, FiSettings, FiEye, FiX, FiFlag, FiPlay, FiGrid } from "react-icons/fi";
+import { FiBookOpen, FiUsers, FiUser, FiLogOut, FiSettings, FiEye, FiX, FiFlag, FiPlay, FiGrid, FiBell } from "react-icons/fi";
 import useThemeColor from "../utils/useThemeColor";
 import TeamSwitcher from "../components/TeamSwitcher";
+import NotificationBell from "../components/NotificationBell";
+import { NotificationsProvider } from "../context/NotificationsContext";
 import {
   fetchPublishedPlaybookSections,
   filterPublishedPlaybookSectionsForSport,
@@ -15,6 +17,7 @@ const BASE_TEAM_NAV = [
   { to: "/app/plays", icon: FiBookOpen, label: "Plays" },
   { to: "/app/playbooks", icon: FiGrid, label: "Playbooks" },
   { to: "/app/team", icon: FiUsers, label: "Team" },
+  { to: "/app/notifications", icon: FiBell, label: "Inbox" },
   { to: "/app/profile", icon: FiUser, label: "Profile" },
   { to: "/app/settings", icon: FiSettings, label: "Settings" },
   { to: "/app/videos", icon: FiPlay, label: "How To" },
@@ -23,6 +26,7 @@ const BASE_TEAM_NAV = [
 const BASE_SOLO_NAV = [
   { to: "/app/plays", icon: FiBookOpen, label: "Plays" },
   { to: "/app/playbooks", icon: FiGrid, label: "Playbooks" },
+  { to: "/app/notifications", icon: FiBell, label: "Inbox" },
   { to: "/app/profile", icon: FiUser, label: "Profile" },
   { to: "/app/settings", icon: FiSettings, label: "Settings" },
   { to: "/app/videos", icon: FiPlay, label: "How To" },
@@ -99,6 +103,7 @@ export default function AppLayout() {
   };
 
   return (
+    <NotificationsProvider>
     <div
       className="app-themed flex min-h-0 flex-col bg-BrandBlack font-DmSans text-BrandText"
       style={{ height: "100dvh" }}
@@ -124,10 +129,13 @@ export default function AppLayout() {
       <div className="flex min-h-0 flex-1 overflow-hidden">
       {/* Sidebar */}
       <aside className="hidden w-60 flex-col border-r border-BrandGray2/20 md:flex">
-        <Link to="/app" className="flex items-center gap-3 px-5 py-5">
-          <img src={isLight ? lightLogo : darkLogo} alt="Coachable" className="h-7 w-7" />
-          <span className="font-Manrope text-sm font-semibold tracking-tight">Coachable</span>
-        </Link>
+        <div className="flex items-center justify-between px-5 py-5">
+          <Link to="/app" className="flex items-center gap-3">
+            <img src={isLight ? lightLogo : darkLogo} alt="Coachable" className="h-7 w-7" />
+            <span className="font-Manrope text-sm font-semibold tracking-tight">Coachable</span>
+          </Link>
+          <NotificationBell />
+        </div>
 
         {/* Team switcher */}
         <TeamSwitcher />
@@ -190,5 +198,6 @@ export default function AppLayout() {
       </main>
       </div>
     </div>
+    </NotificationsProvider>
   );
 }

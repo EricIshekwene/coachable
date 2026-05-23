@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildBroadcastEmailHtml,
   getBroadcastBodyText,
+  renderBroadcastBodyMarkup,
   sanitizeBroadcastBodyMarkup,
 } from "../../shared/broadcastEmailTemplate.js";
 
@@ -87,6 +88,31 @@ describe("broadcastEmailTemplate", () => {
     expect(html).toContain("Switch 10 Inside");
     expect(html).toContain('src="https://cdn.example.com/switch.gif"');
     expect(html).not.toContain("{{playembed}}");
+  });
+
+  it("renders inline link token with bare domain as a styled anchor", () => {
+    const html = renderBroadcastBodyMarkup({
+      body: "<p>Check out {{coachableplays.com: our site}} for details.</p>",
+    });
+    expect(html).toContain('href="https://coachableplays.com/"');
+    expect(html).toContain(">our site<");
+    expect(html).not.toContain("{{coachableplays.com:");
+  });
+
+  it("renders inline link token with full https URL", () => {
+    const html = renderBroadcastBodyMarkup({
+      body: "<p>{{https://example.com/path: Click here}}</p>",
+    });
+    expect(html).toContain('href="https://example.com/path"');
+    expect(html).toContain(">Click here<");
+  });
+
+  it("strips invalid link tokens gracefully (no URL)", () => {
+    const html = renderBroadcastBodyMarkup({
+      body: "<p>{{: No URL here}}</p>",
+    });
+    expect(html).toContain("No URL here");
+    expect(html).not.toContain("<a");
   });
 
   it("renders a play embed when the stored token is missing the final brace", () => {
