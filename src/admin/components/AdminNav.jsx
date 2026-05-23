@@ -12,7 +12,10 @@ const NAV_ITEMS = [
   { label: "Issues", path: "/user-issues", perm: "issues.view" },
   { label: "Videos", path: "/demo-videos", perm: "videos.addDemo" },
   { label: "Tests", path: "/tests", perm: "tests.run" },
+  { label: "Email", path: "/email", ownerOnly: true },
+  { label: "Recurring Email", path: "/email/recurring", ownerOnly: true },
   { label: "Notifications", path: "/notifications", ownerOnly: true },
+  { label: "Feature Flags", path: "/feature-flags", ownerOnly: true },
   { label: "Staff", path: "/staff", ownerOnly: true },
 ];
 
