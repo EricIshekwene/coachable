@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   FiPlus, FiTrash2, FiEdit2, FiX, FiChevronDown, FiChevronUp,
-  FiToggleLeft, FiToggleRight, FiInfo,
+  FiInfo, FiSliders,
 } from "react-icons/fi";
 import { useAdmin } from "../admin/AdminContext";
 import { adminApi } from "../admin/adminTransport";
@@ -46,10 +46,9 @@ const ROLE_OPTIONS = [
 
 const USER_TYPE_OPTIONS = [
   { value: "onboarded",   label: "Onboarded" },
-  { value: "registered",  label: "Registered (not yet onboarded)" },
+  { value: "registered",  label: "Registered (not onboarded)" },
 ];
 
-// ISO 3166-1 alpha-2 common countries for the picker
 const COUNTRY_OPTIONS = [
   { value: "US", label: "United States" },
   { value: "CA", label: "Canada" },
@@ -84,7 +83,7 @@ function defaultRule(type) {
 }
 
 /**
- * Human-readable summary of a rule for the collapsed list view.
+ * Human-readable summary of a rule for the collapsed / card list view.
  * @param {object} rule
  * @returns {string}
  */
@@ -101,18 +100,18 @@ function ruleLabel(rule) {
     case "geolocation": {
       const parts = [];
       if (rule.countries?.length) parts.push(`Country: ${rule.countries.join(", ")}`);
-      if (rule.states) parts.push(`State/region: ${rule.states}`);
-      return parts.join(" · ") || "Geolocation (no filter set)";
+      if (rule.states) parts.push(`State: ${rule.states}`);
+      return parts.join(" · ") || "Geolocation (no filter)";
     }
     default:
       return rule.type;
   }
 }
 
-// ── Multi-select chip component ───────────────────────────────────────────────
+// ── Chip select ───────────────────────────────────────────────────────────────
 
 /**
- * Chip-based multi-select for a fixed list of options.
+ * Multi-select chip picker for a fixed set of options.
  * @param {{ options: {value:string,label:string}[], selected: string[], onChange: (next:string[]) => void }} props
  */
 function ChipSelect({ options, selected, onChange }) {
@@ -146,7 +145,7 @@ function ChipSelect({ options, selected, onChange }) {
 // ── Rule editor ───────────────────────────────────────────────────────────────
 
 /**
- * Editor for a single rule object.
+ * Editor for a single targeting rule.
  * @param {{ rule: object, index: number, onChange: (next:object) => void, onRemove: () => void }} props
  */
 function RuleEditor({ rule, index, onChange, onRemove }) {
@@ -156,36 +155,42 @@ function RuleEditor({ rule, index, onChange, onRemove }) {
 
   return (
     <div
-      className="rounded-lg border"
-      style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface2)" }}
+      className="rounded-(--adm-radius-md) overflow-hidden"
+      style={{
+        border: "1px solid var(--adm-border)",
+        backgroundColor: "var(--adm-surface2)",
+      }}
     >
-      {/* Header row */}
-      <div className="flex items-center gap-2 px-3 py-2">
+      {/* Header */}
+      <div className="flex items-center gap-2 px-3 py-2.5">
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
           className="flex flex-1 items-center gap-2 text-left"
         >
-          {expanded ? <FiChevronUp size={13} /> : <FiChevronDown size={13} />}
-          <span className="text-xs font-semibold" style={{ color: "var(--adm-text)" }}>
+          <span className="text-xs font-semibold" style={{ color: "var(--adm-text2)" }}>
             Rule {index + 1}
           </span>
           {!expanded && (
-            <span className="ml-1 text-xs" style={{ color: "var(--adm-text3)" }}>
-              {ruleLabel(rule)}
+            <span className="text-xs" style={{ color: "var(--adm-text3)" }}>
+              — {ruleLabel(rule)}
             </span>
           )}
+          <span className="ml-auto" style={{ color: "var(--adm-text3)" }}>
+            {expanded ? <FiChevronUp size={13} /> : <FiChevronDown size={13} />}
+          </span>
         </button>
+
         <AdminSelect
           value={rule.type}
           onChange={(e) => onChange(defaultRule(e.target.value))}
-          className="text-xs"
-          style={{ padding: "2px 6px", fontSize: "11px", minWidth: 130 }}
+          style={{ padding: "3px 8px", fontSize: "11px", minWidth: 130 }}
         >
           {RULE_TYPES.map((rt) => (
             <option key={rt.value} value={rt.value}>{rt.label}</option>
           ))}
         </AdminSelect>
+
         <button
           type="button"
           onClick={onRemove}
@@ -199,11 +204,11 @@ function RuleEditor({ rule, index, onChange, onRemove }) {
 
       {/* Body */}
       {expanded && (
-        <div className="border-t px-3 py-3" style={{ borderColor: "var(--adm-border)" }}>
+        <div className="border-t px-4 py-4" style={{ borderColor: "var(--adm-border)" }}>
           {rule.type === "sport" && (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2.5">
               <p className="text-xs" style={{ color: "var(--adm-text3)" }}>
-                User must be on a team whose sport matches at least one selected sport.
+                User must be on a team whose sport matches at least one selection.
               </p>
               <ChipSelect
                 options={SPORT_OPTIONS.map((s) => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }))}
@@ -214,7 +219,7 @@ function RuleEditor({ rule, index, onChange, onRemove }) {
           )}
 
           {rule.type === "team_role" && (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2.5">
               <p className="text-xs" style={{ color: "var(--adm-text3)" }}>
                 User must hold at least one of these roles on any of their teams.
               </p>
@@ -227,7 +232,7 @@ function RuleEditor({ rule, index, onChange, onRemove }) {
           )}
 
           {rule.type === "user_type" && (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2.5">
               <p className="text-xs" style={{ color: "var(--adm-text3)" }}>
                 Filter by whether the user has completed onboarding.
               </p>
@@ -242,11 +247,10 @@ function RuleEditor({ rule, index, onChange, onRemove }) {
           {rule.type === "rollout_percentage" && (
             <div className="flex flex-col gap-3">
               <p className="text-xs" style={{ color: "var(--adm-text3)" }}>
-                Stable rollout — each user is deterministically in or out based on
-                a hash of their ID + flag name. The same user always lands in the
-                same bucket.
+                Stable rollout — each user is deterministically in or out based on a hash
+                of their ID and flag name. The same user always lands in the same bucket.
               </p>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 <input
                   type="range"
                   min={0}
@@ -255,9 +259,10 @@ function RuleEditor({ rule, index, onChange, onRemove }) {
                   value={rule.value ?? 50}
                   onChange={(e) => set({ value: Number(e.target.value) })}
                   className="flex-1"
+                  style={{ accentColor: "var(--adm-accent)" }}
                 />
                 <span
-                  className="w-12 text-center text-sm font-bold tabular-nums"
+                  className="w-14 text-center text-base font-bold tabular-nums"
                   style={{ color: "var(--adm-accent)" }}
                 >
                   {rule.value ?? 50}%
@@ -267,10 +272,10 @@ function RuleEditor({ rule, index, onChange, onRemove }) {
           )}
 
           {rule.type === "geolocation" && (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-4">
               <p className="text-xs" style={{ color: "var(--adm-text3)" }}>
-                IP-based geolocation (country + optional state/region). Leave a
-                field empty to match all values for that dimension.
+                IP-based geolocation (country + optional state/region). Leave a field
+                empty to match all values for that dimension.
               </p>
               <div className="flex flex-col gap-2">
                 <p className="text-xs font-semibold" style={{ color: "var(--adm-text2)" }}>Countries</p>
@@ -282,7 +287,7 @@ function RuleEditor({ rule, index, onChange, onRemove }) {
               </div>
               <div className="flex flex-col gap-1.5">
                 <p className="text-xs font-semibold" style={{ color: "var(--adm-text2)" }}>
-                  State / Region codes (comma-separated, e.g. OH, CA, TX)
+                  State / Region codes <span style={{ color: "var(--adm-text3)", fontWeight: 400 }}>(comma-separated — e.g. OH, CA, TX)</span>
                 </p>
                 <AdminInput
                   placeholder="OH, CA, TX"
@@ -306,7 +311,11 @@ function RuleEditor({ rule, index, onChange, onRemove }) {
  */
 function FlagModal({ flag, onClose, onSave }) {
   const isNew = !flag?.id;
-  const [form, setForm] = useState(() => flag ? { ...flag, rules: Array.isArray(flag.rules) ? [...flag.rules] : [] } : { ...EMPTY_FLAG });
+  const [form, setForm] = useState(() =>
+    flag
+      ? { ...flag, rules: Array.isArray(flag.rules) ? [...flag.rules] : [] }
+      : { ...EMPTY_FLAG }
+  );
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
 
@@ -326,7 +335,12 @@ function FlagModal({ flag, onClose, onSave }) {
     setSaving(true);
     setSaveError("");
     try {
-      const body = { name: form.name.trim(), description: form.description.trim(), enabled: form.enabled, rules: form.rules };
+      const body = {
+        name: form.name.trim(),
+        description: form.description.trim(),
+        enabled: form.enabled,
+        rules: form.rules,
+      };
       const data = isNew
         ? await adminApi("/flags/admin", { method: "POST", body: JSON.stringify(body) })
         : await adminApi(`/flags/admin/${flag.id}`, { method: "PUT", body: JSON.stringify(body) });
@@ -343,10 +357,12 @@ function FlagModal({ flag, onClose, onSave }) {
       onClose={onClose}
       footer={
         <div className="flex items-center justify-between gap-3">
-          {saveError && <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{saveError}</p>}
+          {saveError && (
+            <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{saveError}</p>
+          )}
           <div className="ml-auto flex gap-2">
             <AdminBtn variant="ghost" onClick={onClose}>Cancel</AdminBtn>
-            <AdminBtn onClick={handleSave} disabled={saving}>
+            <AdminBtn variant="primary" onClick={handleSave} disabled={saving}>
               {saving ? "Saving…" : isNew ? "Create flag" : "Save changes"}
             </AdminBtn>
           </div>
@@ -362,7 +378,9 @@ function FlagModal({ flag, onClose, onSave }) {
           <AdminInput
             placeholder="e.g. in_app_notifications"
             value={form.name}
-            onChange={(e) => setField("name", e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))}
+            onChange={(e) =>
+              setField("name", e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))
+            }
             disabled={!isNew}
           />
           <p className="text-xs" style={{ color: "var(--adm-text3)" }}>
@@ -372,7 +390,9 @@ function FlagModal({ flag, onClose, onSave }) {
 
         {/* Description */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold" style={{ color: "var(--adm-text2)" }}>Description</label>
+          <label className="text-xs font-semibold" style={{ color: "var(--adm-text2)" }}>
+            Description
+          </label>
           <AdminTextarea
             placeholder="What does this flag control?"
             value={form.description}
@@ -382,12 +402,22 @@ function FlagModal({ flag, onClose, onSave }) {
         </div>
 
         {/* Global toggle */}
-        <AdminToggle
-          checked={form.enabled}
-          onChange={(v) => setField("enabled", v)}
-          label="Globally enabled"
-          description="Master switch. When off, the feature is hidden for every user regardless of targeting rules."
-        />
+        <div
+          className="rounded-(--adm-radius-md) px-4 py-3"
+          style={{
+            backgroundColor: form.enabled
+              ? "color-mix(in srgb, var(--adm-accent) 8%, var(--adm-surface2))"
+              : "var(--adm-surface2)",
+            border: `1px solid ${form.enabled ? "color-mix(in srgb, var(--adm-accent) 22%, transparent)" : "var(--adm-border)"}`,
+          }}
+        >
+          <AdminToggle
+            checked={form.enabled}
+            onChange={(v) => setField("enabled", v)}
+            label="Globally enabled"
+            description="Master switch. When off, the feature is hidden for every user regardless of targeting rules."
+          />
+        </div>
 
         {/* Rules */}
         <div className="flex flex-col gap-3">
@@ -396,20 +426,31 @@ function FlagModal({ flag, onClose, onSave }) {
               <p className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>
                 Targeting rules
               </p>
-              <p className="text-xs" style={{ color: "var(--adm-text3)" }}>
-                All rules must match (AND). No rules = feature is on for everyone.
+              <p className="text-xs mt-0.5" style={{ color: "var(--adm-text3)" }}>
+                All rules must match (AND). No rules = on for everyone when globally enabled.
               </p>
             </div>
-            <AdminBtn size="sm" variant="ghost" onClick={addRule}>
-              <FiPlus size={13} />
+            <AdminBtn size="sm" variant="outline" onClick={addRule}>
+              <FiPlus size={12} />
               Add rule
             </AdminBtn>
           </div>
 
           {form.rules.length === 0 && (
-            <p className="rounded-lg border border-dashed py-4 text-center text-xs" style={{ color: "var(--adm-text3)", borderColor: "var(--adm-border)" }}>
-              No rules — this flag targets every authenticated user.
-            </p>
+            <div
+              className="rounded-(--adm-radius-md) py-6 text-center"
+              style={{
+                border: "1px dashed var(--adm-border2)",
+                backgroundColor: "var(--adm-surface2)",
+              }}
+            >
+              <p className="text-xs font-semibold" style={{ color: "var(--adm-text3)" }}>
+                No targeting rules
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: "var(--adm-text3)" }}>
+                This flag will be shown to every authenticated user.
+              </p>
+            </div>
           )}
 
           <div className="flex flex-col gap-2">
@@ -432,100 +473,153 @@ function FlagModal({ flag, onClose, onSave }) {
 // ── Flag card ─────────────────────────────────────────────────────────────────
 
 /**
- * Single flag row in the list.
+ * Single flag row card — toggle, info, rules summary, and actions.
  * @param {{ flag: object, onEdit: () => void, onDelete: () => void, onToggle: (enabled:boolean) => void }} props
  */
 function FlagCard({ flag, onEdit, onDelete, onToggle }) {
   const [toggling, setToggling] = useState(false);
 
-  const handleToggle = async () => {
+  const handleToggle = async (next) => {
     setToggling(true);
-    await onToggle(!flag.enabled);
+    await onToggle(next);
     setToggling(false);
   };
 
-  return (
-    <AdminCard className="flex flex-col gap-3">
-      <div className="flex items-start gap-3">
-        {/* Toggle */}
-        <button
-          type="button"
-          onClick={handleToggle}
-          disabled={toggling}
-          className="mt-0.5 shrink-0 transition-opacity disabled:opacity-50"
-          title={flag.enabled ? "Disable flag" : "Enable flag"}
-        >
-          {flag.enabled
-            ? <FiToggleRight size={22} style={{ color: "var(--adm-accent)" }} />
-            : <FiToggleLeft size={22} style={{ color: "var(--adm-text3)" }} />}
-        </button>
+  const hasRules = flag.rules?.length > 0;
 
-        {/* Info */}
+  return (
+    <div
+      className="rounded-(--adm-radius-lg) p-4 transition-all"
+      style={{
+        backgroundColor: flag.enabled
+          ? "color-mix(in srgb, var(--adm-accent) 5%, var(--adm-surface))"
+          : "var(--adm-surface)",
+        border: flag.enabled
+          ? "1px solid color-mix(in srgb, var(--adm-accent) 20%, var(--adm-border))"
+          : "1px solid var(--adm-border)",
+        boxShadow: flag.enabled
+          ? "0 0 0 1px color-mix(in srgb, var(--adm-accent) 6%, transparent) inset, var(--adm-shadow-sm)"
+          : "var(--adm-shadow-sm)",
+      }}
+    >
+      <div className="flex items-start gap-4">
+        {/* Name + meta */}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-sm font-bold" style={{ color: "var(--adm-text)" }}>
+            <span
+              className="font-mono text-sm font-bold"
+              style={{ color: "var(--adm-text)" }}
+            >
               {flag.name}
             </span>
-            <AdminBadge color={flag.enabled ? "green" : "gray"}>
-              {flag.enabled ? "on" : "off"}
+            <AdminBadge status={flag.enabled ? "pass" : "fail"}>
+              {flag.enabled ? "On" : "Off"}
             </AdminBadge>
-            {flag.rules?.length > 0 && (
-              <AdminBadge color="blue">{flag.rules.length} rule{flag.rules.length !== 1 ? "s" : ""}</AdminBadge>
+            {hasRules && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                style={{
+                  backgroundColor: "var(--adm-badge-purple-bg)",
+                  color: "var(--adm-badge-purple-text)",
+                  border: "1px solid color-mix(in srgb, var(--adm-badge-purple-text) 14%, transparent)",
+                }}
+              >
+                <FiSliders size={9} />
+                {flag.rules.length} rule{flag.rules.length !== 1 ? "s" : ""}
+              </span>
             )}
           </div>
+
           {flag.description && (
-            <p className="mt-0.5 text-xs" style={{ color: "var(--adm-text3)" }}>
+            <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--adm-text3)" }}>
               {flag.description}
+            </p>
+          )}
+
+          {/* Rules summary chips */}
+          {hasRules && (
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {flag.rules.map((rule, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium"
+                  style={{
+                    backgroundColor: "var(--adm-surface3)",
+                    color: "var(--adm-text2)",
+                    border: "1px solid var(--adm-border)",
+                  }}
+                >
+                  {ruleLabel(rule)}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {!hasRules && (
+            <p className="mt-1.5 text-[11px]" style={{ color: "var(--adm-text3)" }}>
+              No targeting — shown to all authenticated users
             </p>
           )}
         </div>
 
-        {/* Actions */}
-        <div className="flex shrink-0 items-center gap-1">
+        {/* Right: toggle + actions */}
+        <div className="flex shrink-0 items-center gap-3">
           <button
             type="button"
-            onClick={onEdit}
-            className="rounded p-1.5 transition-opacity hover:opacity-70"
-            style={{ color: "var(--adm-text2)" }}
-            title="Edit flag"
+            onClick={() => handleToggle(!flag.enabled)}
+            disabled={toggling}
+            role="switch"
+            aria-checked={flag.enabled}
+            className="relative inline-flex h-6 w-11 shrink-0 rounded-full transition-all disabled:cursor-not-allowed disabled:opacity-50"
+            style={{
+              backgroundColor: flag.enabled ? "var(--adm-accent)" : "var(--adm-surface3)",
+              boxShadow: flag.enabled
+                ? "inset 0 0 0 1px color-mix(in srgb, var(--adm-accent) 40%, transparent)"
+                : "inset 0 0 0 1px var(--adm-border2)",
+            }}
           >
-            <FiEdit2 size={14} />
+            <span
+              className={`absolute top-0.5 h-5 w-5 rounded-full transition-transform ${flag.enabled ? "translate-x-5.5" : "translate-x-0.5"}`}
+              style={{
+                backgroundColor: "#fff",
+                boxShadow: "0 4px 10px rgba(15, 23, 42, 0.18)",
+              }}
+            />
           </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            className="rounded p-1.5 transition-opacity hover:opacity-70"
-            style={{ color: "var(--adm-danger)" }}
-            title="Delete flag"
+
+          <div
+            className="flex items-center gap-0.5 rounded-(--adm-radius-md) p-0.5"
+            style={{ backgroundColor: "var(--adm-surface2)", border: "1px solid var(--adm-border)" }}
           >
-            <FiTrash2 size={14} />
-          </button>
+            <button
+              type="button"
+              onClick={onEdit}
+              className="rounded-(--adm-radius) p-1.5 transition-colors hover:opacity-80"
+              style={{ color: "var(--adm-text2)" }}
+              title="Edit flag"
+            >
+              <FiEdit2 size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={onDelete}
+              className="rounded-(--adm-radius) p-1.5 transition-colors hover:opacity-80"
+              style={{ color: "var(--adm-danger)" }}
+              title="Delete flag"
+            >
+              <FiTrash2 size={13} />
+            </button>
+          </div>
         </div>
       </div>
-
-      {/* Rules summary */}
-      {flag.rules?.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 pl-8">
-          {flag.rules.map((rule, i) => (
-            <span
-              key={i}
-              className="rounded-full px-2.5 py-0.5 text-xs"
-              style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-text2)" }}
-            >
-              {ruleLabel(rule)}
-            </span>
-          ))}
-        </div>
-      )}
-    </AdminCard>
+    </div>
   );
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 /**
- * Admin feature flags management page.
- * Full CRUD for feature flags with targeting rule builder.
+ * Admin feature flags management page — full CRUD with targeting rule builder.
  */
 export default function AdminFeatureFlagsPage() {
   const { isOwner } = useAdmin();
@@ -533,7 +627,7 @@ export default function AdminFeatureFlagsPage() {
   const [flags, setFlags] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [modalFlag, setModalFlag] = useState(null); // null = closed, EMPTY_FLAG = new, flag obj = edit
+  const [modalFlag, setModalFlag] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
@@ -569,7 +663,7 @@ export default function AdminFeatureFlagsPage() {
       });
       setFlags((prev) => prev.map((f) => (f.id === flag.id ? data.flag : f)));
     } catch {
-      // Revert handled by re-render staying on old state
+      // state stays unchanged on error
     }
   };
 
@@ -602,33 +696,49 @@ export default function AdminFeatureFlagsPage() {
     );
   }
 
+  const enabledCount = flags.filter((f) => f.enabled).length;
+
   return (
     <AdminShell>
       <AdminHeader
         title="Feature Flags"
-        subtitle="Control which users see each feature. All rules on a flag must match (AND logic)."
+        subtitle="Control which users see each feature. All targeting rules on a flag must match (AND logic)."
         sticky
         actions={
-          <AdminBtn onClick={() => setModalFlag({ ...EMPTY_FLAG })}>
+          <AdminBtn variant="primary" onClick={() => setModalFlag({ ...EMPTY_FLAG })}>
             <FiPlus size={14} />
             New flag
           </AdminBtn>
         }
       />
 
-      <AdminPage>
+      <AdminPage className="overflow-y-auto">
         <AdminSection>
           {/* Info callout */}
-          <AdminAlert type="info" className="mb-4">
-            <span className="text-xs">
-              <strong>How targeting works:</strong> Rules restrict who sees the feature. Targeting filters include sport,
-              team role, user type, a stable % rollout (same user always in/out), and IP-based geolocation.
-              All rules must match (AND). An empty rules list means <em>everyone</em> when the flag is globally on.
-            </span>
+          <AdminAlert tone="info" className="mb-6">
+            <strong>How targeting works:</strong> Rules restrict who sees the feature.
+            Filters include sport, team role, user type, stable % rollout (same user always
+            in or out), and IP-based geolocation. All rules must match (AND logic). An
+            empty rules list means <em>everyone</em> when the flag is globally on.
           </AdminAlert>
 
+          {/* Stats strip */}
+          {!loading && !loadError && flags.length > 0 && (
+            <div className="mb-5 flex flex-wrap items-center gap-3">
+              <span className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>
+                {flags.length} flag{flags.length !== 1 ? "s" : ""}
+              </span>
+              <span style={{ color: "var(--adm-border2)" }}>·</span>
+              <span className="text-sm" style={{ color: "var(--adm-text3)" }}>
+                <span style={{ color: "var(--adm-success)" }} className="font-semibold">{enabledCount}</span> on,{" "}
+                <span style={{ color: "var(--adm-danger)" }} className="font-semibold">{flags.length - enabledCount}</span> off
+              </span>
+            </div>
+          )}
+
+          {/* States */}
           {loading && (
-            <div className="flex justify-center py-12">
+            <div className="flex justify-center py-16">
               <AdminSpinner />
             </div>
           )}
@@ -644,11 +754,11 @@ export default function AdminFeatureFlagsPage() {
 
           {!loading && !loadError && flags.length === 0 && (
             <AdminEmptyState
-              icon={<FiToggleLeft size={20} />}
+              icon={<FiSliders size={20} />}
               title="No feature flags yet"
               subtitle="Create your first flag to start targeting features to specific user segments."
               action={
-                <AdminBtn onClick={() => setModalFlag({ ...EMPTY_FLAG })}>
+                <AdminBtn variant="primary" onClick={() => setModalFlag({ ...EMPTY_FLAG })}>
                   <FiPlus size={14} />
                   New flag
                 </AdminBtn>
@@ -688,7 +798,9 @@ export default function AdminFeatureFlagsPage() {
           onClose={() => setDeleteTarget(null)}
           footer={
             <div className="flex items-center justify-between gap-3">
-              {deleteError && <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{deleteError}</p>}
+              {deleteError && (
+                <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{deleteError}</p>
+              )}
               <div className="ml-auto flex gap-2">
                 <AdminBtn variant="ghost" onClick={() => setDeleteTarget(null)}>Cancel</AdminBtn>
                 <AdminBtn variant="danger" onClick={handleDeleteConfirm} disabled={deleting}>
@@ -699,8 +811,15 @@ export default function AdminFeatureFlagsPage() {
           }
         >
           <p className="text-sm" style={{ color: "var(--adm-text2)" }}>
-            This will permanently remove the <code className="font-mono text-xs">{deleteTarget.name}</code> flag.
-            Any code gating on this flag will fall back to <strong>false</strong> (feature hidden).
+            This permanently removes the{" "}
+            <code
+              className="rounded px-1.5 py-0.5 font-mono text-xs"
+              style={{ backgroundColor: "var(--adm-surface2)", color: "var(--adm-text)" }}
+            >
+              {deleteTarget.name}
+            </code>{" "}
+            flag. Any code gating on this flag will fall back to{" "}
+            <strong>false</strong> (feature hidden).
           </p>
         </AdminModal>
       )}

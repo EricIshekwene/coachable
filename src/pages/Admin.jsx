@@ -17,7 +17,6 @@ import { useDashboardAnalytics } from "../admin/analytics/useDashboardAnalytics"
 import {
   AdminShell,
   AdminHeader,
-  AdminNav,
   AdminPage,
   AdminCard,
   AdminSection,
@@ -1131,7 +1130,6 @@ export default function Admin() {
           </>
         }
       />
-      <AdminNav />
       <AdminPage className="space-y-10">
         {/* Analytics dashboard */}
         <section>
