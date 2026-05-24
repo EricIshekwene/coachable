@@ -11,7 +11,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  FiPlus, FiTrash2, FiEdit2, FiX, FiChevronDown, FiChevronUp,
+  FiEdit2, FiX, FiChevronDown, FiChevronUp,
   FiInfo, FiSliders,
 } from "react-icons/fi";
 import { useAdmin } from "../admin/AdminContext";
@@ -474,9 +474,9 @@ function FlagModal({ flag, onClose, onSave }) {
 
 /**
  * Single flag row card — toggle, info, rules summary, and actions.
- * @param {{ flag: object, onEdit: () => void, onDelete: () => void, onToggle: (enabled:boolean) => void }} props
+ * @param {{ flag: object, onEdit: () => void, onToggle: (enabled:boolean) => void }} props
  */
-function FlagCard({ flag, onEdit, onDelete, onToggle }) {
+function FlagCard({ flag, onEdit, onToggle }) {
   const [toggling, setToggling] = useState(false);
 
   const handleToggle = async (next) => {
@@ -596,18 +596,9 @@ function FlagCard({ flag, onEdit, onDelete, onToggle }) {
               onClick={onEdit}
               className="rounded-(--adm-radius) p-1.5 transition-colors hover:opacity-80"
               style={{ color: "var(--adm-text2)" }}
-              title="Edit flag"
+              title="Edit targeting rules"
             >
               <FiEdit2 size={13} />
-            </button>
-            <button
-              type="button"
-              onClick={onDelete}
-              className="rounded-(--adm-radius) p-1.5 transition-colors hover:opacity-80"
-              style={{ color: "var(--adm-danger)" }}
-              title="Delete flag"
-            >
-              <FiTrash2 size={13} />
             </button>
           </div>
         </div>
@@ -628,9 +619,6 @@ export default function AdminFeatureFlagsPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [modalFlag, setModalFlag] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -667,21 +655,6 @@ export default function AdminFeatureFlagsPage() {
     }
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!deleteTarget) return;
-    setDeleting(true);
-    setDeleteError("");
-    try {
-      await adminApi(`/flags/admin/${deleteTarget.id}`, { method: "DELETE" });
-      setFlags((prev) => prev.filter((f) => f.id !== deleteTarget.id));
-      setDeleteTarget(null);
-    } catch (err) {
-      setDeleteError(err.message || "Delete failed");
-    } finally {
-      setDeleting(false);
-    }
-  };
-
   if (!isOwner) {
     return (
       <AdminShell>
@@ -704,12 +677,6 @@ export default function AdminFeatureFlagsPage() {
         title="Feature Flags"
         subtitle="Control which users see each feature. All targeting rules on a flag must match (AND logic)."
         sticky
-        actions={
-          <AdminBtn variant="primary" onClick={() => setModalFlag({ ...EMPTY_FLAG })}>
-            <FiPlus size={14} />
-            New flag
-          </AdminBtn>
-        }
       />
 
       <AdminPage className="overflow-y-auto">
@@ -755,14 +722,8 @@ export default function AdminFeatureFlagsPage() {
           {!loading && !loadError && flags.length === 0 && (
             <AdminEmptyState
               icon={<FiSliders size={20} />}
-              title="No feature flags yet"
-              subtitle="Create your first flag to start targeting features to specific user segments."
-              action={
-                <AdminBtn variant="primary" onClick={() => setModalFlag({ ...EMPTY_FLAG })}>
-                  <FiPlus size={14} />
-                  New flag
-                </AdminBtn>
-              }
+              title="No feature flags"
+              subtitle="Feature flags are hardcoded — add new ones in the codebase."
             />
           )}
 
@@ -773,7 +734,6 @@ export default function AdminFeatureFlagsPage() {
                   key={flag.id}
                   flag={flag}
                   onEdit={() => setModalFlag(flag)}
-                  onDelete={() => { setDeleteTarget(flag); setDeleteError(""); }}
                   onToggle={(enabled) => handleToggle(flag, enabled)}
                 />
               ))}
@@ -791,38 +751,6 @@ export default function AdminFeatureFlagsPage() {
         />
       )}
 
-      {/* Delete confirm modal */}
-      {deleteTarget && (
-        <AdminModal
-          title={`Delete "${deleteTarget.name}"?`}
-          onClose={() => setDeleteTarget(null)}
-          footer={
-            <div className="flex items-center justify-between gap-3">
-              {deleteError && (
-                <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{deleteError}</p>
-              )}
-              <div className="ml-auto flex gap-2">
-                <AdminBtn variant="ghost" onClick={() => setDeleteTarget(null)}>Cancel</AdminBtn>
-                <AdminBtn variant="danger" onClick={handleDeleteConfirm} disabled={deleting}>
-                  {deleting ? "Deleting…" : "Delete flag"}
-                </AdminBtn>
-              </div>
-            </div>
-          }
-        >
-          <p className="text-sm" style={{ color: "var(--adm-text2)" }}>
-            This permanently removes the{" "}
-            <code
-              className="rounded px-1.5 py-0.5 font-mono text-xs"
-              style={{ backgroundColor: "var(--adm-surface2)", color: "var(--adm-text)" }}
-            >
-              {deleteTarget.name}
-            </code>{" "}
-            flag. Any code gating on this flag will fall back to{" "}
-            <strong>false</strong> (feature hidden).
-          </p>
-        </AdminModal>
-      )}
     </AdminShell>
   );
 }
