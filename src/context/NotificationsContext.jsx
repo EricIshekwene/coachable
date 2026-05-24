@@ -15,15 +15,19 @@ const POLL_INTERVAL_MS = 60_000;
  * Keeps the bell badge and the notifications page in sync from one source,
  * and polls in the background so new sends appear without a refresh.
  *
- * @param {{ children: React.ReactNode }} props
+ * When `enabled` is false (in_app_notifications feature flag is off), the
+ * provider renders children but skips all fetching and exposes empty state.
+ *
+ * @param {{ children: React.ReactNode, enabled?: boolean }} props
  */
-export function NotificationsProvider({ children }) {
+export function NotificationsProvider({ children, enabled = true }) {
   const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState("");
   const mountedRef = useRef(true);
 
   const refresh = useCallback(async () => {
+    if (!enabled) return;
     try {
       const data = await fetchNotifications();
       if (!mountedRef.current) return;
@@ -35,9 +39,14 @@ export function NotificationsProvider({ children }) {
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
+    if (!enabled) {
+      setNotifications([]);
+      setLoading(false);
+      return;
+    }
     mountedRef.current = true;
     refresh();
     const id = setInterval(refresh, POLL_INTERVAL_MS);
@@ -45,7 +54,7 @@ export function NotificationsProvider({ children }) {
       mountedRef.current = false;
       clearInterval(id);
     };
-  }, [refresh]);
+  }, [refresh, enabled]);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.readAt).length,

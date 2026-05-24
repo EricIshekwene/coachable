@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { label: "Email", path: "/email", ownerOnly: true },
   { label: "Recurring Email", path: "/email/recurring", ownerOnly: true },
   { label: "Notifications", path: "/notifications", ownerOnly: true },
+  { label: "Feature Flags", path: "/feature-flags", ownerOnly: true },
   { label: "Staff", path: "/staff", ownerOnly: true },
 ];
 

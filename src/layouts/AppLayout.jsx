@@ -8,6 +8,7 @@ import useThemeColor from "../utils/useThemeColor";
 import TeamSwitcher from "../components/TeamSwitcher";
 import NotificationBell from "../components/NotificationBell";
 import { NotificationsProvider } from "../context/NotificationsContext";
+import { useFlag } from "../context/FeatureFlagContext";
 import {
   fetchPublishedPlaybookSections,
   filterPublishedPlaybookSectionsForSport,
@@ -42,11 +43,14 @@ export default function AppLayout() {
   const baseNav = isPersonal ? BASE_SOLO_NAV : BASE_TEAM_NAV;
   const [isLight, setIsLight] = useState(document.documentElement.getAttribute("data-theme") === "light");
   const [hasPlaybookSections, setHasPlaybookSections] = useState(true);
+  const notificationsEnabled = useFlag("in_app_notifications");
+
   const navItems = (user?.isBetaTester
     ? [...baseNav, { to: "/app/report-issue", icon: FiFlag, label: "Report Issue" }]
     : baseNav
   )
-    .filter((item) => item.to !== PLAYBOOKS_ROUTE || hasPlaybookSections);
+    .filter((item) => item.to !== PLAYBOOKS_ROUTE || hasPlaybookSections)
+    .filter((item) => item.to !== "/app/notifications" || notificationsEnabled);
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
@@ -103,7 +107,7 @@ export default function AppLayout() {
   };
 
   return (
-    <NotificationsProvider>
+    <NotificationsProvider enabled={notificationsEnabled}>
     <div
       className="app-themed flex min-h-0 flex-col bg-BrandBlack font-DmSans text-BrandText"
       style={{ height: "100dvh" }}
@@ -134,7 +138,7 @@ export default function AppLayout() {
             <img src={isLight ? lightLogo : darkLogo} alt="Coachable" className="h-7 w-7" />
             <span className="font-Manrope text-sm font-semibold tracking-tight">Coachable</span>
           </Link>
-          <NotificationBell />
+          {notificationsEnabled && <NotificationBell />}
         </div>
 
         {/* Team switcher */}

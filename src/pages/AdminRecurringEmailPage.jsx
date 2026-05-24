@@ -12,6 +12,7 @@ import {
 } from "react-icons/fi";
 import { useAdmin } from "../admin/AdminContext";
 import { adminApi } from "../admin/adminTransport";
+import AdminFlagGate from "../admin/AdminFlagGate";
 import {
   AdminBtn, AdminCard, AdminHeader, AdminInput, AdminPage,
   AdminSection, AdminSelect, AdminShell, AdminSpinner,
@@ -1355,6 +1356,7 @@ export default function AdminRecurringEmailPage() {
   }
 
   return (
+    <AdminFlagGate flagName="recurring_emails">
     <AdminShell>
       <AdminHeader
         title="Recurring Campaigns"
@@ -1445,5 +1447,6 @@ export default function AdminRecurringEmailPage() {
         onCancel={() => setConfirmDelete(null)}
       />
     </AdminShell>
+    </AdminFlagGate>
   );
 }
