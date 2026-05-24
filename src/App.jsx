@@ -5,7 +5,6 @@ import "./index.css";
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { AdminProvider } from "./admin/AdminContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { FeatureFlagProvider, useAllFlags } from "./context/FeatureFlagContext";
 import Slate from "./features/slate/Slate";
 import SlateRecord from "./features/slate/SlateRecord";
 import SlateDrawing from "./features/slate/SlateDrawing";
@@ -45,7 +44,6 @@ import AdminEmailPage from "./pages/AdminEmailPage";
 import AdminRecurringEmailPage from "./pages/AdminRecurringEmailPage";
 import AdminNotificationsPage from "./pages/AdminNotificationsPage";
 import AdminDesignRulesPage from "./pages/AdminDesignRulesPage";
-import AdminFeatureFlagsPage from "./pages/AdminFeatureFlagsPage";
 import RequirePerm from "./admin/RequirePerm";
 import AppLayout from "./layouts/AppLayout";
 import Plays from "./pages/app/Plays";
@@ -292,16 +290,6 @@ export function RequireNotOnboarded({ children }) {
   return children;
 }
 
-/**
- * Redirects to `fallback` when the named feature flag is disabled for the
- * current user. Renders children when the flag is on.
- */
-export function RequireFlag({ flag, fallback = "/app/plays", children }) {
-  const flags = useAllFlags();
-  if (flags[flag] === false) return <Navigate to={fallback} replace />;
-  return children;
-}
-
 export function LandingGate() {
   const { user, loading } = useAuth();
 
@@ -374,7 +362,6 @@ export function AppRoutes() {
         <Route path="/admin/email" element={<RequireAdminSession><AdminEmailPage /></RequireAdminSession>} />
         <Route path="/admin/email/recurring" element={<RequireAdminSession><AdminRecurringEmailPage /></RequireAdminSession>} />
         <Route path="/admin/notifications" element={<RequireAdminSession><AdminNotificationsPage /></RequireAdminSession>} />
-        <Route path="/admin/feature-flags" element={<RequireAdminSession><AdminFeatureFlagsPage /></RequireAdminSession>} />
       </Route>
 
       {/* Staff admin tree — scoped sub-admins (see STAFF_ADMIN_PLAN.md). */}
@@ -426,7 +413,7 @@ export function AppRoutes() {
         <Route path="profile/verify-email" element={<ProfileEmailVerification />} />
         <Route path="settings" element={<Settings />} />
         <Route path="report-issue" element={<ReportIssue />} />
-        <Route path="notifications" element={<RequireFlag flag="in_app_notifications"><Notifications /></RequireFlag>} />
+        <Route path="notifications" element={<Notifications />} />
         <Route path="playbooks" element={<Playbooks />} />
         <Route path="playbooks/:sectionId" element={<Playbooks />} />
         <Route path="videos" element={<DemoVideos />} />
@@ -455,19 +442,6 @@ function ThemeInit() {
   return null;
 }
 
-/**
- * Bridges the auth context into the feature flag provider so flags are
- * re-fetched whenever the logged-in user changes.
- */
-function FeatureFlagBridge({ children }) {
-  const { user } = useAuth();
-  return (
-    <FeatureFlagProvider userId={user?.id ?? null}>
-      {children}
-    </FeatureFlagProvider>
-  );
-}
-
 function App() {
   const appMessage = useMessagePopup();
 
@@ -475,8 +449,7 @@ function App() {
     <BrowserRouter>
       <ThemeInit />
       <AuthProvider>
-        <FeatureFlagBridge>
-          <AppMessageProvider
+        <AppMessageProvider
             value={{
               showMessage: appMessage.showMessage,
               hideMessage: appMessage.hideMessage,
@@ -492,7 +465,6 @@ function App() {
             />
             <AppRoutes />
           </AppMessageProvider>
-        </FeatureFlagBridge>
       </AuthProvider>
     </BrowserRouter>
   );

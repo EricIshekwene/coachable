@@ -828,35 +828,3 @@ CREATE TABLE IF NOT EXISTS notification_responses (
 CREATE INDEX IF NOT EXISTS notification_responses_notif_idx
   ON notification_responses(notification_id);
 
--- ============================================================
--- Feature Flags
--- Flags control access to features for targeted user segments.
--- Each flag has a global kill-switch (enabled) and an optional
--- array of rules (JSONB). All rules must match for a user to
--- see the feature (AND logic). An empty rules array = everyone.
---
--- Rule shapes:
---   { "type": "sport",               "values": ["football","rugby"] }
---   { "type": "team_role",           "roles": ["owner","coach","assistant_coach","player"] }
---   { "type": "user_type",           "values": ["onboarded","registered"] }
---   { "type": "rollout_percentage",  "value": 50 }   -- sticky per user via hash
---   { "type": "geolocation",         "countries": ["US"], "states": ["OH","CA"] }
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS feature_flags (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name        TEXT NOT NULL UNIQUE,
-  description TEXT NOT NULL DEFAULT '',
-  enabled     BOOLEAN NOT NULL DEFAULT true,
-  rules       JSONB NOT NULL DEFAULT '[]'::jsonb,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- Seed the three initial flags (idempotent)
-INSERT INTO feature_flags (name, description, enabled, rules)
-VALUES
-  ('in_app_notifications', 'In-app notification bell and popup toasts for end users', true, '[]'::jsonb),
-  ('broadcast_emails',     'Admin broadcast email composer and send capability',      true, '[]'::jsonb),
-  ('recurring_emails',     'Recurring email campaign scheduler',                      true, '[]'::jsonb)
-ON CONFLICT (name) DO NOTHING;

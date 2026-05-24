@@ -11,7 +11,6 @@ import {
 } from "react-icons/fi";
 import { useAdmin } from "../admin/AdminContext";
 import { adminApi } from "../admin/adminTransport";
-import AdminFlagGate from "../admin/AdminFlagGate";
 import Slate from "../features/slate/Slate";
 import {
   AdminBtn,
@@ -1005,7 +1004,6 @@ export default function AdminEmailPage() {
   }
 
   return (
-    <AdminFlagGate flagName="broadcast_emails">
     <AdminShell>
       <AdminHeader
         title="Email Composer"
@@ -1642,6 +1640,5 @@ export default function AdminEmailPage() {
         </div>
       )}
     </AdminShell>
-    </AdminFlagGate>
   );
 }

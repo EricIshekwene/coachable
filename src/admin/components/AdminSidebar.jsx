@@ -108,16 +108,6 @@ function StaffIcon() {
   );
 }
 
-function FeatureFlagsIcon() {
-  return (
-    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 7h6a1 1 0 010 0H3m0 0V5m0 2v2m18-2a9 9 0 11-18 0" />
-      <circle cx="17" cy="7" r="3" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 17h10m0 0a3 3 0 106 0 3 3 0 00-6 0z" />
-    </svg>
-  );
-}
-
 function SunIcon() {
   return (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -148,7 +138,6 @@ const NAV_ITEMS = [
   { label: "Email", path: "/email", icon: <EmailIcon />, ownerOnly: true },
   { label: "Recurring", path: "/email/recurring", icon: <EmailIcon />, ownerOnly: true },
   { label: "Notifications", path: "/notifications", icon: <NotificationsIcon />, ownerOnly: true },
-  { label: "Feature Flags", path: "/feature-flags", icon: <FeatureFlagsIcon />, ownerOnly: true },
   { label: "Staff", path: "/staff", icon: <StaffIcon />, ownerOnly: true },
 ];
 
