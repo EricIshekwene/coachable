@@ -32,10 +32,14 @@ const TOOLS = [
  */
 export default function AnimationDrawingTools({ activeSubTool, onSubToolChange, hideDrawings = false, onToggleHideDrawings }) {
   return (
+    <div className="absolute top-17 left-1/2 -translate-x-1/2 z-50 select-none">
+      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 whitespace-nowrap flex items-center rounded-full border border-white/10 bg-[rgba(18,18,18,0.92)] px-3 py-1.5 shadow-[0_1px_4px_rgba(0,0,0,0.08)] backdrop-blur-sm text-xs font-DmSans font-medium tracking-[0.01em] text-white/84">
+        Animation Drawing
+      </span>
     <div
       data-testid="motion-tool-pill"
       aria-label="Motion drawing tools"
-      className="absolute top-17 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 select-none rounded-full border border-white/10 bg-[rgba(18,18,18,0.92)] px-1.5 py-1.5 shadow-[0_1px_4px_rgba(0,0,0,0.08)] backdrop-blur-sm"
+      className="flex items-center gap-1 rounded-full border border-white/10 bg-[rgba(18,18,18,0.92)] px-1.5 py-1.5 shadow-[0_1px_4px_rgba(0,0,0,0.08)] backdrop-blur-sm"
     >
       {TOOLS.map(({ id, label, Icon, iconStyle }) => {
         const isActive = activeSubTool === id;
@@ -110,6 +114,7 @@ export default function AnimationDrawingTools({ activeSubTool, onSubToolChange, 
           {hideDrawings ? <FiEyeOff className="text-[13px]" /> : <FiEye className="text-[13px]" />}
         </span>
       </button>
+    </div>
     </div>
   );
 }

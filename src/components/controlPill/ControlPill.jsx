@@ -45,6 +45,7 @@ export default function ControlPill({
   onEndHistoryGroup,
   onAddStep,
   selectedPlayerIds,
+  selectedMotionDrawingIds,
   playersById,
   drawingMode = false,
   // Annotation visibility track inputs — render when annotations are selected
@@ -182,17 +183,30 @@ export default function ControlPill({
     onSelectKeyframe?.(null);
   };
 
-  // One motion-step lane per selected player. Accepts both the new v3 shape
-  // (kind === "motion" + attachedEntityId) and legacy v2 entries.
-  const stepLanes = (selectedPlayerIds || []).map((playerId) => ({
-    playerId,
-    drawings: (drawings || []).filter((d) => {
-      if (d?.kind === "annotation") return false;
-      const isMotion = d?.kind === "motion" || d?.source === "coaching-draw";
-      const entityId = d?.attachedEntityId || d?.attachedPlayerId;
-      return isMotion && entityId === playerId;
-    }),
-  })).filter(({ drawings: d }) => d.length > 0);
+  // One motion-step lane per selected player or per entity whose drawing is
+  // selected via the animation select tool. Accepts both v3 (kind==="motion" +
+  // attachedEntityId) and legacy v2 (source==="coaching-draw") entries.
+  const stepLanes = useMemo(() => {
+    const entityIds = new Set(selectedPlayerIds || []);
+    // When a motion drawing is selected, also show all steps for its entity
+    // (the full chain) even if the entity itself isn't selected on canvas.
+    if (selectedMotionDrawingIds?.length && drawings?.length) {
+      for (const selId of selectedMotionDrawingIds) {
+        const d = drawings.find((dr) => dr.id === selId);
+        const entityId = d?.attachedEntityId || d?.attachedPlayerId;
+        if (entityId) entityIds.add(entityId);
+      }
+    }
+    return Array.from(entityIds).map((playerId) => ({
+      playerId,
+      drawings: (drawings || []).filter((d) => {
+        if (d?.kind === "annotation") return false;
+        const isMotion = d?.kind === "motion" || d?.source === "coaching-draw";
+        const entityId = d?.attachedEntityId || d?.attachedPlayerId;
+        return isMotion && entityId === playerId;
+      }),
+    })).filter(({ drawings: d }) => d.length > 0);
+  }, [selectedPlayerIds, selectedMotionDrawingIds, drawings]);
   const hasSteps = stepLanes.length > 0;
 
   // Annotation visibility lanes: one per selected annotation drawing. Shown

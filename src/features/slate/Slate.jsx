@@ -4580,6 +4580,7 @@ function Slate({
             onEndHistoryGroup={slateHistory.endGroup}
             onAddStep={drawingMode ? () => setMotionDrawSubTool((prev) => prev ? null : "arrow") : undefined}
             selectedPlayerIds={drawingMode ? selectedDrawingModePlayerIds : undefined}
+            selectedMotionDrawingIds={drawingMode ? selectedMotionDrawingIds : undefined}
             playersById={drawingMode ? entities.playersById : undefined}
             drawingMode={drawingMode}
           />

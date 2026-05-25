@@ -1774,12 +1774,12 @@ function KonvaCanvasRoot({
     none: { pointerLength: 0, pointerWidth: 0 },
   };
 
-  /** Larger arrowhead sizes for freehand stroke tips */
+  /** Arrowhead sizes for freehand stroke tips — matches ARROW_HEAD_STYLES */
   const STROKE_TIP_STYLES = {
-    standard: { pointerLength: 18, pointerWidth: 14 },
-    thin: { pointerLength: 20, pointerWidth: 8 },
-    wide: { pointerLength: 16, pointerWidth: 22 },
-    chevron: { pointerLength: 22, pointerWidth: 26 },
+    standard: { pointerLength: 10, pointerWidth: 8 },
+    thin: { pointerLength: 12, pointerWidth: 4 },
+    wide: { pointerLength: 8, pointerWidth: 14 },
+    chevron: { pointerLength: 14, pointerWidth: 18 },
     none: { pointerLength: 0, pointerWidth: 0 },
   };
 
