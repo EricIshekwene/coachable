@@ -1,6 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+import jwt from "jsonwebtoken";
 import pool from "../db/pool.js";
 import { generateCode, sendDangerModeEmail, sendAccountDeletedEmail, sendBroadcastEmails } from "../lib/email.js";
 import { storeGifAsset, getGifAsset } from "../lib/gifAssetStore.js";
@@ -118,9 +119,19 @@ if (!ADMIN_HASH) {
   throw new Error("ADMIN_HASH environment variable must be set.");
 }
 
-// In-memory session store (resets on server restart — fine for admin)
+// JWT-signed session tokens: the cookie itself carries the session id and
+// expiry, signed with JWT_SECRET. This means the session survives server
+// restarts (Railway redeploys, in particular) — the in-memory `sessions`
+// Map only holds Danger Mode elevation state, which is fine to lose since
+// elevation is a 10-minute window meant to be re-confirmed anyway.
+if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET environment variable must be set in production.");
+}
+const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
+
 const sessions = new Map();
-const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours (matches cookie lifetime)
+const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const SESSION_TTL_SECONDS = SESSION_TTL_MS / 1000;
 const ELEVATED_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 // Danger Mode OTP store: sessionId -> { code, expiresAt }
@@ -133,15 +144,49 @@ let adminSecurityEmail = process.env.ADMIN_SECURITY_EMAIL || "";
 const COOKIE_NAME = "admin_sid";
 const COOKIE_OPTS = {
   httpOnly: true,
-  sameSite: "strict",
+  // In production the admin UI (Cloudflare) and API (Railway) are on
+  // different sites, so the cookie must be SameSite=None to be sent on
+  // cross-site requests. SameSite=None requires Secure, which is also set
+  // in production. Dev uses Lax so it works over plain http://localhost.
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
   maxAge: SESSION_TTL_MS,
   path: "/",
   secure: process.env.NODE_ENV === "production",
 };
 
-/** Resolve session ID from header (preferred) or cookie fallback. */
+/**
+ * Sign a self-validating admin session token. The token encodes the random
+ * session id and its expiry; verification doesn't depend on server state,
+ * so sessions persist across server restarts.
+ * @param {string} sid
+ * @returns {string}
+ */
+function signAdminToken(sid) {
+  return jwt.sign({ sid }, JWT_SECRET, { expiresIn: SESSION_TTL_SECONDS });
+}
+
+/**
+ * Verify and resolve the session id from the request. Reads the JWT from
+ * either the `x-admin-session` header (legacy frontend transport) or the
+ * `admin_sid` cookie. Returns the session id if the token is valid and
+ * non-expired, otherwise null. Lazily creates an in-memory elevation
+ * record for valid sessions so post-restart requests still work — the user
+ * just has to re-elevate for Danger Mode actions.
+ * @param {import('express').Request} req
+ * @returns {string | null}
+ */
 function resolveSessionId(req) {
-  return req.headers["x-admin-session"] || req.cookies?.[COOKIE_NAME];
+  const raw = req.headers["x-admin-session"] || req.cookies?.[COOKIE_NAME];
+  if (!raw) return null;
+  try {
+    const payload = jwt.verify(raw, JWT_SECRET);
+    const sid = payload?.sid;
+    if (!sid) return null;
+    if (!sessions.has(sid)) sessions.set(sid, { elevatedAt: null });
+    return sid;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -152,25 +197,13 @@ function resolveSessionId(req) {
  * @returns {boolean}
  */
 export function hasValidAdminSession(req) {
-  const sid = resolveSessionId(req);
-  if (!sid || !sessions.has(sid)) return false;
-  const session = sessions.get(sid);
-  if (Date.now() > session.expiresAt) {
-    sessions.delete(sid);
-    return false;
-  }
-  return true;
+  return resolveSessionId(req) !== null;
 }
 
 export function requireAdmin(req, res, next) {
   const sid = resolveSessionId(req);
-  if (!sid || !sessions.has(sid)) {
+  if (!sid) {
     return res.status(401).json({ error: "Unauthorized" });
-  }
-  const session = sessions.get(sid);
-  if (Date.now() > session.expiresAt) {
-    sessions.delete(sid);
-    return res.status(401).json({ error: "Session expired" });
   }
   next();
 }
@@ -181,14 +214,10 @@ export function requireAdmin(req, res, next) {
  */
 export function requireElevated(req, res, next) {
   const sid = resolveSessionId(req);
-  if (!sid || !sessions.has(sid)) {
+  if (!sid) {
     return res.status(401).json({ error: "Unauthorized" });
   }
   const session = sessions.get(sid);
-  if (Date.now() > session.expiresAt) {
-    sessions.delete(sid);
-    return res.status(401).json({ error: "Session expired" });
-  }
   if (!session.elevatedAt || Date.now() - session.elevatedAt > ELEVATED_TTL_MS) {
     return res.status(403).json({ error: "Danger Mode required. Re-authenticate to perform this action." });
   }
@@ -206,26 +235,23 @@ export function requireElevated(req, res, next) {
  */
 export function isLegacyAdminElevated(req) {
   const sid = resolveSessionId(req);
-  if (!sid || !sessions.has(sid)) return false;
+  if (!sid) return false;
   const session = sessions.get(sid);
-  if (Date.now() > session.expiresAt) return false;
   if (!session.elevatedAt) return false;
   return Date.now() - session.elevatedAt <= ELEVATED_TTL_MS;
 }
 
-// GET /admin/session — verify cookie-based session for auto-login
+// GET /admin/session — verify cookie-based session for auto-login.
+// Echoes the cookie's JWT back so the client can put it in sessionStorage
+// and send it as `x-admin-session` on subsequent requests.
 router.get("/session", (req, res) => {
-  const sid = req.cookies?.[COOKIE_NAME];
-  if (!sid || !sessions.has(sid)) {
+  const sid = resolveSessionId(req);
+  if (!sid) {
+    if (req.cookies?.[COOKIE_NAME]) res.clearCookie(COOKIE_NAME, { path: "/" });
     return res.status(401).json({ error: "No session" });
   }
-  const session = sessions.get(sid);
-  if (Date.now() > session.expiresAt) {
-    sessions.delete(sid);
-    res.clearCookie(COOKIE_NAME, { path: "/" });
-    return res.status(401).json({ error: "Session expired" });
-  }
-  res.json({ session: sid });
+  const token = req.cookies?.[COOKIE_NAME] || req.headers["x-admin-session"];
+  res.json({ session: token });
 });
 
 // POST /admin/login
@@ -237,9 +263,10 @@ router.post("/login", async (req, res) => {
   if (!valid) return res.status(401).json({ error: "Invalid password" });
 
   const sid = crypto.randomBytes(32).toString("hex");
-  sessions.set(sid, { expiresAt: Date.now() + SESSION_TTL_MS, elevatedAt: null });
-  res.cookie(COOKIE_NAME, sid, COOKIE_OPTS);
-  res.json({ session: sid });
+  sessions.set(sid, { elevatedAt: null });
+  const token = signAdminToken(sid);
+  res.cookie(COOKIE_NAME, token, COOKIE_OPTS);
+  res.json({ session: token });
 });
 
 /**
