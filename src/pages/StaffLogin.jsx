@@ -57,6 +57,7 @@ export default function StaffLogin() {
             placeholder="Email"
             required
             autoComplete="email"
+            maxLength={254}
             className="w-full rounded-lg bg-white/5 border border-white/10 px-4 py-3 text-sm outline-none focus:border-BrandOrange"
           />
           <input
@@ -66,6 +67,7 @@ export default function StaffLogin() {
             placeholder="Password"
             required
             autoComplete="current-password"
+            maxLength={256}
             className="w-full rounded-lg bg-white/5 border border-white/10 px-4 py-3 text-sm outline-none focus:border-BrandOrange"
           />
           {error && (

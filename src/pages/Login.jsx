@@ -5,7 +5,7 @@ import { useAppMessage } from "../context/AppMessageContext";
 import logo from "../assets/logos/full_Coachable_logo.png";
 import whiteLogo from "../assets/logos/White_Full_Coachable.png";
 import brandImage from "../assets/pictures/female_football_coach_short.png";
-import { isValidEmail } from "../utils/inputValidation";
+import { isValidEmail, INPUT_LIMITS } from "../utils/inputValidation";
 import { FiArrowLeft } from "react-icons/fi";
 
 export default function Login() {
@@ -93,6 +93,8 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
+                maxLength={INPUT_LIMITS.EMAIL}
+                autoComplete="email"
                 className={inputClass}
               />
             </div>
@@ -109,6 +111,8 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
+                maxLength={INPUT_LIMITS.PASSWORD_MAX}
+                autoComplete="current-password"
                 className={inputClass}
               />
             </div>

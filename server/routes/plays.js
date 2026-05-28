@@ -2,6 +2,7 @@ import { Router } from "express";
 import crypto from "crypto";
 import pool from "../db/pool.js";
 import { requireAuth, requireTeamRole } from "../middleware/auth.js";
+import { requireString, optionalString, optionalUuid, requireArray, requireBoolean, LIMITS } from "../lib/validate.js";
 
 const router = Router();
 
@@ -89,10 +90,13 @@ router.post(
   requireTeamRole("owner", "coach", "assistant_coach"),
   async (req, res, next) => {
     try {
-      const { title, folderId, playData, thumbnail, tags, notes, notesAuthorName } = req.body;
-      if (!title?.trim()) {
-        return res.status(400).json({ error: "title is required" });
-      }
+      const title = requireString(req.body?.title, { field: "title", max: LIMITS.TITLE });
+      const folderId = optionalUuid(req.body?.folderId, { field: "folderId" });
+      const playData = req.body?.playData ?? null;
+      const thumbnail = optionalString(req.body?.thumbnail, { field: "thumbnail", max: LIMITS.URL });
+      const notes = optionalString(req.body?.notes, { field: "notes", max: LIMITS.MEDIUM_TEXT });
+      const notesAuthorName = optionalString(req.body?.notesAuthorName, { field: "notesAuthorName", max: LIMITS.NAME });
+      const tagsInput = req.body?.tags == null ? [] : requireArray(req.body.tags, { field: "tags", max: 40 });
 
       const { rows } = await pool.query(
         `INSERT INTO plays (team_id, folder_id, title, play_data, thumbnail_url, notes, notes_author_name, notes_updated_at, created_by_user_id, updated_by_user_id)
@@ -100,28 +104,30 @@ router.post(
          RETURNING *`,
         [
           req.params.teamId,
-          folderId || null,
-          title.trim(),
-          playData || null,
-          thumbnail || null,
-          notes?.trim() || "",
-          notesAuthorName?.trim() || "",
-          notes?.trim() ? new Date().toISOString() : null,
+          folderId ?? null,
+          title,
+          playData,
+          thumbnail ?? null,
+          notes ?? "",
+          notesAuthorName ?? "",
+          notes ? new Date().toISOString() : null,
           req.userId,
         ]
       );
 
       // Handle tags
-      const tagLabels = Array.isArray(tags) ? tags.filter((t) => t?.trim()) : [];
+      const tagLabels = tagsInput
+        .filter((t) => typeof t === "string" && t.trim())
+        .map((t) => requireString(t, { field: "tags[]", max: LIMITS.TAG }));
       const resolvedTags = [];
       for (const label of tagLabels) {
-        const normalized = label.trim().toLowerCase();
+        const normalized = label.toLowerCase();
         const tagRes = await pool.query(
           `INSERT INTO play_tags (team_id, label, normalized_label)
            VALUES ($1, $2, $3)
            ON CONFLICT (team_id, normalized_label) DO UPDATE SET label = EXCLUDED.label
            RETURNING id, label`,
-          [req.params.teamId, label.trim(), normalized]
+          [req.params.teamId, label, normalized]
         );
         const tag = tagRes.rows[0];
         resolvedTags.push(tag.label);
@@ -187,7 +193,19 @@ router.patch(
   requireTeamRole("owner", "coach", "assistant_coach"),
   async (req, res, next) => {
     try {
-      const { title, folderId, playData, thumbnail, notes, notesAuthorName, hiddenFromPlayers } = req.body;
+      const title = req.body?.title === undefined ? undefined
+        : requireString(req.body.title, { field: "title", max: LIMITS.TITLE });
+      const folderId = req.body?.folderId === undefined ? undefined
+        : optionalUuid(req.body.folderId, { field: "folderId" });
+      const playData = req.body?.playData;
+      const thumbnail = req.body?.thumbnail === undefined ? undefined
+        : optionalString(req.body.thumbnail, { field: "thumbnail", max: LIMITS.URL });
+      const notes = req.body?.notes === undefined ? undefined
+        : (optionalString(req.body.notes, { field: "notes", max: LIMITS.MEDIUM_TEXT }) ?? "");
+      const notesAuthorName = req.body?.notesAuthorName === undefined ? undefined
+        : (optionalString(req.body.notesAuthorName, { field: "notesAuthorName", max: LIMITS.NAME }) ?? "");
+      const hiddenFromPlayers = req.body?.hiddenFromPlayers === undefined ? undefined
+        : requireBoolean(req.body.hiddenFromPlayers, { field: "hiddenFromPlayers" });
 
       const setClauses = ["updated_at = now()", "updated_by_user_id = $1"];
       const values = [req.userId];
@@ -195,11 +213,11 @@ router.patch(
 
       if (title !== undefined) {
         setClauses.push(`title = $${idx++}`);
-        values.push(title.trim());
+        values.push(title);
       }
       if (folderId !== undefined) {
         setClauses.push(`folder_id = $${idx++}`);
-        values.push(folderId || null);
+        values.push(folderId ?? null);
       }
       if (playData !== undefined) {
         setClauses.push(`play_data = $${idx++}`);
@@ -207,20 +225,20 @@ router.patch(
       }
       if (thumbnail !== undefined) {
         setClauses.push(`thumbnail_url = $${idx++}`);
-        values.push(thumbnail || null);
+        values.push(thumbnail ?? null);
       }
       if (notes !== undefined) {
         setClauses.push(`notes = $${idx++}`);
-        values.push(notes.trim());
+        values.push(notes);
         setClauses.push(`notes_updated_at = now()`);
       }
       if (notesAuthorName !== undefined) {
         setClauses.push(`notes_author_name = $${idx++}`);
-        values.push(notesAuthorName.trim());
+        values.push(notesAuthorName);
       }
       if (hiddenFromPlayers !== undefined) {
         setClauses.push(`hidden_from_players = $${idx++}`);
-        values.push(Boolean(hiddenFromPlayers));
+        values.push(hiddenFromPlayers);
       }
 
       values.push(req.params.playId);
@@ -369,25 +387,23 @@ router.patch(
   requireTeamRole("owner", "coach", "assistant_coach"),
   async (req, res, next) => {
     try {
-      const { tags } = req.body;
-      if (!Array.isArray(tags)) {
-        return res.status(400).json({ error: "tags must be an array" });
-      }
+      const tags = requireArray(req.body?.tags, { field: "tags", max: 40 });
 
       // Clear existing links
       await pool.query("DELETE FROM play_tag_links WHERE play_id = $1", [req.params.playId]);
 
       // Re-create
       const resolvedTags = [];
-      for (const label of tags) {
-        if (!label?.trim()) continue;
-        const normalized = label.trim().toLowerCase();
+      for (const raw of tags) {
+        if (typeof raw !== "string" || !raw.trim()) continue;
+        const label = requireString(raw, { field: "tags[]", max: LIMITS.TAG });
+        const normalized = label.toLowerCase();
         const tagRes = await pool.query(
           `INSERT INTO play_tags (team_id, label, normalized_label)
            VALUES ($1, $2, $3)
            ON CONFLICT (team_id, normalized_label) DO UPDATE SET label = EXCLUDED.label
            RETURNING id, label`,
-          [req.params.teamId, label.trim(), normalized]
+          [req.params.teamId, label, normalized]
         );
         resolvedTags.push(tagRes.rows[0].label);
         await pool.query(
@@ -410,7 +426,7 @@ router.put(
   requireTeamRole(),
   async (req, res, next) => {
     try {
-      const { favorited } = req.body;
+      const favorited = requireBoolean(req.body?.favorited, { field: "favorited" });
       if (favorited) {
         await pool.query(
           "INSERT INTO play_favorites (play_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
@@ -436,7 +452,10 @@ router.patch(
   requireTeamRole("owner", "coach", "assistant_coach"),
   async (req, res, next) => {
     try {
-      const { notes, notesAuthorName } = req.body;
+      const notes = req.body?.notes === undefined ? null
+        : (optionalString(req.body.notes, { field: "notes", max: LIMITS.MEDIUM_TEXT }) ?? "");
+      const notesAuthorName = req.body?.notesAuthorName === undefined ? null
+        : (optionalString(req.body.notesAuthorName, { field: "notesAuthorName", max: LIMITS.NAME }) ?? "");
       await pool.query(
         `UPDATE plays SET
            notes = COALESCE($1, notes),
@@ -444,7 +463,7 @@ router.patch(
            notes_updated_at = now(),
            updated_at = now()
          WHERE id = $3 AND team_id = $4`,
-        [notes ?? null, notesAuthorName ?? null, req.params.playId, req.params.teamId]
+        [notes, notesAuthorName, req.params.playId, req.params.teamId]
       );
       res.json({ ok: true });
     } catch (err) {
@@ -460,10 +479,10 @@ router.patch(
   requireTeamRole("owner", "coach", "assistant_coach"),
   async (req, res, next) => {
     try {
-      const { folderId } = req.body;
+      const folderId = optionalUuid(req.body?.folderId, { field: "folderId" });
       await pool.query(
         "UPDATE plays SET folder_id = $1, updated_at = now() WHERE id = $2 AND team_id = $3",
-        [folderId || null, req.params.playId, req.params.teamId]
+        [folderId ?? null, req.params.playId, req.params.teamId]
       );
       res.json({ ok: true });
     } catch (err) {
@@ -549,10 +568,7 @@ router.post(
   requireTeamRole("owner", "coach", "assistant_coach"),
   async (req, res, next) => {
     try {
-      const { playIds } = req.body;
-      if (!Array.isArray(playIds) || !playIds.length) {
-        return res.status(400).json({ error: "playIds must be a non-empty array" });
-      }
+      const playIds = requireArray(req.body?.playIds, { field: "playIds", min: 1, max: 500 });
       await pool.query(
         "UPDATE plays SET archived_at = now(), updated_at = now() WHERE id = ANY($1) AND team_id = $2",
         [playIds, req.params.teamId]
@@ -571,13 +587,11 @@ router.post(
   requireTeamRole("owner", "coach", "assistant_coach"),
   async (req, res, next) => {
     try {
-      const { playIds, folderId } = req.body;
-      if (!Array.isArray(playIds) || !playIds.length) {
-        return res.status(400).json({ error: "playIds must be a non-empty array" });
-      }
+      const playIds = requireArray(req.body?.playIds, { field: "playIds", min: 1, max: 500 });
+      const folderId = optionalUuid(req.body?.folderId, { field: "folderId" });
       await pool.query(
         "UPDATE plays SET folder_id = $1, updated_at = now() WHERE id = ANY($2) AND team_id = $3",
-        [folderId || null, playIds, req.params.teamId]
+        [folderId ?? null, playIds, req.params.teamId]
       );
       res.json({ ok: true });
     } catch (err) {
@@ -593,25 +607,21 @@ router.post(
   requireTeamRole("owner", "coach", "assistant_coach"),
   async (req, res, next) => {
     try {
-      const { playIds, tags } = req.body;
-      if (!Array.isArray(playIds) || !playIds.length) {
-        return res.status(400).json({ error: "playIds must be a non-empty array" });
-      }
-      if (!Array.isArray(tags) || !tags.length) {
-        return res.status(400).json({ error: "tags must be a non-empty array" });
-      }
+      const playIds = requireArray(req.body?.playIds, { field: "playIds", min: 1, max: 500 });
+      const tags = requireArray(req.body?.tags, { field: "tags", min: 1, max: 40 });
 
       // Resolve tag IDs
       const tagIds = [];
-      for (const label of tags) {
-        if (!label?.trim()) continue;
-        const normalized = label.trim().toLowerCase();
+      for (const raw of tags) {
+        if (typeof raw !== "string" || !raw.trim()) continue;
+        const label = requireString(raw, { field: "tags[]", max: LIMITS.TAG });
+        const normalized = label.toLowerCase();
         const tagRes = await pool.query(
           `INSERT INTO play_tags (team_id, label, normalized_label)
            VALUES ($1, $2, $3)
            ON CONFLICT (team_id, normalized_label) DO UPDATE SET label = EXCLUDED.label
            RETURNING id`,
-          [req.params.teamId, label.trim(), normalized]
+          [req.params.teamId, label, normalized]
         );
         tagIds.push(tagRes.rows[0].id);
       }
@@ -670,8 +680,8 @@ router.post(
   requireTeamRole("owner", "coach", "assistant_coach"),
   async (req, res, next) => {
     try {
-      const { title, description } = req.body;
-      if (!title?.trim()) return res.status(400).json({ error: "Title is required" });
+      const title = requireString(req.body?.title, { field: "title", max: LIMITS.TITLE });
+      const description = optionalString(req.body?.description, { field: "description", max: LIMITS.MEDIUM_TEXT });
 
       // Fetch the play and team in one round-trip
       const { rows: playRows } = await pool.query(
@@ -715,8 +725,8 @@ router.post(
          VALUES ($1, $2, $3, $4, $5, true)
          RETURNING id`,
         [
-          title.trim(),
-          description?.trim() || "",
+          title,
+          description ?? "",
           sport,
           play.play_data || null,
           play.thumbnail_url || null,
@@ -748,7 +758,7 @@ router.post(
           await pool.query(
             `INSERT INTO plays (team_id, title, play_data, thumbnail_url, created_by_user_id, updated_by_user_id)
              VALUES ($1, $2, $3, $4, $5, $5)`,
-            [reviewTeamId, title.trim(), play.play_data || null, play.thumbnail_url || null, req.userId]
+            [reviewTeamId, title, play.play_data || null, play.thumbnail_url || null, req.userId]
           );
         }
       }

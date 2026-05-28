@@ -2,6 +2,7 @@ import { Router } from "express";
 import crypto from "crypto";
 import pool from "../db/pool.js";
 import { requireAuth, requireTeamRole } from "../middleware/auth.js";
+import { requireString, optionalString, optionalUuid, optionalInt, LIMITS } from "../lib/validate.js";
 
 const router = Router();
 
@@ -43,10 +44,8 @@ router.post(
   requireTeamRole("owner", "coach", "assistant_coach"),
   async (req, res, next) => {
     try {
-      const { name, parentId } = req.body;
-      if (!name?.trim()) {
-        return res.status(400).json({ error: "name is required" });
-      }
+      const name = requireString(req.body?.name, { field: "name", max: LIMITS.NAME });
+      const parentId = optionalUuid(req.body?.parentId, { field: "parentId" });
 
       // Enforce max depth of 4
       if (parentId) {
@@ -70,7 +69,7 @@ router.post(
         `INSERT INTO play_folders (team_id, parent_id, name, created_by_user_id)
          VALUES ($1, $2, $3, $4)
          RETURNING id, parent_id, name, sort_order, created_at, updated_at`,
-        [req.params.teamId, parentId || null, name.trim(), req.userId]
+        [req.params.teamId, parentId ?? null, name, req.userId]
       );
 
       res.status(201).json({
@@ -99,7 +98,8 @@ router.patch(
   requireTeamRole("owner", "coach", "assistant_coach"),
   async (req, res, next) => {
     try {
-      const { name, sortOrder } = req.body;
+      const name = optionalString(req.body?.name, { field: "name", max: LIMITS.NAME });
+      const sortOrder = optionalInt(req.body?.sortOrder, { field: "sortOrder", min: 0, max: 1_000_000 });
 
       const setClauses = ["updated_at = now()"];
       const values = [];
@@ -107,7 +107,7 @@ router.patch(
 
       if (name !== undefined) {
         setClauses.push(`name = $${idx++}`);
-        values.push(name.trim());
+        values.push(name);
       }
       if (sortOrder !== undefined) {
         setClauses.push(`sort_order = $${idx++}`);

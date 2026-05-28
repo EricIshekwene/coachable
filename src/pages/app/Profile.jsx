@@ -156,6 +156,8 @@ export default function Profile() {
                 type="text"
                 value={nameInput}
                 onChange={(e) => setNameInput(e.target.value)}
+                maxLength={80}
+                autoComplete="name"
                 className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
                 placeholder="Your name"
               />
@@ -186,6 +188,8 @@ export default function Profile() {
                   setEmailInput(e.target.value);
                   if (emailError) setEmailError("");
                 }}
+                maxLength={254}
+                autoComplete="email"
                 className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
                 placeholder="name@example.com"
               />
@@ -302,6 +306,7 @@ export default function Profile() {
                 value={teamCode}
                 onChange={(e) => setTeamCode(e.target.value.toUpperCase())}
                 placeholder="XXXX-XXXX-XXXX"
+                maxLength={12}
                 className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 font-mono text-sm tracking-wider text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
               />
               <button

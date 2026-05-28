@@ -6,6 +6,7 @@ import pool from "../db/pool.js";
 import { generateCode, sendDangerModeEmail, sendAccountDeletedEmail, sendBroadcastEmails } from "../lib/email.js";
 import { storeGifAsset, getGifAsset } from "../lib/gifAssetStore.js";
 import { uploadToR2 } from "../lib/r2Upload.js";
+import { authLimiter } from "../middleware/rateLimit.js";
 import { computeNextSendAt } from "../utils/computeNextSendAt.js";
 import {
   buildNotifAudienceSql,
@@ -255,7 +256,7 @@ router.get("/session", (req, res) => {
 });
 
 // POST /admin/login
-router.post("/login", async (req, res) => {
+router.post("/login", authLimiter, async (req, res) => {
   const { password } = req.body;
   if (!password) return res.status(400).json({ error: "Password required" });
 
@@ -275,7 +276,7 @@ router.post("/login", async (req, res) => {
  * (backwards-compatible fallback).
  * @route POST /admin/elevate/request
  */
-router.post("/elevate/request", requireAdmin, async (req, res) => {
+router.post("/elevate/request", authLimiter, requireAdmin, async (req, res) => {
   const { password } = req.body;
   if (!password) return res.status(400).json({ error: "Password required" });
 
@@ -314,7 +315,7 @@ router.post("/elevate/request", requireAdmin, async (req, res) => {
  * Step 2: Verify the OTP sent to the security email and elevate the session.
  * @route POST /admin/elevate/confirm
  */
-router.post("/elevate/confirm", requireAdmin, async (req, res) => {
+router.post("/elevate/confirm", authLimiter, requireAdmin, async (req, res) => {
   const { code } = req.body;
   if (!code) return res.status(400).json({ error: "Verification code required" });
 

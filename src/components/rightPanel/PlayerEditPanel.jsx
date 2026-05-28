@@ -80,6 +80,7 @@ export default function PlayerEditPanel({
               if (e.key === "Enter") onClose?.();
             }}
             placeholder={useLabels ? "e.g. QB, CB, LW" : ""}
+            maxLength={6}
             className={POPUP_DENSE_INPUT_CLASS}
           />
         </label>
@@ -124,6 +125,7 @@ export default function PlayerEditPanel({
               if (e.key === "Escape") onClose?.();
               if (e.key === "Enter") { e.preventDefault(); onClose?.(); }
             }}
+            maxLength={80}
             className="w-full min-h-8 sm:min-h-9 bg-BrandBlack2 border border-BrandGray rounded-md px-2 py-1.5 text-BrandWhite text-xs sm:text-sm font-DmSans focus:outline-none focus:border-BrandOrange transition-colors resize-none overflow-hidden leading-tight"
           />
         </label>

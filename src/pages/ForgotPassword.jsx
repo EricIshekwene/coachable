@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAppMessage } from "../context/AppMessageContext";
 import { apiFetch } from "../utils/api";
-import { isValidEmail } from "../utils/inputValidation";
+import { isValidEmail, INPUT_LIMITS } from "../utils/inputValidation";
 import logo from "../assets/logos/full_Coachable_logo.png";
 import whiteLogo from "../assets/logos/White_Full_Coachable.png";
 
@@ -79,6 +79,8 @@ export default function ForgotPassword() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
+                maxLength={INPUT_LIMITS.EMAIL}
+                autoComplete="email"
                 className={inputClass}
                 autoFocus
               />

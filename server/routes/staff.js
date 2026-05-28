@@ -13,6 +13,7 @@ import { Router } from "express";
 import pool from "../db/pool.js";
 import { readSessionToken, verifySessionToken } from "../middleware/auth.js";
 import { resolveActor, resolveJwtActor } from "../middleware/staffAuth.js";
+import { authLimiter } from "../middleware/rateLimit.js";
 
 const router = Router();
 
@@ -75,7 +76,7 @@ router.get("/accept-invite", (req, res) => {
  * @returns { ok: true } on success, or { ok: false, needsSignup, email } if
  * the recipient must sign up first.
  */
-router.post("/accept-invite", async (req, res, next) => {
+router.post("/accept-invite", authLimiter, async (req, res, next) => {
   try {
     const { token } = req.body || {};
     if (!token) return res.status(400).json({ error: "token is required" });

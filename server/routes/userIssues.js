@@ -1,6 +1,7 @@
 import { Router } from "express";
 import pool from "../db/pool.js";
 import { requireAuth } from "../middleware/auth.js";
+import { requireString, LIMITS } from "../lib/validate.js";
 
 const router = Router();
 
@@ -10,11 +11,8 @@ const router = Router();
  */
 router.post("/", requireAuth, async (req, res, next) => {
   try {
-    const { title, description } = req.body;
-    if (!title?.trim()) return res.status(400).json({ error: "title is required" });
-    if (!description?.trim()) return res.status(400).json({ error: "description is required" });
-    if (title.trim().length > 200) return res.status(400).json({ error: "title must be 200 characters or fewer" });
-    if (description.trim().length > 5000) return res.status(400).json({ error: "description must be 5000 characters or fewer" });
+    const title = requireString(req.body?.title, { field: "title", max: LIMITS.TITLE });
+    const description = requireString(req.body?.description, { field: "description", max: LIMITS.LONG_TEXT });
 
     // Verify user is a beta tester
     const { rows: userRows } = await pool.query(
@@ -29,7 +27,7 @@ router.post("/", requireAuth, async (req, res, next) => {
       `INSERT INTO user_issues (user_id, user_name, user_email, title, description)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING id, title, description, status, created_at`,
-      [user.id, user.name, user.email, title.trim(), description.trim()]
+      [user.id, user.name, user.email, title, description]
     );
     res.status(201).json({ issue: rows[0] });
   } catch (err) {

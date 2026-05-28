@@ -2,6 +2,8 @@ import { Router } from "express";
 import pool from "../db/pool.js";
 import { requireAuth } from "../middleware/auth.js";
 import { generateCode, sendEmailChangeVerification } from "../lib/email.js";
+import { emailLimiter } from "../middleware/rateLimit.js";
+import { requireString, requireEmail, requireCode, requireEnum, requireBoolean, optionalEnum, optionalBoolean, LIMITS } from "../lib/validate.js";
 
 const router = Router();
 const CODE_EXPIRY_MINUTES = 10;
@@ -9,16 +11,13 @@ const CODE_EXPIRY_MINUTES = 10;
 // PATCH /users/me
 router.patch("/me", requireAuth, async (req, res, next) => {
   try {
-    const { name } = req.body;
-    if (!name?.trim()) {
-      return res.status(400).json({ error: "name is required" });
-    }
+    const name = requireString(req.body?.name, { field: "name", max: LIMITS.NAME });
 
     const { rows } = await pool.query(
       `UPDATE users SET name = $1, updated_at = now()
        WHERE id = $2
        RETURNING id, name, email`,
-      [name.trim(), req.userId]
+      [name, req.userId]
     );
 
     if (!rows.length) return res.status(404).json({ error: "User not found" });
@@ -32,16 +31,14 @@ router.patch("/me", requireAuth, async (req, res, next) => {
 // PATCH /users/me/preferences
 router.patch("/me/preferences", requireAuth, async (req, res, next) => {
   try {
-    const {
-      theme,
-      playerViewMode,
-      playersJoinTeam,
-      coachesMakeChanges,
-      inviteAccepted,
-      newPlays,
-      playUpdates,
-      teamAnnouncements,
-    } = req.body;
+    const theme = optionalEnum(req.body?.theme, ["dark", "light", "system"], { field: "theme" });
+    const playerViewMode = optionalBoolean(req.body?.playerViewMode, { field: "playerViewMode" });
+    const playersJoinTeam = optionalBoolean(req.body?.playersJoinTeam, { field: "playersJoinTeam" });
+    const coachesMakeChanges = optionalBoolean(req.body?.coachesMakeChanges, { field: "coachesMakeChanges" });
+    const inviteAccepted = optionalBoolean(req.body?.inviteAccepted, { field: "inviteAccepted" });
+    const newPlays = optionalBoolean(req.body?.newPlays, { field: "newPlays" });
+    const playUpdates = optionalBoolean(req.body?.playUpdates, { field: "playUpdates" });
+    const teamAnnouncements = optionalBoolean(req.body?.teamAnnouncements, { field: "teamAnnouncements" });
 
     // Upsert preferences
     const { rows } = await pool.query(
@@ -92,14 +89,9 @@ router.patch("/me/preferences", requireAuth, async (req, res, next) => {
 });
 
 // POST /users/me/change-email — send verification code to the new email
-router.post("/me/change-email", requireAuth, async (req, res, next) => {
+router.post("/me/change-email", requireAuth, emailLimiter, async (req, res, next) => {
   try {
-    const { newEmail } = req.body;
-    if (!newEmail?.trim()) {
-      return res.status(400).json({ error: "newEmail is required" });
-    }
-
-    const trimmedEmail = newEmail.trim().toLowerCase();
+    const trimmedEmail = requireEmail(req.body?.newEmail, { field: "newEmail" });
 
     // Get current user
     const { rows: userRows } = await pool.query(
@@ -160,10 +152,7 @@ router.post("/me/change-email", requireAuth, async (req, res, next) => {
 // POST /users/me/confirm-email-change — verify code and update email
 router.post("/me/confirm-email-change", requireAuth, async (req, res, next) => {
   try {
-    const { code } = req.body;
-    if (!code?.trim()) {
-      return res.status(400).json({ error: "Verification code is required" });
-    }
+    const code = requireCode(req.body?.code);
 
     // Find valid, unused code for this user
     const { rows } = await pool.query(
@@ -171,7 +160,7 @@ router.post("/me/confirm-email-change", requireAuth, async (req, res, next) => {
        WHERE user_id = $1 AND code = $2 AND used_at IS NULL AND expires_at > now()
        ORDER BY created_at DESC
        LIMIT 1`,
-      [req.userId, code.trim()]
+      [req.userId, code]
     );
 
     if (!rows.length) {

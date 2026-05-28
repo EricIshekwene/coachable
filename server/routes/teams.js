@@ -4,6 +4,8 @@ import pool from "../db/pool.js";
 import { requireAuth, requireTeamRole } from "../middleware/auth.js";
 import { sendTeamInviteEmail, sendMemberRemovedEmail } from "../lib/email.js";
 import { resolveActiveTeam, ensurePersonalWorkspace, getUserTeams, seedDemoPlay } from "../lib/userTeams.js";
+import { emailLimiter } from "../middleware/rateLimit.js";
+import { requireString, optionalString, requireEmail, requireEnum, requireUuid, LIMITS } from "../lib/validate.js";
 
 const router = Router();
 
@@ -14,10 +16,7 @@ const router = Router();
 // POST /teams/join — join a team via invite code (works when already onboarded)
 router.post("/join", requireAuth, async (req, res, next) => {
   try {
-    const { inviteCode } = req.body;
-    if (!inviteCode?.trim()) {
-      return res.status(400).json({ error: "inviteCode is required" });
-    }
+    const inviteCode = requireString(req.body?.inviteCode, { field: "inviteCode", max: LIMITS.CODE });
 
     const client = await pool.connect();
     try {
@@ -26,7 +25,7 @@ router.post("/join", requireAuth, async (req, res, next) => {
       // Look up invite code
       const codeRes = await client.query(
         "SELECT team_id, role FROM team_invite_codes WHERE code = $1",
-        [inviteCode.trim().toUpperCase()]
+        [inviteCode.toUpperCase()]
       );
       if (!codeRes.rows.length) {
         await client.query("ROLLBACK");
@@ -74,10 +73,8 @@ router.post("/join", requireAuth, async (req, res, next) => {
 // POST /teams/create — create a new real team (works when already onboarded)
 router.post("/create", requireAuth, async (req, res, next) => {
   try {
-    const { teamName, sport } = req.body;
-    if (!teamName?.trim()) {
-      return res.status(400).json({ error: "teamName is required" });
-    }
+    const teamName = requireString(req.body?.teamName, { field: "teamName", max: LIMITS.NAME });
+    const sport = optionalString(req.body?.sport, { field: "sport", max: LIMITS.ENUM_KEY });
 
     const client = await pool.connect();
     try {
@@ -87,7 +84,7 @@ router.post("/create", requireAuth, async (req, res, next) => {
         `INSERT INTO teams (name, sport, owner_user_id)
          VALUES ($1, $2, $3)
          RETURNING id, name, sport, season_year, owner_user_id`,
-        [teamName.trim(), sport?.trim() || null, req.userId]
+        [teamName, sport ?? null, req.userId]
       );
       const team = teamRes.rows[0];
 
@@ -133,8 +130,9 @@ router.post("/create", requireAuth, async (req, res, next) => {
 // POST /teams/create-personal — create a new personal workspace (always creates new, with optional name/sport)
 router.post("/create-personal", requireAuth, async (req, res, next) => {
   try {
-    const { name: rawName, sport: rawSport } = req.body;
-    const sport = rawSport?.trim().toLowerCase() || null;
+    const rawName = optionalString(req.body?.name, { field: "name", max: LIMITS.NAME });
+    const rawSport = optionalString(req.body?.sport, { field: "sport", max: LIMITS.ENUM_KEY });
+    const sport = rawSport ? rawSport.toLowerCase() : null;
 
     const client = await pool.connect();
     try {
@@ -142,8 +140,8 @@ router.post("/create-personal", requireAuth, async (req, res, next) => {
 
       // Resolve workspace name — auto-number if no name provided
       let workspaceName;
-      if (rawName?.trim()) {
-        workspaceName = rawName.trim();
+      if (rawName) {
+        workspaceName = rawName;
       } else {
         const { rows: existing } = await client.query(
           `SELECT t.name FROM teams t
@@ -357,10 +355,7 @@ router.post(
   requireTeamRole("owner", "coach"),
   async (req, res, next) => {
     try {
-      const { role } = req.body;
-      if (!["player", "coach"].includes(role)) {
-        return res.status(400).json({ error: "role must be 'player' or 'coach'" });
-      }
+      const role = requireEnum(req.body?.role, ["player", "coach"], { field: "role" });
 
       const code = crypto.randomBytes(4).toString("hex").toUpperCase();
       await pool.query(
@@ -383,24 +378,28 @@ router.patch(
   requireTeamRole("owner", "coach"),
   async (req, res, next) => {
     try {
-      const { teamName, sport, seasonYear } = req.body;
+      const teamName = optionalString(req.body?.teamName, { field: "teamName", max: LIMITS.NAME });
+      const sport = req.body?.sport === undefined ? undefined
+        : (optionalString(req.body?.sport, { field: "sport", max: LIMITS.ENUM_KEY }) ?? null);
+      const seasonYear = req.body?.seasonYear === undefined ? undefined
+        : (optionalString(req.body?.seasonYear, { field: "seasonYear", max: 16 }) ?? null);
 
       // Update team table fields
       const setClauses = [];
       const values = [];
       let idx = 1;
 
-      if (teamName?.trim()) {
+      if (teamName) {
         setClauses.push(`name = $${idx++}`);
-        values.push(teamName.trim());
+        values.push(teamName);
       }
       if (sport !== undefined) {
         setClauses.push(`sport = $${idx++}`);
-        values.push(sport?.trim() || null);
+        values.push(sport);
       }
       if (seasonYear !== undefined) {
         setClauses.push(`season_year = $${idx++}`);
-        values.push(seasonYear?.trim() || null);
+        values.push(seasonYear);
       }
 
       if (setClauses.length) {
@@ -446,10 +445,7 @@ router.post(
   requireTeamRole("owner"),
   async (req, res, next) => {
     try {
-      const { newOwnerId } = req.body;
-      if (!newOwnerId) {
-        return res.status(400).json({ error: "newOwnerId is required" });
-      }
+      const newOwnerId = requireUuid(req.body?.newOwnerId, { field: "newOwnerId" });
 
       const client = await pool.connect();
       try {
@@ -499,16 +495,12 @@ router.post(
 router.post(
   "/:teamId/invites",
   requireAuth,
+  emailLimiter,
   requireTeamRole("owner", "coach"),
   async (req, res, next) => {
     try {
-      const { email, role } = req.body;
-      if (!email?.trim()) {
-        return res.status(400).json({ error: "email is required" });
-      }
-      if (!["player", "coach"].includes(role)) {
-        return res.status(400).json({ error: "role must be 'player' or 'coach'" });
-      }
+      const email = requireEmail(req.body?.email, { field: "email" });
+      const role = requireEnum(req.body?.role, ["player", "coach"], { field: "role" });
 
       // Get the invite code for this role
       const { rows: codeRows } = await pool.query(
@@ -538,12 +530,12 @@ router.post(
       await pool.query(
         `INSERT INTO team_invites (team_id, invited_by_user_id, contact_email, requested_role, token, expires_at)
          VALUES ($1, $2, $3, $4, $5, now() + interval '7 days')`,
-        [req.params.teamId, req.userId, email.trim().toLowerCase(), role, token]
+        [req.params.teamId, req.userId, email, role, token]
       );
 
       // Send the email
       await sendTeamInviteEmail({
-        toEmail: email.trim(),
+        toEmail: email,
         inviteCode,
         role,
         teamName,

@@ -3,6 +3,7 @@ import crypto from "crypto";
 import pool from "../db/pool.js";
 import { requireAuth } from "../middleware/auth.js";
 import { seedDemoPlay } from "../lib/userTeams.js";
+import { requireString, optionalString, LIMITS } from "../lib/validate.js";
 
 const router = Router();
 
@@ -13,10 +14,8 @@ const router = Router();
  */
 router.post("/create-team", requireAuth, async (req, res, next) => {
   try {
-    const { teamName, sport } = req.body;
-    if (!teamName?.trim()) {
-      return res.status(400).json({ error: "teamName is required" });
-    }
+    const teamName = requireString(req.body?.teamName, { field: "teamName", max: LIMITS.NAME });
+    const sport = optionalString(req.body?.sport, { field: "sport", max: LIMITS.ENUM_KEY });
 
     const client = await pool.connect();
     try {
@@ -27,7 +26,7 @@ router.post("/create-team", requireAuth, async (req, res, next) => {
         `INSERT INTO teams (name, sport, owner_user_id)
          VALUES ($1, $2, $3)
          RETURNING id, name, sport, season_year, owner_user_id, created_at`,
-        [teamName.trim(), sport?.trim() || null, req.userId]
+        [teamName, sport ?? null, req.userId]
       );
       const team = teamRes.rows[0];
 
@@ -89,10 +88,7 @@ router.post("/create-team", requireAuth, async (req, res, next) => {
 // POST /onboarding/join-team
 router.post("/join-team", requireAuth, async (req, res, next) => {
   try {
-    const { inviteCode } = req.body;
-    if (!inviteCode?.trim()) {
-      return res.status(400).json({ error: "inviteCode is required" });
-    }
+    const inviteCode = requireString(req.body?.inviteCode, { field: "inviteCode", max: LIMITS.CODE });
 
     const client = await pool.connect();
     try {
@@ -101,7 +97,7 @@ router.post("/join-team", requireAuth, async (req, res, next) => {
       // Find team and role by invite code
       const codeRes = await client.query(
         "SELECT team_id, role FROM team_invite_codes WHERE code = $1",
-        [inviteCode.trim().toUpperCase()]
+        [inviteCode.toUpperCase()]
       );
       if (!codeRes.rows.length) {
         await client.query("ROLLBACK");

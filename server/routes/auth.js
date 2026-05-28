@@ -5,6 +5,8 @@ import { signToken, setSessionCookie, clearSessionCookie, requireAuth } from "..
 import { generateCode, sendVerificationEmail, sendPasswordResetEmail } from "../lib/email.js";
 import { resolveActiveTeam } from "../lib/userTeams.js";
 import { isBlockedName, isBlockedEmailDomain } from "../lib/signupBlocklist.js";
+import { authLimiter, emailLimiter } from "../middleware/rateLimit.js";
+import { requireString, requireEmail, requirePassword, requireCode, LIMITS } from "../lib/validate.js";
 
 const router = Router();
 const SALT_ROUNDS = 10;
@@ -13,18 +15,12 @@ const SALT_ROUNDS = 10;
 const REQUIRE_VERIFICATION = process.env.REQUIRE_EMAIL_VERIFICATION === "true";
 
 // POST /auth/signup
-router.post("/signup", async (req, res, next) => {
+router.post("/signup", authLimiter, emailLimiter, async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
-    if (!name?.trim() || !email?.trim() || !password) {
-      return res.status(400).json({ error: "name, email, and password are required" });
-    }
-    if (password.length < 6) {
-      return res.status(400).json({ error: "Password must be at least 6 characters" });
-    }
+    const trimmedName = requireString(req.body?.name, { field: "name", max: LIMITS.NAME });
+    const trimmedEmail = requireEmail(req.body?.email, { field: "email" });
+    const password = requirePassword(req.body?.password);
 
-    const trimmedName = name.trim();
-    const trimmedEmail = email.trim().toLowerCase();
     if (isBlockedName(trimmedName) || isBlockedEmailDomain(trimmedEmail)) {
       console.warn("[signup-blocked]", { name: trimmedName.slice(0, 80), email: trimmedEmail, ip: req.ip });
       return res.status(400).json({ error: "Sign up failed. Please check your details and try again." });
@@ -36,7 +32,7 @@ router.post("/signup", async (req, res, next) => {
       `INSERT INTO users (name, email, password_hash)
        VALUES ($1, $2, $3)
        RETURNING id, name, email, onboarded_at, created_at`,
-      [name.trim(), email.trim().toLowerCase(), hash]
+      [trimmedName, trimmedEmail, hash]
     );
 
     // Create default preferences row
@@ -77,16 +73,16 @@ router.post("/signup", async (req, res, next) => {
 });
 
 // POST /auth/login
-router.post("/login", async (req, res, next) => {
+router.post("/login", authLimiter, async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-    if (!email?.trim() || !password) {
-      return res.status(400).json({ error: "email and password are required" });
-    }
+    const trimmedEmail = requireEmail(req.body?.email, { field: "email" });
+    // For login we don't want to reveal the length rule, so just enforce a max
+    // and let the bcrypt compare fail naturally for the empty/too-short cases.
+    const password = requireString(req.body?.password, { field: "password", max: LIMITS.PASSWORD_MAX });
 
     const { rows } = await pool.query(
       "SELECT id, name, email, password_hash, onboarded_at, is_beta_tester, active_team_id FROM users WHERE email = $1",
-      [email.trim().toLowerCase()]
+      [trimmedEmail]
     );
     if (!rows.length) {
       return res.status(401).json({ error: "Invalid email or password" });
@@ -202,14 +198,9 @@ router.get("/me", requireAuth, async (req, res, next) => {
 });
 
 // POST /auth/forgot-password — send a 6-digit reset code to the user's email
-router.post("/forgot-password", async (req, res, next) => {
+router.post("/forgot-password", authLimiter, emailLimiter, async (req, res, next) => {
   try {
-    const { email } = req.body;
-    if (!email?.trim()) {
-      return res.status(400).json({ error: "Email is required" });
-    }
-
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail = requireEmail(req.body?.email, { field: "email" });
 
     // Always return success to avoid leaking whether the email exists
     const { rows } = await pool.query(
@@ -264,17 +255,11 @@ router.post("/forgot-password", async (req, res, next) => {
 });
 
 // POST /auth/reset-password — verify code and set new password
-router.post("/reset-password", async (req, res, next) => {
+router.post("/reset-password", authLimiter, async (req, res, next) => {
   try {
-    const { email, code, password } = req.body;
-    if (!email?.trim() || !code?.trim() || !password) {
-      return res.status(400).json({ error: "Email, code, and new password are required" });
-    }
-    if (password.length < 6) {
-      return res.status(400).json({ error: "Password must be at least 6 characters" });
-    }
-
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail = requireEmail(req.body?.email, { field: "email" });
+    const code = requireCode(req.body?.code);
+    const password = requirePassword(req.body?.password);
 
     // Find valid, unused code for this email
     const { rows } = await pool.query(
@@ -286,7 +271,7 @@ router.post("/reset-password", async (req, res, next) => {
          AND prc.expires_at > now()
        ORDER BY prc.created_at DESC
        LIMIT 1`,
-      [normalizedEmail, code.trim()]
+      [normalizedEmail, code]
     );
 
     if (!rows.length) {

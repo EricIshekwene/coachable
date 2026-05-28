@@ -26,6 +26,8 @@ import sportPrefabPresetsRoutes from "./routes/sportPrefabPresets.js";
 import staffRoutes from "./routes/staff.js";
 import notificationsRoutes from "./routes/notifications.js";
 import flagsRoutes from "./routes/flags.js";
+import { methodAwareLimiter } from "./middleware/rateLimit.js";
+import { bodyBoundsCheck } from "./middleware/bodyBounds.js";
 import { syncSports } from "./utils/syncSports.js";
 import { syncPlaybookDefaults } from "./utils/syncPlaybookDefaults.js";
 
@@ -33,6 +35,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Railway sits behind a proxy; trust it so req.ip reads X-Forwarded-For
+// (express-rate-limit needs this to key on the real client IP).
+app.set("trust proxy", 1);
 
 // --------------- Middleware ---------------
 
@@ -53,6 +59,16 @@ app.use(
 
 app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
+
+// Global rate limiter: tier by HTTP method. Routes that need tighter limits
+// (auth, email-sending) mount their own limiter inside the route file before
+// the handler.
+app.use(methodAwareLimiter);
+
+// Defence in depth: cap individual string fields and array sizes inside the
+// parsed body so a single huge field can't slip through the json() limit.
+// Paths that legitimately carry large payloads are exempted in the middleware.
+app.use(bodyBoundsCheck);
 
 // --------------- Health check ---------------
 

@@ -5,7 +5,7 @@ import { useAppMessage } from "../context/AppMessageContext";
 import logo from "../assets/logos/full_Coachable_logo.png";
 import whiteLogo from "../assets/logos/White_Full_Coachable.png";
 import brandImage from "../assets/pictures/female_football_coach_short.png";
-import { isValidEmail } from "../utils/inputValidation";
+import { isValidEmail, INPUT_LIMITS } from "../utils/inputValidation";
 import { FiArrowLeft } from "react-icons/fi";
 
 export default function Signup() {
@@ -115,6 +115,8 @@ export default function Signup() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Jane Smith"
+                maxLength={INPUT_LIMITS.NAME}
+                autoComplete="name"
                 className={inputClass}
               />
             </div>
@@ -126,6 +128,8 @@ export default function Signup() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
+                maxLength={INPUT_LIMITS.EMAIL}
+                autoComplete="email"
                 className={inputClass}
               />
             </div>
@@ -137,6 +141,8 @@ export default function Signup() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="At least 8 characters"
+                maxLength={INPUT_LIMITS.PASSWORD_MAX}
+                autoComplete="new-password"
                 className={inputClass}
               />
             </div>
@@ -148,6 +154,8 @@ export default function Signup() {
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 placeholder="Re-enter your password"
+                maxLength={INPUT_LIMITS.PASSWORD_MAX}
+                autoComplete="new-password"
                 className={inputClass}
               />
             </div>

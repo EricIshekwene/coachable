@@ -538,6 +538,7 @@ export default function Plays() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search plays by name, tags, or notes..."
+          maxLength={200}
           className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 py-2.5 pl-10 pr-10 text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
         />
         {search && (
@@ -661,6 +662,7 @@ export default function Plays() {
                               onBlur={confirmRename}
                               onKeyDown={(e) => { if (e.key === "Enter") confirmRename(); if (e.key === "Escape") setRenameTarget(null); }}
                               onClick={(e) => e.stopPropagation()}
+                              maxLength={200}
                               className="w-full rounded bg-transparent px-1 text-sm font-semibold outline-none ring-1 ring-BrandOrange"
                             />
                           ) : (
@@ -720,6 +722,7 @@ export default function Plays() {
                       onBlur={handleCreateFolder}
                       onKeyDown={(e) => { if (e.key === "Enter") handleCreateFolder(); if (e.key === "Escape") setNewFolderMode(false); }}
                       placeholder="Folder name..."
+                      maxLength={80}
                       className="w-full bg-transparent text-sm font-semibold text-BrandText outline-none placeholder:text-BrandGray2"
                     />
                   </div>
@@ -903,6 +906,7 @@ export default function Plays() {
               onChange={(e) => setBulkTagInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleBulkTag(); if (e.key === "Escape") { setBulkTagOpen(false); setBulkTagInput(""); } }}
               placeholder="Tag name..."
+              maxLength={40}
               className="mt-4 w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none placeholder:text-BrandGray2 focus:border-BrandOrange"
             />
             {allTags.length > 0 && (
@@ -938,6 +942,7 @@ export default function Plays() {
                   onChange={(e) => setPostTitle(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && postTitle.trim()) handlePostToCommunity(); if (e.key === "Escape") setPostTarget(null); }}
                   placeholder="Play title..."
+                  maxLength={200}
                   className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none placeholder:text-BrandGray2 focus:border-BrandOrange"
                 />
               </div>
@@ -948,6 +953,7 @@ export default function Plays() {
                   onChange={(e) => setPostBio(e.target.value)}
                   placeholder="Describe this play..."
                   rows={3}
+                  maxLength={2000}
                   className="w-full resize-none rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none placeholder:text-BrandGray2 focus:border-BrandOrange"
                 />
               </div>

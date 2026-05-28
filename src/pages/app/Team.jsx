@@ -68,6 +68,8 @@ function InviteCodeSection({ role, code, copiedRole, onCopy, onRotate, onSendInv
             onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
             placeholder={isCoachCode ? "coach@example.com" : "player@example.com"}
+            maxLength={254}
+            autoComplete="email"
             className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 py-2 pl-8 pr-3 text-xs text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
           />
         </div>
@@ -299,6 +301,7 @@ export default function Team() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search members..."
+            maxLength={100}
             className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 py-2.5 pl-9 pr-3.5 text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
           />
         </div>

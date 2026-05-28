@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAppMessage } from "../context/AppMessageContext";
 import { apiFetch } from "../utils/api";
+import { INPUT_LIMITS } from "../utils/inputValidation";
 import logo from "../assets/logos/full_Coachable_logo.png";
 import whiteLogo from "../assets/logos/White_Full_Coachable.png";
 
@@ -184,6 +185,8 @@ export default function ResetPassword() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="At least 8 characters"
+                  maxLength={INPUT_LIMITS.PASSWORD_MAX}
+                  autoComplete="new-password"
                   className={inputClass}
                   disabled={submitting}
                 />
@@ -196,6 +199,8 @@ export default function ResetPassword() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm your new password"
+                  maxLength={INPUT_LIMITS.PASSWORD_MAX}
+                  autoComplete="new-password"
                   className={inputClass}
                   disabled={submitting}
                 />

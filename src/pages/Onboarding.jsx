@@ -8,6 +8,7 @@ import brandImage from "../assets/pictures/female_football_coach_short.png";
 import { MdOutlineCreateNewFolder } from "react-icons/md";
 import { FaRegHandshake } from "react-icons/fa6";
 import { FiArrowRight, FiArrowLeft, FiChevronDown, FiEdit } from "react-icons/fi";
+import { INPUT_LIMITS } from "../utils/inputValidation";
 
 const SPORTS = [
   "Rugby", "Soccer", "Football", "Lacrosse", "Womens Lacrosse", "Basketball", "Field Hockey", "Ice Hockey", "Other",
@@ -239,6 +240,7 @@ export default function Onboarding() {
                   value={teamName}
                   onChange={(e) => setTeamName(e.target.value)}
                   placeholder="e.g. Riverside Rugby"
+                  maxLength={INPUT_LIMITS.NAME}
                   className={inputClass}
                 />
               ) : (
@@ -248,6 +250,8 @@ export default function Onboarding() {
                     value={inviteCode}
                     onChange={(e) => setInviteCode(e.target.value)}
                     placeholder="Paste your invite code"
+                    maxLength={INPUT_LIMITS.INVITE_CODE}
+                    autoCapitalize="characters"
                     className={inputClass}
                   />
                   <p className="text-[11px] text-BrandGray">

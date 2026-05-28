@@ -109,6 +109,7 @@ export default function ReportIssue() {
               value={title}
               onChange={(e) => setTitle(e.target.value.slice(0, MAX_TITLE))}
               placeholder="e.g. Play editor crashes when dragging players"
+              maxLength={MAX_TITLE}
               className="w-full rounded-xl border border-BrandGray2/30 bg-BrandBlack2/30 px-4 py-3 text-sm text-BrandText outline-none placeholder:text-BrandGray2/50 focus:border-BrandOrange transition"
               required
               disabled={submitting}
@@ -126,6 +127,7 @@ export default function ReportIssue() {
               onChange={(e) => setDescription(e.target.value.slice(0, MAX_DESC))}
               placeholder="Describe what happened, what you expected, and any steps to reproduce the issue..."
               rows={8}
+              maxLength={MAX_DESC}
               className="w-full resize-none rounded-xl border border-BrandGray2/30 bg-BrandBlack2/30 px-4 py-3 text-sm text-BrandText outline-none placeholder:text-BrandGray2/50 focus:border-BrandOrange transition"
               required
               disabled={submitting}

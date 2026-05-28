@@ -2,6 +2,8 @@ import { Router } from "express";
 import pool from "../db/pool.js";
 import { requireAuth } from "../middleware/auth.js";
 import { generateCode, sendVerificationEmail } from "../lib/email.js";
+import { emailLimiter } from "../middleware/rateLimit.js";
+import { requireCode } from "../lib/validate.js";
 
 const router = Router();
 const CODE_EXPIRY_MINUTES = 10;
@@ -10,7 +12,7 @@ const CODE_EXPIRY_MINUTES = 10;
  * POST /verification/send
  * Sends (or re-sends) a verification code to the authenticated user's email.
  */
-router.post("/send", requireAuth, async (req, res, next) => {
+router.post("/send", requireAuth, emailLimiter, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       "SELECT id, name, email, email_verified_at FROM users WHERE id = $1",
@@ -65,10 +67,7 @@ router.post("/send", requireAuth, async (req, res, next) => {
  */
 router.post("/verify", requireAuth, async (req, res, next) => {
   try {
-    const { code } = req.body;
-    if (!code?.trim()) {
-      return res.status(400).json({ error: "Verification code is required" });
-    }
+    const code = requireCode(req.body?.code);
 
     // Find valid, unused code
     const { rows } = await pool.query(
@@ -76,7 +75,7 @@ router.post("/verify", requireAuth, async (req, res, next) => {
        WHERE user_id = $1 AND code = $2 AND used_at IS NULL AND expires_at > now()
        ORDER BY created_at DESC
        LIMIT 1`,
-      [req.userId, code.trim()]
+      [req.userId, code]
     );
 
     if (!rows.length) {

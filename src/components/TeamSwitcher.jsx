@@ -303,6 +303,7 @@ export default function TeamSwitcher() {
                 value={newTeamName}
                 onChange={(e) => setNewTeamName(e.target.value)}
                 placeholder="Team name"
+                maxLength={80}
                 autoFocus
                 className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3 py-2 text-sm text-BrandText outline-none placeholder:text-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
               />
@@ -347,6 +348,7 @@ export default function TeamSwitcher() {
                 value={personalName}
                 onChange={(e) => setPersonalName(e.target.value)}
                 placeholder="Workspace name (optional)"
+                maxLength={80}
                 autoFocus
                 className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3 py-2 text-sm text-BrandText outline-none placeholder:text-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
               />

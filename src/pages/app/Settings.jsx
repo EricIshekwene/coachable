@@ -14,6 +14,7 @@ import {
   FiTrash2,
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
+import { INPUT_LIMITS } from "../../utils/inputValidation";
 
 const THEME_OPTIONS = [
   { value: "dark", icon: FiMoon, label: "Dark", desc: "Easy on the eyes" },
@@ -272,6 +273,7 @@ export default function Settings() {
               type="text"
               value={teamDefaults.teamName}
               onChange={(e) => setTeamDefaults((prev) => ({ ...prev, teamName: e.target.value }))}
+              maxLength={INPUT_LIMITS.NAME}
               className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
               placeholder={isPersonal ? "Personal Workspace" : "Riverside Rugby"}
             />
@@ -301,6 +303,7 @@ export default function Settings() {
               value={teamDefaults.seasonYear}
               onChange={(e) => setTeamDefaults((prev) => ({ ...prev, seasonYear: e.target.value }))}
               placeholder="2026"
+              maxLength={16}
               className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
             />
           </div>
@@ -538,6 +541,7 @@ function DangerZone({
                     value={deleteConfirmText}
                     onChange={(e) => setDeleteConfirmText(e.target.value)}
                     placeholder={confirmTarget}
+                    maxLength={INPUT_LIMITS.NAME}
                     className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3 py-2 text-xs text-BrandText placeholder-BrandGray2/50 outline-none focus:border-red-500/60"
                   />
                 </div>

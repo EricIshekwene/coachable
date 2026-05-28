@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { FiUserPlus, FiPlusCircle, FiUser } from "react-icons/fi";
 import { useAuth } from "../context/AuthContext";
+import { INPUT_LIMITS } from "../utils/inputValidation";
 
 /**
  * NoTeam page — safety net shown when an authenticated, onboarded user
@@ -147,7 +148,7 @@ export default function NoTeam() {
               value={inviteCode}
               onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
               placeholder="e.g. A1B2C3"
-              maxLength={8}
+              maxLength={INPUT_LIMITS.INVITE_CODE}
               autoFocus
               className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-3 font-mono text-sm tracking-widest text-BrandText outline-none placeholder:text-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
             />
@@ -177,6 +178,7 @@ export default function NoTeam() {
               value={teamName}
               onChange={(e) => setTeamName(e.target.value)}
               placeholder="Team name"
+              maxLength={INPUT_LIMITS.NAME}
               autoFocus
               className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-3 text-sm text-BrandText outline-none placeholder:text-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
             />
@@ -185,6 +187,7 @@ export default function NoTeam() {
               value={sport}
               onChange={(e) => setSport(e.target.value)}
               placeholder="Sport (optional)"
+              maxLength={64}
               className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-3 text-sm text-BrandText outline-none placeholder:text-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
             />
             <div className="flex gap-2">
