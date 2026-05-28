@@ -4,6 +4,7 @@ import pool from "../db/pool.js";
 import { signToken, setSessionCookie, clearSessionCookie, requireAuth } from "../middleware/auth.js";
 import { generateCode, sendVerificationEmail, sendPasswordResetEmail } from "../lib/email.js";
 import { resolveActiveTeam } from "../lib/userTeams.js";
+import { isBlockedName, isBlockedEmailDomain } from "../lib/signupBlocklist.js";
 
 const router = Router();
 const SALT_ROUNDS = 10;
@@ -20,6 +21,13 @@ router.post("/signup", async (req, res, next) => {
     }
     if (password.length < 6) {
       return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim().toLowerCase();
+    if (isBlockedName(trimmedName) || isBlockedEmailDomain(trimmedEmail)) {
+      console.warn("[signup-blocked]", { name: trimmedName.slice(0, 80), email: trimmedEmail, ip: req.ip });
+      return res.status(400).json({ error: "Sign up failed. Please check your details and try again." });
     }
 
     const hash = await bcrypt.hash(password, SALT_ROUNDS);
