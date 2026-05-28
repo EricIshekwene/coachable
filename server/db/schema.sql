@@ -860,3 +860,83 @@ VALUES
   ('broadcast_emails',     'Admin broadcast email composer and send capability',      true, '[]'::jsonb),
   ('recurring_emails',     'Recurring email campaign scheduler',                      true, '[]'::jsonb)
 ON CONFLICT (name) DO NOTHING;
+
+-- ============================================================
+-- Outreach scraper (admin tool: scrape college athletic staff
+-- directories → filter by sport/role → export CSV for outreach).
+-- See OUTREACH_SCRAPER_PLAN.md / server/lib/outreachScraper/.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS outreach_schools (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  canonical_name      TEXT NOT NULL,
+  short_name          TEXT,
+  athletic_domain     TEXT NOT NULL UNIQUE,
+  platform            TEXT NOT NULL DEFAULT 'unknown'
+                        CHECK (platform IN
+                          ('sidearm_legacy','sidearm_nextgen',
+                           'prestosports','wordpress','custom','unknown')),
+  staff_directory_url TEXT,
+  division            TEXT,
+  scrapeable          BOOLEAN NOT NULL DEFAULT FALSE,
+  last_scraped_at     TIMESTAMPTZ,
+  last_scrape_error   TEXT,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS outreach_scraped_staff (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  school_id   UUID NOT NULL REFERENCES outreach_schools(id) ON DELETE CASCADE,
+  name        TEXT,
+  title       TEXT,
+  sport       TEXT,
+  role_tags   TEXT[] NOT NULL DEFAULT '{}',
+  email       TEXT,
+  phone       TEXT,
+  source      TEXT NOT NULL DEFAULT 'scrape' CHECK (source IN ('scrape','manual')),
+  scraped_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_outreach_staff_school ON outreach_scraped_staff(school_id);
+CREATE INDEX IF NOT EXISTS idx_outreach_staff_sport  ON outreach_scraped_staff(sport);
+
+-- Seed the Ohio target list (idempotent). Platforms verified live; see the plan
+-- doc's appendix. scrapeable=false rows are manual-entry only in the UI.
+INSERT INTO outreach_schools
+  (canonical_name, short_name, athletic_domain, platform, staff_directory_url, division, scrapeable)
+VALUES
+  ('Ohio State University','Ohio State','ohiostatebuckeyes.com','sidearm_nextgen','https://ohiostatebuckeyes.com/staff-directory','FBS-B1G',TRUE),
+  ('Ohio University','Ohio','ohiobobcats.com','sidearm_nextgen','https://ohiobobcats.com/staff-directory','MAC',TRUE),
+  ('Bowling Green State University','BGSU','bgsufalcons.com','sidearm_nextgen','https://bgsufalcons.com/staff-directory','MAC',TRUE),
+  ('Kent State University','Kent State','kentstatesports.com','sidearm_nextgen','https://kentstatesports.com/staff-directory','MAC',TRUE),
+  ('Miami University (OH)','Miami (OH)','miamiredhawks.com','sidearm_nextgen','https://miamiredhawks.com/staff-directory','MAC',TRUE),
+  ('University of Toledo','Toledo','utrockets.com','sidearm_nextgen','https://utrockets.com/staff-directory','MAC',TRUE),
+  ('University of Akron','Akron','gozips.com','sidearm_nextgen','https://gozips.com/staff-directory','MAC',TRUE),
+  ('University of Dayton','Dayton','daytonflyers.com','sidearm_legacy','https://daytonflyers.com/staff-directory','FCS',TRUE),
+  ('Youngstown State University','Youngstown State','ysusports.com','sidearm_legacy','https://ysusports.com/staff-directory','FCS',TRUE),
+  ('Ashland University','Ashland','goashlandeagles.com','sidearm_legacy','https://goashlandeagles.com/staff-directory','D2',TRUE),
+  ('University of Findlay','Findlay','findlayoilers.com','sidearm_legacy','https://findlayoilers.com/staff-directory','D2',TRUE),
+  ('Lake Erie College','Lake Erie','lakeeriestorm.com','sidearm_legacy','https://lakeeriestorm.com/staff-directory','D2',TRUE),
+  ('Walsh University','Walsh','athletics.walsh.edu','sidearm_legacy','https://athletics.walsh.edu/staff-directory','D2',TRUE),
+  ('Baldwin Wallace University','Baldwin Wallace','bwyellowjackets.com','sidearm_legacy','https://bwyellowjackets.com/staff-directory','D3',TRUE),
+  ('Capital University','Capital','athletics.capital.edu','sidearm_legacy','https://athletics.capital.edu/staff-directory','D3',TRUE),
+  ('Case Western Reserve University','Case Western','athletics.case.edu','sidearm_legacy','https://athletics.case.edu/staff-directory','D3',TRUE),
+  ('John Carroll University','John Carroll','jcusports.com','sidearm_legacy','https://jcusports.com/staff-directory','D3',TRUE),
+  ('Kenyon College','Kenyon','athletics.kenyon.edu','sidearm_legacy','https://athletics.kenyon.edu/staff-directory','D3',TRUE),
+  ('University of Mount Union','Mount Union','athletics.mountunion.edu','sidearm_legacy','https://athletics.mountunion.edu/staff-directory','D3',TRUE),
+  ('Ohio Wesleyan University','Ohio Wesleyan','battlingbishops.com','sidearm_legacy','https://battlingbishops.com/staff-directory','D3',TRUE),
+  ('Otterbein University','Otterbein','otterbeincardinals.com','sidearm_legacy','https://otterbeincardinals.com/staff-directory','D3',TRUE),
+  ('Wilmington College','Wilmington','wilmingtonquakers.com','sidearm_legacy','https://wilmingtonquakers.com/staff-directory','D3',TRUE),
+  ('Central State University','Central State','centralstatesports.com','unknown','https://centralstatesports.com/staff-directory','D2',TRUE),
+  ('Tiffin University','Tiffin','godragons.com','unknown','https://godragons.com/staff-directory','D2',TRUE),
+  ('Defiance College','Defiance','defianceathletics.com','prestosports',NULL,'D3',FALSE),
+  ('Marietta College','Marietta','pioneersathletics.com','prestosports',NULL,'D3',FALSE),
+  ('Ohio Northern University','Ohio Northern','onusports.com','prestosports',NULL,'D3',FALSE),
+  ('Wittenberg University','Wittenberg','wittenbergtigers.com','prestosports',NULL,'D3',FALSE),
+  ('Hiram College','Hiram','hiramathletics.com','wordpress',NULL,'D3',FALSE),
+  ('Muskingum University','Muskingum','muskies.com','wordpress',NULL,'D3',FALSE),
+  ('Heidelberg University','Heidelberg','heidelberg.edu','unknown',NULL,'D3',FALSE),
+  ('Ohio Dominican University','Ohio Dominican','ohiodominican.com','custom',NULL,'D2',FALSE),
+  ('Notre Dame College','Notre Dame (OH)','ndcfalcons.com','custom',NULL,'D2',FALSE),
+  ('Urbana University','Urbana','urbanaathletics.com','custom',NULL,'D2',FALSE)
+ON CONFLICT (athletic_domain) DO NOTHING;

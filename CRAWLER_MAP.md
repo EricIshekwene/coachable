@@ -268,6 +268,7 @@ All under [src/animation/](src/animation/), [src/canvas/](src/canvas/), [src/fea
 | `/admin/demo-videos` | [AdminDemoVideos.jsx](src/pages/AdminDemoVideos.jsx) |
 | `/admin/one-page` | [AdminOnePage.jsx](src/pages/AdminOnePage.jsx) |
 | `/admin/notifications` (owner-only) | [AdminNotificationsPage.jsx](src/pages/AdminNotificationsPage.jsx) — see [NOTIFICATIONS_PAGE.md](src/pages/NOTIFICATIONS_PAGE.md) |
+| `/admin/outreach-scraper` (owner-only) | [AdminOutreachScraperPage.jsx](src/pages/AdminOutreachScraperPage.jsx) — scrape college athletic staff directories → filter → CSV; see [OUTREACH_SCRAPER.md](server/lib/outreachScraper/OUTREACH_SCRAPER.md) |
 
 ### Staff admin (`/staff/*`)
 Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PLAN.md). Pages reuse the existing Admin* components with `basePath="/staff"` and `mode="staff"` on `<AdminProvider>`.
@@ -327,6 +328,7 @@ Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PL
 | `/sport-presets` | [routes/sportPresets.js](server/routes/sportPresets.js) |
 | `/sport-prefab-presets` | [routes/sportPrefabPresets.js](server/routes/sportPrefabPresets.js) |
 | `/notifications` (user-facing in-app inbox; admin authoring lives under `/admin/notifications`) | [routes/notifications.js](server/routes/notifications.js) |
+| `/admin/outreach` (owner-only outreach scraper; scrape/staff/export endpoints) | [routes/outreach.js](server/routes/outreach.js) — scraper lib in [server/lib/outreachScraper/](server/lib/outreachScraper/) |
 
 ### Middleware / lib / utils / config
 - [middleware/auth.js](server/middleware/auth.js) — JWT/session middleware (also exports `verifySessionToken`, `readSessionToken` for compositional auth)
@@ -345,7 +347,7 @@ Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PL
 - [db/migrate.js](server/db/migrate.js) — standalone migration runner
 - [db/pool.js](server/db/pool.js) — `pg` Pool export
 
-**Tables** (from schema.sql): `users`, `email_verification_codes`, `user_preferences`, `teams`, `team_settings`, `team_memberships`, `team_invite_codes`, `team_invites`, `team_join_requests`, `play_folders`, `plays`, `play_tags`, `play_tag_links`, `play_favorites`, `play_share_links`, `folder_share_links`, `error_reports`, `password_reset_codes`, `platform_play_folders`, `platform_plays`, `page_sections`, `user_issues`, `playbook_sections`, `playbook_section_plays`, `demo_videos`, `user_prefabs`, `admin_prefabs`, `sport_presets`, `sport_prefab_presets`, `staff_admins`, `staff_admin_invites`, `admin_audit_log`, `notifications`, `notification_recipients`, `notification_responses`.
+**Tables** (from schema.sql): `users`, `email_verification_codes`, `user_preferences`, `teams`, `team_settings`, `team_memberships`, `team_invite_codes`, `team_invites`, `team_join_requests`, `play_folders`, `plays`, `play_tags`, `play_tag_links`, `play_favorites`, `play_share_links`, `folder_share_links`, `error_reports`, `password_reset_codes`, `platform_play_folders`, `platform_plays`, `page_sections`, `user_issues`, `playbook_sections`, `playbook_section_plays`, `demo_videos`, `user_prefabs`, `admin_prefabs`, `sport_presets`, `sport_prefab_presets`, `staff_admins`, `staff_admin_invites`, `admin_audit_log`, `notifications`, `notification_recipients`, `notification_responses`, `outreach_schools`, `outreach_scraped_staff`.
 
 ---
 
@@ -356,7 +358,7 @@ All run via Vitest. One file per feature; create new ones here when adding tests
 - Admin shell: `adminBtn.test.js`, `adminModal.test.js`, `adminNav.test.js`, `adminShell.test.js`, `adminDangerMode.test.js`, `analyticsDashboard.test.js`, `usersHideFilters.test.js`
 - Plays/folders/playbooks: `localStorageAutosave.test.js`, `platformPlays.test.js`, `playbookFolderBrowse.test.js`, `playbookSections.test.js`, `landingPlaybooksNav.test.js`, `playPreviewCardCones.test.js`, `playPreviewPlayer.test.js`, `playCopyAnalytics.test.js`, `sportPresets.test.js`, `presetBallCycle.test.js`, `presetEditorMode.test.js`, `hideFromPlayers.test.js`, `sportNavContext.test.js`, `syncSports.test.js`
 - Drawing/keyframe: `keyframeStyling.test.js`, `drawingModePreviewAnimation.test.js`, `drawingFlipReflect.test.js`, `drawingModeUndoRedo.test.js`, `drawingScopeSeparation.test.js`, `annotationDrawingVisibility.test.js`, `drawingExportV3Migration.test.js`
-- Misc: `videoEncoder.test.js`, `errorReporter.test.js`, `demoVideos.test.js`, `adminNotifications.test.js` (notification audience SQL + response aggregation)
+- Misc: `videoEncoder.test.js`, `errorReporter.test.js`, `demoVideos.test.js`, `adminNotifications.test.js` (notification audience SQL + response aggregation), `outreachScraper.test.js` (sidearm parsers + sport/role normalization + CSV escaping; fixtures in `admin/test/fixtures/`)
 
 In-source unit suite for canvas geometry: [src/canvas/__tests__/drawingGeometry.test.js](src/canvas/__tests__/drawingGeometry.test.js).
 Suites used by the admin test runner: [src/testing/suites/](src/testing/suites/) (animationSchema, drawingGeometry, importExport, interpolate) and [src/testing/testRunner.js](src/testing/testRunner.js).
@@ -388,3 +390,4 @@ Suites used by the admin test runner: [src/testing/suites/](src/testing/suites/)
 - [src/components/PLAY_PREVIEW_DRAWING_MODE.md](src/components/PLAY_PREVIEW_DRAWING_MODE.md), [src/components/PLAY_PREVIEW_PLAYER.md](src/components/PLAY_PREVIEW_PLAYER.md)
 - [server/routes/DEMO_VIDEOS.md](server/routes/DEMO_VIDEOS.md), [server/routes/FORGOT_PASSWORD.md](server/routes/FORGOT_PASSWORD.md), [server/routes/PLAY_COPY_ANALYTICS_FIX.md](server/routes/PLAY_COPY_ANALYTICS_FIX.md)
 - [server/PLAYBOOK_SECTIONS.md](server/PLAYBOOK_SECTIONS.md), [server/ONBOARDING_SEED_PLAY.md](server/ONBOARDING_SEED_PLAY.md), [server/lib/ACCOUNT_DELETED_EMAIL.md](server/lib/ACCOUNT_DELETED_EMAIL.md)
+- [server/lib/outreachScraper/OUTREACH_SCRAPER.md](server/lib/outreachScraper/OUTREACH_SCRAPER.md) — outreach staff-directory scraper (Sidearm legacy/nextgen parsers, sport/role normalization, CSV export); design rationale in [OUTREACH_SCRAPER_PLAN.md](OUTREACH_SCRAPER_PLAN.md)

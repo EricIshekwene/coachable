@@ -46,6 +46,7 @@ import AdminRecurringEmailPage from "./pages/AdminRecurringEmailPage";
 import AdminNotificationsPage from "./pages/AdminNotificationsPage";
 import AdminDesignRulesPage from "./pages/AdminDesignRulesPage";
 import AdminFeatureFlagsPage from "./pages/AdminFeatureFlagsPage";
+import AdminOutreachScraperPage from "./pages/AdminOutreachScraperPage";
 import RequirePerm from "./admin/RequirePerm";
 import AppLayout from "./layouts/AppLayout";
 import Plays from "./pages/app/Plays";
@@ -376,6 +377,7 @@ export function AppRoutes() {
         <Route path="/admin/email/recurring" element={<RequireAdminSession><AdminRecurringEmailPage /></RequireAdminSession>} />
         <Route path="/admin/notifications" element={<RequireAdminSession><AdminNotificationsPage /></RequireAdminSession>} />
         <Route path="/admin/feature-flags" element={<RequireAdminSession><AdminFeatureFlagsPage /></RequireAdminSession>} />
+        <Route path="/admin/outreach-scraper" element={<RequireAdminSession><AdminOutreachScraperPage /></RequireAdminSession>} />
       </Route>
 
       {/* Staff admin tree — scoped sub-admins (see STAFF_ADMIN_PLAN.md). */}

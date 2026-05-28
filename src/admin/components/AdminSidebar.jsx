@@ -118,6 +118,14 @@ function FeatureFlagsIcon() {
   );
 }
 
+function OutreachIcon() {
+  return (
+    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 11l18-5v12L3 14v-3zM11.6 16.8a3 3 0 11-5.8-1.6" />
+    </svg>
+  );
+}
+
 function SunIcon() {
   return (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -149,6 +157,7 @@ const NAV_ITEMS = [
   { label: "Recurring", path: "/email/recurring", icon: <EmailIcon />, ownerOnly: true },
   { label: "Notifications", path: "/notifications", icon: <NotificationsIcon />, ownerOnly: true },
   { label: "Feature Flags", path: "/feature-flags", icon: <FeatureFlagsIcon />, ownerOnly: true },
+  { label: "Outreach", path: "/outreach-scraper", icon: <OutreachIcon />, ownerOnly: true },
   { label: "Staff", path: "/staff", icon: <StaffIcon />, ownerOnly: true },
 ];
 
