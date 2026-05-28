@@ -491,7 +491,7 @@ function App() {
               autoHideDuration={appMessage.messagePopup.autoHideDuration}
               onClose={appMessage.hideMessage}
             />
-            <MaintenancePage />
+            <AppRoutes />
           </AppMessageProvider>
         </FeatureFlagBridge>
       </AuthProvider>
