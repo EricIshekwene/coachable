@@ -1,5 +1,11 @@
 import { useRef, useCallback } from "react";
 import { getStepColor } from "../../utils/stepColor";
+import {
+  TRACK_SNAP_THRESHOLD_PX,
+  pxToMs,
+  snapTimeMs,
+  snapBodyStartMs,
+} from "./trackSnap";
 
 // Mirrors the coordinate system used by TimeBar
 const TRACK_VISUAL_START_PERCENT = 3;
@@ -27,6 +33,7 @@ const BODY_DRAG_THRESHOLD_PX = 5;
  *   onEndHistoryGroup?: () => void,
  *   onSeek: (timeMs: number) => void,
  *   playersById: object,
+ *   snapTargetsMs?: number[],
  * }} props
  */
 export default function StepTrack({
@@ -39,6 +46,7 @@ export default function StepTrack({
   onEndHistoryGroup,
   onSeek,
   playersById,
+  snapTargetsMs,
 }) {
   // Motion-only. Accepts both v3 (`kind === "motion"`) and legacy v2
   // (`source === "coaching-draw"`) drawings. Annotations are rejected.
@@ -149,17 +157,30 @@ export default function StepTrack({
     // dozens of pointer-move emissions collapse into one undo entry.
     ensureHistoryGroupOpen();
 
+    // Snap targets — pixel radius converted to ms using this lane's width.
+    // We deliberately do NOT remove this bar's own edges from the target list.
+    // Keeping them in produces a stable "deadband" at the current position
+    // (small mouse movement → no change); removing them caused frame-to-frame
+    // ping-pong whenever a neighbour bar shared an edge value with ours.
+    const containerWidthPx = containerRef.current?.getBoundingClientRect().width ?? 0;
+    const thresholdMs = pxToMs(TRACK_SNAP_THRESHOLD_PX, containerWidthPx, durationMs);
+    const targets = snapTargetsMs;
+
     if (drag.type === "right-edge") {
-      const newEnd = Math.round(Math.min(nextStart, Math.max(startMs + MIN_STEP_MS, timeMs)));
+      const snapped = snapTimeMs(timeMs, targets, thresholdMs);
+      const newEnd = Math.round(Math.min(nextStart, Math.max(startMs + MIN_STEP_MS, snapped)));
       applyStepPatch(step.id, { stepEndMs: newEnd });
     } else if (drag.type === "left-edge") {
-      const newStart = Math.round(Math.max(prevEnd, Math.min(endMs - MIN_STEP_MS, timeMs)));
+      const snapped = snapTimeMs(timeMs, targets, thresholdMs);
+      const newStart = Math.round(Math.max(prevEnd, Math.min(endMs - MIN_STEP_MS, snapped)));
       applyStepPatch(step.id, { stepStartMs: newStart });
     } else if (drag.type === "body") {
-      const newStart = Math.round(Math.max(prevEnd, Math.min(nextStart - spanMs, timeMs - drag.offsetMs)));
+      const rawStart = timeMs - drag.offsetMs;
+      const snappedStart = snapBodyStartMs(rawStart, spanMs, targets, thresholdMs);
+      const newStart = Math.round(Math.max(prevEnd, Math.min(nextStart - spanMs, snappedStart)));
       applyStepPatch(step.id, { stepStartMs: newStart, stepEndMs: newStart + spanMs });
     }
-  }, [durationMs, timeFromClientX, applyStepPatch, ensureHistoryGroupOpen, startBodyDrag, steps]);
+  }, [durationMs, timeFromClientX, applyStepPatch, ensureHistoryGroupOpen, startBodyDrag, steps, snapTargetsMs]);
 
   const handlePointerUp = useCallback((e, step) => {
     e.currentTarget.releasePointerCapture(e.pointerId);

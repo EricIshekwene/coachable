@@ -221,6 +221,30 @@ export default function ControlPill({
   }, [activeDrawingUi, annotationDrawings, selectedAnnotationDrawingIds]);
   const hasAnnotationLanes = annotationLaneDrawings.length > 0;
 
+  // CapCut/VN-style snap targets: every motion-step edge, every annotation
+  // window edge, the timeline boundaries, and the playhead. Both track
+  // components receive the same list so a motion bar can snap to an
+  // annotation bar's edge and vice versa.
+  const trackSnapTargetsMs = useMemo(() => {
+    const set = new Set();
+    if (Number.isFinite(timelineDurationMs)) {
+      set.add(0);
+      set.add(timelineDurationMs);
+    }
+    if (Number.isFinite(clampedTimeMs)) set.add(clampedTimeMs);
+    for (const lane of stepLanes) {
+      for (const d of lane.drawings) {
+        if (Number.isFinite(d.stepStartMs)) set.add(d.stepStartMs);
+        if (Number.isFinite(d.stepEndMs)) set.add(d.stepEndMs);
+      }
+    }
+    for (const d of annotationLaneDrawings) {
+      if (Number.isFinite(d.visibleStartMs)) set.add(d.visibleStartMs);
+      if (Number.isFinite(d.visibleEndMs)) set.add(d.visibleEndMs);
+    }
+    return Array.from(set);
+  }, [stepLanes, annotationLaneDrawings, timelineDurationMs, clampedTimeMs]);
+
   return (
     <div
       className={`flex flex-col items-center justify-between gap-[3.125px] sm:gap-[6.25px]
@@ -266,6 +290,7 @@ export default function ControlPill({
                 onEndHistoryGroup={onEndHistoryGroup}
                 onSeek={handleSeek}
                 playersById={playersById}
+                snapTargetsMs={trackSnapTargetsMs}
               />
             ))}
           </div>
@@ -282,6 +307,7 @@ export default function ControlPill({
               onBeginHistoryGroup={onBeginHistoryGroup}
               onEndHistoryGroup={onEndHistoryGroup}
               onSeek={handleSeek}
+              snapTargetsMs={trackSnapTargetsMs}
             />
           </div>
         )}

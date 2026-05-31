@@ -64,6 +64,7 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 | "time pill" (current time chip) | [src/components/controlPill/TimePill.jsx](src/components/controlPill/TimePill.jsx) |
 | "step track" (motion steps) | [src/components/controlPill/StepTrack.jsx](src/components/controlPill/StepTrack.jsx) |
 | "annotation visibility track" (timeline window for annotations) | [src/components/controlPill/AnnotationVisibilityTrack.jsx](src/components/controlPill/AnnotationVisibilityTrack.jsx) |
+| "track snapping", "timeline snap", "capcut/vn style snap" | [src/components/controlPill/trackSnap.js](src/components/controlPill/trackSnap.js) — pure helpers (see [TRACK_SNAPPING.md](src/components/controlPill/TRACK_SNAPPING.md)) |
 | "control pill dropdown" | [src/components/controlPill/DropdownMenu.jsx](src/components/controlPill/DropdownMenu.jsx) |
 | "control pill debug overlay" | [src/components/controlPill/DebugOverlay.jsx](src/components/controlPill/DebugOverlay.jsx) |
 
@@ -357,7 +358,7 @@ All run via Vitest. One file per feature; create new ones here when adding tests
 - Auth/account: `forgotPassword.test.js`, `accountDeletedEmail.test.js`, `onboarding.test.js`
 - Admin shell: `adminBtn.test.js`, `adminModal.test.js`, `adminNav.test.js`, `adminShell.test.js`, `adminDangerMode.test.js`, `analyticsDashboard.test.js`, `usersHideFilters.test.js`
 - Plays/folders/playbooks: `localStorageAutosave.test.js`, `platformPlays.test.js`, `playbookFolderBrowse.test.js`, `playbookSections.test.js`, `landingPlaybooksNav.test.js`, `playPreviewCardCones.test.js`, `playPreviewPlayer.test.js`, `playCopyAnalytics.test.js`, `sportPresets.test.js`, `presetBallCycle.test.js`, `presetEditorMode.test.js`, `hideFromPlayers.test.js`, `sportNavContext.test.js`, `syncSports.test.js`
-- Drawing/keyframe: `keyframeStyling.test.js`, `drawingModePreviewAnimation.test.js`, `drawingFlipReflect.test.js`, `drawingModeUndoRedo.test.js`, `drawingScopeSeparation.test.js`, `annotationDrawingVisibility.test.js`, `drawingExportV3Migration.test.js`
+- Drawing/keyframe: `keyframeStyling.test.js`, `drawingModePreviewAnimation.test.js`, `drawingFlipReflect.test.js`, `drawingModeUndoRedo.test.js`, `drawingScopeSeparation.test.js`, `annotationDrawingVisibility.test.js`, `drawingExportV3Migration.test.js`, `trackSnap.test.js`
 - Misc: `videoEncoder.test.js`, `errorReporter.test.js`, `demoVideos.test.js`, `adminNotifications.test.js` (notification audience SQL + response aggregation), `outreachScraper.test.js` (sidearm parsers + sport/role normalization + CSV escaping; fixtures in `admin/test/fixtures/`)
 
 In-source unit suite for canvas geometry: [src/canvas/__tests__/drawingGeometry.test.js](src/canvas/__tests__/drawingGeometry.test.js).
@@ -387,6 +388,7 @@ Suites used by the admin test runner: [src/testing/suites/](src/testing/suites/)
 - [src/features/slate/KEYFRAME_HIGHLIGHT_EDIT_FIX.md](src/features/slate/KEYFRAME_HIGHLIGHT_EDIT_FIX.md)
 - [src/features/slate/LOCALSTORAGE_AUTOSAVE.md](src/features/slate/LOCALSTORAGE_AUTOSAVE.md)
 - [src/canvas/canvas.md](src/canvas/canvas.md), [src/canvas/object-snapping.md](src/canvas/object-snapping.md)
+- [src/components/controlPill/TRACK_SNAPPING.md](src/components/controlPill/TRACK_SNAPPING.md) — CapCut/VN-style timeline snapping for motion + annotation track bars
 - [src/components/PLAY_PREVIEW_DRAWING_MODE.md](src/components/PLAY_PREVIEW_DRAWING_MODE.md), [src/components/PLAY_PREVIEW_PLAYER.md](src/components/PLAY_PREVIEW_PLAYER.md)
 - [server/routes/DEMO_VIDEOS.md](server/routes/DEMO_VIDEOS.md), [server/routes/FORGOT_PASSWORD.md](server/routes/FORGOT_PASSWORD.md), [server/routes/PLAY_COPY_ANALYTICS_FIX.md](server/routes/PLAY_COPY_ANALYTICS_FIX.md)
 - [server/PLAYBOOK_SECTIONS.md](server/PLAYBOOK_SECTIONS.md), [server/ONBOARDING_SEED_PLAY.md](server/ONBOARDING_SEED_PLAY.md), [server/lib/ACCOUNT_DELETED_EMAIL.md](server/lib/ACCOUNT_DELETED_EMAIL.md)

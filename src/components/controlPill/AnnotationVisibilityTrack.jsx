@@ -1,5 +1,11 @@
 import { useRef, useCallback } from "react";
 import { MIN_DRAWING_WINDOW_MS } from "../../features/slate/utils/drawingTiming";
+import {
+  TRACK_SNAP_THRESHOLD_PX,
+  pxToMs,
+  snapTimeMs,
+  snapBodyStartMs,
+} from "./trackSnap";
 
 // Mirrors the coordinate system used by TimeBar / StepTrack.
 const TRACK_VISUAL_START_PERCENT = 3;
@@ -33,6 +39,7 @@ const BODY_DRAG_THRESHOLD_PX = 5;
  *   onBeginHistoryGroup?: () => void,
  *   onEndHistoryGroup?: () => void,
  *   onSeek?: (timeMs: number) => void,
+ *   snapTargetsMs?: number[],
  * }} props
  */
 export default function AnnotationVisibilityTrack({
@@ -43,6 +50,7 @@ export default function AnnotationVisibilityTrack({
   onBeginHistoryGroup,
   onEndHistoryGroup,
   onSeek,
+  snapTargetsMs,
 }) {
   const lanes = (drawings || [])
     .filter((d) => d?.kind === "annotation" || (!d?.kind && !d?.attachedEntityId && !d?.attachedPlayerId))
@@ -135,20 +143,31 @@ export default function AnnotationVisibilityTrack({
 
     ensureHistoryGroupOpen();
 
+    // See StepTrack: keeping own edges in the target list creates a stable
+    // deadband at the current position. Removing them caused jitter when a
+    // neighbour bar shared an edge value with this one.
+    const containerWidthPx = containerRef.current?.getBoundingClientRect().width ?? 0;
+    const thresholdMs = pxToMs(TRACK_SNAP_THRESHOLD_PX, containerWidthPx, durationMs);
+    const targets = snapTargetsMs;
+
     if (drag.type === "right-edge") {
-      const newEnd = Math.round(Math.min(durationMs, Math.max(startMs + MIN_DRAWING_WINDOW_MS, timeMs)));
+      const snapped = snapTimeMs(timeMs, targets, thresholdMs);
+      const newEnd = Math.round(Math.min(durationMs, Math.max(startMs + MIN_DRAWING_WINDOW_MS, snapped)));
       applyVisibilityPatch(lane.drawing.id, { visibleEndMs: newEnd });
     } else if (drag.type === "left-edge") {
-      const newStart = Math.round(Math.max(0, Math.min(endMs - MIN_DRAWING_WINDOW_MS, timeMs)));
+      const snapped = snapTimeMs(timeMs, targets, thresholdMs);
+      const newStart = Math.round(Math.max(0, Math.min(endMs - MIN_DRAWING_WINDOW_MS, snapped)));
       applyVisibilityPatch(lane.drawing.id, { visibleStartMs: newStart });
     } else if (drag.type === "body") {
-      const targetStart = Math.round(Math.max(0, Math.min(durationMs - spanMs, timeMs - drag.offsetMs)));
+      const rawStart = timeMs - drag.offsetMs;
+      const snappedStart = snapBodyStartMs(rawStart, spanMs, targets, thresholdMs);
+      const targetStart = Math.round(Math.max(0, Math.min(durationMs - spanMs, snappedStart)));
       applyVisibilityPatch(lane.drawing.id, {
         visibleStartMs: targetStart,
         visibleEndMs: targetStart + spanMs,
       });
     }
-  }, [durationMs, timeFromClientX, applyVisibilityPatch, ensureHistoryGroupOpen, startBodyDrag]);
+  }, [durationMs, timeFromClientX, applyVisibilityPatch, ensureHistoryGroupOpen, startBodyDrag, snapTargetsMs]);
 
   const handlePointerUp = useCallback((e, lane) => {
     e.currentTarget.releasePointerCapture(e.pointerId);
