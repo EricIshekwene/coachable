@@ -7,7 +7,7 @@ const NAV_ITEMS = [
   { label: "Plays", path: "/app", anyOf: ["plays.viewFolders", "pageSections.manage", "playbooks.view", "presets.create", "presets.edit", "prefabs.manage"] },
   { label: "Users", path: "/users", perm: "users.viewTable" },
   { label: "One Page", path: "/one-page", perm: "pageSections.manage" },
-  { label: "Design Rules", path: "/design-rules", adminOnly: true },
+  { label: "Design System", path: "/design-rules", adminOnly: true },
   { label: "Errors", path: "/errors", perm: "errors.viewReports" },
   { label: "Issues", path: "/user-issues", perm: "issues.view" },
   { label: "Videos", path: "/demo-videos", perm: "videos.addDemo" },

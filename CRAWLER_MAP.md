@@ -268,6 +268,7 @@ All under [src/animation/](src/animation/), [src/canvas/](src/canvas/), [src/fea
 | `/admin/gif-test` | [AdminGIFTest.jsx](src/pages/AdminGIFTest.jsx) |
 | `/admin/demo-videos` | [AdminDemoVideos.jsx](src/pages/AdminDemoVideos.jsx) |
 | `/admin/one-page` | [AdminOnePage.jsx](src/pages/AdminOnePage.jsx) |
+| `/admin/design-rules` (+`/:section`, admin-only) — **Design System** | [designSystem/DesignSystemPage.jsx](src/pages/designSystem/DesignSystemPage.jsx) — multi-page design system (foundations, tokens, components, patterns, templates, cross-cutting rules, Slate UI); see [DESIGN_SYSTEM.md](src/pages/designSystem/DESIGN_SYSTEM.md). Nav metadata in [designSystemNav.js](src/pages/designSystem/designSystemNav.js), slug→component map in [designSystemSections.js](src/pages/designSystem/designSystemSections.js), shared primitives in [dsPrimitives.jsx](src/pages/designSystem/dsPrimitives.jsx), one file per section in [sections/](src/pages/designSystem/sections/) |
 | `/admin/notifications` (owner-only) | [AdminNotificationsPage.jsx](src/pages/AdminNotificationsPage.jsx) — see [NOTIFICATIONS_PAGE.md](src/pages/NOTIFICATIONS_PAGE.md) |
 | `/admin/outreach-scraper` (owner-only) | [AdminOutreachScraperPage.jsx](src/pages/AdminOutreachScraperPage.jsx) — scrape college athletic staff directories → filter → CSV; see [OUTREACH_SCRAPER.md](server/lib/outreachScraper/OUTREACH_SCRAPER.md) |
 
@@ -299,6 +300,7 @@ Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PL
 - [StaffAdminManager.jsx](src/admin/StaffAdminManager.jsx) — owner-only UI mounted in the /admin dashboard for inviting + revoking staff admins
 - **components/**: AdminShell, AdminPage, AdminSection, AdminHeader, AdminNav (perm-filtered), AdminSidebar, AdminCard, AdminBtn, AdminInput, AdminSelect, AdminCheckbox, AdminBadge, AdminEmptyState, AdminSpinner, AdminModal — see [src/admin/components/](src/admin/components/)
 - **analytics/**: AnalyticsDashboard + KpiStrip, KpiCard, ActivityFeed, UserGrowthChart, SportMixChart, PlayActivityChart, OnboardingFunnel, useDashboardAnalytics — see [src/admin/analytics/](src/admin/analytics/)
+- **Design System** ("design system", "design rules", "component catalog", "style guide", "design tokens"): [src/pages/designSystem/](src/pages/designSystem/) at `/admin/design-rules` — see [DESIGN_SYSTEM.md](src/pages/designSystem/DESIGN_SYSTEM.md)
 
 ---
 
@@ -356,7 +358,7 @@ Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PL
 All run via Vitest. One file per feature; create new ones here when adding tests.
 
 - Auth/account: `forgotPassword.test.js`, `accountDeletedEmail.test.js`, `onboarding.test.js`
-- Admin shell: `adminBtn.test.js`, `adminModal.test.js`, `adminNav.test.js`, `adminShell.test.js`, `adminDangerMode.test.js`, `analyticsDashboard.test.js`, `usersHideFilters.test.js`
+- Admin shell: `adminBtn.test.js`, `adminModal.test.js`, `adminNav.test.js`, `adminShell.test.js`, `adminDangerMode.test.js`, `analyticsDashboard.test.js`, `usersHideFilters.test.js`, `designSystem.test.js` (design system nav registry: slug integrity, default section, prev/next adjacency)
 - Plays/folders/playbooks: `localStorageAutosave.test.js`, `platformPlays.test.js`, `playbookFolderBrowse.test.js`, `playbookSections.test.js`, `landingPlaybooksNav.test.js`, `playPreviewCardCones.test.js`, `playPreviewPlayer.test.js`, `playCopyAnalytics.test.js`, `sportPresets.test.js`, `presetBallCycle.test.js`, `presetEditorMode.test.js`, `hideFromPlayers.test.js`, `sportNavContext.test.js`, `syncSports.test.js`
 - Drawing/keyframe: `keyframeStyling.test.js`, `drawingModePreviewAnimation.test.js`, `drawingFlipReflect.test.js`, `drawingModeUndoRedo.test.js`, `drawingScopeSeparation.test.js`, `annotationDrawingVisibility.test.js`, `drawingExportV3Migration.test.js`, `trackSnap.test.js`
 - Misc: `videoEncoder.test.js`, `errorReporter.test.js`, `demoVideos.test.js`, `adminNotifications.test.js` (notification audience SQL + response aggregation), `outreachScraper.test.js` (sidearm parsers + sport/role normalization + CSV escaping; fixtures in `admin/test/fixtures/`)
@@ -393,3 +395,4 @@ Suites used by the admin test runner: [src/testing/suites/](src/testing/suites/)
 - [server/routes/DEMO_VIDEOS.md](server/routes/DEMO_VIDEOS.md), [server/routes/FORGOT_PASSWORD.md](server/routes/FORGOT_PASSWORD.md), [server/routes/PLAY_COPY_ANALYTICS_FIX.md](server/routes/PLAY_COPY_ANALYTICS_FIX.md)
 - [server/PLAYBOOK_SECTIONS.md](server/PLAYBOOK_SECTIONS.md), [server/ONBOARDING_SEED_PLAY.md](server/ONBOARDING_SEED_PLAY.md), [server/lib/ACCOUNT_DELETED_EMAIL.md](server/lib/ACCOUNT_DELETED_EMAIL.md)
 - [server/lib/outreachScraper/OUTREACH_SCRAPER.md](server/lib/outreachScraper/OUTREACH_SCRAPER.md) — outreach staff-directory scraper (Sidearm legacy/nextgen parsers, sport/role normalization, CSV export); design rationale in [OUTREACH_SCRAPER_PLAN.md](OUTREACH_SCRAPER_PLAN.md)
+- [src/pages/designSystem/DESIGN_SYSTEM.md](src/pages/designSystem/DESIGN_SYSTEM.md) — the admin Design System reference (`/admin/design-rules`): structure, shared primitives, status vocabulary, the 38 sections, and how to extend it (read before adding/renaming design-system sections)
