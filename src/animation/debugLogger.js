@@ -25,7 +25,9 @@ export const log = (message, meta) => {
   if (ringBuffer.length > MAX_LOG_LINES) {
     ringBuffer.splice(0, ringBuffer.length - MAX_LOG_LINES);
   }
-  console.log(line);
+  // No console output — kept in the in-memory ring buffer only (used by the
+  // "Copy Debug" action). This used to console.log every line and spammed the
+  // console during normal editing.
   return line;
 };
 

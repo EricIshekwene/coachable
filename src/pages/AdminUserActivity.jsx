@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import PlayPreviewCard from "../components/PlayPreviewCard";
 import { useAdmin } from "../admin/AdminContext";
 import { adminPath } from "../admin/adminNav";
 import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
 import { AdminShell, AdminHeader, AdminPage, AdminBtn, AdminSpinner } from "../admin/components";
+import AdminModal from "../admin/components/AdminModal";
+import { isAdminElevated } from "../utils/adminElevation";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -115,6 +117,7 @@ function StatCard({ label, value, valueStyle }) {
 export default function AdminUserActivity() {
   const { basePath, isOwner } = useAdmin();
   const { userId } = useParams();
+  const navigate = useNavigate();
   const [session] = useState(() => readAdminSession() || "");
   const [payload, setPayload] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -124,6 +127,9 @@ export default function AdminUserActivity() {
   const [deletedTeamsLoading, setDeletedTeamsLoading] = useState(false);
   const [deletedTeamsError, setDeletedTeamsError] = useState("");
   const [restoringId, setRestoringId] = useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const authed = basePath === "/staff" || Boolean(session);
 
@@ -178,6 +184,24 @@ export default function AdminUserActivity() {
     setShowRestoreDeleted((prev) => !prev);
   };
 
+  const handleDeleteUser = async () => {
+    if (!isAdminElevated()) {
+      setDeleteError("Danger Mode required. Enable it from the Admin dashboard before deleting users.");
+      return;
+    }
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await adminFetch(`/admin/users/${userId}`, { method: "DELETE" });
+      setDeleteModalOpen(false);
+      navigate(adminPath(basePath, ""));
+    } catch (err) {
+      setDeleteError(err.message || "Failed to delete user.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleRestoreTeam = async (teamId) => {
     setRestoringId(teamId);
     try {
@@ -224,11 +248,43 @@ export default function AdminUserActivity() {
         backLabel="Dashboard"
         backTo={adminPath(basePath, "")}
         actions={
-          <AdminBtn variant="secondary" size="sm" onClick={fetchUserActivity} disabled={loading}>
-            {loading ? <AdminSpinner size={12} /> : "Refresh"}
-          </AdminBtn>
+          <div className="flex items-center gap-2">
+            <AdminBtn variant="secondary" size="sm" onClick={fetchUserActivity} disabled={loading}>
+              {loading ? <AdminSpinner size={12} /> : "Refresh"}
+            </AdminBtn>
+            {user && (
+              <AdminBtn
+                variant="danger"
+                size="sm"
+                onClick={() => { setDeleteError(""); setDeleteModalOpen(true); }}
+              >
+                Delete user
+              </AdminBtn>
+            )}
+          </div>
         }
       />
+
+      <AdminModal
+        open={deleteModalOpen}
+        onClose={() => (deleting ? null : setDeleteModalOpen(false))}
+        title="Delete user"
+      >
+        <p className="text-sm" style={{ color: "var(--adm-text)" }}>
+          Delete <strong>{user?.name || user?.email || "this user"}</strong>? This also removes any teams they own and cannot be undone.
+        </p>
+        {deleteError && (
+          <p className="mt-3 text-xs" style={{ color: "var(--adm-danger)" }}>{deleteError}</p>
+        )}
+        <div className="mt-5 flex justify-end gap-2">
+          <AdminBtn variant="secondary" size="sm" onClick={() => setDeleteModalOpen(false)} disabled={deleting}>
+            Cancel
+          </AdminBtn>
+          <AdminBtn variant="danger" size="sm" onClick={handleDeleteUser} disabled={deleting}>
+            {deleting ? "Deleting..." : "Delete"}
+          </AdminBtn>
+        </div>
+      </AdminModal>
 
       <AdminPage>
         {error && (

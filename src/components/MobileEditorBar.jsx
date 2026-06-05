@@ -3,10 +3,15 @@ import {
   FiPlay, FiPause, FiPlus, FiMinus, FiX,
   FiRotateCcw, FiRotateCw,
   FiTrash2, FiUsers, FiTool, FiUserPlus, FiCircle,
-  FiChevronDown, FiChevronUp, FiMousePointer, FiMove, FiChevronRight,
+  FiChevronUp, FiMousePointer, FiMove, FiChevronRight, FiChevronLeft,
   FiLayers, FiEye, FiEyeOff, FiSettings, FiUpload, FiDownload,
+  FiShare2, FiCamera, FiVideo, FiImage, FiCrosshair,
 } from "react-icons/fi";
-import { PiPencilSimpleLine } from "react-icons/pi";
+import {
+  PiPencilSimpleLine, PiPenNib, PiEraserFill, PiTextTBold, PiShapesFill, PiArrowUpRight,
+} from "react-icons/pi";
+import { TbFlipHorizontal, TbFlipVertical } from "react-icons/tb";
+import { MdAlignHorizontalLeft, MdAlignHorizontalCenter, MdAlignHorizontalRight } from "react-icons/md";
 import coneIcon from "../assets/objects/cone.png";
 import { SPORT_DEFAULTS } from "../features/slate/hooks/useAdvancedSettings";
 import { Slider } from "@mui/material";
@@ -15,6 +20,13 @@ import PitchSettingsSection from "./advancedSettings/PitchSettingsSection";
 import PlayerSettingsSection from "./advancedSettings/PlayerSettingsSection";
 import BallSettingsSection from "./advancedSettings/BallSettingsSection";
 import AnimationSettingsSection from "./advancedSettings/AnimationSettingsSection";
+import SpeedSlider from "./controlPill/SpeedSlider";
+
+/** Preset swatches offered in mobile colour pickers (players + drawings). */
+const MOBILE_COLOR_SWATCHES = [
+  "#ef4444", "#3b82f6", "#22c55e", "#eab308",
+  "#a855f7", "#f97316", "#ec4899", "#ffffff", "#111111",
+];
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 const fmt = (ms) => {
@@ -321,12 +333,16 @@ function AddSheet({ onToolChange, onClose }) {
   );
 }
 
-function ToolsSheet({ activeTool, onToolChange, onUndo, onRedo, onReset, zoomPercent, onZoomIn, onZoomOut }) {
+function ToolsSheet({
+  activeTool, onToolChange, onUndo, onRedo, onReset, zoomPercent, onZoomIn, onZoomOut,
+  onRotateLeft, onRotateCenter, onRotateRight, onReflectX, onReflectY,
+}) {
   const tools = [
     { id: "select", label: "Select", icon: <FiMousePointer className="text-lg" /> },
     { id: "hand",   label: "Pan",    icon: <FiMove className="text-lg" /> },
     { id: "pen",    label: "Draw",   icon: <PiPencilSimpleLine className="text-lg" /> },
   ];
+  const hasField = onRotateLeft || onReflectX;
 
   return (
     <div className="flex flex-col gap-5">
@@ -390,6 +406,148 @@ function ToolsSheet({ activeTool, onToolChange, onUndo, onRedo, onReset, zoomPer
           </button>
         </div>
       </div>
+
+      {/* Field — rotation + reflect */}
+      {hasField && (
+        <div>
+          <p className="text-[11px] text-BrandGray2 uppercase tracking-wider mb-2">Field</p>
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            {[
+              { label: "Rotate L", icon: <FiRotateCcw />, action: onRotateLeft },
+              { label: "Straighten", icon: <FiCrosshair />, action: onRotateCenter },
+              { label: "Rotate R", icon: <FiRotateCw />, action: onRotateRight },
+            ].map(({ label, icon, action }) => (
+              <button
+                key={label}
+                onClick={action}
+                className="flex flex-col items-center gap-1.5 py-3 rounded-xl border border-white/10 text-BrandGray text-lg active:bg-white/5"
+              >
+                {icon}
+                <span className="text-[11px]">{label}</span>
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: "Flip X", icon: <TbFlipHorizontal />, action: onReflectX },
+              { label: "Flip Y", icon: <TbFlipVertical />, action: onReflectY },
+            ].map(({ label, icon, action }) => (
+              <button
+                key={label}
+                onClick={action}
+                className="flex items-center justify-center gap-2 py-3 rounded-xl border border-white/10 text-BrandGray text-lg active:bg-white/5"
+              >
+                {icon}
+                <span className="text-[12px] font-DmSans">{label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * MobileTransformSection — touch-friendly position (X/Y) editor and horizontal
+ * alignment for a single selected item (player, ball, or cone). Mirrors the
+ * desktop PlayerTransformSection's live-pose sync so the values track the
+ * animated position during scrub.
+ *
+ * @param {{
+ *   item: { id: string, x?: number, y?: number },
+ *   fieldBounds: { left?: number, right?: number }|null,
+ *   onPositionChange: (id: string, pos: { x: number, y: number }) => boolean|void,
+ *   timelineDisplayTimeMs: number,
+ *   resolveItemPose: (id: string) => { x: number, y: number }|null,
+ * }} props
+ */
+function MobileTransformSection({ item, fieldBounds, onPositionChange, timelineDisplayTimeMs, resolveItemPose }) {
+  const [draftX, setDraftX] = useState("");
+  const [draftY, setDraftY] = useState("");
+  const isFocusedRef = useRef(false);
+
+  const getCurrentPose = () => {
+    if (!item) return null;
+    if (resolveItemPose) {
+      const pose = resolveItemPose(item.id);
+      if (pose && Number.isFinite(pose.x) && Number.isFinite(pose.y)) return pose;
+    }
+    return { x: item.x ?? 0, y: item.y ?? 0 };
+  };
+
+  const syncFromPose = () => {
+    const pose = getCurrentPose();
+    if (!pose) return;
+    setDraftX(String(Math.round(pose.x)));
+    setDraftY(String(Math.round(pose.y)));
+  };
+
+  // Sync on item change, external position change, and live during scrub
+  // (skipping while the user is typing). Matches PlayerTransformSection.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (item) syncFromPose(); }, [item?.id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (item && !isFocusedRef.current) syncFromPose(); }, [timelineDisplayTimeMs, item?.x, item?.y]);
+
+  if (!item) return null;
+
+  const commitPosition = () => {
+    const x = parseFloat(draftX);
+    const y = parseFloat(draftY);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) { syncFromPose(); return; }
+    const ok = onPositionChange?.(item.id, { x, y });
+    if (ok === false) syncFromPose();
+  };
+
+  const alignX = (targetX) => {
+    const pose = getCurrentPose();
+    const y = pose?.y ?? item.y ?? 0;
+    const ok = onPositionChange?.(item.id, { x: targetX, y });
+    if (ok === false) { syncFromPose(); return; }
+    setDraftX(String(Math.round(targetX)));
+    setDraftY(String(Math.round(y)));
+  };
+
+  const inputClass =
+    "w-full bg-BrandBlack border border-white/15 rounded-lg px-3 py-2 text-white text-sm font-DmSans text-center focus:outline-none focus:border-BrandOrange";
+  const alignBtn =
+    "flex-1 flex items-center justify-center py-2.5 rounded-lg bg-BrandBlack2 text-BrandGray active:bg-white/10 active:text-BrandOrange transition";
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-[11px] text-BrandOrange uppercase tracking-wider">Position</p>
+      <div className="flex gap-2">
+        <label className="flex-1 flex flex-col gap-1">
+          <span className="text-[10px] text-BrandGray2 text-center">X</span>
+          <input
+            type="number" inputMode="numeric" className={inputClass} value={draftX}
+            onChange={(e) => setDraftX(e.target.value)}
+            onFocus={() => { isFocusedRef.current = true; }}
+            onBlur={() => { isFocusedRef.current = false; commitPosition(); }}
+          />
+        </label>
+        <label className="flex-1 flex flex-col gap-1">
+          <span className="text-[10px] text-BrandGray2 text-center">Y</span>
+          <input
+            type="number" inputMode="numeric" className={inputClass} value={draftY}
+            onChange={(e) => setDraftY(e.target.value)}
+            onFocus={() => { isFocusedRef.current = true; }}
+            onBlur={() => { isFocusedRef.current = false; commitPosition(); }}
+          />
+        </label>
+      </div>
+      <div className="flex gap-2">
+        <button type="button" title="Align left" onClick={() => alignX(fieldBounds?.left ?? 0)} className={alignBtn}>
+          <MdAlignHorizontalLeft className="text-base" />
+        </button>
+        <button type="button" title="Align center" onClick={() => alignX(0)} className={alignBtn}>
+          <MdAlignHorizontalCenter className="text-base" />
+        </button>
+        <button type="button" title="Align right" onClick={() => alignX(fieldBounds?.right ?? 0)} className={alignBtn}>
+          <MdAlignHorizontalRight className="text-base" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -409,8 +567,14 @@ function PlayersSheet({
   onEditDraftChange,
   onCloseEditPlayer,
   onTogglePlayerHidden,
+  onPlayerColorChange,
   allPlayersDisplay,
   onAllPlayersDisplayChange,
+  transformItem,
+  fieldBounds,
+  onPlayerPositionChange,
+  timelineDisplayTimeMs,
+  resolveItemPose,
 }) {
   const players = useMemo(() => Object.values(playersById || {}), [playersById]);
   const sportCfg = SPORT_DEFAULTS[fieldType] || {};
@@ -420,6 +584,19 @@ function PlayersSheet({
 
   return (
     <div className="flex flex-col gap-3">
+      {/* Position editor — shown when exactly one item is selected */}
+      {transformItem && (
+        <div className="rounded-xl border border-BrandOrange/40 bg-BrandOrange/5 px-3 py-2">
+          <MobileTransformSection
+            item={transformItem}
+            fieldBounds={fieldBounds}
+            onPositionChange={onPlayerPositionChange}
+            timelineDisplayTimeMs={timelineDisplayTimeMs}
+            resolveItemPose={resolveItemPose}
+          />
+        </div>
+      )}
+
       {/* Size slider */}
       <div>
         <div className="flex items-center justify-between mb-1">
@@ -467,6 +644,9 @@ function PlayersSheet({
                 if (isEditing) {
                   onCloseEditPlayer?.();
                 } else {
+                  // Select on canvas (so the position editor + context pill
+                  // target this player) and open the inline name/number editor.
+                  onSelectPlayer?.(p.id, { mode: "set" });
                   onEditPlayer?.(p.id);
                 }
               }}
@@ -523,6 +703,39 @@ function PlayersSheet({
                     className="w-full bg-BrandBlack border border-BrandGray2/40 rounded-lg px-3 py-2 text-white text-sm font-DmSans focus:outline-none focus:border-BrandOrange"
                   />
                 </label>
+                {onPlayerColorChange && (
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[11px] text-BrandOrange font-DmSans uppercase tracking-wider">Colour</span>
+                    <div className="flex flex-wrap gap-2.5">
+                      {MOBILE_COLOR_SWATCHES.map((hex) => {
+                        const isActive = (p.color || "").toLowerCase() === hex.toLowerCase();
+                        return (
+                          <button
+                            key={hex}
+                            onClick={() => onPlayerColorChange(hex, p.id)}
+                            className="w-8 h-8 rounded-full border-2 transition-transform active:scale-90"
+                            style={{
+                              backgroundColor: hex,
+                              borderColor: isActive ? "#FF7A18" : "transparent",
+                              boxShadow: isActive ? "0 0 0 2px #FF7A18" : "0 0 0 1px rgba(255,255,255,0.2)",
+                            }}
+                            aria-label={`Set colour ${hex}`}
+                          />
+                        );
+                      })}
+                      <label className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center overflow-hidden relative active:scale-90 transition-transform">
+                        <span className="text-BrandGray2 text-base">+</span>
+                        <input
+                          type="color"
+                          value={p.color || "#ef4444"}
+                          onChange={(e) => onPlayerColorChange(e.target.value, p.id)}
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                          aria-label="Custom player colour"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                )}
                 <button
                   onClick={onCloseEditPlayer}
                   className="w-full py-2 rounded-lg border border-white/20 text-BrandGray text-sm font-DmSans active:bg-white/5 mt-1"
@@ -611,6 +824,191 @@ function PrefabsSheet({ customPrefabs = [], publishedPrefabs = [], onPrefabSelec
 }
 
 
+// ── Draw sheet ────────────────────────────────────────────────────────────────
+
+/**
+ * DrawSheet — annotation drawing sub-tool picker and style controls for mobile.
+ * Picking a sub-tool arms the pen tool and closes the sheet so the user can draw;
+ * the style controls (colour, stroke width, opacity) adjust live. Replaces the
+ * floating DrawToolsPill + the desktop right-panel DrawingStyleSection, neither
+ * of which is finger-friendly or visible in the mobile layout.
+ */
+function DrawSheet({
+  drawSubTool,
+  onSubToolChange,
+  drawColor,
+  onDrawColorChange,
+  drawStrokeWidth,
+  onDrawStrokeWidthChange,
+  drawOpacity,
+  onDrawOpacityChange,
+  onClose,
+}) {
+  const subTools = [
+    { id: "draw",  label: "Pen",   icon: <PiPenNib className="text-lg" style={{ transform: "rotate(90deg)" }} /> },
+    { id: "arrow", label: "Arrow", icon: <PiArrowUpRight className="text-lg" /> },
+    { id: "text",  label: "Text",  icon: <PiTextTBold className="text-lg" /> },
+    { id: "shape", label: "Shape", icon: <PiShapesFill className="text-lg" /> },
+    { id: "erase", label: "Erase", icon: <PiEraserFill className="text-lg" /> },
+    { id: "select", label: "Select", icon: <FiMousePointer className="text-lg" /> },
+  ];
+  const opacityPct = Math.round(clamp(Number(drawOpacity ?? 1), 0, 1) * 100);
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Sub-tool picker */}
+      <div>
+        <p className="text-[11px] text-BrandGray2 uppercase tracking-wider mb-2">Tool</p>
+        <div className="grid grid-cols-3 gap-2">
+          {subTools.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => { onSubToolChange?.(t.id); onClose?.(); }}
+              className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border text-sm font-DmSans transition ${
+                drawSubTool === t.id
+                  ? "border-BrandOrange bg-BrandOrange/10 text-BrandOrange"
+                  : "border-white/10 text-BrandGray active:bg-white/5"
+              }`}
+            >
+              {t.icon}
+              <span className="text-[11px]">{t.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Colour */}
+      <div>
+        <p className="text-[11px] text-BrandGray2 uppercase tracking-wider mb-2">Colour</p>
+        <div className="flex flex-wrap gap-2.5">
+          {MOBILE_COLOR_SWATCHES.map((hex) => {
+            const isActive = (drawColor || "").toLowerCase() === hex.toLowerCase();
+            return (
+              <button
+                key={hex}
+                onClick={() => onDrawColorChange?.(hex)}
+                className="w-9 h-9 rounded-full border-2 transition-transform active:scale-90"
+                style={{
+                  backgroundColor: hex,
+                  borderColor: isActive ? "#FF7A18" : "transparent",
+                  boxShadow: isActive ? "0 0 0 2px #FF7A18" : "0 0 0 1px rgba(255,255,255,0.2)",
+                }}
+                aria-label={`Colour ${hex}`}
+              />
+            );
+          })}
+          <label className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center overflow-hidden relative active:scale-90 transition-transform">
+            <span className="text-BrandGray2 text-base">+</span>
+            <input
+              type="color"
+              value={drawColor || "#ffffff"}
+              onChange={(e) => onDrawColorChange?.(e.target.value)}
+              className="absolute inset-0 opacity-0 cursor-pointer"
+              aria-label="Custom colour"
+            />
+          </label>
+        </div>
+      </div>
+
+      {/* Stroke width */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-[11px] text-BrandGray2 uppercase tracking-wider">Stroke Width</p>
+          <span className="text-[11px] text-BrandOrange font-DmSans font-semibold">{Math.round(drawStrokeWidth ?? 4)}px</span>
+        </div>
+        <div className="px-2">
+          <Slider
+            min={1} max={40} step={1}
+            value={Number(drawStrokeWidth ?? 4)}
+            onChange={(_, v) => onDrawStrokeWidthChange?.(Array.isArray(v) ? v[0] : v)}
+            sx={BRAND_SLIDER_SX}
+            aria-label="Stroke width"
+          />
+        </div>
+      </div>
+
+      {/* Opacity */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-[11px] text-BrandGray2 uppercase tracking-wider">Opacity</p>
+          <span className="text-[11px] text-BrandOrange font-DmSans font-semibold">{opacityPct}%</span>
+        </div>
+        <div className="px-2">
+          <Slider
+            min={10} max={100} step={5}
+            value={opacityPct}
+            onChange={(_, v) => onDrawOpacityChange?.((Array.isArray(v) ? v[0] : v) / 100)}
+            sx={BRAND_SLIDER_SX}
+            aria-label="Opacity"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Export / file sheet ─────────────────────────────────────────────────────
+
+/**
+ * ExportSheet — save and export actions: Save to Playbook, screenshot (PNG),
+ * video, GIF, plus import/download of the play JSON. Each button calls the same
+ * Slate handler used by the desktop right panel; the export modals themselves
+ * are already rendered by Slate regardless of layout.
+ */
+function ExportSheet({
+  playName,
+  onPlayNameChange,
+  onSaveToPlaybook,
+  onScreenshot,
+  onVideoExport,
+  onGifExport,
+  onImport,
+  onDownload,
+  onClose,
+}) {
+  // [icon, label, sub, handler, accent, dividerBefore]
+  const rows = [
+    [<FiShare2 key="i" />, "Save to Playbook", "Save this play to a playbook", onSaveToPlaybook, true, false],
+    [<FiCamera key="i" />, "Export Image", "Capture a PNG of the field", onScreenshot, false, false],
+    [<FiVideo key="i" />, "Export Video", "Render the animation to MP4", onVideoExport, false, false],
+    [<FiImage key="i" />, "Export GIF", "Render the animation to GIF", onGifExport, false, false],
+    [<FiDownload key="i" />, "Download JSON", "Save the play file to your device", onDownload, false, true],
+    [<FiUpload key="i" />, "Import Play", "Load a play from a JSON file", onImport, false, false],
+  ].filter(([, , , handler]) => typeof handler === "function");
+
+  return (
+    <div className="flex flex-col gap-2">
+      {typeof onPlayNameChange === "function" && (
+        <label className="flex flex-col gap-1 mb-1">
+          <span className="text-[11px] text-BrandOrange font-DmSans uppercase tracking-wider">Play Name</span>
+          <input
+            type="text"
+            value={playName ?? ""}
+            onChange={(e) => onPlayNameChange(e.target.value)}
+            placeholder="Untitled play"
+            className="w-full bg-BrandBlack border border-BrandGray2/40 rounded-lg px-3 py-2.5 text-white text-sm font-DmSans focus:outline-none focus:border-BrandOrange"
+          />
+        </label>
+      )}
+      {rows.map(([icon, label, sub, handler, accent, dividerBefore]) => (
+        <div key={label} className="flex flex-col gap-2">
+          {dividerBefore && <div className="h-px bg-white/10 my-1" />}
+          <button
+            onClick={() => { handler?.(); onClose?.(); }}
+            className="flex items-center gap-3 w-full px-4 py-3 rounded-xl bg-BrandBlack2 active:bg-white/10 text-white"
+          >
+            <span className={`text-xl shrink-0 ${accent ? "text-BrandOrange" : "text-BrandGray"}`}>{icon}</span>
+            <div className="flex flex-col items-start">
+              <span className="text-sm font-DmSans font-semibold">{label}</span>
+              {sub && <span className="text-xs text-BrandGray2 font-DmSans">{sub}</span>}
+            </div>
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /**
  * SelectionBanner — floating pill shown when 2+ objects are selected.
  * Provides a "Save Group" button to open the save-prefab modal.
@@ -651,10 +1049,9 @@ function AdvancedSettingsSheet({
   onFieldTypeChange,
   autoplayEnabled,
   onAutoplayChange,
-  onDeleteAllKeyframes,
-  onDownload,
-  onImport,
-  adminMode,
+  speedMultiplier,
+  onSpeedChange,
+  durationMs,
 }) {
   const settings = advancedSettings ?? {};
   const pitch = settings.pitch ?? {};
@@ -699,6 +1096,16 @@ function AdvancedSettingsSheet({
             <span className={`absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-BrandBlack rounded-full shadow-sm transition-transform duration-200 ${autoplayEnabled ? "translate-x-5" : "translate-x-0.5"}`} />
           </button>
         </div>
+        {typeof onSpeedChange === "function" && (
+          <div className="flex flex-col gap-1 w-full">
+            <span className="text-BrandGray text-xs font-DmSans">Playback Speed</span>
+            <SpeedSlider
+              speedMultiplier={speedMultiplier ?? 0}
+              onSpeedChange={onSpeedChange}
+              durationMs={durationMs}
+            />
+          </div>
+        )}
       </div>
 
       {/* Reset to Default */}
@@ -713,13 +1120,17 @@ function AdvancedSettingsSheet({
 }
 
 const TABS = [
-  { id: "tools",     label: "Tools",   icon: <FiTool className="text-xl" />,            sheet: true  },
-  { id: "players",   label: "Players", icon: <FiUsers className="text-xl" />,           sheet: true  },
-  { id: "add",       label: "Add",     icon: <FiUserPlus className="text-xl" />,        sheet: true  },
-  { id: "pen",       label: "Draw",    icon: <PiPencilSimpleLine className="text-xl" />, sheet: false },
-  { id: "prefabs",   label: "Prefabs", icon: <FiLayers className="text-xl" />,          sheet: true  },
-  { id: "settings",  label: "Settings", icon: <FiSettings className="text-xl" />,       sheet: true  },
+  { id: "tools",    label: "Tools",   icon: <FiTool className="text-xl" /> },
+  { id: "add",      label: "Add",     icon: <FiUserPlus className="text-xl" /> },
+  { id: "players",  label: "Players", icon: <FiUsers className="text-xl" /> },
+  { id: "draw",     label: "Draw",    icon: <PiPencilSimpleLine className="text-xl" /> },
+  { id: "prefabs",  label: "Prefabs", icon: <FiLayers className="text-xl" /> },
+  { id: "export",   label: "Export",  icon: <FiShare2 className="text-xl" /> },
+  { id: "settings", label: "More",    icon: <FiSettings className="text-xl" /> },
 ];
+
+/** Tool ids that count as "add placement" mode for the Add tab's active state. */
+const ADD_TOOLS = ["addPlayer", "addBall", "addCone"];
 
 // ── Main export ──────────────────────────────────────────────────────────────
 
@@ -757,11 +1168,18 @@ export default function MobileEditorBar({
   zoomPercent,
   onZoomIn,
   onZoomOut,
+  // Field
+  onRotateLeft,
+  onRotateCenter,
+  onRotateRight,
+  onReflectX,
+  onReflectY,
   // Selection
   selectedItemIds = [],
   onSavePrefab,
   // Players
   playersById,
+  ballsById,
   representedPlayerIds,
   selectedPlayerIds,
   playerEditor,
@@ -772,12 +1190,36 @@ export default function MobileEditorBar({
   onEditDraftChange,
   onCloseEditPlayer,
   onTogglePlayerHidden,
+  onPlayerColorChange,
+  // Transform (single selected item)
+  fieldBounds,
+  onPlayerPositionChange,
+  timelineDisplayTimeMs,
+  resolveItemPose,
   customPrefabs = [],
   publishedPrefabs = [],
   onPrefabSelect,
   onDeleteCustomPrefab,
   allPlayersDisplay,
   onAllPlayersDisplayChange,
+  // Draw style
+  drawSubTool,
+  onDrawSubToolChange,
+  drawColor,
+  onDrawColorChange,
+  drawStrokeWidth,
+  onDrawStrokeWidthChange,
+  drawOpacity,
+  onDrawOpacityChange,
+  // Export / file
+  playName,
+  onPlayNameChange,
+  onSaveToPlaybook,
+  onScreenshot,
+  onVideoExport,
+  onGifExport,
+  onDownload,
+  onImport,
   // Advanced settings
   advancedSettings,
   onAdvancedSettingsChange,
@@ -785,13 +1227,19 @@ export default function MobileEditorBar({
   onFieldTypeChange,
   autoplayEnabled,
   onAutoplayChange,
-  onDeleteAllKeyframes,
-  onDownload,
-  onImport,
-  adminMode,
+  speedMultiplier,
+  onSpeedChange,
+  onNavigateHome,
   previewMode = false,
   initialActiveSheet = null,
 }) {
+  // The single selected item (player, ball, or cone) — drives the inline
+  // position editor in the Players sheet.
+  const transformItem = useMemo(() => {
+    if (!Array.isArray(selectedItemIds) || selectedItemIds.length !== 1) return null;
+    const id = selectedItemIds[0];
+    return playersById?.[id] || ballsById?.[id] || null;
+  }, [selectedItemIds, playersById, ballsById]);
   const [activeSheet, setActiveSheet] = useState(initialActiveSheet);
   const chromePositionClass = previewMode ? "absolute" : "fixed";
   const overlayPositionClass = previewMode ? "absolute" : "fixed";
@@ -815,20 +1263,33 @@ export default function MobileEditorBar({
       >
         {/* Tab row */}
         <div className="relative z-10 flex overflow-x-auto bg-[#111] border-b border-white/10 hide-scroll">
+          {/* Back / exit — flushes + navigates away (only when a host handler is
+              provided, e.g. the admin play editor; the blank sandbox omits it). */}
+          {onNavigateHome && (
+            <button
+              onClick={() => { closeSheet(); onNavigateHome(); }}
+              className="shrink-0 flex flex-col items-center gap-1 py-3 px-3 text-BrandGray2 active:text-white border-r border-white/10"
+              aria-label="Back to plays"
+            >
+              <FiChevronLeft className="text-xl" />
+              <span className="text-[10px] font-DmSans">Back</span>
+            </button>
+          )}
           {TABS.map((tab) => {
-            const isActive = tab.sheet
-              ? activeSheet === tab.id || (tab.id === "add" && (activeTool === "addPlayer" || activeTool === "addBall" || activeTool === "addCone"))
-              : activeTool === tab.id;
+            const isActive =
+              activeSheet === tab.id ||
+              (tab.id === "add" && ADD_TOOLS.includes(activeTool)) ||
+              (tab.id === "draw" && activeTool === "pen");
             return (
               <button
                 key={tab.id}
                 onClick={() => {
-                  if (tab.sheet) {
-                    openSheet(tab.id);
-                  } else {
-                    onToolChange?.(tab.id);
-                    closeSheet();
+                  // The Draw tab arms the pen tool (if not already) and opens
+                  // its sheet so the sub-tool + style controls are reachable.
+                  if (tab.id === "draw" && activeTool !== "pen") {
+                    onToolChange?.("pen");
                   }
+                  openSheet(tab.id);
                 }}
                 className={`shrink-0 flex-1 min-w-16 flex flex-col items-center gap-1 py-3 transition ${
                   isActive ? "text-BrandOrange" : "text-BrandGray2 active:text-white"
@@ -856,6 +1317,11 @@ export default function MobileEditorBar({
             zoomPercent={zoomPercent}
             onZoomIn={onZoomIn}
             onZoomOut={onZoomOut}
+            onRotateLeft={onRotateLeft}
+            onRotateCenter={onRotateCenter}
+            onRotateRight={onRotateRight}
+            onReflectX={onReflectX}
+            onReflectY={onReflectY}
           />
         </TopSheet>
 
@@ -872,8 +1338,28 @@ export default function MobileEditorBar({
             onEditDraftChange={onEditDraftChange}
             onCloseEditPlayer={onCloseEditPlayer}
             onTogglePlayerHidden={onTogglePlayerHidden}
+            onPlayerColorChange={onPlayerColorChange}
             allPlayersDisplay={allPlayersDisplay}
             onAllPlayersDisplayChange={onAllPlayersDisplayChange}
+            transformItem={transformItem}
+            fieldBounds={fieldBounds}
+            onPlayerPositionChange={onPlayerPositionChange}
+            timelineDisplayTimeMs={timelineDisplayTimeMs}
+            resolveItemPose={resolveItemPose}
+          />
+        </TopSheet>
+
+        <TopSheet open={activeSheet === "draw"} onClose={closeSheet} title="Draw">
+          <DrawSheet
+            drawSubTool={drawSubTool}
+            onSubToolChange={onDrawSubToolChange}
+            drawColor={drawColor}
+            onDrawColorChange={onDrawColorChange}
+            drawStrokeWidth={drawStrokeWidth}
+            onDrawStrokeWidthChange={onDrawStrokeWidthChange}
+            drawOpacity={drawOpacity}
+            onDrawOpacityChange={onDrawOpacityChange}
+            onClose={closeSheet}
           />
         </TopSheet>
 
@@ -887,6 +1373,20 @@ export default function MobileEditorBar({
           />
         </TopSheet>
 
+        <TopSheet open={activeSheet === "export"} onClose={closeSheet} title="Save & Export">
+          <ExportSheet
+            playName={playName}
+            onPlayNameChange={onPlayNameChange}
+            onSaveToPlaybook={onSaveToPlaybook}
+            onScreenshot={onScreenshot}
+            onVideoExport={onVideoExport}
+            onGifExport={onGifExport}
+            onImport={onImport}
+            onDownload={onDownload}
+            onClose={closeSheet}
+          />
+        </TopSheet>
+
         <TopSheet open={activeSheet === "settings"} onClose={closeSheet} title="Advanced Settings">
           <AdvancedSettingsSheet
             advancedSettings={advancedSettings}
@@ -895,10 +1395,9 @@ export default function MobileEditorBar({
             onFieldTypeChange={onFieldTypeChange}
             autoplayEnabled={autoplayEnabled}
             onAutoplayChange={onAutoplayChange}
-            onDeleteAllKeyframes={onDeleteAllKeyframes}
-            onDownload={onDownload}
-            onImport={onImport}
-            adminMode={adminMode}
+            speedMultiplier={speedMultiplier}
+            onSpeedChange={onSpeedChange}
+            durationMs={durationMs}
           />
         </TopSheet>
       </div>

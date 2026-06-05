@@ -17,6 +17,8 @@ A lookup table for finding code by feature or by file. Use this when the user sa
 | "the canvas", "Konva root", "the stage" | [src/canvas/KonvaCanvasRoot.jsx](src/canvas/KonvaCanvasRoot.jsx) | Stage, field image, item rendering, drag/pan/zoom; exposes `animateFrame()` via ref |
 | "field viewport", "BoardViewport" | [src/canvas/BoardViewport.jsx](src/canvas/BoardViewport.jsx) | Wrapper div/ref around the canvas |
 | "pan / zoom / camera" | [src/features/slate/hooks/useFieldViewport.js](src/features/slate/hooks/useFieldViewport.js) | Camera `{x, y, zoom}`, fieldRotation |
+| "mobile touch gestures", "two-finger pan/pinch math" | [src/canvas/touchGestures.js](src/canvas/touchGestures.js) | Pure helpers (distance/midpoint/pinch-zoom/pan-delta) used by KonvaCanvasRoot's touch handler |
+| "mobile editor", "mobile-view sandbox", "/admin/mobile-view" | [src/pages/AdminMobileView.jsx](src/pages/AdminMobileView.jsx) + [src/components/MobileEditorBar.jsx](src/components/MobileEditorBar.jsx) | Touch-first Slate layout (admin-only). See [src/pages/MOBILE_EDITOR.md](src/pages/MOBILE_EDITOR.md) |
 | "snapping", "guidelines", "orange dashes" | [src/canvas/hooks/useCanvasSnapping.js](src/canvas/hooks/useCanvasSnapping.js) | Center-to-center, field/canvas center snapping math |
 | "marquee select" | [src/canvas/hooks/useCanvasMarquee.js](src/canvas/hooks/useCanvasMarquee.js) | |
 | "canvas pan" | [src/canvas/hooks/useCanvasPan.js](src/canvas/hooks/useCanvasPan.js) | |
@@ -359,7 +361,7 @@ All run via Vitest. One file per feature; create new ones here when adding tests
 - Admin shell: `adminBtn.test.js`, `adminModal.test.js`, `adminNav.test.js`, `adminShell.test.js`, `adminDangerMode.test.js`, `analyticsDashboard.test.js`, `usersHideFilters.test.js`
 - Plays/folders/playbooks: `localStorageAutosave.test.js`, `platformPlays.test.js`, `playbookFolderBrowse.test.js`, `playbookSections.test.js`, `landingPlaybooksNav.test.js`, `playPreviewCardCones.test.js`, `playPreviewPlayer.test.js`, `playCopyAnalytics.test.js`, `sportPresets.test.js`, `presetBallCycle.test.js`, `presetEditorMode.test.js`, `hideFromPlayers.test.js`, `sportNavContext.test.js`, `syncSports.test.js`
 - Drawing/keyframe: `keyframeStyling.test.js`, `drawingModePreviewAnimation.test.js`, `drawingFlipReflect.test.js`, `drawingModeUndoRedo.test.js`, `drawingScopeSeparation.test.js`, `annotationDrawingVisibility.test.js`, `drawingExportV3Migration.test.js`, `trackSnap.test.js`
-- Misc: `videoEncoder.test.js`, `errorReporter.test.js`, `demoVideos.test.js`, `adminNotifications.test.js` (notification audience SQL + response aggregation), `outreachScraper.test.js` (sidearm parsers + sport/role normalization + CSV escaping; fixtures in `admin/test/fixtures/`)
+- Misc: `videoEncoder.test.js`, `errorReporter.test.js`, `demoVideos.test.js`, `adminNotifications.test.js` (notification audience SQL + response aggregation), `outreachScraper.test.js` (sidearm parsers + sport/role normalization + CSV escaping; fixtures in `admin/test/fixtures/`), `mobileTouchGestures.test.js` (two-finger pan/pinch math for the mobile editor canvas — `src/canvas/touchGestures.js`)
 
 In-source unit suite for canvas geometry: [src/canvas/__tests__/drawingGeometry.test.js](src/canvas/__tests__/drawingGeometry.test.js).
 Suites used by the admin test runner: [src/testing/suites/](src/testing/suites/) (animationSchema, drawingGeometry, importExport, interpolate) and [src/testing/testRunner.js](src/testing/testRunner.js).
