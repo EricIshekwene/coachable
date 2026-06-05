@@ -1,5 +1,5 @@
 import { FiPlus } from "react-icons/fi";
-import { AdminBadge, AdminAlert, AdminEmptyState, AdminSpinner, AdminBtn } from "../../../admin/components";
+import { AdminBadge, AdminAlert, AdminEmptyState, AdminSpinner, AdminBtn, AdminSkeleton } from "../../../admin/components";
 import { DSPageHeading, DSGroup, DSTile, DSStage, DSChecklist } from "../dsPrimitives";
 
 /**
@@ -81,24 +81,24 @@ export default function FeedbackSection() {
         />
       </DSGroup>
 
-      <DSGroup title="Loading states" status="live" description="Spinner and skeletons.">
+      <DSGroup title="Loading states" status="live" description="AdminSpinner and the shared AdminSkeleton (text / circle / block variants).">
         <div className="grid gap-4 md:grid-cols-2">
           <DSTile title="Spinner + skeleton lines">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>Syncing play activity</p>
               <AdminSpinner size={22} />
             </div>
-            <div className="mt-4 space-y-2">
-              {[72, 88, 60].map((w, i) => (
-                <div key={i} className="h-3 animate-pulse rounded-full" style={{ width: `${w}%`, backgroundColor: "var(--adm-surface3)" }} />
-              ))}
+            <div className="mt-4">
+              <AdminSkeleton variant="text" lines={3} />
             </div>
           </DSTile>
-          <DSTile title="Skeleton bars">
-            <div className="flex h-28 items-end gap-2">
-              {[42, 76, 58, 88, 54, 64, 40].map((h, i) => (
-                <div key={i} className="animate-pulse rounded-t-[8px]" style={{ height: h, flex: 1, backgroundColor: "var(--adm-surface3)" }} />
-              ))}
+          <DSTile title="Skeleton card (avatar + block)">
+            <div className="flex items-center gap-3">
+              <AdminSkeleton variant="circle" width={40} />
+              <div className="flex-1"><AdminSkeleton variant="text" lines={2} /></div>
+            </div>
+            <div className="mt-4">
+              <AdminSkeleton variant="block" height={96} />
             </div>
           </DSTile>
         </div>

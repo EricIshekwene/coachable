@@ -1,5 +1,5 @@
-import { FiFilter, FiSearch, FiX } from "react-icons/fi";
-import { AdminBtn } from "../../../admin/components";
+import { FiFilter, FiSearch } from "react-icons/fi";
+import { AdminBtn, AdminChip } from "../../../admin/components";
 import { DSPageHeading, DSGroup, DSTile, DSStage, DSChecklist, DSRef } from "../dsPrimitives";
 
 /**
@@ -24,8 +24,8 @@ export default function DashboardSection() {
               <input placeholder="Search plays" className="rounded-[var(--adm-radius-md)] py-2 pl-9 pr-3 text-sm outline-none" style={{ backgroundColor: "var(--adm-surface)", border: "1px solid var(--adm-border2)", color: "var(--adm-text)" }} />
             </div>
             <AdminBtn variant="outline" size="sm"><FiFilter /> Filters</AdminBtn>
-            <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }}>Football <FiX className="text-[10px]" /></span>
-            <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }}>Published <FiX className="text-[10px]" /></span>
+            <AdminChip tone="accent" onRemove={() => {}}>Football</AdminChip>
+            <AdminChip tone="accent" onRemove={() => {}}>Published</AdminChip>
             <button className="text-xs font-semibold" style={{ color: "var(--adm-text3)" }}>Clear all</button>
           </div>
         </DSTile>
@@ -63,7 +63,7 @@ export default function DashboardSection() {
           columns={3}
           items={[
             { label: "Page / global search", status: "inApp" },
-            { label: "Filter button + chips", status: "spec" },
+            { label: "Filter button + chips", note: "AdminChip.", status: "live" },
             { label: "Active / clear filters", status: "spec" },
             { label: "Saved filters", status: "planned" },
             { label: "Sort dropdown / view toggle", status: "spec" },

@@ -1,5 +1,4 @@
-import { FiFileText, FiX, FiCheck } from "react-icons/fi";
-import { AdminAvatar } from "../../../admin/components";
+import { AdminAvatar, AdminChip } from "../../../admin/components";
 import { DSPageHeading, DSGroup, DSTile, DSStage, DSChecklist, DSAnatomy } from "../dsPrimitives";
 
 /**
@@ -37,14 +36,14 @@ export default function ListsSection() {
         </DSTile>
       </DSGroup>
 
-      <DSGroup title="Chips & tags" status="live">
+      <DSGroup title="Chips & tags" status="live" description="Shared AdminChip — tones, removable, selectable, and disabled.">
         <DSTile>
           <DSStage>
-            <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }}>Filter chip <FiX className="text-[10px]" /></span>
-            <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs" style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-text2)" }}>red zone</span>
-            <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs" style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-text2)" }}>shot play</span>
-            <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: "var(--adm-success-dim)", color: "var(--adm-success)" }}><FiCheck className="text-[10px]" /> selected</span>
-            <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs" style={{ backgroundColor: "var(--adm-surface2)", color: "var(--adm-text3)", border: "1px solid var(--adm-border)" }}>disabled</span>
+            <AdminChip tone="accent" onRemove={() => {}}>Filter chip</AdminChip>
+            <AdminChip>red zone</AdminChip>
+            <AdminChip>shot play</AdminChip>
+            <AdminChip tone="success" selected>selected</AdminChip>
+            <AdminChip disabled>disabled</AdminChip>
           </DSStage>
         </DSTile>
       </DSGroup>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FiZap, FiInfo } from "react-icons/fi";
-import { AdminModal, AdminBtn, AdminInput, AdminTextarea } from "../../../admin/components";
+import { AdminModal, AdminBtn, AdminInput, AdminTextarea, AdminTooltip } from "../../../admin/components";
 import { Tooltip as SlateTooltip } from "../../../components/subcomponents/Popovers";
 import { DSPageHeading, DSGroup, DSTile, DSStage, DSChecklist, DSAnatomy } from "../dsPrimitives";
 
@@ -40,13 +40,18 @@ export default function OverlaysSection() {
         </DSTile>
       </DSGroup>
 
-      <DSGroup title="Tooltip & popover" status="live" description="The Slate tooltip primitive handles compact helper text; rich popovers add structured content.">
+      <DSGroup title="Tooltip & popover" status="live" description="Shared AdminTooltip handles admin-themed helper text (hover + keyboard focus); the Slate tooltip is the editor-canvas variant; rich popovers add structured content.">
         <div className="grid gap-4 md:grid-cols-2">
           <DSTile title="Tooltip">
-            <DSStage dark>
+            <DSStage>
+              <AdminTooltip label="Shared admin tooltip — hover or focus me">
+                <AdminBtn variant="secondary" size="sm">Admin tooltip</AdminBtn>
+              </AdminTooltip>
+            </DSStage>
+            <DSStage dark className="mt-3">
               <div className="relative inline-flex">
-                <button type="button" className="rounded-lg px-3 py-2 text-xs" style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.8)" }}>Hover target</button>
-                <SlateTooltip isOpen text="Use tooltips for context only." />
+                <button type="button" className="rounded-lg px-3 py-2 text-xs" style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.8)" }}>Slate variant</button>
+                <SlateTooltip isOpen text="Editor-canvas tooltip." />
               </div>
             </DSStage>
           </DSTile>

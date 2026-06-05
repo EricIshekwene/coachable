@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { FiChevronRight, FiGrid } from "react-icons/fi";
-import { AdminBadge } from "../../../admin/components";
+import { FiGrid } from "react-icons/fi";
+import { AdminBadge, AdminTabs, AdminPagination, AdminBreadcrumbs } from "../../../admin/components";
 import { DSPageHeading, DSGroup, DSTile, DSChecklist } from "../dsPrimitives";
 
 /**
  * Navigation patterns: sidebar, tabs, breadcrumbs, pagination, and the wider
- * navigation catalog from the checklist.
+ * navigation catalog from the checklist. Tabs, pagination, and breadcrumbs now
+ * use the shared AdminTabs / AdminPagination / AdminBreadcrumbs primitives.
  *
  * @returns {JSX.Element}
  */
@@ -18,7 +19,7 @@ export default function NavigationSection() {
       <DSPageHeading
         eyebrow="Components"
         title="Navigation"
-        lead="The admin shell sidebar is the backbone of in-product navigation. Tabs, breadcrumbs, and pagination handle local movement. Active items use the accent-dim fill + inset accent ring treatment consistently."
+        lead="The admin shell sidebar is the backbone of in-product navigation. Tabs, breadcrumbs, and pagination handle local movement and are now shared components. Active items use the accent-dim fill + inset accent ring treatment consistently."
       />
 
       <DSGroup title="Sidebar (active item treatment)" status="live" description="The real AdminSidebar pattern: accent-dim fill + accent text + inset ring for the active route.">
@@ -43,39 +44,38 @@ export default function NavigationSection() {
               })}
             </aside>
             <div className="flex flex-col gap-3 p-4" style={{ backgroundColor: "var(--adm-bg)" }}>
-              <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--adm-text3)" }}>
-                <span>Admin</span><FiChevronRight className="text-[10px]" /><span>Design System</span><FiChevronRight className="text-[10px]" /><span style={{ color: "var(--adm-text)" }}>Navigation</span>
-              </div>
+              <AdminBreadcrumbs items={[{ label: "Admin" }, { label: "Design System" }, { label: "Navigation" }]} />
               <p className="text-sm" style={{ color: "var(--adm-text2)" }}>Breadcrumbs sit above the page title; the back link is the compact variant.</p>
             </div>
           </div>
         </DSTile>
       </DSGroup>
 
-      <DSGroup title="Tabs" status="live">
+      <DSGroup title="Tabs" status="live" description="Shared AdminTabs — controlled, accent fill on the active tab.">
         <DSTile>
-          <div className="inline-flex items-center gap-0.5 rounded-[var(--adm-radius-sm)] p-0.5" style={{ backgroundColor: "var(--adm-surface2)", border: "1px solid var(--adm-border)" }}>
-            {[{ key: "overview", label: "Overview" }, { key: "activity", label: "Activity" }, { key: "sharing", label: "Sharing" }].map((t) => (
-              <button key={t.key} type="button" onClick={() => setTab(t.key)} className="rounded px-3 py-1.5 text-xs font-semibold transition"
-                style={tab === t.key ? { backgroundColor: "var(--adm-accent)", color: "#fff" } : { color: "var(--adm-muted)" }}>
-                {t.label}
-              </button>
-            ))}
-          </div>
+          <AdminTabs
+            value={tab}
+            onChange={setTab}
+            tabs={[{ value: "overview", label: "Overview" }, { value: "activity", label: "Activity" }, { value: "sharing", label: "Sharing" }]}
+          />
         </DSTile>
       </DSGroup>
 
-      <DSGroup title="Pagination" status="live">
+      <DSGroup title="Breadcrumbs" status="live" description="Shared AdminBreadcrumbs — last item is the current page.">
         <DSTile>
-          <div className="flex items-center gap-1.5">
-            <button className="rounded-[var(--adm-radius-md)] px-3 py-1.5 text-xs font-semibold" style={{ border: "1px solid var(--adm-border2)", color: "var(--adm-text2)" }} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</button>
-            {[1, 2, 3, 4, 5].map((n) => (
-              <button key={n} onClick={() => setPage(n)} className="h-8 w-8 rounded-[var(--adm-radius-md)] text-xs font-semibold"
-                style={n === page ? { backgroundColor: "var(--adm-accent)", color: "#fff" } : { color: "var(--adm-text2)", border: "1px solid var(--adm-border)" }}>{n}</button>
-            ))}
-            <button className="rounded-[var(--adm-radius-md)] px-3 py-1.5 text-xs font-semibold" style={{ border: "1px solid var(--adm-border2)", color: "var(--adm-text2)" }} onClick={() => setPage((p) => Math.min(5, p + 1))}>Next</button>
-          </div>
+          <AdminBreadcrumbs items={[{ label: "Admin", to: "/admin" }, { label: "Users", to: "/admin/users" }, { label: "Maya Jordan" }]} />
         </DSTile>
+      </DSGroup>
+
+      <DSGroup title="Pagination" status="live" description="Shared AdminPagination — first/last anchoring with ellipses for long ranges.">
+        <div className="grid gap-4 md:grid-cols-2">
+          <DSTile title="Short range">
+            <AdminPagination page={page} pageCount={5} onChange={setPage} />
+          </DSTile>
+          <DSTile title="Long range (ellipses)">
+            <AdminPagination page={page} pageCount={24} onChange={setPage} />
+          </DSTile>
+        </div>
       </DSGroup>
 
       <DSGroup title="Navigation catalog" description="The fuller set from the checklist.">
@@ -86,14 +86,14 @@ export default function NavigationSection() {
             { label: "Nested items & section labels", status: "spec" },
             { label: "Badge / count on item", status: "live" },
             { label: "Team / workspace switcher", note: "TeamSwitcher.", status: "inApp" },
-            { label: "Breadcrumbs", note: "Back link today; full trail spec.", status: "spec" },
-            { label: "Tabs / pills / segmented", status: "live" },
+            { label: "Breadcrumbs", note: "AdminBreadcrumbs.", status: "live" },
+            { label: "Tabs / pills / segmented", note: "AdminTabs.", status: "live" },
             { label: "Stepper", status: "planned" },
-            { label: "Pagination / cursor / infinite", note: "Infinite scroll in lists.", status: "spec" },
+            { label: "Pagination", note: "AdminPagination.", status: "live" },
+            { label: "Cursor / infinite scroll", note: "Infinite scroll in lists.", status: "spec" },
             { label: "Command menu / quick switcher", status: "planned" },
             { label: "Table of contents / anchor links", status: "spec" },
             { label: "Mobile drawer / hamburger", status: "live" },
-            { label: "Mobile bottom nav", status: "spec" },
           ]}
         />
       </DSGroup>

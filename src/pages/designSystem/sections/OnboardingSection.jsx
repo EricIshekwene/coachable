@@ -1,4 +1,5 @@
 import { FiCheck } from "react-icons/fi";
+import { AdminProgress } from "../../../admin/components";
 import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSRef } from "../dsPrimitives";
 
 /**
@@ -25,12 +26,8 @@ export default function OnboardingSection() {
 
       <DSGroup title="Setup checklist" status="spec" description="Progress toward first value, with one clear next action.">
         <DSTile>
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>Get started</p>
-            <span className="text-xs" style={{ color: "var(--adm-text3)" }}>2 of 4</span>
-          </div>
-          <div className="mb-4 h-2 overflow-hidden rounded-full" style={{ backgroundColor: "var(--adm-surface3)" }}>
-            <div className="h-full rounded-full" style={{ width: "50%", backgroundColor: "var(--adm-accent)" }} />
+          <div className="mb-4">
+            <AdminProgress value={50} label="Get started" showValue />
           </div>
           <div className="space-y-2">
             {steps.map((s) => (
@@ -48,7 +45,7 @@ export default function OnboardingSection() {
           columns={3}
           items={[
             { label: "Welcome screen", note: "src/pages/Onboarding.jsx", status: "inApp" },
-            { label: "Setup checklist / progress", status: "spec" },
+            { label: "Setup checklist / progress", note: "AdminProgress.", status: "live" },
             { label: "First-run modal", status: "spec" },
             { label: "Product tour / coach marks", status: "planned" },
             { label: "Sample data / seed play", note: "Onboarding seeds a play.", status: "inApp" },

@@ -89,6 +89,27 @@ Migrated/embedded real components include: `AdminBtn`, `AdminInput`/`Select`/
 `OnboardingFunnel`), the Slate sidebar sections, `DrawToolsPill`,
 `AnimationDrawingTools`, `ControlPill`, and `MobileEditorBar` (in `previewMode`).
 
+## Reusable primitives extracted from the spec
+
+As the design system flagged gaps (patterns documented as `spec` but with no
+shared component), the obvious ones were pulled into real `Admin*` primitives in
+`src/admin/components/` and the corresponding sections were upgraded to render
+them **live**:
+
+| Component | Replaces inline markup in | Notes |
+|---|---|---|
+| `AdminTabs` | Navigation | Controlled segmented tabs |
+| `AdminBreadcrumbs` | Navigation | `Link`-aware trail; last item = current |
+| `AdminPagination` | Navigation | First/last anchoring + ellipses; pure `getPaginationRange` in `paginationRange.js` (unit-tested) |
+| `AdminChip` | Lists, Dashboard filters | Tones, selected ring, removable |
+| `AdminTooltip` | Overlays | Admin-themed hover/focus tooltip (vs the Slate dark variant) |
+| `AdminSkeleton` | Status & feedback | `text` / `circle` / `block` variants |
+| `AdminProgress` | Onboarding, Files | Linear bar, optional label/value, indeterminate |
+
+These are exported from `src/admin/components/index.js` and available for reuse
+across admin/app pages. They are only *used* in the design system so far — no
+existing product UI was changed.
+
 ## Key decisions
 - **Multi-page over one mega-file** — each section is its own file so the page
   stays editable and loads section-by-section.
