@@ -34,6 +34,26 @@ const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 const USER_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
+const USERS_VIEW_STATE_KEY = "coachable_admin_users_view_state_v1";
+
+function readUsersViewState() {
+  try {
+    const raw = sessionStorage.getItem(USERS_VIEW_STATE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function patchUsersViewState(patch) {
+  try {
+    const current = readUsersViewState();
+    sessionStorage.setItem(USERS_VIEW_STATE_KEY, JSON.stringify({ ...current, ...patch }));
+  } catch {
+    // sessionStorage unavailable — ignore
+  }
+}
+
 const TIME_AGE_OPTIONS = [
   { value: "1h",  label: "1 hour" },
   { value: "2h",  label: "2 hours" },
@@ -251,21 +271,28 @@ export default function Admin() {
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({ name: "", email: "", password: "", teamName: "", sport: "" });
   const [creating, setCreating] = useState(false);
-  const [usersSearch, setUsersSearch] = useState("");
-  const [hideOptions, setHideOptions] = useState(() => new Set(["demo", "player"]));
+  const persistedUsersView = useRef(readUsersViewState()).current;
+  const [usersSearch, setUsersSearch] = useState(() => persistedUsersView.usersSearch || "");
+  const [hideOptions, setHideOptions] = useState(() => new Set(
+    Array.isArray(persistedUsersView.hideOptions) ? persistedUsersView.hideOptions : ["demo"]
+  ));
   const [hideDropdownOpen, setHideDropdownOpen] = useState(false);
   const hideDropdownRef = useRef(null);
-  const [usersPerPage, setUsersPerPage] = useState(10);
-  const [filterRole, setFilterRole] = useState(""); // "coach"|"owner"|"assistant_coach"|"player"|""
-  const [filterVerified, setFilterVerified] = useState(""); // "verified"|"unverified"|""
-  const [filterOnboarded, setFilterOnboarded] = useState(""); // "yes"|"no"|""
-  const [filterPlays, setFilterPlays] = useState("");
-  const [filterPlaysOp, setFilterPlaysOp] = useState(">");
-  const [filterSport, setFilterSport] = useState("");
-  const [filterJoinedAge, setFilterJoinedAge] = useState("");
-  const [filterJoinedOp, setFilterJoinedOp] = useState("<");
-  const [filterActivityAge, setFilterActivityAge] = useState("");
-  const [filterActivityOp, setFilterActivityOp] = useState("<");
+  const usersScrollRef = useRef(null);
+  const hasRestoredScrollRef = useRef(false);
+  const [usersPerPage, setUsersPerPage] = useState(() => persistedUsersView.usersPerPage || 10);
+  const [filterRole, setFilterRole] = useState(() => persistedUsersView.filterRole || ""); // "coach"|"owner"|"assistant_coach"|"player"|""
+  const [filterVerified, setFilterVerified] = useState(() => persistedUsersView.filterVerified || ""); // "verified"|"unverified"|""
+  const [filterOnboarded, setFilterOnboarded] = useState(() => persistedUsersView.filterOnboarded || ""); // "yes"|"no"|""
+  const [filterPlays, setFilterPlays] = useState(() => persistedUsersView.filterPlays || "");
+  const [filterPlaysOp, setFilterPlaysOp] = useState(() => persistedUsersView.filterPlaysOp || ">");
+  const [filterSport, setFilterSport] = useState(() => persistedUsersView.filterSport || "");
+  const [filterJoinedAge, setFilterJoinedAge] = useState(() => persistedUsersView.filterJoinedAge || "");
+  const [filterJoinedOp, setFilterJoinedOp] = useState(() => persistedUsersView.filterJoinedOp || "<");
+  const [filterActivityAge, setFilterActivityAge] = useState(() => persistedUsersView.filterActivityAge || "");
+  const [filterActivityOp, setFilterActivityOp] = useState(() => persistedUsersView.filterActivityOp || "<");
+  const [sortKey, setSortKey] = useState(() => persistedUsersView.sortKey || ""); // ""|"plays"|"teamSize"|"name"|"sport"|"joined"|"team"
+  const [sortDir, setSortDir] = useState(() => persistedUsersView.sortDir || "asc"); // "asc"|"desc"
   const [emailCopied, setEmailCopied] = useState(null); // "outlook"|"gmail"|null
 
   // ── Tests ──
@@ -526,19 +553,6 @@ export default function Admin() {
       setUsersLoading(false);
     }
   }, [adminFetch]);
-
-  const handleDeleteUser = async (id, name) => {
-    const elevated = await ensureElevated();
-    if (!elevated) return;
-    const ok = await openConfirm({ message: `Delete "${name}"?`, subtitle: "This cannot be undone.", confirmLabel: "Delete", danger: true });
-    if (!ok) return;
-    try {
-      await adminFetch(`/admin/users/${id}`, { method: "DELETE" });
-      setUsers((prev) => prev.filter((u) => u.id !== id));
-    } catch (err) {
-      setUsersError(err.message);
-    }
-  };
 
   const handleCreateAccount = async (e) => {
     e.preventDefault();
@@ -882,6 +896,40 @@ export default function Admin() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [hideDropdownOpen]);
 
+  // ── Persist users-table view state (filters + scroll) across navigation ──
+  useEffect(() => {
+    patchUsersViewState({
+      usersSearch,
+      hideOptions: Array.from(hideOptions),
+      usersPerPage,
+      filterRole,
+      filterVerified,
+      filterOnboarded,
+      filterPlays,
+      filterPlaysOp,
+      filterSport,
+      filterJoinedAge,
+      filterJoinedOp,
+      filterActivityAge,
+      filterActivityOp,
+      sortKey,
+      sortDir,
+    });
+  }, [usersSearch, hideOptions, usersPerPage, filterRole, filterVerified, filterOnboarded, filterPlays, filterPlaysOp, filterSport, filterJoinedAge, filterJoinedOp, filterActivityAge, filterActivityOp, sortKey, sortDir]);
+
+  // Restore the users-table scroll position once after users load.
+  useEffect(() => {
+    if (hasRestoredScrollRef.current) return;
+    if (usersLoading) return;
+    if (!usersScrollRef.current) return;
+    if (users.length === 0) return;
+    const saved = readUsersViewState().usersScrollTop;
+    if (typeof saved === "number" && saved > 0) {
+      usersScrollRef.current.scrollTop = saved;
+    }
+    hasRestoredScrollRef.current = true;
+  }, [usersLoading, users.length]);
+
   // ── Derived stats ──
   const normalizedUsersSearch = usersSearch.trim().toLowerCase();
   const filteredUsers = useMemo(() => {
@@ -940,6 +988,65 @@ export default function Admin() {
     });
   }, [users, normalizedUsersSearch, hideOptions, filterRole, filterVerified, filterOnboarded, filterPlays, filterPlaysOp, filterSport, filterJoinedAge, filterJoinedOp, filterActivityAge, filterActivityOp]);
 
+  // Map of teamId → number of users in that team (across the full user list, not just filtered).
+  const teamSizesById = useMemo(() => {
+    const map = new Map();
+    users.forEach((u) => {
+      (u.memberships || []).forEach((m) => {
+        if (!m.teamId) return;
+        map.set(m.teamId, (map.get(m.teamId) || 0) + 1);
+      });
+    });
+    return map;
+  }, [users]);
+
+  const sortedFilteredUsers = useMemo(() => {
+    if (!sortKey) return filteredUsers;
+    const dir = sortDir === "desc" ? -1 : 1;
+    /** Extract the primary (highest-priority) membership for a user. */
+    const primaryMembership = (u) => getSortedMemberships(u.memberships || [])[0];
+
+    // "Team size" groups users by their primary team and orders teams by member count.
+    // Primary: team size (dir-controlled). Secondary: team name (stable, A-Z). Tertiary: user name.
+    if (sortKey === "teamSize") {
+      return [...filteredUsers].sort((a, b) => {
+        const am = primaryMembership(a);
+        const bm = primaryMembership(b);
+        const aSize = am?.teamId ? (teamSizesById.get(am.teamId) || 0) : 0;
+        const bSize = bm?.teamId ? (teamSizesById.get(bm.teamId) || 0) : 0;
+        if (aSize !== bSize) return (aSize - bSize) * dir;
+        const aTeam = (am?.teamName || "").toLowerCase();
+        const bTeam = (bm?.teamName || "").toLowerCase();
+        if (aTeam !== bTeam) return aTeam < bTeam ? -1 : 1;
+        const an = (a.name || "").toLowerCase();
+        const bn = (b.name || "").toLowerCase();
+        if (an < bn) return -1;
+        if (an > bn) return 1;
+        return 0;
+      });
+    }
+
+    const getValue = (u) => {
+      switch (sortKey) {
+        case "plays":  return u.plays_created ?? 0;
+        case "name":   return (u.name || "").toLowerCase();
+        case "sport":  return (primaryMembership(u)?.sport || "").toLowerCase();
+        case "joined": return new Date(u.created_at || 0).getTime();
+        case "team":   return (primaryMembership(u)?.teamName || "").toLowerCase();
+        default:       return 0;
+      }
+    };
+    const isNumeric = sortKey === "plays" || sortKey === "joined";
+    return [...filteredUsers].sort((a, b) => {
+      const av = getValue(a);
+      const bv = getValue(b);
+      if (isNumeric) return (av - bv) * dir;
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return 0;
+    });
+  }, [filteredUsers, sortKey, sortDir, teamSizesById]);
+
   const activeFilterCount = [filterRole, filterVerified, filterOnboarded, filterPlays, filterSport, filterJoinedAge, filterActivityAge].filter(Boolean).length;
   const filteredUserStats = useMemo(() => ({
     verified: filteredUsers.filter((u) => u.email_verified_at).length,
@@ -951,7 +1058,7 @@ export default function Admin() {
   /** Copy filtered user emails to clipboard in the given separator format. */
   function handleCopyEmails(format) {
     const sep = format === "outlook" ? "; " : ", ";
-    const text = filteredUsers.map((u) => u.email).join(sep);
+    const text = sortedFilteredUsers.map((u) => u.email).join(sep);
     navigator.clipboard.writeText(text).then(() => {
       setEmailCopied(format);
       setTimeout(() => setEmailCopied(null), 2000);
@@ -969,7 +1076,9 @@ export default function Admin() {
     setFilterJoinedOp("<");
     setFilterActivityAge("");
     setFilterActivityOp("<");
-    setHideOptions(new Set(["demo", "player"]));
+    setHideOptions(new Set(["demo"]));
+    setSortKey("");
+    setSortDir("asc");
   }
 
   /** Toggle a hide option on/off. */
@@ -1301,7 +1410,38 @@ export default function Admin() {
                     ))}
                   </AdminSelect>
                 </div>
-                {activeFilterCount > 0 && (
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--adm-muted)" }}>Sort</span>
+                  <AdminSelect
+                    value={sortKey}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setSortKey(next);
+                      // "Team size" reads most naturally largest-team-first; default to desc.
+                      if (next === "teamSize") setSortDir("desc");
+                    }}
+                    className="w-40"
+                  >
+                    <option value="">None</option>
+                    <option value="name">Name (A-Z)</option>
+                    <option value="team">Team (group by team)</option>
+                    <option value="teamSize">Team size</option>
+                    <option value="sport">Sport</option>
+                    <option value="plays">Plays</option>
+                    <option value="joined">Joined</option>
+                  </AdminSelect>
+                  <button
+                    type="button"
+                    onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+                    disabled={!sortKey}
+                    title={sortDir === "asc" ? "Ascending" : "Descending"}
+                    className="rounded-[var(--adm-radius)] px-2 py-1.5 text-xs font-semibold transition-opacity hover:opacity-80 disabled:opacity-40"
+                    style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-text2)", border: "1px solid var(--adm-border)" }}
+                  >
+                    {sortDir === "asc" ? "↑" : "↓"}
+                  </button>
+                </div>
+                {(activeFilterCount > 0 || sortKey) && (
                   <button
                     type="button"
                     onClick={resetFilters}
@@ -1314,8 +1454,16 @@ export default function Admin() {
               </div>
               </div>
             </div>
-            <div className="hide-scroll overflow-y-auto" style={{ maxHeight: `${usersTableMaxHeight}px`, backgroundColor: "var(--adm-bg)" }}>
-              <table className="w-full h-full table-fixed border-separate border-spacing-0 text-left text-sm">
+            <div className="px-4 py-2 text-[11px] sm:hidden" style={{ backgroundColor: "var(--adm-surface)", color: "var(--adm-muted)", borderTop: "1px solid var(--adm-border)", borderBottom: "1px solid var(--adm-border)" }}>
+              Swipe sideways to view all columns.
+            </div>
+            <div
+              ref={usersScrollRef}
+              onScroll={(e) => patchUsersViewState({ usersScrollTop: e.currentTarget.scrollTop })}
+              className="hide-scroll overflow-auto"
+              style={{ maxHeight: `${usersTableMaxHeight}px`, backgroundColor: "var(--adm-bg)" }}
+            >
+              <table className="h-full min-w-[980px] w-full table-fixed border-separate border-spacing-0 text-left text-sm">
               <thead>
                 <tr>
                   <th className="sticky top-0 z-10 w-1/4 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>User</th>
@@ -1324,7 +1472,7 @@ export default function Admin() {
                   <th className="sticky top-0 z-10 w-16 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Plays</th>
                   <th className="sticky top-0 z-10 w-24 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Status</th>
                   <th className="sticky top-0 z-10 w-20 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Joined</th>
-                  <th className="sticky top-0 z-10 w-20 px-4 py-3 text-right text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Actions</th>
+                  <th className="sticky top-0 z-10 w-28 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Roles</th>
                 </tr>
               </thead>
               <tbody>
@@ -1337,9 +1485,11 @@ export default function Admin() {
                 {!usersLoading && users.length > 0 && filteredUsers.length === 0 && (
                   <tr><td colSpan={7} className="px-4 py-8 text-center text-xs" style={{ color: "var(--adm-muted)" }}>No users match your search</td></tr>
                 )}
-                {filteredUsers.map((u) => {
+                {sortedFilteredUsers.map((u) => {
                   const memberships = getSortedMemberships(u.memberships);
                   const hasCoachingRole = Boolean(u.can_view_activity);
+                  const isPlayerOnly = memberships.length > 0 && memberships.every((m) => m.role === "player");
+                  const uniqueRoles = Array.from(new Set(memberships.map((m) => m.role)));
                   const rowBaseStyle = {
                     backgroundColor: "var(--adm-surface)",
                     borderBottom: "1px solid var(--adm-border)",
@@ -1407,9 +1557,13 @@ export default function Admin() {
                         ) : <span style={{ color: "var(--adm-muted)" }}>—</span>}
                       </td>
                       <td className="px-4 py-4 align-top text-center" style={rowBaseStyle}>
-                        <span className="inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }}>
-                          {u.plays_created ?? 0}
-                        </span>
+                        {isPlayerOnly ? (
+                          <span className="text-xs" style={{ color: "var(--adm-muted)" }}>—</span>
+                        ) : (
+                          <span className="inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }}>
+                            {u.plays_created ?? 0}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-3 align-top overflow-hidden" style={rowBaseStyle}>
                         <div className="flex flex-col gap-1">
@@ -1425,10 +1579,18 @@ export default function Admin() {
                         </div>
                       </td>
                       <td className="px-4 py-4 align-top text-xs" style={{ ...rowBaseStyle, color: "var(--adm-text2)" }}>{formatAdminDate(u.created_at)}</td>
-                      <td className="px-4 py-4 align-top text-right" style={rowBaseStyle}>
-                        <div className="flex justify-end">
-                          <AdminBtn variant="danger" size="sm" onClick={() => handleDeleteUser(u.id, u.name)} className="whitespace-nowrap">Delete</AdminBtn>
-                        </div>
+                      <td className="px-4 py-4 align-top" style={rowBaseStyle}>
+                        {uniqueRoles.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {uniqueRoles.map((role) => (
+                              <span key={role} className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap" style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-text2)" }}>
+                                {formatRole(role)}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-xs" style={{ color: "var(--adm-muted)" }}>—</span>
+                        )}
                       </td>
                     </tr>
                   );
@@ -1453,6 +1615,9 @@ export default function Admin() {
                   {USER_PAGE_SIZE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
                 </AdminSelect>
               </label>
+              <span className="text-[11px] sm:hidden" style={{ color: "var(--adm-muted)" }}>
+                Horizontal scroll keeps the full table usable on mobile.
+              </span>
             </div>
           </AdminCard>
           </AdminSection>

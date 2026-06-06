@@ -116,6 +116,11 @@ export default function AdminPlayEditPage() {
   const flushRef = useRef(null);
   const isNew = playId === "new";
 
+  // NOTE: The touch-first mobile editor is intentionally NOT auto-engaged on
+  // narrow viewports here. Shrinking the screen keeps the normal desktop editor
+  // (the prior behavior). The mobile editor still lives at its dedicated route
+  // /admin/mobile-view (AdminMobileView).
+
   useThemeColor(theme === "light" ? "#f3f6fb" : "#121212");
 
   const session = readAdminSession();

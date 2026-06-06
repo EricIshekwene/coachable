@@ -17,6 +17,10 @@ import {
   HANDLE_CURSORS,
 } from "../drawingGeometry";
 import { log as logDrawDebug } from "../drawDebugLogger";
+import {
+  isAnnotationDrawing,
+  isMotionDrawing,
+} from "../../features/slate/utils/drawingTiming";
 
 const MOVE_THRESHOLD = 2; // px in world coords
 const MARQUEE_THRESHOLD = 3;
@@ -29,7 +33,7 @@ const RESIZE_HANDLE_HIT_PADDING_PX = 16;
 const DBLCLICK_MS = 400;
 
 export function useDrawingSelection({
-  drawings,
+  drawings: allDrawings,
   toWorldCoords,
   stageRef,
   selectedDrawingIds,
@@ -43,7 +47,19 @@ export function useDrawingSelection({
   drawGuides,
   clearGuides,
   guidelineOffsetWorld,
+  // Scope isolation: when motionScope=true only motion drawings are eligible
+  // for selection/hit-test; when false only annotation drawings are. Cross-scope
+  // drawings are invisible to this hook — clicks pass through them and marquee
+  // never picks them up.
+  motionScope = false,
 }) {
+  // Active-scope view. Every hit-test, marquee, cursor probe, and gesture
+  // cascade below reads this filtered array so a user in one scope can never
+  // touch drawings from the other scope.
+  const drawings = useMemo(
+    () => (allDrawings || []).filter(motionScope ? isMotionDrawing : isAnnotationDrawing),
+    [allDrawings, motionScope]
+  );
   // --- Refs for gesture state (no re-renders per frame) ---
   const gestureRef = useRef(null);
   const marqueeRef = useRef(null);

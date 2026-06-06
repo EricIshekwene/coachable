@@ -11,7 +11,6 @@ import {
 } from "../features/slate/utils/drawingTiming";
 import { useDrawingSelection } from "./hooks/useDrawingSelection";
 import {
-  getDrawingWorldBounds,
   getTextDrawingLayout,
   getTrianglePoints,
   getResizeHandles,
@@ -19,6 +18,12 @@ import {
   computeResizedBounds,
   HANDLE_CURSORS,
 } from "./drawingGeometry";
+import {
+  getTouchDistance,
+  getTouchMidpoint,
+  computePinchZoom,
+  computeMidpointPan,
+} from "./touchGestures";
 import { log as logKeyToolDebug } from "./keyboardToolDebugLogger";
 import RugbyField from "../assets/objects/Field Vectors/Rugby_Field.png";
 import SoccerField from "../assets/objects/Field Vectors/Soccer_Field.png";
@@ -145,7 +150,6 @@ function KonvaCanvasRoot({
   // playhead is outside its window.
   currentTimeMs = 0,
   durationMs = 30000,
-  selectedAnnotationDrawingIds = [],
   hideAllDrawings = false,
   drawingsRevealProgress = 1,
   drawSubTool,
@@ -190,7 +194,6 @@ function KonvaCanvasRoot({
   onToggleBallHidden,
   onTogglePlayerLocked,
   onToggleBallLocked,
-  adminMode = false,
   drawingModeSnap = false,
   animDrawSubTool = null,
   drawingMode = false,
@@ -440,6 +443,10 @@ function KonvaCanvasRoot({
     drawGuides,
     clearGuides,
     guidelineOffsetWorld,
+    // Scope isolation: in annotation mode the selection hook must not see
+    // motion drawings (and vice versa). `drawingModeSnap` is the canvas-side
+    // proxy for "motion scope is active" already used by useCanvasDrawing.
+    motionScope: drawingModeSnap,
   });
 
   // Expose selection hook to parent via ref (for cancelGesture on Escape)
@@ -1033,32 +1040,63 @@ function KonvaCanvasRoot({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [setCamera]);
 
-  // Pinch-to-zoom via native touch events on container
+  // Two-finger pan + pinch-to-zoom via native touch events on the container.
+  // One finger is reserved for dragging objects / marquee selection, so panning
+  // the field on touch devices is a two-finger gesture (matching design apps).
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const getTouchDist = (touches) => {
-      const dx = touches[0].clientX - touches[1].clientX;
-      const dy = touches[0].clientY - touches[1].clientY;
-      return Math.sqrt(dx * dx + dy * dy);
-    };
     const onTouchStart = (e) => {
       if (e.touches.length === 2) {
         pinchRef.current.active = true;
-        pinchRef.current.startDist = getTouchDist(e.touches);
+        pinchRef.current.startDist = getTouchDistance(e.touches);
         pinchRef.current.startZoom = camera?.zoom || 1;
+        pinchRef.current.lastMid = getTouchMidpoint(e.touches);
+        // The second finger converts the gesture to pan+zoom — cancel any
+        // single-finger marquee / pan / hold the first finger may have begun.
+        if (marqueeRef.current.active) {
+          marqueeRef.current.active = false;
+          setMarquee(null);
+        }
+        if (panRef.current.active) {
+          panRef.current.active = false;
+          panRef.current.pointerId = null;
+          panRef.current.tapStart = null;
+          setIsPanning(false);
+        }
+        if (holdRef.current.timer) {
+          clearTimeout(holdRef.current.timer);
+          holdRef.current.timer = null;
+        }
       }
     };
     const onTouchMove = (e) => {
       if (!pinchRef.current.active || e.touches.length !== 2) return;
       e.preventDefault();
-      const dist = getTouchDist(e.touches);
-      const scale = dist / pinchRef.current.startDist;
-      const nextZoom = clamp(pinchRef.current.startZoom * scale, ZOOM_MIN, ZOOM_MAX);
-      setCamera((prev) => ({ ...prev, zoom: nextZoom }));
+      const nextZoom = computePinchZoom(
+        pinchRef.current.startZoom,
+        pinchRef.current.startDist,
+        getTouchDistance(e.touches),
+        ZOOM_MIN,
+        ZOOM_MAX
+      );
+      // Translate the camera by the movement of the two-finger midpoint.
+      const mid = getTouchMidpoint(e.touches);
+      const { dx, dy } = computeMidpointPan(pinchRef.current.lastMid || mid, mid);
+      pinchRef.current.lastMid = mid;
+      setCamera((prev) => ({
+        ...prev,
+        zoom: nextZoom,
+        x: (prev?.x || 0) + dx,
+        y: (prev?.y || 0) + dy,
+      }));
     };
-    const onTouchEnd = () => {
-      pinchRef.current.active = false;
+    const onTouchEnd = (e) => {
+      // End the gesture once fewer than two fingers remain on the surface.
+      if (!e.touches || e.touches.length < 2) {
+        pinchRef.current.active = false;
+        pinchRef.current.lastMid = null;
+      }
     };
     el.addEventListener("touchstart", onTouchStart, { passive: true });
     el.addEventListener("touchmove", onTouchMove, { passive: false });
@@ -1171,43 +1209,18 @@ function KonvaCanvasRoot({
 
     if (tool === "select" && isPrimaryButton && target === stage) {
       if (panRef.current.active) return;
-      // On mobile: hold to marquee-select, immediate drag pans
-      if (mobileLayout) {
-        const { clientX, clientY } = getPointerClientXY(evt);
-        const pointer = stageRef.current?.getPointerPosition?.();
-        const worldStart = pointer ? toWorldCoords(pointer) : null;
-        // Start as pan (immediate drag cancels hold and pans)
-        panRef.current.active = true;
-        panRef.current.pointerId = evt?.pointerId ?? "touch";
-        panRef.current.last = { x: clientX, y: clientY };
-        panRef.current.tapStart = { x: clientX, y: clientY };
-        setIsPanning(true);
-        setIsHoveringItem(false);
-        onPanStart?.();
-        // Start hold timer — if finger stays still, activate marquee
-        if (holdRef.current.timer) clearTimeout(holdRef.current.timer);
-        holdRef.current.clientX = clientX;
-        holdRef.current.clientY = clientY;
-        holdRef.current.worldStart = worldStart;
-        holdRef.current.timer = setTimeout(() => {
-          holdRef.current.timer = null;
-          if (!panRef.current.active) return;
-          // Cancel pan and switch to marquee
-          panRef.current.active = false;
-          panRef.current.pointerId = null;
-          panRef.current.tapStart = null;
-          setIsPanning(false);
-          if (worldStart) {
-            marqueeRef.current = { active: true, start: worldStart, end: worldStart, shiftKey: false };
-            setMarquee({ x: worldStart.x, y: worldStart.y, width: 0, height: 0 });
-          }
-        }, 350);
-        return;
-      }
+      // Two-finger gesture owns the canvas (pan + zoom) — don't let the first
+      // finger start a marquee for it. See the pinch/pan touch handler.
+      if (pinchRef.current.active) return;
       setIsHoveringItem(false);
       const pointer = stage?.getPointerPosition?.();
       if (!pointer) return;
       const world = toWorldCoords(pointer);
+      // Single-finger marquee on empty canvas (mobile and desktop). On mobile,
+      // panning is a two-finger gesture (or the explicit Pan tool), so one
+      // finger is free to marquee-select. A near-zero marquee on pointer-up is
+      // treated as a tap → deselect (handled in handleStagePointerUp), so this
+      // path also covers mobile tap-to-deselect.
       marqueeRef.current = {
         active: true,
         start: world,
@@ -1979,7 +1992,6 @@ function KonvaCanvasRoot({
       );
     }
     if (d.type === "text") {
-      const isTextSelected = selectedDrawingIds.includes(d.id);
       const isInlineEditing = inlineEdit?.id === d.id;
       const textLayout = getTextDrawingLayout(d);
       return (

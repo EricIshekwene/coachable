@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" translate="no">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/src/assets/logos/coachable_Logo.png" />
@@ -7,6 +7,10 @@
     <meta name="theme-color" content="#121212" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- Disable Chrome/Google auto-translate: it wraps text nodes in <font> tags,
+         which breaks React's DOM reconciliation and produces NotFoundError on
+         insertBefore/removeChild. See React issue #11538. -->
+    <meta name="google" content="notranslate" />
 
     <!-- Primary SEO -->
     <title>Coachable — Digital Playbook & Animated Play Designer for Coaches</title>

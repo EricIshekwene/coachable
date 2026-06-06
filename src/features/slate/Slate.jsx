@@ -61,7 +61,6 @@ import {
 } from "../../utils/playPersistenceDebugLogger";
 import { useDrawings } from "./hooks/useDrawings";
 import { splitLegacyDrawingsArray } from "./utils/drawingSchema";
-import { isAnnotationDrawingVisibleAtTime } from "./utils/drawingTiming";
 import { useRecordingMode } from "./hooks/useRecordingMode";
 import RecordingControlBar from "../../components/RecordingControlBar";
 import RecordingCountdown from "../../components/RecordingCountdown";
@@ -608,12 +607,6 @@ function Slate({
   const annotationDrawingsState = useDrawings({ historyApiRef, kind: "annotation" });
   const motionDrawingsState = useDrawings({ historyApiRef, kind: "motion" });
 
-  // Back-compat: `drawingsState` previously referred to whichever bucket the
-  // current mode was operating on. Keep that shim alive until every call site
-  // becomes explicit about its scope. New code should reach into the typed
-  // buckets directly. Routing follows the active scope, NOT just drawingMode —
-  // pen tool inside /admin/drawing must reach the annotation bucket.
-  const drawingsState = isMotionScopeActive ? motionDrawingsState : annotationDrawingsState;
   // Read-only combined view for the few places that need to render or export
   // both buckets at once (canvas rendering, export payload, flip play, reset).
   const combinedDrawings = useMemo(
@@ -2613,6 +2606,14 @@ function Slate({
       if (tool === "pen" && motionDrawSubTool) {
         setMotionDrawSubTool(null);
       }
+      // Entering annotation drawing mode (pen tool) drops any active entity
+      // selection so the right panel / handles can't act on players or the
+      // ball while the user is working on overlays.
+      const enteringPen = tool === "pen" && canvasTool !== "pen";
+      if (enteringPen) {
+        entities.setSelectedItemIds([]);
+        entities.setSelectedPlayerIds([]);
+      }
       setCanvasTool((prev) => {
         if (prev === tool) {
           // Pen/animDraw toggle off back to select; all other tools are no-ops when re-selected
@@ -2640,7 +2641,7 @@ function Slate({
     }
     logDrawDebug(`toolChange ignored invalidTool=${tool}`);
     logKeyToolDebug(`toolChange ignored invalidTool=${tool}`);
-  }, [mobileLayout, canvasTool, motionDrawSubTool, entities.handleSelectItem]);
+  }, [mobileLayout, canvasTool, motionDrawSubTool, entities]);
 
   const getAuthoritativeTimeMs = useCallback(() => {
     return engineRef.current.getTime();
@@ -2716,7 +2717,7 @@ function Slate({
     try {
       await navigator.clipboard.writeText(payload);
       return true;
-    } catch (error) {
+    } catch {
       onShowMessage("Copy GIF export debug failed", "Clipboard access was denied.", "error");
       return false;
     }
@@ -4350,7 +4351,7 @@ function Slate({
           motion palette, so inside /admin/drawing the user can click the
           sidebar Draw button to swap motion → annotation tools.
         */}
-        {!viewOnly && canvasTool === "pen" && !screenshotMode && (
+        {!viewOnly && !mobileLayout && canvasTool === "pen" && !screenshotMode && (
           <DrawToolsPill
             activeSubTool={annotationDrawSubTool}
             onSubToolChange={handleDrawSubToolChange}
@@ -4374,7 +4375,9 @@ function Slate({
         )}
         {/* ── Mobile context pill — one unified pill for all placement/selection states ── */}
         {mobileLayout && !viewOnly && !screenshotMode && (() => {
-          const pillBase = "absolute top-17 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-BrandBlack/90 backdrop-blur-sm px-4 py-2.5 rounded-full border border-white/15 shadow-xl max-w-[calc(100vw-2rem)]";
+          // top offset clears the fixed top tab bar including the notch:
+          // 4.25rem (original bar height) + the device's safe-area inset.
+          const pillBase = "absolute top-[calc(env(safe-area-inset-top)_+_4.25rem)] left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-BrandBlack/90 backdrop-blur-sm px-4 py-2.5 rounded-full border border-white/15 shadow-xl max-w-[calc(100vw-2rem)]";
           const divider = <div className="w-px h-4 bg-white/15 shrink-0" />;
 
           // Placement modes
@@ -4647,7 +4650,13 @@ function Slate({
           zoomPercent={fieldViewport.zoomPercent}
           onZoomIn={fieldViewport.zoomIn}
           onZoomOut={fieldViewport.zoomOut}
+          onRotateLeft={handleRotateLeft}
+          onRotateCenter={handleRotateCenter}
+          onRotateRight={handleRotateRight}
+          onReflectX={() => handleReflectAxis("x")}
+          onReflectY={() => handleReflectAxis("y")}
           playersById={entities.playersById}
+          ballsById={entities.ballsById}
           representedPlayerIds={entities.representedPlayerIds}
           selectedPlayerIds={entities.selectedPlayerIds}
           playerEditor={entities.playerEditor}
@@ -4658,14 +4667,32 @@ function Slate({
           onEditDraftChange={entities.handleEditDraftChange}
           onCloseEditPlayer={entities.handleCloseEditPlayer}
           onTogglePlayerHidden={entities.handleTogglePlayerHidden}
+          onPlayerColorChange={(hex, id) => entities.handleSelectedPlayersColorChange(hex, [id])}
           selectedItemIds={entities.selectedItemIds}
           onSavePrefab={prefabPresetMode ? null : () => setSavePrefabModalOpen(true)}
+          fieldBounds={fieldBounds}
+          onPlayerPositionChange={handlePositionEdit}
+          timelineDisplayTimeMs={timelineDisplayTimeMs}
+          resolveItemPose={resolveTrackPose}
           customPrefabs={customPrefabs}
           publishedPrefabs={publishedPrefabs}
           onPrefabSelect={handlePrefabSelect}
           onDeleteCustomPrefab={handleDeleteCustomPrefab}
           allPlayersDisplay={entities.allPlayersDisplay}
           onAllPlayersDisplayChange={entities.setAllPlayersDisplay}
+          drawSubTool={annotationDrawSubTool}
+          onDrawSubToolChange={handleDrawSubToolChange}
+          drawColor={drawColor}
+          onDrawColorChange={handleDrawColorChange}
+          drawStrokeWidth={drawStrokeWidth}
+          onDrawStrokeWidthChange={handleDrawStrokeWidthChange}
+          drawOpacity={drawOpacity}
+          onDrawOpacityChange={handleDrawOpacityChange}
+          playName={playName}
+          onPlayNameChange={setPlayName}
+          onSaveToPlaybook={prefabPresetMode ? null : onSaveToPlaybook}
+          onScreenshot={handleScreenshotExportClick}
+          onVideoExport={handleVideoExportClick}
           advancedSettings={advancedSettings}
           onAdvancedSettingsChange={setAdvancedSettings}
           onAdvancedSettingsReset={() => {
@@ -4680,10 +4707,11 @@ function Slate({
           }}
           autoplayEnabled={autoplayEnabled}
           onAutoplayChange={setAutoplayEnabled}
-          onDeleteAllKeyframes={handleDeleteAllKeyframes}
+          speedMultiplier={speedMultiplier}
+          onSpeedChange={setSpeedMultiplier}
+          onNavigateHome={onNavigateHome}
           onDownload={onDownload}
           onImport={handleImportClick}
-          adminMode={adminMode}
         />
       )}
       {showEditPanels && !mobileLayout && <div
