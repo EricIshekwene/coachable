@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAdmin } from "../admin/AdminContext";
 import darkLogo from "../assets/logos/full_Coachable_logo.png";
@@ -661,6 +661,7 @@ function PlayCard({
   onAddToSection,
   onTagsUpdate,
   onRename,
+  onRemoveFromSection,
   allTags,
   canEdit = false,
   canDelete = false,
@@ -670,6 +671,7 @@ function PlayCard({
   canEditTags = false,
   canRename = false,
   canCopyShareLinks = false,
+  canRemoveFromSection = false,
 }) {
   // null → closed  |  "main" → first popup  |  "sections" / "folders" / "tags" / "rename" → sub-pickers
   const [menuStep, setMenuStep] = useState(null);
@@ -678,7 +680,7 @@ function PlayCard({
   const menuRef = useRef(null);
   const tagInputRef = useRef(null);
   const renameInputRef = useRef(null);
-  const hasSecondaryActions = canCopyShareLinks || canDuplicate || canRename || canAddToSection || canMove || canEditTags || canDelete;
+  const hasSecondaryActions = canCopyShareLinks || canDuplicate || canRename || canAddToSection || canMove || canEditTags || canDelete || canRemoveFromSection;
   const hasPrimaryMenuActions = canCopyShareLinks || canDuplicate || canRename;
   const hasGroupedMenuActions = canAddToSection || canMove || canEditTags;
 
@@ -790,7 +792,18 @@ function PlayCard({
                 </button>
               )}
 
-              {canDelete && <div className="my-1 border-t" style={MENU_DIVIDER_STYLE} />}
+              {(canDelete || canRemoveFromSection) && <div className="my-1 border-t" style={MENU_DIVIDER_STYLE} />}
+
+              {/* Remove from Section */}
+              {canRemoveFromSection && (
+                <button
+                  onClick={() => { onRemoveFromSection(play); close(); }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition hover:opacity-80"
+                  style={{ color: "var(--adm-danger)" }}
+                >
+                  <FiX className="shrink-0 text-[10px]" /> Remove from Section
+                </button>
+              )}
 
               {/* Delete */}
               {canDelete && (
@@ -1297,6 +1310,11 @@ function SectionRow({ section, plays, onAssign, onTogglePriority }) {
  * @param {Function} props.setError - Error setter from parent
  */
 function PlaybookSectionPanel({ session, allPlays, folders, error, setError, canManageSections = false, canAddPlays = false }) {
+  const { basePath, isOwner, hasPerm } = useAdmin();
+  const navigate = useNavigate();
+  const canEditSectionPlays = isOwner || hasPerm("plays.editContent");
+  const canCopySectionLinks = isOwner || hasPerm("plays.copyShareLinks");
+
   const [sections, setSections] = useState([]);
   const [loadingSections, setLoadingSections] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
@@ -1574,6 +1592,19 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError, can
       setSectionPlays(plays);
     }
   };
+
+  // Index of all platform plays by ID so section plays can be enriched with playData
+  const allPlaysById = useMemo(() => {
+    const map = {};
+    for (const p of allPlays) map[p.id] = p;
+    return map;
+  }, [allPlays]);
+
+  // Merge section play metadata with full play data (incl. playData for the preview card)
+  const enrichedSectionPlays = useMemo(
+    () => sectionPlays.map((p) => ({ ...p, ...(allPlaysById[p.id] || {}) })),
+    [sectionPlays, allPlaysById]
+  );
 
   // Plays already in section (for excluding from picker)
   const sectionPlayIds = new Set(sectionPlays.map((p) => p.id));
@@ -2041,7 +2072,7 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError, can
                 </div>
               )}
 
-              {/* Plays list */}
+              {/* Plays grid — uses the same PlayCard as the main plays tab */}
               {loadingPlays ? (
                 <div className="flex justify-center py-8">
                   <AdminSpinner size={24} />
@@ -2056,68 +2087,40 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError, can
                   <p className="mt-1 text-xs" style={{ color: "var(--adm-text2)" }}>Add platform plays to build this collection</p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {sectionPlays.map((play) => (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {enrichedSectionPlays.map((play) => (
                     <div
                       key={play.id}
                       draggable={canAddPlays}
                       onDragStart={canAddPlays ? (e) => { e.dataTransfer.effectAllowed = "move"; setSectionDragSrcId(play.id); } : undefined}
-                      onDragOver={canAddPlays ? (e) => { e.preventDefault(); if (sectionDragSrcId !== play.id) setSectionDragOverId(play.id); } : undefined}
+                      onDragOver={canAddPlays ? (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (sectionDragSrcId !== play.id) setSectionDragOverId(play.id); } : undefined}
                       onDrop={canAddPlays ? (e) => { e.preventDefault(); handleReorderSectionPlay(sectionDragSrcId, play.id); } : undefined}
                       onDragEnd={canAddPlays ? () => { setSectionDragSrcId(null); setSectionDragOverId(null); } : undefined}
-                      className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition ${canAddPlays ? "cursor-grab active:cursor-grabbing" : ""}`}
-                      style={sectionDragOverId === play.id && sectionDragSrcId !== play.id
-                        ? {
-                            backgroundColor: "var(--adm-surface2)",
-                            border: "1px solid color-mix(in srgb, var(--adm-accent) 26%, transparent)",
-                            opacity: 0.72,
-                            boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--adm-accent) 14%, transparent)",
-                          }
-                        : INSET_STYLE}
+                      className={`rounded-xl transition ${sectionDragOverId === play.id && sectionDragSrcId !== play.id ? "opacity-60 ring-2 ring-[var(--adm-accent)]" : ""}`}
                     >
-                      {/* Drag handle */}
-                      {canAddPlays && <FiMenu className="shrink-0 text-sm" style={{ color: "var(--adm-muted)" }} />}
-
-                      {/* Thumbnail */}
-                      <div className="w-16 shrink-0">
-                        {play.thumbnail ? (
-                          <img
-                            src={play.thumbnail}
-                            alt={play.title}
-                            className="aspect-video w-full rounded object-cover"
-                          />
-                        ) : (
-                          <div className="flex aspect-video w-full items-center justify-center rounded" style={INSET_STYLE}>
-                            <FiLayout className="text-[10px]" style={{ color: "var(--adm-muted)" }} />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Info */}
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold" style={{ color: "var(--adm-text)" }}>{play.title}</p>
-                        <div className="mt-0.5 flex items-center gap-2">
-                          {play.tags?.slice(0, 3).map((tag) => (
-                            <span key={tag} className="rounded-md px-1.5 py-0.5 text-[10px]" style={NEUTRAL_BADGE_STYLE}>#{tag}</span>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Remove */}
-                      {canAddPlays && (
-                        <button
-                          onClick={() => handleRemovePlay(play.id)}
-                          title="Remove from section"
-                          className="flex shrink-0 items-center justify-center rounded-lg border px-2 py-1.5 text-xs transition hover:opacity-85"
-                          style={{
-                            borderColor: "rgba(220, 38, 38, 0.18)",
-                            backgroundColor: "var(--adm-danger-dim)",
-                            color: "var(--adm-danger)",
-                          }}
-                        >
-                          <FiX className="text-xs" />
-                        </button>
-                      )}
+                      <PlayCard
+                        play={play}
+                        folders={[]}
+                        playbookSections={[]}
+                        onEdit={(p) => navigate(adminPath(basePath, `/plays/${p.id}/edit`))}
+                        onDelete={null}
+                        onMove={null}
+                        onDuplicate={null}
+                        onAddToSection={null}
+                        onTagsUpdate={null}
+                        onRename={null}
+                        onRemoveFromSection={canAddPlays ? () => handleRemovePlay(play.id) : null}
+                        allTags={[]}
+                        canEdit={canEditSectionPlays}
+                        canDelete={false}
+                        canMove={false}
+                        canDuplicate={false}
+                        canAddToSection={false}
+                        canEditTags={false}
+                        canRename={false}
+                        canCopyShareLinks={canCopySectionLinks}
+                        canRemoveFromSection={canAddPlays}
+                      />
                     </div>
                   ))}
                 </div>

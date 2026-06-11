@@ -192,6 +192,7 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 |---|---|
 | "play preview card" | [src/components/PlayPreviewCard.jsx](src/components/PlayPreviewCard.jsx) |
 | "play preview player" (auto-play thumbnail) | [src/components/PlayPreviewPlayer.jsx](src/components/PlayPreviewPlayer.jsx) |
+| "admin play card", "PlayCard", "plays tab card" | [src/pages/AdminPlaysPage.jsx](src/pages/AdminPlaysPage.jsx) — `PlayCard` component (~line 653); used in Plays tab grid AND Playbook Sections panel; supports `canRemoveFromSection`/`onRemoveFromSection` for section context — see [ADMIN_PLAY_CARD_CONSISTENCY.md](src/pages/ADMIN_PLAY_CARD_CONSISTENCY.md) |
 | "team switcher" | [src/components/TeamSwitcher.jsx](src/components/TeamSwitcher.jsx) |
 | "sport-aware public nav" | [src/components/SportAwarePublicNav.jsx](src/components/SportAwarePublicNav.jsx) |
 
@@ -361,7 +362,7 @@ All run via Vitest. One file per feature; create new ones here when adding tests
 
 - Auth/account: `forgotPassword.test.js`, `accountDeletedEmail.test.js`, `onboarding.test.js`
 - Admin shell: `adminBtn.test.js`, `adminModal.test.js`, `adminNav.test.js`, `adminShell.test.js`, `adminDangerMode.test.js`, `analyticsDashboard.test.js`, `usersHideFilters.test.js`, `designSystem.test.js` (design system nav registry: slug integrity, default section, prev/next adjacency), `designSystemSearch.test.js` (design system search ranking: keyword/label/summary matching, case-insensitivity, result limit), `adminPagination.test.js` (getPaginationRange: short ranges, ellipsis collapsing, clamping)
-- Plays/folders/playbooks: `localStorageAutosave.test.js`, `platformPlays.test.js`, `playbookFolderBrowse.test.js`, `playbookSections.test.js`, `landingPlaybooksNav.test.js`, `playPreviewCardCones.test.js`, `playPreviewPlayer.test.js`, `playCopyAnalytics.test.js`, `sportPresets.test.js`, `presetBallCycle.test.js`, `presetEditorMode.test.js`, `hideFromPlayers.test.js`, `sportNavContext.test.js`, `syncSports.test.js`
+- Plays/folders/playbooks: `localStorageAutosave.test.js`, `platformPlays.test.js`, `playbookFolderBrowse.test.js`, `playbookSections.test.js`, `landingPlaybooksNav.test.js`, `playPreviewCardCones.test.js`, `playPreviewPlayer.test.js`, `playCopyAnalytics.test.js`, `sportPresets.test.js`, `presetBallCycle.test.js`, `presetEditorMode.test.js`, `hideFromPlayers.test.js`, `sportNavContext.test.js`, `syncSports.test.js`, `adminPlayCardConsistency.test.js` (PlayCard `canRemoveFromSection` logic + section play enrichment + picker exclusion)
 - Drawing/keyframe: `keyframeStyling.test.js`, `drawingModePreviewAnimation.test.js`, `drawingFlipReflect.test.js`, `drawingModeUndoRedo.test.js`, `drawingScopeSeparation.test.js`, `annotationDrawingVisibility.test.js`, `drawingExportV3Migration.test.js`, `trackSnap.test.js`
 - Misc: `videoEncoder.test.js`, `errorReporter.test.js`, `demoVideos.test.js`, `adminNotifications.test.js` (notification audience SQL + response aggregation), `outreachScraper.test.js` (sidearm parsers + sport/role normalization + CSV escaping; fixtures in `admin/test/fixtures/`), `mobileTouchGestures.test.js` (two-finger pan/pinch math for the mobile editor canvas — `src/canvas/touchGestures.js`)
 
