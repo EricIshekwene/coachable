@@ -217,7 +217,7 @@ All under [src/animation/](src/animation/), [src/canvas/](src/canvas/), [src/fea
 | `/login` | [Login.jsx](src/pages/Login.jsx) |
 | `/forgot-password` | [ForgotPassword.jsx](src/pages/ForgotPassword.jsx) |
 | `/reset-password` | [ResetPassword.jsx](src/pages/ResetPassword.jsx) |
-| `/onboarding` | [Onboarding.jsx](src/pages/Onboarding.jsx) |
+| `/onboarding` | [Onboarding.jsx](src/pages/Onboarding.jsx) — two-step wizard for "Create Team": name → sport selection (required); see [SPORT_ONBOARDING_SELECTION.md](src/pages/SPORT_ONBOARDING_SELECTION.md) |
 | `/verify-email` | [VerifyEmail.jsx](src/pages/VerifyEmail.jsx) |
 | `/no-team` | [NoTeam.jsx](src/pages/NoTeam.jsx) |
 | `/slate`, `/slate/:sport` | [SportPickerPage.jsx](src/pages/SportPickerPage.jsx) (picker) → SlateRoot wrapper in App.jsx |
@@ -359,7 +359,7 @@ Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PL
 ## Tests (`admin/test/`)
 All run via Vitest. One file per feature; create new ones here when adding tests.
 
-- Auth/account: `forgotPassword.test.js`, `accountDeletedEmail.test.js`, `onboarding.test.js`
+- Auth/account: `forgotPassword.test.js`, `accountDeletedEmail.test.js`, `onboarding.test.js`, `sportOnboarding.test.js` (canAdvance logic, sport payload, SPORTS_FOR_CREATE shape)
 - Admin shell: `adminBtn.test.js`, `adminModal.test.js`, `adminNav.test.js`, `adminShell.test.js`, `adminDangerMode.test.js`, `analyticsDashboard.test.js`, `usersHideFilters.test.js`, `designSystem.test.js` (design system nav registry: slug integrity, default section, prev/next adjacency), `designSystemSearch.test.js` (design system search ranking: keyword/label/summary matching, case-insensitivity, result limit), `adminPagination.test.js` (getPaginationRange: short ranges, ellipsis collapsing, clamping)
 - Plays/folders/playbooks: `localStorageAutosave.test.js`, `platformPlays.test.js`, `playbookFolderBrowse.test.js`, `playbookSections.test.js`, `landingPlaybooksNav.test.js`, `playPreviewCardCones.test.js`, `playPreviewPlayer.test.js`, `playCopyAnalytics.test.js`, `sportPresets.test.js`, `presetBallCycle.test.js`, `presetEditorMode.test.js`, `hideFromPlayers.test.js`, `sportNavContext.test.js`, `syncSports.test.js`
 - Drawing/keyframe: `keyframeStyling.test.js`, `drawingModePreviewAnimation.test.js`, `drawingFlipReflect.test.js`, `drawingModeUndoRedo.test.js`, `drawingScopeSeparation.test.js`, `annotationDrawingVisibility.test.js`, `drawingExportV3Migration.test.js`, `trackSnap.test.js`
