@@ -23,12 +23,18 @@ it does not change the live product UI.**
 
 ```
 src/pages/designSystem/
-  DesignSystemPage.jsx        Route component: admin shell + sticky sub-nav + active section + prev/next
-  designSystemNav.js          PURE metadata (groups, slugs, labels, helpers) — no component imports, unit-tested
+  DesignSystemPage.jsx        Route component: admin shell + sticky sub-nav + search + active section + prev/next
+  designSystemNav.js          PURE metadata (groups, slugs, labels, KEYWORDS, helpers) — no component imports, unit-tested
+  designSystemSearch.js       PURE ranking helper over the nav metadata — unit-tested
+  SearchPalette.jsx           Sidebar search field + ⌘K command palette UI (+ useCommandPalette hook)
   designSystemSections.js     Slug → section component map (getSectionComponent)
   dsPrimitives.jsx            Shared building blocks (see below)
   sections/                   One file per section (38 sections)
 ```
+
+> **Filename note:** `designSystemSearch.js` (logic) and `SearchPalette.jsx`
+> (UI) are intentionally named so they don't collide case-insensitively on
+> Windows — never reintroduce a `DesignSystemSearch.jsx` alongside the `.js`.
 
 The nav metadata is deliberately split from the component map so the registry
 can be unit-tested in plain Node without importing the heavy Slate/Konva
@@ -42,6 +48,21 @@ component tree.
 ### Sub-navigation
 Desktop: a sticky left rail grouped by category. Mobile (<lg): a grouped
 `<select>`. A prev/next footer links adjacent sections.
+
+### Search
+Two surfaces, both ranking with the pure `searchDesignSystem(query)` helper
+(`designSystemSearch.js`), which scores each section on label / keyword /
+summary / group matches:
+- **Sidebar filter** — a search field above the desktop sub-nav; while a query
+  is present it replaces the grouped list with ranked results.
+- **Command palette** — a global **⌘K / Ctrl-K** (or `/` when not typing)
+  overlay that fuzzy-jumps to any section with full keyboard control (↑/↓,
+  Enter, Esc). It doubles as the live reference implementation for the command-
+  palette pattern documented in the Search section.
+
+Each section in `designSystemNav.js` carries a `keywords: string[]` array so
+search finds sections by concept ("toast" → Status & feedback, "cmd k" →
+Search) and not just by label.
 
 ## Shared primitives (`dsPrimitives.jsx`)
 
@@ -57,6 +78,9 @@ Desktop: a sticky left rail grouped by category. Mobile (<lg): a grouped
 | `DSAnatomy` | Numbered list of a component's named parts |
 | `DSStatus` | Status chip (see vocabulary) |
 | `DSRef` | Inline pill pointing at a real source file |
+| `DSProps` | Props table (name / type / default / description) |
+| `DSMeta` | Key–value usage block (when to use, a11y, responsive, dark mode) |
+| `DSCallout` | Tinted note (info / warning / success / danger) |
 
 ### Status vocabulary
 - **Live** — a real component is rendered live on the page.
@@ -121,9 +145,13 @@ existing product UI was changed.
   content changed.
 
 ## Tests
-`admin/test/designSystem.test.js` validates the pure nav registry: unique
-url-safe slugs, group/section integrity, the default section, `getSection`
-fallback, and `getAdjacentSections` prev/next adjacency.
+- `admin/test/designSystem.test.js` validates the pure nav registry: unique
+  url-safe slugs, group/section integrity, the default section, `getSection`
+  fallback, and `getAdjacentSections` prev/next adjacency.
+- `admin/test/designSystemSearch.test.js` validates the pure search ranking:
+  blank-query handling, label/keyword/summary matching, case/punctuation
+  insensitivity, descending scores, the result limit, and that every result
+  maps to a real section.
 
 ## Extending it
 1. Add a section file under `sections/`.

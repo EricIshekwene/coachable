@@ -1,4 +1,4 @@
-import { DSPageHeading, DSGroup, DSChecklist, DSDoDont } from "../dsPrimitives";
+import { DSPageHeading, DSGroup, DSChecklist, DSDoDont, DSTile, DSCallout } from "../dsPrimitives";
 
 /**
  * Accessibility standards and interaction accessibility requirements.
@@ -13,6 +13,19 @@ export default function AccessibilitySection() {
         title="Accessibility"
         lead="Target WCAG AA. Every interactive element is reachable and operable by keyboard, has a visible focus state, an accessible name, and meets contrast minimums. Color is never the only signal for state, and motion respects reduced-motion."
       />
+
+      <DSGroup title="Focus visibility" status="live" description="Tab through these — the focus ring must be obvious on every control.">
+        <DSTile>
+          <div className="flex flex-wrap items-center gap-3">
+            <button className="rounded-[var(--adm-radius-md)] px-3.5 py-2 text-sm font-semibold outline-none focus-visible:ring-4" style={{ background: "linear-gradient(135deg, #ff8d3d, #FF7A18)", color: "#fff" }}>Focusable button</button>
+            <a href="#focus-demo" onClick={(e) => e.preventDefault()} className="rounded-[var(--adm-radius-md)] px-2 py-1 text-sm font-semibold underline outline-none focus-visible:ring-4" style={{ color: "var(--adm-accent)" }}>Focusable link</a>
+            <input placeholder="Focusable input" className="rounded-[var(--adm-radius-md)] px-3 py-2 text-sm outline-none focus-visible:ring-4" style={{ backgroundColor: "var(--adm-surface)", border: "1px solid var(--adm-border2)", color: "var(--adm-text)" }} />
+          </div>
+        </DSTile>
+        <DSCallout tone="warning" title="Never remove the ring without a replacement">
+          If you set <code>outline: none</code>, you must add a visible <code>:focus-visible</code> style. Keyboard users rely on it to know where they are.
+        </DSCallout>
+      </DSGroup>
 
       <DSGroup title="Standards">
         <DSChecklist

@@ -1,11 +1,13 @@
-import { createElement, useEffect } from "react";
+import { createElement, useEffect, useState, useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { FiArrowLeft, FiArrowRight, FiSun, FiMoon } from "react-icons/fi";
+import { FiArrowLeft, FiArrowRight, FiSun, FiMoon, FiCommand } from "react-icons/fi";
 import { useAdmin } from "../../admin/AdminContext";
 import { adminPath } from "../../admin/adminNav";
 import { AdminShell, AdminHeader, AdminPage } from "../../admin/components";
 import { DESIGN_SYSTEM_NAV, ALL_SECTIONS, DEFAULT_SECTION_ID, getAdjacentSections } from "./designSystemNav";
 import { getSectionComponent } from "./designSystemSections";
+import { searchDesignSystem } from "./designSystemSearch";
+import { SidebarSearch, CommandPalette, useCommandPalette } from "./SearchPalette";
 
 /** Base route for the design system (kept as the historical /design-rules path). */
 const BASE = "/design-rules";
@@ -86,6 +88,19 @@ export default function DesignSystemPage() {
   const activeId = known ? sectionParam : DEFAULT_SECTION_ID;
   const { prev, next } = getAdjacentSections(activeId);
 
+  // Search state for the sticky sub-nav filter.
+  const [query, setQuery] = useState("");
+  const results = useMemo(() => searchDesignSystem(query, { limit: 12 }), [query]);
+
+  // ⌘K / Ctrl-K command palette.
+  const { open: paletteOpen, setOpen: setPaletteOpen } = useCommandPalette();
+
+  /** Navigate to a section by id and clear any active sidebar query. */
+  const goToSection = (id) => {
+    navigate(adminPath(basePath, `${BASE}/${id}`));
+    setQuery("");
+  };
+
   // Normalize unknown / bare URLs to the default section so deep links stay valid.
   useEffect(() => {
     if (sectionParam && !known) {
@@ -104,7 +119,20 @@ export default function DesignSystemPage() {
         title="Design System"
         backLabel="Dashboard"
         backTo={adminPath(basePath, "")}
-        actions={<ThemeSwitch theme={theme} onChange={setTheme} />}
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPaletteOpen(true)}
+              className="hidden items-center gap-2 rounded-[var(--adm-radius-md)] px-3 py-1.5 text-xs font-semibold transition sm:inline-flex"
+              style={{ backgroundColor: "var(--adm-surface2)", border: "1px solid var(--adm-border)", color: "var(--adm-text3)" }}
+            >
+              <FiCommand className="text-sm" /> Search
+              <span className="rounded px-1.5 py-0.5 text-[10px]" style={{ backgroundColor: "var(--adm-surface)", color: "var(--adm-text3)" }}>⌘K</span>
+            </button>
+            <ThemeSwitch theme={theme} onChange={setTheme} />
+          </div>
+        }
       />
 
       <AdminPage wide className="min-w-0 overflow-x-hidden pb-12">
@@ -128,8 +156,15 @@ export default function DesignSystemPage() {
         <div className="grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)]">
           {/* Desktop sticky sub-nav */}
           <aside className="hidden lg:block">
-            <div className="sticky top-6">
-              <SectionNav basePath={basePath} activeId={activeId} />
+            <div className="sticky top-6 flex max-h-[calc(100vh-3rem)] flex-col gap-4 overflow-y-auto pr-1">
+              <SidebarSearch
+                query={query}
+                onQueryChange={setQuery}
+                results={results}
+                activeId={activeId}
+                onPick={goToSection}
+              />
+              {query ? null : <SectionNav basePath={basePath} activeId={activeId} />}
             </div>
           </aside>
 
@@ -155,6 +190,8 @@ export default function DesignSystemPage() {
           </div>
         </div>
       </AdminPage>
+
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} onPick={goToSection} />
     </AdminShell>
   );
 }

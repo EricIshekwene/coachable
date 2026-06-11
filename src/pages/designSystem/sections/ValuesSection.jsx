@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FiEye, FiEyeOff, FiCopy } from "react-icons/fi";
-import { DSPageHeading, DSGroup, DSTile, DSChecklist } from "../dsPrimitives";
+import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSMeta } from "../dsPrimitives";
 
 /**
  * Forms of values & data: value states, value display formats, and sensitive
@@ -49,6 +49,38 @@ export default function ValuesSection() {
             </div>
           </div>
         </DSTile>
+      </DSGroup>
+
+      <DSGroup title="Formatted values" status="spec" description="Consistent rendering for the common value types.">
+        <DSTile>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              { label: "Currency", node: "$19.00" },
+              { label: "Percentage", node: "64%" },
+              { label: "Large number", node: "12.4K" },
+              { label: "Date", node: "Jun 5, 2026" },
+              { label: "Relative time", node: "2 hours ago" },
+              { label: "Duration", node: "1m 42s" },
+              { label: "File size", node: "19.3 MB" },
+              { label: "Score", node: "24 – 17" },
+              { label: "Email", node: "coach@club.io" },
+            ].map((v) => (
+              <div key={v.label} className="flex items-center justify-between rounded-[var(--adm-radius-md)] px-3 py-2 text-sm" style={{ backgroundColor: "var(--adm-surface2)", border: "1px solid var(--adm-border)" }}>
+                <span className="text-xs" style={{ color: "var(--adm-text3)" }}>{v.label}</span>
+                <span className="font-mono text-[13px]" style={{ color: "var(--adm-text)" }}>{v.node}</span>
+              </div>
+            ))}
+          </div>
+        </DSTile>
+      </DSGroup>
+
+      <DSGroup title="Usage">
+        <DSMeta rows={[
+          { label: "Never blank", value: "An absent value renders as “—” (em dash), not an empty cell — so rows stay scannable." },
+          { label: "Sensitive", value: "Mask by default, reveal on demand, and only ever show the last 4 characters in summaries." },
+          { label: "Numbers", value: "Right-align numeric columns; abbreviate above 10K (1.2K, 3.4M) with the full value in a tooltip." },
+          { label: "Dates", value: "Show relative time for recent events; absolute date on hover/tooltip for precision." },
+        ]} />
       </DSGroup>
 
       <DSGroup title="Value display formats">

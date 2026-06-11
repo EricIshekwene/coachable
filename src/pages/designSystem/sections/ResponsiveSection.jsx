@@ -1,5 +1,5 @@
 import { FiSmartphone, FiTablet, FiMonitor } from "react-icons/fi";
-import { DSPageHeading, DSGroup, DSTile, DSChecklist } from "../dsPrimitives";
+import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSTokenTable, DSMeta } from "../dsPrimitives";
 
 /**
  * Responsive behavior: how layout, navigation, tables, forms, and modals adapt
@@ -31,6 +31,26 @@ export default function ResponsiveSection() {
             </DSTile>
           ))}
         </div>
+      </DSGroup>
+
+      <DSGroup title="Breakpoints" status="live" description="Tailwind defaults — the values every responsive rule keys off.">
+        <DSTokenTable rows={[
+          { token: "sm", value: "640px", note: "Large phones / small tablets." },
+          { token: "md", value: "768px", note: "Tablets — grids go 2-up." },
+          { token: "lg", value: "1024px", note: "Sidebar becomes persistent; 3-up grids." },
+          { token: "xl", value: "1280px", note: "Wide desktop." },
+          { token: "2xl", value: "1536px", note: "Max content width caps here." },
+        ]} />
+      </DSGroup>
+
+      <DSGroup title="Usage">
+        <DSMeta rows={[
+          { label: "Strategy", value: "Mobile-first: author base styles for small screens, then layer sm:/md:/lg: enhancements." },
+          { label: "Sidebar", value: "Off-canvas drawer below lg; persistent rail at lg and up." },
+          { label: "Tables", value: "Horizontal scroll on small screens; never shrink cell text below 12px." },
+          { label: "Modals", value: "Full-screen sheet on phones; centered dialog from sm up." },
+          { label: "Touch targets", value: "Interactive controls stay ≥ 44×44px on touch — see Accessibility." },
+        ]} />
       </DSGroup>
 
       <DSGroup title="Responsive catalog">

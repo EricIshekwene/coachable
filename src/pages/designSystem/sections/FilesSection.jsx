@@ -1,6 +1,6 @@
-import { FiUploadCloud, FiFile } from "react-icons/fi";
+import { FiUploadCloud, FiFile, FiCheckCircle, FiAlertTriangle, FiRotateCw, FiX } from "react-icons/fi";
 import { AdminProgress } from "../../../admin/components";
-import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSRef } from "../dsPrimitives";
+import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSRef, DSMeta, DSDoDont } from "../dsPrimitives";
 
 /**
  * Files & uploads: drop zone, progress, file cards, and the upload catalog.
@@ -36,6 +36,40 @@ export default function FilesSection() {
             </div>
           </DSTile>
         </div>
+      </DSGroup>
+
+      <DSGroup title="Upload states" status="spec" description="Every upload row resolves to success or error — never leaves the progress bar hanging.">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex items-center gap-3 rounded-[var(--adm-radius)] p-3" style={{ backgroundColor: "var(--adm-success-dim)", border: "1px solid color-mix(in srgb, var(--adm-success) 22%, transparent)" }}>
+            <FiCheckCircle className="shrink-0 text-lg" style={{ color: "var(--adm-success)" }} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold" style={{ color: "var(--adm-text)" }}>lineout-7man.mp4</p>
+              <p className="text-[11px]" style={{ color: "var(--adm-text3)" }}>Uploaded · 19.3 MB</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 rounded-[var(--adm-radius)] p-3" style={{ backgroundColor: "var(--adm-danger-dim)", border: "1px solid color-mix(in srgb, var(--adm-danger) 22%, transparent)" }}>
+            <FiAlertTriangle className="shrink-0 text-lg" style={{ color: "var(--adm-danger)" }} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold" style={{ color: "var(--adm-text)" }}>scrum-pickgo.mov</p>
+              <p className="text-[11px]" style={{ color: "var(--adm-danger)" }}>Upload failed · unsupported format</p>
+            </div>
+            <button className="rounded-md p-1.5" style={{ color: "var(--adm-text2)", border: "1px solid var(--adm-border)" }} aria-label="Retry"><FiRotateCw /></button>
+            <button className="rounded-md p-1.5" style={{ color: "var(--adm-text2)", border: "1px solid var(--adm-border)" }} aria-label="Remove"><FiX /></button>
+          </div>
+        </div>
+      </DSGroup>
+
+      <DSGroup title="Usage">
+        <DSMeta rows={[
+          { label: "Accepted types", value: "State accepted formats + max size in the drop zone before the user picks (e.g. “MP4 up to 200MB”)." },
+          { label: "Progress", value: "Determinate bar while bytes are known; switch to indeterminate only for server-side processing." },
+          { label: "Failure", value: "Inline error on the row with a Retry and Remove action — never a silent disappearance." },
+          { label: "Accessibility", value: "Drop zone is also a real <input type=file> + button; announce progress and completion to screen readers." },
+        ]} />
+        <DSDoDont
+          dos={["Keep the file in the list after failure so it can be retried", "Show file name, size, and type icon", "Allow cancel mid-upload"]}
+          donts={["Don’t block the whole form while one file uploads", "Don’t clear the queue on a single failure", "Don’t rely on color alone for success/error"]}
+        />
       </DSGroup>
 
       <DSGroup title="Upload catalog">

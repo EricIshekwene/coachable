@@ -369,3 +369,103 @@ export function DSRef({ children }) {
     </span>
   );
 }
+
+/* ────────────────────────────────────────────────────────────────────────── *
+ * Props table
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Documents a component's public props: name, type, default, and description.
+ * Used to round out component sections toward the full "documentation inside
+ * the design system" template.
+ *
+ * @param {{ rows: Array<{ name: string, type?: string, default?: string, required?: boolean, description?: React.ReactNode }> }} props
+ * @returns {JSX.Element}
+ */
+export function DSProps({ rows }) {
+  return (
+    <div className="overflow-x-auto rounded-[var(--adm-radius)]" style={{ border: "1px solid var(--adm-border)" }}>
+      <table className="w-full border-separate border-spacing-0 text-left text-sm">
+        <thead>
+          <tr>
+            {["Prop", "Type", "Default", "Description"].map((h) => (
+              <th key={h} className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em]"
+                style={{ color: "var(--adm-text3)", backgroundColor: "var(--adm-surface2)", borderBottom: "1px solid var(--adm-border)" }}>
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={row.name}>
+              <td className="whitespace-nowrap px-4 py-3 font-mono text-xs" style={{ color: "var(--adm-text)", borderTop: i === 0 ? "none" : "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface)" }}>
+                {row.name}{row.required ? <span style={{ color: "var(--adm-danger)" }}> *</span> : null}
+              </td>
+              <td className="whitespace-nowrap px-4 py-3 font-mono text-[11px]" style={{ color: "var(--adm-accent)", borderTop: i === 0 ? "none" : "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface)" }}>
+                {row.type ?? "—"}
+              </td>
+              <td className="whitespace-nowrap px-4 py-3 font-mono text-[11px]" style={{ color: "var(--adm-text3)", borderTop: i === 0 ? "none" : "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface)" }}>
+                {row.default ?? "—"}
+              </td>
+              <td className="px-4 py-3 text-xs leading-5" style={{ color: "var(--adm-text2)", borderTop: i === 0 ? "none" : "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface)" }}>
+                {row.description ?? ""}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────── *
+ * Usage / meta block (purpose, when to use, a11y, responsive, dark mode)
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * A compact key/value block capturing the cross-cutting documentation every
+ * component should carry: when to use, when not to, accessibility, responsive,
+ * and dark-mode behavior. Pass only the fields that apply.
+ *
+ * @param {{ rows: Array<{ label: string, value: React.ReactNode }> }} props
+ * @returns {JSX.Element}
+ */
+export function DSMeta({ rows }) {
+  return (
+    <dl className="grid gap-px overflow-hidden rounded-[var(--adm-radius)]" style={{ border: "1px solid var(--adm-border)", backgroundColor: "var(--adm-border)" }}>
+      {rows.map((row) => (
+        <div key={row.label} className="grid grid-cols-[140px_minmax(0,1fr)] gap-3 px-4 py-3" style={{ backgroundColor: "var(--adm-surface)" }}>
+          <dt className="text-xs font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--adm-text3)" }}>{row.label}</dt>
+          <dd className="text-sm leading-6" style={{ color: "var(--adm-text2)" }}>{row.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────── *
+ * Callout / note
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * A tinted note used to flag an important rule, caveat, or tip inside a section.
+ *
+ * @param {{ tone?: "info"|"warning"|"success"|"danger", title?: string, children: React.ReactNode }} props
+ * @returns {JSX.Element}
+ */
+export function DSCallout({ tone = "info", title, children }) {
+  const map = {
+    info: { fg: "var(--adm-accent)", bg: "var(--adm-accent-dim)" },
+    warning: { fg: "var(--adm-warning)", bg: "var(--adm-warning-dim)" },
+    success: { fg: "var(--adm-success)", bg: "var(--adm-success-dim)" },
+    danger: { fg: "var(--adm-danger)", bg: "var(--adm-danger-dim)" },
+  };
+  const c = map[tone] ?? map.info;
+  return (
+    <div className="rounded-[var(--adm-radius)] p-4" style={{ backgroundColor: c.bg, border: `1px solid color-mix(in srgb, ${c.fg} 22%, transparent)` }}>
+      {title ? <p className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: c.fg }}>{title}</p> : null}
+      <div className={`text-sm leading-6 ${title ? "mt-1.5" : ""}`} style={{ color: "var(--adm-text2)" }}>{children}</div>
+    </div>
+  );
+}
