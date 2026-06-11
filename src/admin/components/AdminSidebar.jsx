@@ -148,7 +148,7 @@ const NAV_ITEMS = [
   { label: "Plays", path: "/app", icon: <PlaysIcon />, anyOf: ["plays.viewFolders", "pageSections.manage", "playbooks.view", "presets.create", "presets.edit", "prefabs.manage"] },
   { label: "Users", path: "/users", icon: <UsersIcon />, perm: "users.viewTable" },
   { label: "One Page", path: "/one-page", icon: <OnePageIcon />, perm: "pageSections.manage" },
-  { label: "Design Rules", path: "/design-rules", icon: <DesignRulesIcon />, adminOnly: true },
+  { label: "Design System", path: "/design-rules", icon: <DesignRulesIcon />, adminOnly: true },
   { label: "Errors", path: "/errors", icon: <ErrorsIcon />, perm: "errors.viewReports" },
   { label: "Issues", path: "/user-issues", icon: <IssuesIcon />, perm: "issues.view" },
   { label: "Videos", path: "/demo-videos", icon: <VideosIcon />, perm: "videos.addDemo" },

@@ -44,7 +44,7 @@ import AdminStaff from "./pages/AdminStaff";
 import AdminEmailPage from "./pages/AdminEmailPage";
 import AdminRecurringEmailPage from "./pages/AdminRecurringEmailPage";
 import AdminNotificationsPage from "./pages/AdminNotificationsPage";
-import AdminDesignRulesPage from "./pages/AdminDesignRulesPage";
+import DesignSystemPage from "./pages/designSystem/DesignSystemPage";
 import AdminFeatureFlagsPage from "./pages/AdminFeatureFlagsPage";
 import AdminOutreachScraperPage from "./pages/AdminOutreachScraperPage";
 import RequirePerm from "./admin/RequirePerm";
@@ -371,7 +371,8 @@ export function AppRoutes() {
         <Route path="/admin/gif-test" element={<RequireAdminSession><AdminGIFTest /></RequireAdminSession>} />
         <Route path="/admin/demo-videos" element={<RequireAdminSession><AdminDemoVideos /></RequireAdminSession>} />
         <Route path="/admin/one-page" element={<RequireAdminSession><AdminOnePage /></RequireAdminSession>} />
-        <Route path="/admin/design-rules" element={<RequireAdminSession><AdminDesignRulesPage /></RequireAdminSession>} />
+        <Route path="/admin/design-rules" element={<RequireAdminSession><DesignSystemPage /></RequireAdminSession>} />
+        <Route path="/admin/design-rules/:section" element={<RequireAdminSession><DesignSystemPage /></RequireAdminSession>} />
         <Route path="/admin/staff" element={<RequireAdminSession><AdminStaff /></RequireAdminSession>} />
         <Route path="/admin/email" element={<RequireAdminSession><AdminEmailPage /></RequireAdminSession>} />
         <Route path="/admin/email/recurring" element={<RequireAdminSession><AdminRecurringEmailPage /></RequireAdminSession>} />

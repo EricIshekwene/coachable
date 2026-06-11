@@ -1,0 +1,102 @@
+import { useState } from "react";
+import { FiGrid } from "react-icons/fi";
+import { AdminBadge, AdminTabs, AdminPagination, AdminBreadcrumbs } from "../../../admin/components";
+import { DSPageHeading, DSGroup, DSTile, DSChecklist } from "../dsPrimitives";
+
+/**
+ * Navigation patterns: sidebar, tabs, breadcrumbs, pagination, and the wider
+ * navigation catalog from the checklist. Tabs, pagination, and breadcrumbs now
+ * use the shared AdminTabs / AdminPagination / AdminBreadcrumbs primitives.
+ *
+ * @returns {JSX.Element}
+ */
+export default function NavigationSection() {
+  const [tab, setTab] = useState("overview");
+  const [page, setPage] = useState(2);
+
+  return (
+    <div className="flex flex-col gap-10">
+      <DSPageHeading
+        eyebrow="Components"
+        title="Navigation"
+        lead="The admin shell sidebar is the backbone of in-product navigation. Tabs, breadcrumbs, and pagination handle local movement and are now shared components. Active items use the accent-dim fill + inset accent ring treatment consistently."
+      />
+
+      <DSGroup title="Sidebar (active item treatment)" status="live" description="The real AdminSidebar pattern: accent-dim fill + accent text + inset ring for the active route.">
+        <DSTile>
+          <div className="grid min-h-[220px] overflow-hidden rounded-[var(--adm-radius-lg)] md:grid-cols-[200px_minmax(0,1fr)]" style={{ border: "1px solid var(--adm-border)" }}>
+            <aside className="flex flex-col gap-1.5 p-3" style={{ backgroundColor: "var(--adm-surface)", borderRight: "1px solid var(--adm-border)" }}>
+              <div className="mb-1 flex items-center gap-2 rounded-[var(--adm-radius)] px-3 py-2.5" style={{ backgroundColor: "var(--adm-surface2)" }}>
+                <FiGrid className="text-sm" style={{ color: "var(--adm-accent)" }} />
+                <span className="text-xs font-semibold" style={{ color: "var(--adm-text)" }}>Coachable Admin</span>
+              </div>
+              {["Dashboard", "Plays", "Users", "Design System", "Errors"].map((label, i) => {
+                const active = i === 3;
+                return (
+                  <div key={label} className="flex items-center justify-between gap-2 rounded-[var(--adm-radius-md)] px-3 py-2 text-xs font-semibold"
+                    style={active
+                      ? { backgroundColor: "color-mix(in srgb, var(--adm-accent-dim) 85%, var(--adm-surface2))", color: "var(--adm-accent)", boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--adm-accent) 22%, transparent)" }
+                      : { color: "var(--adm-text2)" }}>
+                    <span>{label}</span>
+                    {i === 1 ? <AdminBadge status="info">3</AdminBadge> : null}
+                  </div>
+                );
+              })}
+            </aside>
+            <div className="flex flex-col gap-3 p-4" style={{ backgroundColor: "var(--adm-bg)" }}>
+              <AdminBreadcrumbs items={[{ label: "Admin" }, { label: "Design System" }, { label: "Navigation" }]} />
+              <p className="text-sm" style={{ color: "var(--adm-text2)" }}>Breadcrumbs sit above the page title; the back link is the compact variant.</p>
+            </div>
+          </div>
+        </DSTile>
+      </DSGroup>
+
+      <DSGroup title="Tabs" status="live" description="Shared AdminTabs — controlled, accent fill on the active tab.">
+        <DSTile>
+          <AdminTabs
+            value={tab}
+            onChange={setTab}
+            tabs={[{ value: "overview", label: "Overview" }, { value: "activity", label: "Activity" }, { value: "sharing", label: "Sharing" }]}
+          />
+        </DSTile>
+      </DSGroup>
+
+      <DSGroup title="Breadcrumbs" status="live" description="Shared AdminBreadcrumbs — last item is the current page.">
+        <DSTile>
+          <AdminBreadcrumbs items={[{ label: "Admin", to: "/admin" }, { label: "Users", to: "/admin/users" }, { label: "Maya Jordan" }]} />
+        </DSTile>
+      </DSGroup>
+
+      <DSGroup title="Pagination" status="live" description="Shared AdminPagination — first/last anchoring with ellipses for long ranges.">
+        <div className="grid gap-4 md:grid-cols-2">
+          <DSTile title="Short range">
+            <AdminPagination page={page} pageCount={5} onChange={setPage} />
+          </DSTile>
+          <DSTile title="Long range (ellipses)">
+            <AdminPagination page={page} pageCount={24} onChange={setPage} />
+          </DSTile>
+        </div>
+      </DSGroup>
+
+      <DSGroup title="Navigation catalog" description="The fuller set from the checklist.">
+        <DSChecklist
+          columns={3}
+          items={[
+            { label: "Expanded / collapsed sidebar", status: "live" },
+            { label: "Nested items & section labels", status: "spec" },
+            { label: "Badge / count on item", status: "live" },
+            { label: "Team / workspace switcher", note: "TeamSwitcher.", status: "inApp" },
+            { label: "Breadcrumbs", note: "AdminBreadcrumbs.", status: "live" },
+            { label: "Tabs / pills / segmented", note: "AdminTabs.", status: "live" },
+            { label: "Stepper", status: "planned" },
+            { label: "Pagination", note: "AdminPagination.", status: "live" },
+            { label: "Cursor / infinite scroll", note: "Infinite scroll in lists.", status: "spec" },
+            { label: "Command menu / quick switcher", status: "planned" },
+            { label: "Table of contents / anchor links", status: "spec" },
+            { label: "Mobile drawer / hamburger", status: "live" },
+          ]}
+        />
+      </DSGroup>
+    </div>
+  );
+}
