@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useAppMessage } from "../context/AppMessageContext";
 import logo from "../assets/logos/full_Coachable_logo.png";
@@ -32,7 +32,7 @@ const SPORTS = [
   { key: "basketball",      label: "Basketball",       image: BasketballField,      color: "#D8C3A5" },
   { key: "field hockey",    label: "Field Hockey",     image: FieldHockeyField,     color: "#3E8E5B" },
   { key: "ice hockey",      label: "Ice Hockey",       image: IceHockeyField,       color: "#ECF8FE", imageRotation: 90 },
-  { key: "",                label: "Blank Canvas",     image: null,                 color: "#6B7280" },
+  { key: "",                label: "Blank Canvas",     image: null,                 color: "#4FA85D" },
 ];
 
 /**
@@ -62,7 +62,7 @@ export default function Onboarding() {
   const [sportChosen, setSportChosen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const { completeOnboarding } = useAuth();
+  const { completeOnboarding, logout } = useAuth();
   const { showMessage } = useAppMessage();
   const navigate = useNavigate();
 
@@ -142,9 +142,9 @@ export default function Onboarding() {
             }}
           >
             <div className="mx-auto flex min-h-full w-full max-w-lg flex-col justify-start md:justify-center">
-              <Link to="/" className="mb-6 inline-flex items-center gap-1.5 text-xs text-BrandGray2 transition hover:text-BrandBlack">
+              <button type="button" onClick={() => { logout(); navigate("/"); }} className="mb-6 inline-flex items-center gap-1.5 text-xs text-BrandGray2 transition hover:text-BrandBlack">
                 <FiArrowLeft className="text-sm" /> Back to home
-              </Link>
+              </button>
               <img src={logo} alt="Coachable" className="mb-10 block h-7 w-auto self-start object-contain" />
               <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-BrandOrange/10">
                 <FaRegHandshake className="text-2xl text-BrandOrange" />
@@ -197,14 +197,8 @@ export default function Onboarding() {
       className="font-DmSans md:flex md:overflow-hidden"
       style={{ minHeight: "var(--app-viewport-height)", height: "var(--app-viewport-height)" }}
     >
-      {/* Left panel — bg transitions from white (steps 1&2) to BrandBlack (sport step) */}
-      <div
-        className="relative flex w-full flex-col md:w-3/5 md:h-full md:overflow-hidden"
-        style={{
-          backgroundColor: onSportStep ? "#0A0A0A" : "#ffffff",
-          transition: "background-color 0.3s ease",
-        }}
-      >
+      {/* Left panel */}
+      <div className="relative flex w-full flex-col bg-white md:w-3/5 md:h-full md:overflow-hidden">
         {/* Steps 1 & 2 — white, slide out left when sport step is active */}
         <div
           className="absolute inset-0 overflow-y-auto hide-scroll px-8 sm:px-16 lg:px-24 xl:px-32"
@@ -218,9 +212,9 @@ export default function Onboarding() {
           }}
         >
           <div className="mx-auto flex min-h-full w-full max-w-lg flex-col justify-start md:justify-center">
-            <Link to="/" className="mb-6 inline-flex items-center gap-1.5 text-xs text-BrandGray2 transition hover:text-BrandBlack">
+            <button type="button" onClick={() => { logout(); navigate("/"); }} className="mb-6 inline-flex items-center gap-1.5 text-xs text-BrandGray2 transition hover:text-BrandBlack">
               <FiArrowLeft className="text-sm" /> Back to home
-            </Link>
+            </button>
             <img src={logo} alt="Coachable" className="mb-10 block h-7 w-auto self-start object-contain" />
 
             {/* ── Step 1: choose action ── */}
@@ -339,9 +333,9 @@ export default function Onboarding() {
           </div>
         </div>
 
-        {/* ── Step 3: sport selection — dark panel, slides in from right ── */}
+        {/* ── Step 3: sport selection — slides in from right ── */}
         <div
-          className="absolute inset-0 overflow-y-auto hide-scroll px-6 sm:px-12 lg:px-20 xl:px-24"
+          className="absolute inset-0 overflow-y-auto hide-scroll px-8 sm:px-16 lg:px-24 xl:px-32"
           style={{
             opacity: onSportStep ? 1 : 0,
             transform: onSportStep ? "translateX(0)" : "translateX(32px)",
@@ -352,30 +346,35 @@ export default function Onboarding() {
           }}
         >
           <div className="mx-auto w-full max-w-lg flex flex-col min-h-full">
-            {/* Back */}
-            <button
-              type="button"
-              onClick={() => {
-                setSportChosen(false);
-                setSport("");
-                setStep(teamAction === "solo" ? "choose" : "details");
-              }}
-              className="mb-4 inline-flex items-center gap-1.5 text-xs text-white/40 transition hover:text-white/80 self-start"
-            >
-              <FiArrowLeft className="text-sm" /> Back
-            </button>
+            {/* Top nav row */}
+            <div className="mb-6 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  setSportChosen(false);
+                  setSport("");
+                  setStep(teamAction === "solo" ? "choose" : "details");
+                }}
+                className="inline-flex items-center gap-1.5 text-xs text-BrandGray2 transition hover:text-BrandBlack"
+              >
+                <FiArrowLeft className="text-sm" /> Back
+              </button>
+              <button type="button" onClick={() => { logout(); navigate("/"); }} className="text-xs text-BrandGray2 transition hover:text-BrandBlack">
+                Back to home
+              </button>
+            </div>
 
             {/* Logo */}
-            <img src={whiteLogo} alt="Coachable" className="mb-8 block h-6 w-auto self-start object-contain opacity-70" />
+            <img src={logo} alt="Coachable" className="mb-10 block h-7 w-auto self-start object-contain" />
 
             {/* Header */}
             <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.25em] text-BrandOrange">
               {teamAction === "solo" ? "Play Designer" : "Team Setup"}
             </p>
-            <h1 className="font-Manrope text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+            <h1 className="font-Manrope text-2xl font-bold tracking-tight text-BrandBlack">
               Choose your sport
             </h1>
-            <p className="mt-1.5 text-xs text-white/40 max-w-sm">
+            <p className="mt-1.5 text-sm text-BrandGray2">
               {teamAction === "solo"
                 ? "Select a sport to open the editor with the right field and defaults."
                 : "Sets the field and player defaults in the play editor. You can change it later in settings."}
@@ -396,7 +395,7 @@ export default function Onboarding() {
                       // Solo: one click → immediate submit (matches SportPickerPage UX)
                       if (teamAction === "solo") handleFinish(s.key);
                     }}
-                    className="group relative flex flex-col items-center justify-end aspect-square rounded-xl border border-white/6 overflow-hidden transition-all duration-200 hover:border-BrandOrange/50 hover:shadow-[0_0_24px_-6px_rgba(255,122,24,0.25)] cursor-pointer focus:outline-none focus:ring-2 focus:ring-BrandOrange/40 disabled:opacity-50 disabled:cursor-wait"
+                    className="group relative flex flex-col items-center justify-end aspect-square rounded-xl border border-black/8 overflow-hidden transition-all duration-200 hover:border-BrandOrange/50 hover:shadow-[0_0_24px_-6px_rgba(255,122,24,0.25)] cursor-pointer focus:outline-none focus:ring-2 focus:ring-BrandOrange/40 disabled:opacity-50 disabled:cursor-wait"
                     style={{ backgroundColor: s.color }}
                   >
                     {s.image ? (
@@ -407,15 +406,7 @@ export default function Onboarding() {
                         style={s.imageRotation ? { transform: `rotate(${s.imageRotation}deg)` } : undefined}
                         draggable={false}
                       />
-                    ) : (
-                      <div
-                        className="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity duration-200"
-                        style={{
-                          backgroundImage: "linear-gradient(rgba(255,255,255,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.4) 1px, transparent 1px)",
-                          backgroundSize: "24px 24px",
-                        }}
-                      />
-                    )}
+                    ) : null}
                     <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
                     <span className="relative z-10 mb-3 text-sm sm:text-base font-semibold text-white group-hover:text-BrandOrange transition-colors">
                       {s.label}
@@ -445,7 +436,7 @@ export default function Onboarding() {
                 </button>
                 <div className="mt-4 flex items-center gap-2">
                   <div className="h-1.5 w-1.5 rounded-full bg-BrandOrange/60" />
-                  <span className="text-xs text-white/25">You can change the sport anytime in team settings</span>
+                  <span className="text-xs text-BrandGray">You can change the sport anytime in team settings</span>
                 </div>
               </div>
             )}
@@ -453,8 +444,8 @@ export default function Onboarding() {
             {/* Solo: loading state indicator while submitting */}
             {teamAction === "solo" && submitting && (
               <div className="mt-auto pt-6 flex items-center justify-center gap-2 py-3">
-                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-BrandOrange" />
-                <span className="text-sm text-white/40">Setting up...</span>
+                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-BrandGray/20 border-t-BrandOrange" />
+                <span className="text-sm text-BrandGray2">Setting up...</span>
               </div>
             )}
           </div>
