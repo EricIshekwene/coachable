@@ -11,7 +11,7 @@ import PlayerColorSection, { PLAYER_COLORS } from "../../../components/sidebar/P
 import PrefabsSection from "../../../components/sidebar/PrefabsSection";
 import PresetSection from "../../../components/sidebar/PresetSection";
 import SelectToolSection from "../../../components/sidebar/SelectToolSection";
-import { DSPageHeading } from "../dsPrimitives";
+import { DSPageHeading, DSCallout } from "../dsPrimitives";
 
 const noop = () => {};
 const NOOP_SEEK = () => {};
@@ -115,6 +115,15 @@ export default function SlateSection() {
         title="Slate editor UI"
         lead="The play editor (Slate) uses a deliberately different visual language from the admin shell and marketing site: near-black floating surfaces, rounded pills, and tool rails optimized for a canvas-first workflow. These are the real editor components, rendered live on the editor's own dark canvas."
       />
+
+      <DSCallout tone="warning" title="Not connected to the shared tokens — migration pending">
+        Slate is the one visual world <strong>not yet wired to the single source of truth</strong>.
+        Its colors are hardcoded (near-black <code>#121212</code> surfaces, <code>white/…</code> alpha
+        borders) rather than the brand <code>--color-Brand*</code> / admin <code>--adm-*</code> tokens,
+        so changing a brand token updates the app and admin but <strong>not</strong> the editor. The
+        components below are real and current, but their styling is independent and out of step with the
+        rest of this design system until Slate is migrated onto the shared palette.
+      </DSCallout>
 
       <div className="min-w-0 overflow-hidden rounded-[32px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8"
         style={{ background: "linear-gradient(180deg, #050608 0%, #0b0f14 42%, #121212 100%)", border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 32px 70px rgba(0,0,0,0.28)" }}>

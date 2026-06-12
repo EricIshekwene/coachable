@@ -1,4 +1,4 @@
-import { DSPageHeading, DSGroup, DSTile, DSSwatch, DSChecklist } from "../dsPrimitives";
+import { DSPageHeading, DSGroup, DSTile, DSSwatch, DSChecklist, DSCallout } from "../dsPrimitives";
 
 const BRAND_TOKENS = [
   { label: "Brand Orange", fill: "var(--color-BrandOrange)", caption: "#FF7A18" },
@@ -63,28 +63,36 @@ export default function ColorSection() {
       <DSPageHeading
         eyebrow="Design tokens"
         title="Color"
-        lead="Coachable runs two color systems: the product Brand* palette (Tailwind @theme) and the admin --adm-* palette (light/dark). Accent orange is shared across both and always signals primary intent. Every swatch below reads a live token, so toggle the theme to see dark-mode equivalents."
+        lead="There is one source of truth: the product Brand* palette (Tailwind @theme in src/index.css), used by the marketing site, app shell, and Slate editor. The admin --adm-* tokens are no longer a parallel palette — they alias and derive from the Brand* tokens, so the admin shell and this design system stay in lockstep with the product. Change a Brand* value once and it ripples everywhere. Every swatch reads a live token, so toggle the theme to see dark/light equivalents."
       />
 
-      <DSGroup title="Brand palette" description="Tailwind @theme tokens used across the marketing site, app shell, and Slate editor.">
+      <DSCallout tone="info" title="Single source of truth">
+        The Brand* palette below is canonical. Admin surface/text/accent tokens are
+        defined as <code>var(--color-Brand*)</code> (or a <code>color-mix</code> of them)
+        in <code>src/admin/admin.css</code> — they are derived, not independent. Only the
+        status colors and data-viz hues further down are admin-owned, because the brand
+        palette doesn't define them.
+      </DSCallout>
+
+      <DSGroup title="Brand palette — source of truth" status="live" description="Tailwind @theme tokens (src/index.css). Everything else on this page resolves back to these.">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {BRAND_TOKENS.map((s) => <DSSwatch key={s.label} {...s} />)}
         </div>
       </DSGroup>
 
-      <DSGroup title="Admin surfaces" description="Layered backgrounds for the admin shell and this design system. Depth comes from stacking these, not from heavy borders.">
+      <DSGroup title="Admin surfaces (derived)" description="Derived from BrandBlack. Surface sits AT the page background — components match the background and separate via a 1px border + shadow, not a lighter fill. The surface2/surface3 lifts are intentionally tiny, for inputs and the deepest nesting only.">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {ADMIN_SURFACES.map((s) => <DSSwatch key={s.label} {...s} />)}
         </div>
       </DSGroup>
 
-      <DSGroup title="Text, borders & overlay">
+      <DSGroup title="Text, borders & overlay (derived)" description="Aliased from BrandText / BrandGray; borders and overlay are color-mixed from BrandText.">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {ADMIN_TEXT.map((s) => <DSSwatch key={s.label} {...s} />)}
         </div>
       </DSGroup>
 
-      <DSGroup title="Semantic colors" description="Each state ships as a solid color plus a subtle background tint for fills.">
+      <DSGroup title="Semantic colors" description="Accent and success are brand colors (BrandOrange / BrandGreen). Danger, warning, and info are admin-owned status colors — not part of the brand palette. Each ships as a solid color plus a subtle tint for fills.">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           {SEMANTIC.map((s) => <DSSwatch key={s.label} {...s} />)}
         </div>

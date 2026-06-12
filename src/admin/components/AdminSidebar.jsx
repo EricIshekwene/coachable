@@ -192,7 +192,7 @@ export default function AdminSidebar({ mobileOpen = false, onClose }) {
       <aside
         className={`fixed inset-y-0 left-0 z-40 flex h-full w-[min(18rem,85vw)] shrink-0 flex-col transition-transform duration-200 lg:static lg:z-auto lg:w-52 ${mobileOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
         style={{
-          backgroundColor: "var(--adm-surface)",
+          backgroundColor: "var(--adm-bg)",
           borderRight: "1px solid var(--adm-border)",
         }}
       >
