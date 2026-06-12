@@ -1183,16 +1183,27 @@ function SectionRow({ section, plays, onAssign, onTogglePriority }) {
       <div className="flex flex-1 items-center gap-4">
         {section.playId ? (
           <>
-            <div className="w-32 shrink-0">
-              {section.playThumbnail ? (
+            <div className="w-32 shrink-0 overflow-hidden rounded-lg" style={{ border: "1px solid var(--adm-border)" }}>
+              {plays.find((p) => p.id === section.playId)?.playData ? (
+                <PlayPreviewCard
+                  playData={plays.find((p) => p.id === section.playId).playData}
+                  autoplay="hover"
+                  shape="landscape"
+                  cameraMode="fit-distribution"
+                  background="field"
+                  paddingPx={10}
+                  minSpanPx={60}
+                  showHoverHint={false}
+                  className="rounded-lg"
+                />
+              ) : section.playThumbnail ? (
                 <img
                   src={section.playThumbnail}
                   alt={section.playTitle}
-                  className="aspect-video w-full rounded-lg object-cover"
-                  style={{ border: "1px solid var(--adm-border)" }}
+                  className="aspect-video w-full object-cover"
                 />
               ) : (
-                <div className="flex aspect-video w-full items-center justify-center rounded-lg" style={INSET_STYLE}>
+                <div className="flex aspect-video w-full items-center justify-center" style={INSET_STYLE}>
                   <FiLayout style={{ color: "var(--adm-muted)" }} />
                 </div>
               )}
