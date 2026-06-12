@@ -2,42 +2,57 @@
 
 ## Problem
 
-When coaches signed up for Coachable and created their first squad through onboarding, the sport selection was optional and easy to skip. This caused issues because the sport drives the field type displayed when a coach first opens the play editor (Slate). A missing sport meant coaches landed on a blank field with no context.
+When coaches signed up for Coachable and created their first team through onboarding, sport selection was either optional (dropdown) or embedded inline on a white background — visually disconnected from the `/slate` sport picker coaches see when they open the play editor.
 
 ## What Was Implemented
 
-The "Create Team" onboarding flow was converted from a single-step form (team name + optional sport dropdown) to a **two-step wizard**:
+The onboarding flow is a **three-step wizard** for "Create Team", two steps for "Join Team", and two steps for "Just Make Plays":
 
-1. **Step 1 — Team Name:** Coach enters the team name and clicks "Continue".
-2. **Step 2 — Sport Selection (required):** A visual grid of sport cards (with real field image thumbnails) is shown. The coach must select one before the "Finish setup" button becomes active. "Blank Canvas" is included as a last-resort option so the flow is never a dead end, but it is positioned last to discourage accidental use.
+| Action        | Steps                                    |
+|---------------|------------------------------------------|
+| Create Team   | 1 — Choose action → 2 — Team name → 3 — Sport selection |
+| Join Team     | 1 — Choose action → 2 — Invite code → Submit |
+| Just Make Plays | 1 — Choose action → 2 — Sport selection (click-to-submit) |
 
-The sport picker is reused from the same visual language as the `/slate` sport picker (`SportPickerPage.jsx`) — each card shows the actual field image with a dark gradient overlay and the sport name at the bottom.
+### Sport Selection Step
+
+The sport step uses the **identical card design as `SportPickerPage.jsx`** (`/slate`):
+- Left panel background transitions from white to `BrandBlack` (#0A0A0A) as the panel slides in
+- Real field image thumbnails, same `aspect-square` cards, same gradient overlay, same hover/selection ring
+- "Blank Canvas" is included last as a deliberate opt-out
+
+**Create flow:** sport selection is required — the "Finish Setup" button is disabled until a card is chosen.
+
+**Solo flow:** clicking any sport card immediately calls `completeOnboarding` and navigates to `/slate/:sport`, exactly matching the one-click UX of `SportPickerPage`.
 
 ## Key Decisions
 
-### Required, not optional
-The original dropdown was labeled "Sport (optional)" and was easy to ignore. Moving to a mandatory step ensures every new team has a sport recorded in the database, which flows through to the Slate field type.
+### Dark panel on sport step
+The sport step transitions the left panel background from white to `BrandBlack` with a CSS `transition: background-color 0.3s ease`. This makes the sport selection feel like stepping into the editor, not like filling in a form field.
 
-### Blank Canvas is still allowed
-Per product requirements, coaches must be able to choose "no sport" without being blocked. "Blank Canvas" is the last entry in the grid with a neutral gray background and a grid pattern, clearly distinct from real sport cards. Choosing it stores `null` in `teams.sport`.
+### Solo uses field images, not text buttons
+The previous implementation gave solo users a plain text-button grid. Solo users are the most likely to go straight to the play editor, so they get the same visual sport picker as the dedicated `/slate` entry point.
 
-### Two-step instead of in-page required field
-A required field inside the existing single-page form could be missed or confusing. A dedicated step breaks the cognitive load and mirrors the `/slate` experience coaches already encounter when they test play creation before onboarding.
+### Scrollview only on left panel
+The outer container uses `md:overflow-hidden` + `height: var(--app-viewport-height)` (locked on desktop, natural on mobile). Each step panel is `position: absolute; inset: 0; overflow-y: auto` — only the individual step content scrolls, not the whole page.
+
+### Step transitions
+Steps slide in/out using `opacity` + `translateX` with `pointerEvents: none` on hidden steps — matching `SportPickerPage`'s step transition pattern.
 
 ### State model
-- `createStep: "name" | "sport"` — controls which step is visible.
-- `sportChosen: boolean` — tracks whether the user has explicitly clicked a sport card. This correctly distinguishes between "blank canvas selected" (`sport = ""`, `sportChosen = true`) and "hasn't chosen yet" (`sport = ""`, `sportChosen = false`), keeping the button disabled in the latter case.
-- Switching team action (Create / Join / Solo) resets both `createStep` and `sportChosen` so state never leaks between flows.
+- `step: "choose" | "details" | "sport"` — which panel is visible
+- `teamAction: "create" | "join" | "solo"` — set when clicking an action card
+- `sportChosen: boolean` — distinguishes "blank canvas chosen" (`sport=""`, `sportChosen=true`) from "not chosen yet" (`sport=""`, `sportChosen=false`)
+- Navigating back resets `sport` and `sportChosen` so cards don't appear pre-selected
 
-### Solo and Join flows unchanged
-- **Solo:** Already had an optional sport picker; left as-is since solo users navigate directly to `/slate/:sport` and the field is not tied to a team.
-- **Join:** Sport is inherited from the team being joined; no selection needed.
+### Join flow skips sport
+Sport is inherited from the team being joined; no selection is needed or shown.
 
 ## Files Changed
 
 | File | Change |
 |---|---|
-| `src/pages/Onboarding.jsx` | Rewrote create-team section to two-step wizard; added `SportSelectionGrid` component; added field image imports |
-| `admin/test/sportOnboarding.test.js` | New tests for `canAdvance` logic, sport payload, and `SPORTS_FOR_CREATE` shape |
+| `src/pages/Onboarding.jsx` | Full rewrite: 3-step flow, dark sport panel, field image cards, scrollview fix |
+| `admin/test/sportOnboarding.test.js` | Updated tests: new step model, solo flow, `canAdvanceDetails`, `canFinishSport` |
 | `src/pages/SPORT_ONBOARDING_SELECTION.md` | This document |
-| `CRAWLER_MAP.md` | Added `SportSelectionGrid` component reference |
+| `CRAWLER_MAP.md` | Updated Onboarding.jsx entry |

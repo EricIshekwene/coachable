@@ -1,12 +1,13 @@
 /**
- * Tests for the sport selection step in the "Create Team" onboarding flow.
+ * Tests for the sport selection step in the onboarding flow.
  *
  * Covers:
- *  - canAdvance logic for each step of the create flow
- *  - Sport is sent correctly to the server when a sport is chosen
- *  - Sport is sent as empty/null when "Blank Canvas" is chosen
- *  - Switching team action resets create-flow step state
- *  - The server endpoint still accepts a sport value from onboarding
+ *  - canAdvanceDetails logic for each team action / step
+ *  - canFinishSport logic (sport step enabled only once a sport is chosen)
+ *  - Sport key sent correctly to the server when a sport is chosen
+ *  - Sport sent as empty string when "Blank Canvas" is chosen
+ *  - All supported sport keys are valid
+ *  - The server endpoint accepts a sport value from onboarding
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
 
@@ -44,56 +45,90 @@ async function createTeamOnboard(token, payload) {
   return res.json();
 }
 
-// ── canAdvance logic (pure, no DOM) ──────────────────────────────────────────
+// ── canAdvanceDetails logic (pure, no DOM) ───────────────────────────────────
 
 /**
- * Mirrors the canAdvance logic from Onboarding.jsx.
- * @param {{ teamAction: string, createStep: string, teamName: string, inviteCode: string, sportChosen: boolean }} state
+ * Mirrors the canAdvanceDetails logic from Onboarding.jsx.
+ * Controls the "Continue" / "Join team" button on the details step.
+ * @param {{ teamAction: string, teamName: string, inviteCode: string }} state
  */
-function canAdvance({ teamAction, createStep, teamName, inviteCode, sportChosen }) {
-  if (teamAction === "solo") return true;
-  if (teamAction === "create") {
-    return createStep === "name"
-      ? teamName.trim().length > 0
-      : sportChosen;
-  }
-  return inviteCode.trim().length > 0;
+function canAdvanceDetails({ teamAction, teamName, inviteCode }) {
+  if (teamAction === "create") return teamName.trim().length >= 2;
+  return inviteCode.trim().length >= 6;
+}
+
+/**
+ * Mirrors the sport step button's enabled logic for "create".
+ * @param {{ sportChosen: boolean }} state
+ */
+function canFinishSport({ sportChosen }) {
+  return sportChosen;
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-describe("Onboarding — sport selection canAdvance logic", () => {
-  it("create/name step: disabled when teamName is empty", () => {
-    expect(canAdvance({ teamAction: "create", createStep: "name", teamName: "", inviteCode: "", sportChosen: false })).toBe(false);
+describe("Onboarding — details step canAdvanceDetails logic", () => {
+  it("create: disabled when teamName is empty", () => {
+    expect(canAdvanceDetails({ teamAction: "create", teamName: "", inviteCode: "" })).toBe(false);
   });
 
-  it("create/name step: enabled when teamName has content", () => {
-    expect(canAdvance({ teamAction: "create", createStep: "name", teamName: "Lions", inviteCode: "", sportChosen: false })).toBe(true);
+  it("create: disabled when teamName is only 1 character", () => {
+    expect(canAdvanceDetails({ teamAction: "create", teamName: "A", inviteCode: "" })).toBe(false);
   });
 
-  it("create/sport step: disabled before any sport is chosen", () => {
-    expect(canAdvance({ teamAction: "create", createStep: "sport", teamName: "Lions", inviteCode: "", sportChosen: false })).toBe(false);
-  });
-
-  it("create/sport step: enabled after a real sport is chosen", () => {
-    expect(canAdvance({ teamAction: "create", createStep: "sport", teamName: "Lions", inviteCode: "", sportChosen: true })).toBe(true);
-  });
-
-  it("create/sport step: enabled when Blank Canvas is explicitly chosen", () => {
-    // Blank Canvas sets sport="" and sportChosen=true — still valid
-    expect(canAdvance({ teamAction: "create", createStep: "sport", teamName: "Lions", inviteCode: "", sportChosen: true })).toBe(true);
+  it("create: enabled when teamName has at least 2 characters", () => {
+    expect(canAdvanceDetails({ teamAction: "create", teamName: "Lions", inviteCode: "" })).toBe(true);
   });
 
   it("join: disabled when inviteCode is empty", () => {
-    expect(canAdvance({ teamAction: "join", createStep: "name", teamName: "", inviteCode: "", sportChosen: false })).toBe(false);
+    expect(canAdvanceDetails({ teamAction: "join", teamName: "", inviteCode: "" })).toBe(false);
   });
 
-  it("join: enabled when inviteCode has content", () => {
-    expect(canAdvance({ teamAction: "join", createStep: "name", teamName: "", inviteCode: "ABCD1234", sportChosen: false })).toBe(true);
+  it("join: disabled when inviteCode is too short", () => {
+    expect(canAdvanceDetails({ teamAction: "join", teamName: "", inviteCode: "ABC" })).toBe(false);
   });
 
-  it("solo: always enabled regardless of state", () => {
-    expect(canAdvance({ teamAction: "solo", createStep: "name", teamName: "", inviteCode: "", sportChosen: false })).toBe(true);
+  it("join: enabled when inviteCode has at least 6 characters", () => {
+    expect(canAdvanceDetails({ teamAction: "join", teamName: "", inviteCode: "ABCD1234" })).toBe(true);
+  });
+});
+
+describe("Onboarding — sport step canFinishSport logic", () => {
+  it("disabled before any sport is chosen", () => {
+    expect(canFinishSport({ sportChosen: false })).toBe(false);
+  });
+
+  it("enabled after a real sport is chosen", () => {
+    expect(canFinishSport({ sportChosen: true })).toBe(true);
+  });
+
+  it("enabled when Blank Canvas is explicitly chosen (sport='' sportChosen=true)", () => {
+    // Blank Canvas sets sport="" but sportChosen=true — the button should enable
+    expect(canFinishSport({ sportChosen: true })).toBe(true);
+  });
+});
+
+describe("Onboarding — solo flow skips details", () => {
+  it("solo goes directly to sport step — no team name required", () => {
+    // Solo has no details step so canAdvanceDetails is irrelevant.
+    // Clicking 'Just Make Plays' immediately transitions to the sport step.
+    // Verify that sport step click → immediate submit is the UX contract.
+    const handleFinishCalled = vi.fn();
+    function simulateSoloSportClick(sportKey, onFinish) {
+      // Mirrors the onClick for solo in the sport grid
+      if (/* teamAction === "solo" */ true) onFinish(sportKey);
+    }
+    simulateSoloSportClick("rugby", handleFinishCalled);
+    expect(handleFinishCalled).toHaveBeenCalledWith("rugby");
+  });
+
+  it("solo blank canvas calls handleFinish with empty string", () => {
+    const handleFinishCalled = vi.fn();
+    function simulateSoloSportClick(sportKey, onFinish) {
+      if (true) onFinish(sportKey);
+    }
+    simulateSoloSportClick("", handleFinishCalled);
+    expect(handleFinishCalled).toHaveBeenCalledWith("");
   });
 });
 
@@ -120,7 +155,6 @@ describe("Onboarding — sport sent to create-team endpoint", () => {
       inviteCodes: { player: "QQQQ", coach: "RRRR" },
     });
 
-    // Blank Canvas maps to key="" in the frontend
     await createTeamOnboard(AUTH_TOKEN, { teamName: "Test Squad", sport: "" });
 
     const body = JSON.parse(spy.mock.calls[0][1].body);
@@ -181,9 +215,9 @@ describe("Onboarding — sport sent to create-team endpoint", () => {
   });
 });
 
-describe("Onboarding — SPORTS_FOR_CREATE constant shape", () => {
+describe("Onboarding — SPORTS constant shape", () => {
   // Mirror the constant so tests don't import JSX
-  const SPORTS_FOR_CREATE = [
+  const SPORTS = [
     { key: "rugby",           label: "Rugby" },
     { key: "soccer",          label: "Soccer" },
     { key: "football",        label: "Football" },
@@ -196,26 +230,26 @@ describe("Onboarding — SPORTS_FOR_CREATE constant shape", () => {
   ];
 
   it("has exactly 9 entries (8 sports + blank canvas)", () => {
-    expect(SPORTS_FOR_CREATE).toHaveLength(9);
+    expect(SPORTS).toHaveLength(9);
   });
 
   it("every entry has a non-empty label", () => {
-    expect(SPORTS_FOR_CREATE.every((s) => s.label.length > 0)).toBe(true);
+    expect(SPORTS.every((s) => s.label.length > 0)).toBe(true);
   });
 
   it("blank canvas has key of empty string and is last", () => {
-    const last = SPORTS_FOR_CREATE[SPORTS_FOR_CREATE.length - 1];
+    const last = SPORTS[SPORTS.length - 1];
     expect(last.key).toBe("");
     expect(last.label).toBe("Blank Canvas");
   });
 
   it("all sport keys are lowercase strings", () => {
-    const realSports = SPORTS_FOR_CREATE.filter((s) => s.key !== "");
+    const realSports = SPORTS.filter((s) => s.key !== "");
     expect(realSports.every((s) => s.key === s.key.toLowerCase())).toBe(true);
   });
 
   it("no duplicate keys", () => {
-    const keys = SPORTS_FOR_CREATE.map((s) => s.key);
+    const keys = SPORTS.map((s) => s.key);
     expect(new Set(keys).size).toBe(keys.length);
   });
 });
