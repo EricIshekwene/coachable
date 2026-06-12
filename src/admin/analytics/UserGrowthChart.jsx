@@ -24,7 +24,7 @@ export default function UserGrowthChart({ data, height = 180 }) {
   if (!data) return <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center" }}><AdminSpinner /></div>;
   if (!data.length) return <p style={{ color: "var(--adm-muted)", fontSize: 13, textAlign: "center", paddingTop: 60 }}>No registrations in this period</p>;
 
-  const accent = "#FF7A18";
+  const accent = "var(--adm-accent)";
   const muted = "var(--adm-muted)";
   const border = "var(--adm-border)";
 

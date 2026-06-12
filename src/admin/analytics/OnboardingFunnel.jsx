@@ -12,7 +12,7 @@ function FunnelHoverCursor({ x, y, width, height, gradientId }) {
       rx={10}
       ry={10}
       fill={`url(#${gradientId})`}
-      stroke="rgba(74, 222, 128, 0.28)"
+      stroke="color-mix(in srgb, var(--adm-success) 28%, transparent)"
       strokeWidth={1}
     />
   );
@@ -50,8 +50,8 @@ export default function OnboardingFunnel({ data, height = 180 }) {
 
   // Color fade: brightest at top, dimmer as funnel narrows
   function fillColor(index) {
-    const opacity = 1 - index * 0.14;
-    return `rgba(255, 122, 24, ${opacity})`;
+    const pct = Math.round((1 - index * 0.14) * 100);
+    return `color-mix(in srgb, var(--adm-accent) ${pct}%, transparent)`;
   }
 
   return (
@@ -63,9 +63,9 @@ export default function OnboardingFunnel({ data, height = 180 }) {
       >
         <defs>
           <linearGradient id={hoverGradientId} x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="rgba(255, 122, 24, 0.06)" />
-            <stop offset="55%" stopColor="rgba(255, 122, 24, 0.12)" />
-            <stop offset="100%" stopColor="rgba(74, 222, 128, 0.18)" />
+            <stop offset="0%" stopColor="color-mix(in srgb, var(--adm-accent) 6%, transparent)" />
+            <stop offset="55%" stopColor="color-mix(in srgb, var(--adm-accent) 12%, transparent)" />
+            <stop offset="100%" stopColor="color-mix(in srgb, var(--adm-success) 18%, transparent)" />
           </linearGradient>
         </defs>
         <XAxis

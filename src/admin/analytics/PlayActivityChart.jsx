@@ -21,7 +21,7 @@ function ActivityHoverCursor({ x, y, width, height, gradientId }) {
       rx={12}
       ry={12}
       fill={`url(#${gradientId})`}
-      stroke="rgba(96, 165, 250, 0.32)"
+      stroke="color-mix(in srgb, var(--adm-color-blue) 32%, transparent)"
       strokeWidth={1}
     />
   );
@@ -42,8 +42,8 @@ export default function PlayActivityChart({ data, height = 180 }) {
   if (!data) return <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center" }}><AdminSpinner /></div>;
   if (!data.length) return <p style={{ color: "var(--adm-muted)", fontSize: 13, textAlign: "center", paddingTop: 60 }}>No play activity in this period</p>;
 
-  const accent  = "#FF7A18";
-  const accent2 = "#3b82f6"; // blue for "updated"
+  const accent  = "var(--adm-accent)";
+  const accent2 = "var(--adm-color-blue)"; // blue for "updated"
   const muted   = "var(--adm-muted)";
   const border  = "var(--adm-border)";
 
@@ -55,9 +55,9 @@ export default function PlayActivityChart({ data, height = 180 }) {
       <BarChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
         <defs>
           <linearGradient id={hoverGradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgba(96, 165, 250, 0.18)" />
-            <stop offset="55%" stopColor="rgba(59, 130, 246, 0.10)" />
-            <stop offset="100%" stopColor="rgba(255, 122, 24, 0.14)" />
+            <stop offset="0%" stopColor="color-mix(in srgb, var(--adm-color-blue) 18%, transparent)" />
+            <stop offset="55%" stopColor="color-mix(in srgb, var(--adm-color-blue) 10%, transparent)" />
+            <stop offset="100%" stopColor="color-mix(in srgb, var(--adm-accent) 14%, transparent)" />
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 3" stroke={border} vertical={false} />

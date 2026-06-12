@@ -70,7 +70,6 @@ import PlatformPlayView from "./pages/PlatformPlayView";
 import SportPickerPage from "./pages/SportPickerPage";
 import NotFound from "./pages/NotFound";
 import NoTeam from "./pages/NoTeam";
-import MaintenancePage from "./pages/MaintenancePage";
 import Resources from "./pages/Resources";
 import Enterprise from "./pages/Enterprise";
 import PublicPlaybooksPage from "./pages/PublicPlaybooksPage";

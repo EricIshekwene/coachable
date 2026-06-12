@@ -531,7 +531,7 @@ export default function AdminDemoVideos() {
                     type="button"
                     onClick={() => setAddForm((f) => ({ ...f, done: !f.done }))}
                     className="flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs transition"
-                    style={addForm.done ? { borderColor: "#22c55e", backgroundColor: "#22c55e", color: "#fff" } : { borderColor: "var(--adm-border2)", color: "transparent" }}
+                    style={addForm.done ? { borderColor: "var(--adm-success)", backgroundColor: "var(--adm-success)", color: "#fff" } : { borderColor: "var(--adm-border2)", color: "transparent" }}
                   >
                     <FiCheck />
                   </button>
@@ -595,7 +595,7 @@ export default function AdminDemoVideos() {
                               type="button"
                               onClick={() => setEditForm((f) => ({ ...f, done: !f.done }))}
                               className="flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs transition"
-                              style={editForm.done ? { borderColor: "#22c55e", backgroundColor: "#22c55e", color: "#fff" } : { borderColor: "var(--adm-border2)", color: "transparent" }}
+                              style={editForm.done ? { borderColor: "var(--adm-success)", backgroundColor: "var(--adm-success)", color: "#fff" } : { borderColor: "var(--adm-border2)", color: "transparent" }}
                             >
                               <FiCheck />
                             </button>
@@ -639,7 +639,7 @@ export default function AdminDemoVideos() {
                           onClick={() => handleToggleDone(video)}
                           title={video.done ? "Mark as not done" : "Mark as done"}
                           className="flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs transition"
-                          style={video.done ? { borderColor: "#22c55e", backgroundColor: "#22c55e", color: "#fff" } : { borderColor: "var(--adm-border2)", color: "transparent" }}
+                          style={video.done ? { borderColor: "var(--adm-success)", backgroundColor: "var(--adm-success)", color: "#fff" } : { borderColor: "var(--adm-border2)", color: "transparent" }}
                         >
                           <FiCheck />
                         </button>

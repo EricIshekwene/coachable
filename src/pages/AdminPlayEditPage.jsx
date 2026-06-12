@@ -121,7 +121,7 @@ export default function AdminPlayEditPage() {
   // (the prior behavior). The mobile editor still lives at its dedicated route
   // /admin/mobile-view (AdminMobileView).
 
-  useThemeColor(theme === "light" ? "#f3f6fb" : "#121212");
+  useThemeColor(theme === "light" ? "#ffffff" : "#121212");
 
   const session = readAdminSession();
 

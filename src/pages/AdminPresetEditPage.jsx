@@ -109,7 +109,7 @@ export default function AdminPresetEditPage() {
   const [persistedId, setPersistedId] = useState(presetId === "new" ? null : presetId);
   const flushRef = useRef(null);
 
-  useThemeColor(theme === "light" ? "#f3f6fb" : "#121212");
+  useThemeColor(theme === "light" ? "#ffffff" : "#121212");
 
   const session = readAdminSession();
   const decodedSport = decodeURIComponent(sport);

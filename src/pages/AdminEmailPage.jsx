@@ -220,7 +220,7 @@ function GifDebugPanel({ playEmbed, slatePlayRef, gifExportRef, gifPhase, gifErr
     <span style={{
       display: "inline-block", padding: "1px 7px", borderRadius: 999,
       fontSize: 11, fontWeight: 700,
-      background: ok ? "var(--adm-badge-green-bg)" : "#fef2f2",
+      background: ok ? "var(--adm-badge-green-bg)" : "var(--adm-danger-dim)",
       color: ok ? "var(--adm-badge-green-text)" : "var(--adm-danger)",
       border: `1px solid ${ok ? "var(--adm-border)" : "var(--adm-danger)"}`,
     }}>{text}</span>

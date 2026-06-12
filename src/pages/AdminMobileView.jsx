@@ -19,7 +19,7 @@ import useThemeColor from "../utils/useThemeColor";
 export default function AdminMobileView() {
   const { theme } = useAdmin();
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
-  useThemeColor(theme === "light" ? "#f3f6fb" : "#121212");
+  useThemeColor(theme === "light" ? "#ffffff" : "#121212");
 
   return (
     <div
