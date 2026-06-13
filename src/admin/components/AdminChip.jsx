@@ -28,6 +28,7 @@ export default function AdminChip({ children, tone = "neutral", selected = false
 
   return (
     <span
+      data-component="AdminChip"
       className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition ${interactive ? "cursor-pointer" : ""} ${disabled ? "opacity-50" : ""} ${className}`}
       style={{
         backgroundColor: palette.bg,

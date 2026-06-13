@@ -26,6 +26,7 @@ export default function AdminCard({ children, className = "", padding = true, on
         ...style,
       }}
       {...cardProps}
+      data-component="AdminCard"
     >
       {children}
     </div>

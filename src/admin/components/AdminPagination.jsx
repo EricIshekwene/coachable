@@ -24,7 +24,7 @@ export default function AdminPagination({ page, pageCount, onChange, siblingCoun
   const btn = "inline-flex h-8 min-w-8 items-center justify-center rounded-[var(--adm-radius-md)] px-2 text-xs font-semibold transition";
 
   return (
-    <nav className={`flex items-center gap-1.5 ${className}`} aria-label="Pagination">
+    <nav data-component="AdminPagination" className={`flex items-center gap-1.5 ${className}`} aria-label="Pagination">
       <button type="button" className={btn} onClick={() => go(page - 1)} disabled={page <= 1}
         style={{ border: "1px solid var(--adm-border2)", color: "var(--adm-text2)", opacity: page <= 1 ? 0.5 : 1 }}>
         Prev

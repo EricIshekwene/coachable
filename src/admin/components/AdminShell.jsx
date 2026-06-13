@@ -27,6 +27,7 @@ export default function AdminShell({ children, className = "", sidebar = true })
   if (!sidebar) {
     return (
       <div
+        data-component="AdminShell"
         data-admin-theme={theme}
         className={`font-Manrope overflow-y-auto ${className}`}
         style={{
@@ -42,6 +43,7 @@ export default function AdminShell({ children, className = "", sidebar = true })
 
   return (
     <div
+      data-component="AdminShell"
       data-admin-theme={theme}
       className="font-Manrope flex h-screen overflow-hidden"
       style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-text)" }}

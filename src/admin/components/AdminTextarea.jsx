@@ -19,7 +19,7 @@ export default function AdminTextarea({
   const sizeStyles = FIELD_SIZE_STYLES[size] ?? FIELD_SIZE_STYLES.md;
 
   return (
-    <div className={`flex flex-col gap-1 ${className}`}>
+    <div data-component="AdminTextarea" className={`flex flex-col gap-1 ${className}`}>
       {label ? (
         <label className="text-xs font-semibold" style={{ color: "var(--adm-muted)" }}>
           {label}

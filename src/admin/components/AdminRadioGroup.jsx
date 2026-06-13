@@ -19,7 +19,7 @@ export default function AdminRadioGroup({
   name = "admin-radio-group",
 }) {
   return (
-    <div className={`flex flex-col gap-2 ${className}`}>
+    <div data-component="AdminRadioGroup" className={`flex flex-col gap-2 ${className}`}>
       {label ? (
         <p className="text-xs font-semibold" style={{ color: "var(--adm-muted)" }}>
           {label}

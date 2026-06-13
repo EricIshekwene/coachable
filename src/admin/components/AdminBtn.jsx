@@ -109,6 +109,7 @@ export default function AdminBtn({
         onMouseLeave?.(e);
       }}
       {...buttonProps}
+      data-component="AdminBtn"
     >
       {children}
     </button>

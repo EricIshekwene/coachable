@@ -11,7 +11,7 @@
  */
 export default function AdminSection({ title, subtitle, actions, children, className = "" }) {
   return (
-    <section className={`flex flex-col gap-4 ${className}`}>
+    <section data-component="AdminSection" className={`flex flex-col gap-4 ${className}`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2

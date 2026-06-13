@@ -26,7 +26,7 @@ export default function AdminProgress({ value = 0, tone = "accent", label, showV
   const color = PROGRESS_TONES[tone] ?? PROGRESS_TONES.accent;
 
   return (
-    <div className={className}>
+    <div data-component="AdminProgress" className={className}>
       {(label || showValue) ? (
         <div className="mb-1.5 flex items-center justify-between text-xs">
           {label ? <span style={{ color: "var(--adm-text2)" }}>{label}</span> : <span />}

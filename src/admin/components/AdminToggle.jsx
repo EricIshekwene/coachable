@@ -19,7 +19,7 @@ export default function AdminToggle({
   className = "",
 }) {
   return (
-    <div className={`flex items-start justify-between gap-3 ${className}`}>
+    <div data-component="AdminToggle" className={`flex items-start justify-between gap-3 ${className}`}>
       {(label || description) ? (
         <div className="min-w-0">
           {label ? (

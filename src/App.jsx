@@ -48,6 +48,7 @@ import DesignSystemPage from "./pages/designSystem/DesignSystemPage";
 import AdminFeatureFlagsPage from "./pages/AdminFeatureFlagsPage";
 import AdminOutreachScraperPage from "./pages/AdminOutreachScraperPage";
 import RequirePerm from "./admin/RequirePerm";
+import DevOverlay from "./components/DevOverlay";
 import AppLayout from "./layouts/AppLayout";
 import Plays from "./pages/app/Plays";
 import PlayNew from "./pages/app/PlayNew";
@@ -511,6 +512,7 @@ function App() {
               autoHideDuration={appMessage.messagePopup.autoHideDuration}
               onClose={appMessage.hideMessage}
             />
+            {import.meta.env.DEV && <DevOverlay />}
             <AppRoutes />
           </AppMessageProvider>
         </FeatureFlagBridge>

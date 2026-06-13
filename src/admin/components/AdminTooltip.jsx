@@ -20,6 +20,7 @@ export default function AdminTooltip({ label, children, placement = "top", class
 
   return (
     <span
+      data-component="AdminTooltip"
       className={`relative inline-flex ${className}`}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}

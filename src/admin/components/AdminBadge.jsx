@@ -32,6 +32,7 @@ export default function AdminBadge({ status, children, className = "" }) {
 
   return (
     <span
+      data-component="AdminBadge"
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${className}`}
       style={{ backgroundColor: s.bg, color: s.color, border: "1px solid color-mix(in srgb, currentColor 14%, transparent)" }}
     >

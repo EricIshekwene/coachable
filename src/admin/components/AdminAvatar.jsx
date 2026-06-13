@@ -31,7 +31,7 @@ export default function AdminAvatar({ src, name = "?", size = "md", status, clas
   }[status];
 
   return (
-    <span className={`relative inline-flex shrink-0 ${className}`} style={{ width: dimension, height: dimension }}>
+    <span data-component="AdminAvatar" className={`relative inline-flex shrink-0 ${className}`} style={{ width: dimension, height: dimension }}>
       {src ? (
         <img
           src={src}

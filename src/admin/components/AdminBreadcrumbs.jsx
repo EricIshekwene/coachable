@@ -12,7 +12,7 @@ import { Link } from "react-router-dom";
  */
 export default function AdminBreadcrumbs({ items, className = "" }) {
   return (
-    <nav className={`flex flex-wrap items-center gap-1.5 text-xs ${className}`} aria-label="Breadcrumb">
+    <nav data-component="AdminBreadcrumbs" className={`flex flex-wrap items-center gap-1.5 text-xs ${className}`} aria-label="Breadcrumb">
       {items.map((item, index) => {
         const last = index === items.length - 1;
         return (

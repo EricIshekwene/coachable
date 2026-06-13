@@ -5,6 +5,7 @@
 export default function AdminSpinner({ size = 20, className = "" }) {
   return (
     <span
+      data-component="AdminSpinner"
       className={`inline-block animate-spin rounded-full ${className}`}
       style={{
         width: size,

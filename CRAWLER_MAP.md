@@ -188,6 +188,13 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 | "mobile viewport fixes" | [src/utils/mobileViewport.js](src/utils/mobileViewport.js) |
 | "theme color hook" | [src/utils/useThemeColor.js](src/utils/useThemeColor.js) |
 
+### Dev overlay
+| User says... | Primary file(s) | Notes |
+|---|---|---|
+| "dev overlay", "component overlay", "Ctrl+Shift+D", "orange outlines", "component badges" | [src/components/DevOverlay/DevOverlay.jsx](src/components/DevOverlay/DevOverlay.jsx) | Dev-only; toggles `data-dev-overlay` on `<html>`; CSS in `devOverlay.css`; wired in `App.jsx` behind `import.meta.env.DEV` |
+| "dev overlay CSS" | [src/components/DevOverlay/devOverlay.css](src/components/DevOverlay/devOverlay.css) | Scoped to `[data-dev-overlay]`: dashed outline on `[data-component]`, `::before` badge on hover |
+| "dev overlay tests" | [src/test/DevOverlay.test.jsx](src/test/DevOverlay.test.jsx) | jsdom env; 3 tests: toggle on, toggle off, non-matching keys |
+
 ### Play preview cards (used in playbooks/folders/grid)
 | User says... | Primary file(s) |
 |---|---|
@@ -376,6 +383,15 @@ All run via Vitest. One file per feature; create new ones here when adding tests
 
 In-source unit suite for canvas geometry: [src/canvas/__tests__/drawingGeometry.test.js](src/canvas/__tests__/drawingGeometry.test.js).
 Suites used by the admin test runner: [src/testing/suites/](src/testing/suites/) (animationSchema, drawingGeometry, importExport, interpolate) and [src/testing/testRunner.js](src/testing/testRunner.js).
+
+**RTL / virtual-DOM rendering tests** (`src/test/` — jsdom env, Phase 3):
+- `AppPage.test.jsx` — overflow-y-auto invariant, maxWidth token mapping, data-component attr (9 tests)
+- `AppHeader.test.jsx` — title/subtitle rendering, back-link presence/absence, actions slot, children slot (8 tests)
+- `AdminPlayCard.test.jsx` — canEdit gate (Edit button), hasSecondaryActions gate (three-dots trigger), per-permission menu items: Delete, Copy link, Duplicate, Rename (11 tests)
+- `FolderCard.test.jsx` — folder name/subtitle, play-count singular/plural, subfolder count, isDragOver "Drop Here" label, isCoach menu gate, inline rename flow (12 tests)
+- `PlayCard.test.jsx` — title, bulkMode checkbox visibility, onToggleSelect click in bulk mode, isCoach three-dots gate, canPostToCommunity gate (9 tests)
+- `DevOverlay.test.jsx` — Ctrl+Shift+D toggle on, toggle off, non-matching keys ignored (3 tests)
+- `setup.js` — Vitest setup: extends expect with `@testing-library/jest-dom` matchers; `globals: true` in vitest.config.js enables RTL auto-cleanup via global afterEach
 
 ---
 

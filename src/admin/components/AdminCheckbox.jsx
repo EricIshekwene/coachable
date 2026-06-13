@@ -18,7 +18,7 @@ export default function AdminCheckbox({
   ...inputProps
 }) {
   return (
-    <label className={`flex select-none items-start gap-2.5 ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"} ${className}`}>
+    <label data-component="AdminCheckbox" className={`flex select-none items-start gap-2.5 ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"} ${className}`}>
       <span className="relative flex h-4 w-4 shrink-0 translate-y-0.5">
         <input
           type="checkbox"

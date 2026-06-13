@@ -34,6 +34,7 @@ export default function AdminAlert({ tone = "info", title, children, className =
 
   return (
     <div
+      data-component="AdminAlert"
       className={`rounded-[var(--adm-radius)] px-4 py-3 ${className}`}
       style={{
         backgroundColor: palette.bg,

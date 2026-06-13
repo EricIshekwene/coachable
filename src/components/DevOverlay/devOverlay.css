@@ -1,0 +1,33 @@
+/*
+ * Dev overlay — scoped to [data-dev-overlay] so it has zero effect by default.
+ * Toggled by Ctrl+Shift+D via DevOverlay.jsx.
+ */
+
+[data-dev-overlay] [data-component] {
+  outline: 2px dashed #FF7A18 !important;
+  outline-offset: 2px;
+  position: relative !important;
+}
+
+[data-dev-overlay] [data-component]::before {
+  content: attr(data-component);
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  background-color: #FF7A18;
+  color: #fff;
+  font-size: 10px;
+  font-family: monospace;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 0 0 4px 0;
+  white-space: nowrap;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+[data-dev-overlay] [data-component]:hover::before {
+  display: block;
+}

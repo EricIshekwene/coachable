@@ -11,7 +11,7 @@
  */
 export default function AdminEmptyState({ icon, title, subtitle, action, className = "" }) {
   return (
-    <div className={`flex flex-col items-center justify-center gap-3 py-16 text-center ${className}`}>
+    <div data-component="AdminEmptyState" className={`flex flex-col items-center justify-center gap-3 py-16 text-center ${className}`}>
       {icon && (
         <div
           className="flex h-12 w-12 items-center justify-center rounded-full"

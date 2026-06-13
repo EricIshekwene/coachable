@@ -20,16 +20,16 @@ export default function AdminSkeleton({ variant = "text", width, height, lines =
 
   if (variant === "circle") {
     const d = height ?? width ?? 40;
-    return <span className={`inline-block animate-pulse rounded-full ${className}`} style={{ ...base, width: d, height: d }} />;
+    return <span data-component="AdminSkeleton" className={`inline-block animate-pulse rounded-full ${className}`} style={{ ...base, width: d, height: d }} />;
   }
 
   if (variant === "block") {
-    return <span className={`block animate-pulse rounded-[var(--adm-radius)] ${className}`} style={{ ...base, width: width ?? "100%", height: height ?? 80 }} />;
+    return <span data-component="AdminSkeleton" className={`block animate-pulse rounded-[var(--adm-radius)] ${className}`} style={{ ...base, width: width ?? "100%", height: height ?? 80 }} />;
   }
 
   if (lines > 1) {
     return (
-      <div className={`flex flex-col gap-2 ${className}`}>
+      <div data-component="AdminSkeleton" className={`flex flex-col gap-2 ${className}`}>
         {Array.from({ length: lines }).map((_, i) => (
           <span key={i} className="h-3 animate-pulse rounded-full" style={{ ...base, width: LINE_WIDTHS[i % LINE_WIDTHS.length] }} />
         ))}
@@ -37,5 +37,5 @@ export default function AdminSkeleton({ variant = "text", width, height, lines =
     );
   }
 
-  return <span className={`inline-block h-3 animate-pulse rounded-full ${className}`} style={{ ...base, width: width ?? "100%" }} />;
+  return <span data-component="AdminSkeleton" className={`inline-block h-3 animate-pulse rounded-full ${className}`} style={{ ...base, width: width ?? "100%" }} />;
 }

@@ -18,6 +18,7 @@ export default function AdminTabs({ tabs, value, onChange, size = "md", classNam
   return (
     <div
       role="tablist"
+      data-component="AdminTabs"
       className={`inline-flex items-center gap-0.5 rounded-[var(--adm-radius-sm)] p-0.5 ${className}`}
       style={{ backgroundColor: "var(--adm-surface2)", border: "1px solid var(--adm-border)" }}
     >

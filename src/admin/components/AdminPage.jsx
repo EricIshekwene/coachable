@@ -4,7 +4,7 @@
  */
 export default function AdminPage({ children, className = "", wide = false }) {
   return (
-    <div className={`mx-auto w-full min-w-0 px-4 py-5 sm:px-6 sm:py-8 ${wide ? "max-w-7xl" : "max-w-6xl"} ${className}`}>
+    <div data-component="AdminPage" className={`mx-auto w-full min-w-0 px-4 py-5 sm:px-6 sm:py-8 ${wide ? "max-w-7xl" : "max-w-6xl"} ${className}`}>
       {children}
     </div>
   );

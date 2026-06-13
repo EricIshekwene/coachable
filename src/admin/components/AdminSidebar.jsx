@@ -190,6 +190,7 @@ export default function AdminSidebar({ mobileOpen = false, onClose }) {
         aria-hidden="true"
       />
       <aside
+        data-component="AdminSidebar"
         className={`fixed inset-y-0 left-0 z-40 flex h-full w-[min(18rem,85vw)] shrink-0 flex-col transition-transform duration-200 lg:static lg:z-auto lg:w-52 ${mobileOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
         style={{
           backgroundColor: "var(--adm-bg)",

@@ -28,6 +28,7 @@ export default function AdminModal({ open, onClose, title, children, width = "ma
   return (
     <div
       ref={overlayRef}
+      data-component="AdminModal"
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backgroundColor: "var(--adm-overlay)", backdropFilter: "blur(10px)" }}
       onMouseDown={(e) => { if (e.target === overlayRef.current) onClose?.(); }}

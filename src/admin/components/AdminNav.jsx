@@ -43,6 +43,7 @@ export default function AdminNav() {
 
   return (
     <nav
+      data-component="AdminNav"
       className="flex items-center gap-1 overflow-x-auto px-4 py-2 sm:px-6"
       style={{ borderBottom: "1px solid var(--adm-border)" }}
     >

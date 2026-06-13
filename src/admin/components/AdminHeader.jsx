@@ -16,6 +16,7 @@ import { Link } from "react-router-dom";
 export default function AdminHeader({ title, backLabel, backTo, actions, sticky = false }) {
   return (
     <header
+      data-component="AdminHeader"
       className={`${sticky ? "sticky top-14 z-20 lg:top-0" : ""} shrink-0 px-4 py-3 sm:px-6`}
       style={{
         backgroundColor: "color-mix(in srgb, var(--adm-surface-elevated) 92%, transparent)",
