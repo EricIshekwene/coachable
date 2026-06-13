@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAppMessage } from "../context/AppMessageContext";
 import { apiFetch } from "../utils/api";
-import { INPUT_LIMITS } from "../utils/inputValidation";
+import { validatePassword, validateConfirmPassword, INPUT_LIMITS } from "../utils/inputValidation";
 import logo from "../assets/logos/full_Coachable_logo.png";
 import whiteLogo from "../assets/logos/White_Full_Coachable.png";
 
@@ -16,6 +16,8 @@ export default function ResetPassword() {
   const [digits, setDigits] = useState(Array(CODE_LENGTH).fill(""));
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(60);
   const inputRefs = useRef([]);
@@ -93,18 +95,12 @@ export default function ResetPassword() {
         showMessage("Incomplete code", "Please enter the full 6-digit code.", "error");
         return;
       }
-      if (!password) {
-        showMessage("Missing password", "Please enter a new password.", "error");
-        return;
-      }
-      if (password.length < 8) {
-        showMessage("Weak password", "Password must be at least 8 characters.", "error");
-        return;
-      }
-      if (password !== confirmPassword) {
-        showMessage("Mismatch", "Passwords do not match.", "error");
-        return;
-      }
+
+      const passwordErr = validatePassword(password);
+      const confirmErr = validateConfirmPassword(password, confirmPassword);
+      setErrors({ password: passwordErr, confirm: confirmErr });
+      setTouched({ password: true, confirm: true });
+      if (passwordErr || confirmErr) return;
 
       setSubmitting(true);
       try {
@@ -129,8 +125,12 @@ export default function ResetPassword() {
     ? email.replace(/^(.{2})(.*)(@)/, (_, a, b, c) => a + "*".repeat(b.length) + c)
     : "";
 
-  const inputClass =
-    "w-full rounded-lg border border-BrandGray/40 bg-white px-3.5 py-2.5 font-DmSans text-sm outline-none transition placeholder:text-BrandGray hover:border-BrandGray focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]";
+  const fieldClass = (field) =>
+    `w-full rounded-lg border px-3.5 py-2.5 font-DmSans text-sm outline-none transition placeholder:text-BrandGray ${
+      errors[field]
+        ? "border-red-400 bg-red-50/20 focus:border-red-500 focus:shadow-[0_0_0_3px_rgba(239,68,68,0.08)]"
+        : "border-BrandGray/40 bg-white hover:border-BrandGray focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+    }`;
 
   return (
     <div className="font-DmSans md:flex" style={{ minHeight: "var(--app-viewport-height)" }}>
@@ -178,38 +178,55 @@ export default function ResetPassword() {
 
             {/* New password fields */}
             <div className="mt-6 flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-BrandBlack">New password</label>
                 <input
                   type="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (touched.password) setErrors((prev) => ({ ...prev, password: validatePassword(e.target.value) }));
+                    if (touched.confirm) setErrors((prev) => ({ ...prev, confirm: validateConfirmPassword(e.target.value, confirmPassword) }));
+                  }}
+                  onBlur={(e) => {
+                    setTouched((prev) => ({ ...prev, password: true }));
+                    setErrors((prev) => ({ ...prev, password: validatePassword(e.target.value) }));
+                  }}
                   placeholder="At least 8 characters"
                   maxLength={INPUT_LIMITS.PASSWORD_MAX}
                   autoComplete="new-password"
-                  className={inputClass}
+                  className={fieldClass("password")}
                   disabled={submitting}
                 />
+                {errors.password && <p className="text-xs text-red-500">{errors.password}</p>}
               </div>
 
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-BrandBlack">Confirm password</label>
                 <input
                   type="password"
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    if (touched.confirm) setErrors((prev) => ({ ...prev, confirm: validateConfirmPassword(password, e.target.value) }));
+                  }}
+                  onBlur={(e) => {
+                    setTouched((prev) => ({ ...prev, confirm: true }));
+                    setErrors((prev) => ({ ...prev, confirm: validateConfirmPassword(password, e.target.value) }));
+                  }}
                   placeholder="Confirm your new password"
                   maxLength={INPUT_LIMITS.PASSWORD_MAX}
                   autoComplete="new-password"
-                  className={inputClass}
+                  className={fieldClass("confirm")}
                   disabled={submitting}
                 />
+                {errors.confirm && <p className="text-xs text-red-500">{errors.confirm}</p>}
               </div>
             </div>
 
             <button
               type="submit"
-              disabled={submitting || digits.some((d) => !d) || !password || !confirmPassword}
+              disabled={submitting || digits.some((d) => !d)}
               className="mt-6 w-full rounded-lg bg-BrandBlack py-2.5 text-sm font-semibold text-white transition hover:bg-BrandBlack2 active:scale-[0.98] disabled:opacity-50"
             >
               {submitting ? "Resetting..." : "Reset password"}
