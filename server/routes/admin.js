@@ -1539,6 +1539,7 @@ router.get("/playbook-sections/:id/plays", requireAdminOrStaff, requirePerm("pla
         description: r.description || "",
         sport: r.sport || null,
         thumbnail: r.thumbnail_url || null,
+        playData: r.play_data || null,
         tags: r.tags || [],
         sortOrder: r.section_sort_order,
         addedAt: r.added_at,
