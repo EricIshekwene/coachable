@@ -124,7 +124,7 @@ export default function AdminPrefabPresetEditPage() {
   const persistedIdRef = useRef(persistedId);
   useEffect(() => { persistedIdRef.current = persistedId; }, [persistedId]);
 
-  useThemeColor(theme === "light" ? "#f3f6fb" : "#121212");
+  useThemeColor(theme === "light" ? "#ffffff" : "#121212");
 
   const session = readAdminSession();
   const decodedSport = decodeURIComponent(sport);

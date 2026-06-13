@@ -697,7 +697,7 @@ function CampaignModal({ campaign, plays, folders, playsLoading, playsError, onC
   }, [campaign, form, canSave, onSaved]);
 
   return (
-    <div className="fixed inset-0 z-50 flex overflow-hidden" style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
+    <div className="fixed inset-0 z-50 flex overflow-hidden" style={{ backgroundColor: "var(--adm-overlay)" }}>
       <div
         className="relative flex h-full w-full max-w-5xl flex-col overflow-hidden mx-auto my-4 rounded-[var(--adm-radius)]"
         style={{ backgroundColor: "var(--adm-bg)" }}

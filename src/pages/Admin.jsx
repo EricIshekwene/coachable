@@ -1670,8 +1670,8 @@ export default function Admin() {
                     onClick={() => toggleSuiteEnabled(name, !checked)}
                     className="cursor-pointer rounded-[var(--adm-radius)] p-3.5 transition"
                     style={{
-                      backgroundColor: checked ? "rgba(139,92,246,0.06)" : "var(--adm-surface)",
-                      border: checked ? "1px solid rgba(139,92,246,0.3)" : "1px solid var(--adm-border)",
+                      backgroundColor: checked ? "color-mix(in srgb, var(--adm-color-purple) 6%, transparent)" : "var(--adm-surface)",
+                      border: checked ? "1px solid color-mix(in srgb, var(--adm-color-purple) 30%, transparent)" : "1px solid var(--adm-border)",
                       opacity: checked ? 1 : 0.55,
                     }}
                     onMouseEnter={(e) => { if (!checked) e.currentTarget.style.opacity = "0.75"; }}
@@ -1679,7 +1679,7 @@ export default function Admin() {
                   >
                     <div className="flex items-start justify-between gap-1">
                       <span className="font-Manrope text-xs font-normal leading-tight" style={{ color: "var(--adm-text)" }}>{name}</span>
-                      <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded transition" style={{ backgroundColor: checked ? "rgba(139,92,246,0.3)" : "transparent", border: checked ? "1px solid var(--adm-badge-purple-text)" : "1px solid var(--adm-border2)" }}>
+                      <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded transition" style={{ backgroundColor: checked ? "color-mix(in srgb, var(--adm-color-purple) 30%, transparent)" : "transparent", border: checked ? "1px solid var(--adm-badge-purple-text)" : "1px solid var(--adm-border2)" }}>
                         {checked && <svg className="h-2.5 w-2.5" style={{ color: "var(--adm-badge-purple-text)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                       </div>
                     </div>
@@ -1735,7 +1735,7 @@ export default function Admin() {
                                 </div>
                                 {isExpanded && r.error && (
                                   <div className="mx-4 mb-2">
-                                    <pre className="rounded-[var(--adm-radius-sm)] px-4 py-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap" style={{ backgroundColor: "var(--adm-danger-dim)", border: "1px solid rgba(239,68,68,0.2)", color: "var(--adm-color-red-soft)" }}>{r.error}</pre>
+                                    <pre className="rounded-[var(--adm-radius-sm)] px-4 py-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap" style={{ backgroundColor: "var(--adm-danger-dim)", border: "1px solid color-mix(in srgb, var(--adm-danger) 20%, transparent)", color: "var(--adm-color-red-soft)" }}>{r.error}</pre>
                                   </div>
                                 )}
                               </div>

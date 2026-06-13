@@ -40,9 +40,9 @@ export default function KpiCard({
     : `${delta > 0 ? "+" : ""}${delta}${deltaLabel ? " " + deltaLabel : ""}`;
 
   const accentBorder =
-    accent === "danger" ? "1px solid rgba(239, 68, 68, 0.35)"
-    : accent === "warn" ? "1px solid rgba(251, 191, 36, 0.35)"
-    : featured ? "1px solid rgba(255, 122, 24, 0.18)"
+    accent === "danger" ? "1px solid color-mix(in srgb, var(--adm-danger) 35%, transparent)"
+    : accent === "warn" ? "1px solid color-mix(in srgb, var(--adm-warning) 35%, transparent)"
+    : featured ? "1px solid color-mix(in srgb, var(--adm-accent) 18%, transparent)"
     : "1px solid var(--adm-border)";
 
   const accentValueColor =
@@ -51,18 +51,18 @@ export default function KpiCard({
     : "var(--adm-text)";
 
   const glowColor =
-    accent === "danger" ? "rgba(239, 68, 68, 0.22)"
-    : accent === "warn" ? "rgba(251, 191, 36, 0.22)"
-    : featured ? "rgba(255, 122, 24, 0.18)"
-    : "rgba(59, 130, 246, 0.12)";
+    accent === "danger" ? "color-mix(in srgb, var(--adm-danger) 22%, transparent)"
+    : accent === "warn" ? "color-mix(in srgb, var(--adm-warning) 22%, transparent)"
+    : featured ? "color-mix(in srgb, var(--adm-accent) 18%, transparent)"
+    : "color-mix(in srgb, var(--adm-info) 12%, transparent)";
 
   const background =
     accent === "danger"
-      ? "linear-gradient(160deg, rgba(239, 68, 68, 0.08) 0%, var(--adm-surface2) 65%)"
+      ? "linear-gradient(160deg, color-mix(in srgb, var(--adm-danger) 8%, transparent) 0%, var(--adm-surface2) 65%)"
       : accent === "warn"
-        ? "linear-gradient(160deg, rgba(251, 191, 36, 0.08) 0%, var(--adm-surface2) 65%)"
+        ? "linear-gradient(160deg, color-mix(in srgb, var(--adm-warning) 8%, transparent) 0%, var(--adm-surface2) 65%)"
         : featured
-          ? "linear-gradient(160deg, rgba(255, 122, 24, 0.08) 0%, var(--adm-surface) 28%, var(--adm-surface2) 100%)"
+          ? "linear-gradient(160deg, color-mix(in srgb, var(--adm-accent) 8%, transparent) 0%, var(--adm-surface) 28%, var(--adm-surface2) 100%)"
           : "linear-gradient(180deg, var(--adm-surface2) 0%, var(--adm-surface) 100%)";
 
   const footerText = deltaText || footer || "\u00A0";
@@ -146,7 +146,7 @@ export default function KpiCard({
                 flexShrink: 0,
                 borderRadius: 999,
                 border: "1px solid var(--adm-border)",
-                backgroundColor: "rgba(255, 255, 255, 0.04)",
+                backgroundColor: "color-mix(in srgb, var(--adm-text) 5%, transparent)",
                 padding: "4px 8px",
                 fontSize: 10,
                 fontWeight: 700,

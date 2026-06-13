@@ -1205,7 +1205,7 @@ function SectionRow({ section, plays, onAssign, onTogglePriority }) {
               disabled={saving}
               title="Remove assignment"
               className="rounded-lg border px-2.5 py-2 text-xs transition hover:opacity-80 disabled:opacity-50"
-              style={{ borderColor: "rgba(220, 38, 38, 0.18)", backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}
+              style={{ borderColor: "color-mix(in srgb, var(--adm-danger) 18%, transparent)", backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}
             >
               <FiX />
             </button>
@@ -1698,7 +1698,7 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError, can
                   if (e.key === "Escape") { setCreatingSection(false); setNewSectionName(""); }
                 }}
                 placeholder="Section name"
-                className="w-full rounded-lg border px-2.5 py-1.5 text-xs outline-none placeholder:text-slate-400"
+                className="w-full rounded-lg border px-2.5 py-1.5 text-xs outline-none placeholder:text-[color:var(--adm-muted)]"
                 style={{
                   borderColor: "var(--adm-border2)",
                   backgroundColor: "var(--adm-surface-elevated)",
@@ -1854,7 +1854,7 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError, can
                       title="Delete section"
                       className="flex items-center justify-center rounded-lg border px-2.5 py-2 text-xs transition hover:opacity-85"
                       style={{
-                        borderColor: "rgba(220, 38, 38, 0.18)",
+                        borderColor: "color-mix(in srgb, var(--adm-danger) 18%, transparent)",
                         backgroundColor: "var(--adm-danger-dim)",
                         color: "var(--adm-danger)",
                       }}
@@ -1886,7 +1886,7 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError, can
                           value={pickerSearch}
                           onChange={(e) => setPickerSearch(e.target.value)}
                           placeholder="Search plays..."
-                          className="flex-1 bg-transparent text-xs outline-none placeholder:text-slate-400"
+                          className="flex-1 bg-transparent text-xs outline-none placeholder:text-[color:var(--adm-muted)]"
                           style={{ color: "var(--adm-text)" }}
                         />
                       </div>
@@ -1954,7 +1954,7 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError, can
                           value={folderPickerSearch}
                           onChange={(e) => setFolderPickerSearch(e.target.value)}
                           placeholder="Search folders..."
-                          className="flex-1 bg-transparent text-xs outline-none placeholder:text-slate-400"
+                          className="flex-1 bg-transparent text-xs outline-none placeholder:text-[color:var(--adm-muted)]"
                           style={{ color: "var(--adm-text)" }}
                         />
                       </div>
@@ -2001,7 +2001,7 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError, can
 
               {/* Duplicate-resolution modal */}
               {dupModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.55)" }}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "var(--adm-overlay)" }}>
                   <div className="w-full max-w-sm rounded-2xl p-6" style={{ backgroundColor: "var(--adm-surface-elevated)", border: "1px solid var(--adm-border2)", boxShadow: "var(--adm-shadow)" }}>
                     <h3 className="font-Manrope text-sm font-bold" style={{ color: "var(--adm-text)" }}>
                       Duplicate plays detected
@@ -2110,7 +2110,7 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError, can
                           title="Remove from section"
                           className="flex shrink-0 items-center justify-center rounded-lg border px-2 py-1.5 text-xs transition hover:opacity-85"
                           style={{
-                            borderColor: "rgba(220, 38, 38, 0.18)",
+                            borderColor: "color-mix(in srgb, var(--adm-danger) 18%, transparent)",
                             backgroundColor: "var(--adm-danger-dim)",
                             color: "var(--adm-danger)",
                           }}
@@ -2874,7 +2874,7 @@ export default function AdminPlaysPage() {
       </div>
 
       {sections.filter((s) => s.isPriority && !s.playId).length > 0 && (
-        <div className="z-10 flex flex-wrap items-start gap-3 px-4 py-3 backdrop-blur-sm sm:px-6 lg:sticky lg:top-[59px]" style={{ borderBottom: "1px solid rgba(251,191,36,0.3)", backgroundColor: "rgba(251,191,36,0.08)" }}>
+        <div className="z-10 flex flex-wrap items-start gap-3 px-4 py-3 backdrop-blur-sm sm:px-6 lg:sticky lg:top-[59px]" style={{ borderBottom: "1px solid color-mix(in srgb, var(--adm-warning) 30%, transparent)", backgroundColor: "color-mix(in srgb, var(--adm-warning) 9%, transparent)" }}>
           <svg className="h-4 w-4 shrink-0" style={{ color: "var(--adm-warning)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
           </svg>
@@ -2948,7 +2948,7 @@ export default function AdminPlaysPage() {
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-Manrope text-sm font-normal" style={{ color: "var(--adm-text)" }}>{sport}</span>
-                    <span className="rounded-full px-2 py-0.5 text-[10px] font-normal" style={count > 0 ? { backgroundColor: "rgba(52,211,153,0.12)", color: "#34d399" } : { backgroundColor: "var(--adm-surface3)", color: "var(--adm-muted)" }}>
+                    <span className="rounded-full px-2 py-0.5 text-[10px] font-normal" style={count > 0 ? { backgroundColor: "var(--adm-badge-green-bg)", color: "var(--adm-badge-green-text)" } : { backgroundColor: "var(--adm-surface3)", color: "var(--adm-muted)" }}>
                       {count > 0 ? `${count} ${count === 1 ? "preset" : "presets"}` : "None"}
                     </span>
                   </div>
@@ -2985,7 +2985,7 @@ export default function AdminPlaysPage() {
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-Manrope text-sm font-normal" style={{ color: "var(--adm-text)" }}>{sport}</span>
-                    <span className="rounded-full px-2 py-0.5 text-[10px] font-normal" style={count > 0 ? { backgroundColor: "rgba(52,211,153,0.12)", color: "#34d399" } : { backgroundColor: "var(--adm-surface3)", color: "var(--adm-muted)" }}>
+                    <span className="rounded-full px-2 py-0.5 text-[10px] font-normal" style={count > 0 ? { backgroundColor: "var(--adm-badge-green-bg)", color: "var(--adm-badge-green-text)" } : { backgroundColor: "var(--adm-surface3)", color: "var(--adm-muted)" }}>
                       {count > 0 ? `${count} ${count === 1 ? "prefab" : "prefabs"}` : "None"}
                     </span>
                   </div>

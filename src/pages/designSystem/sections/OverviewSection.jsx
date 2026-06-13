@@ -3,7 +3,7 @@ import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSStatus } from "../dsPrim
 const PRINCIPLES = [
   { title: "One scale, everywhere", body: "Buttons, inputs, cards, and overlays share a single radius, spacing, and elevation scale so screens feel cut from the same system." },
   { title: "Accent with intent", body: "Coachable orange leads primary actions, active selection, and important counts — never decoration." },
-  { title: "Layered, soft surfaces", body: "Prefer tinted surfaces and soft borders over heavy outlines. Depth comes from elevation, not stark lines." },
+  { title: "Flat surfaces, hairline borders", body: "Components share the page background — separation comes from a 1px border and subtle shadow, not a lighter fill. Any elevation lift stays barely perceptible, matching the app." },
   { title: "Dense but calm", body: "Admin and editor UI is information-dense; marketing UI breathes. Both stay quiet and legible." },
 ];
 
@@ -15,9 +15,9 @@ const STATUS_LEGEND = [
 ];
 
 const TWO_WORLDS = [
-  { label: "Product / app / marketing", note: "Tailwind @theme Brand* tokens (BrandOrange, BrandBlack, BrandGreen), Manrope + DmSans, #121212 base, app-shell light mode via [data-theme]." },
-  { label: "Admin & design system", note: "The --adm-* token set with light/dark via [data-admin-theme]. This reference page lives here." },
-  { label: "Slate editor", note: "A separate near-black canvas language for the play editor: floating pills, control bars, tool rails." },
+  { label: "Product / app / marketing", note: "The source of truth: Tailwind @theme Brand* tokens (BrandOrange, BrandBlack, BrandGreen), Manrope + DmSans, #121212 base, app-shell light mode via [data-theme]." },
+  { label: "Admin & design system", note: "The --adm-* tokens, light/dark via [data-admin-theme]. These now alias & derive from the Brand* palette, so admin stays in lockstep with the product. This reference page lives here." },
+  { label: "Slate editor", note: "A separate near-black canvas language for the play editor (floating pills, control bars, tool rails). NOT yet wired to the shared tokens — see the Slate section." },
 ];
 
 /**
@@ -47,8 +47,8 @@ export default function OverviewSection() {
       </DSGroup>
 
       <DSGroup
-        title="Three visual worlds"
-        description="Coachable runs three related-but-distinct visual languages. The design system documents all three and keeps their tokens separate so they never bleed into each other."
+        title="Three visual worlds, one palette"
+        description="Coachable runs three related visual languages. The product Brand* palette is the single source of truth; admin & this design system derive from it. Only the Slate editor still keeps its own color values (migration pending)."
       >
         <DSChecklist items={TWO_WORLDS} columns={1} />
       </DSGroup>

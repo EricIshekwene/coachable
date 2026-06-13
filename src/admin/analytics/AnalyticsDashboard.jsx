@@ -17,36 +17,36 @@ const PERIODS = [
 
 const PANEL_TONES = {
   orange: {
-    border: "1px solid rgba(255, 122, 24, 0.18)",
-    badgeBg: "rgba(255, 122, 24, 0.12)",
-    badgeBorder: "rgba(255, 122, 24, 0.22)",
+    border: "1px solid color-mix(in srgb, var(--adm-accent) 18%, transparent)",
+    badgeBg: "color-mix(in srgb, var(--adm-accent) 12%, transparent)",
+    badgeBorder: "color-mix(in srgb, var(--adm-accent) 22%, transparent)",
     badgeColor: "var(--adm-accent)",
-    glow: "rgba(255, 122, 24, 0.16)",
-    background: "linear-gradient(180deg, rgba(255, 122, 24, 0.05) 0%, var(--adm-surface) 24%, var(--adm-surface2) 100%)",
+    glow: "color-mix(in srgb, var(--adm-accent) 16%, transparent)",
+    background: "linear-gradient(180deg, color-mix(in srgb, var(--adm-accent) 5%, transparent) 0%, var(--adm-surface) 24%, var(--adm-surface2) 100%)",
   },
   blue: {
-    border: "1px solid rgba(59, 130, 246, 0.18)",
-    badgeBg: "rgba(59, 130, 246, 0.12)",
-    badgeBorder: "rgba(59, 130, 246, 0.22)",
+    border: "1px solid color-mix(in srgb, var(--adm-color-blue) 18%, transparent)",
+    badgeBg: "color-mix(in srgb, var(--adm-color-blue) 12%, transparent)",
+    badgeBorder: "color-mix(in srgb, var(--adm-color-blue) 22%, transparent)",
     badgeColor: "var(--adm-color-blue)",
-    glow: "rgba(59, 130, 246, 0.16)",
-    background: "linear-gradient(180deg, rgba(59, 130, 246, 0.05) 0%, var(--adm-surface) 24%, var(--adm-surface2) 100%)",
+    glow: "color-mix(in srgb, var(--adm-color-blue) 16%, transparent)",
+    background: "linear-gradient(180deg, color-mix(in srgb, var(--adm-color-blue) 5%, transparent) 0%, var(--adm-surface) 24%, var(--adm-surface2) 100%)",
   },
   green: {
-    border: "1px solid rgba(74, 222, 128, 0.18)",
-    badgeBg: "rgba(74, 222, 128, 0.12)",
-    badgeBorder: "rgba(74, 222, 128, 0.2)",
+    border: "1px solid color-mix(in srgb, var(--adm-success) 18%, transparent)",
+    badgeBg: "color-mix(in srgb, var(--adm-success) 12%, transparent)",
+    badgeBorder: "color-mix(in srgb, var(--adm-success) 20%, transparent)",
     badgeColor: "var(--adm-success)",
-    glow: "rgba(74, 222, 128, 0.16)",
-    background: "linear-gradient(180deg, rgba(74, 222, 128, 0.05) 0%, var(--adm-surface) 24%, var(--adm-surface2) 100%)",
+    glow: "color-mix(in srgb, var(--adm-success) 16%, transparent)",
+    background: "linear-gradient(180deg, color-mix(in srgb, var(--adm-success) 5%, transparent) 0%, var(--adm-surface) 24%, var(--adm-surface2) 100%)",
   },
   amber: {
-    border: "1px solid rgba(251, 191, 36, 0.18)",
-    badgeBg: "rgba(251, 191, 36, 0.12)",
-    badgeBorder: "rgba(251, 191, 36, 0.2)",
+    border: "1px solid color-mix(in srgb, var(--adm-warning) 18%, transparent)",
+    badgeBg: "color-mix(in srgb, var(--adm-warning) 12%, transparent)",
+    badgeBorder: "color-mix(in srgb, var(--adm-warning) 20%, transparent)",
     badgeColor: "var(--adm-warning)",
-    glow: "rgba(251, 191, 36, 0.16)",
-    background: "linear-gradient(180deg, rgba(251, 191, 36, 0.05) 0%, var(--adm-surface) 24%, var(--adm-surface2) 100%)",
+    glow: "color-mix(in srgb, var(--adm-warning) 16%, transparent)",
+    background: "linear-gradient(180deg, color-mix(in srgb, var(--adm-warning) 5%, transparent) 0%, var(--adm-surface) 24%, var(--adm-surface2) 100%)",
   },
 };
 
@@ -200,7 +200,7 @@ export default function AnalyticsDashboard({ session }) {
       <div
         className="rounded-[var(--adm-radius-lg)] px-4 py-4 sm:px-5"
         style={{
-          background: "linear-gradient(135deg, rgba(255, 122, 24, 0.08) 0%, var(--adm-surface) 28%, var(--adm-surface2) 100%)",
+          background: "linear-gradient(135deg, color-mix(in srgb, var(--adm-accent) 8%, transparent) 0%, var(--adm-surface) 28%, var(--adm-surface2) 100%)",
           border: "1px solid var(--adm-border)",
           boxShadow: "var(--adm-shadow-sm)",
         }}
@@ -260,7 +260,7 @@ export default function AnalyticsDashboard({ session }) {
           style={{
             color: "var(--adm-danger)",
             backgroundColor: "var(--adm-danger-dim)",
-            border: "1px solid rgba(239, 68, 68, 0.16)",
+            border: "1px solid color-mix(in srgb, var(--adm-danger) 16%, transparent)",
           }}
         >
           Failed to load analytics: {error}

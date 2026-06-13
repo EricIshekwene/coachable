@@ -29,7 +29,7 @@ export default function AdminGIFTest() {
   const { theme } = useAdmin();
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
   const gifExportRef = useRef(null);
-  useThemeColor(theme === "light" ? "#f3f6fb" : "#121212");
+  useThemeColor(theme === "light" ? "#ffffff" : "#121212");
 
   const [preset, setPreset] = useState("medium");
   const [duration, setDuration] = useState(10);

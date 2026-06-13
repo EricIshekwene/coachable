@@ -19,7 +19,7 @@ import MobileViewOnlyGate from "../components/MobileViewOnlyGate";
 export default function AdminTestSlate() {
   const { theme } = useAdmin();
   const { messagePopup, showMessage, hideMessage } = useMessagePopup();
-  useThemeColor(theme === "light" ? "#f3f6fb" : "#121212");
+  useThemeColor(theme === "light" ? "#ffffff" : "#121212");
 
   return (
     <div

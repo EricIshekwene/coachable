@@ -38,7 +38,7 @@ function StatCard({ label, value, sub, valueStyle }) {
 function TestRow({ result, isExpanded, onToggle }) {
   const hasDesc = Boolean(result.description);
   return (
-    <div style={result.status === "fail" ? { backgroundColor: "rgba(239,68,68,0.04)" } : {}}>
+    <div style={result.status === "fail" ? { backgroundColor: "color-mix(in srgb, var(--adm-danger) 4%, transparent)" } : {}}>
       <div
         className={`flex items-center gap-3 px-4 py-2.5 text-sm ${hasDesc ? "cursor-pointer" : ""}`}
         onClick={hasDesc ? onToggle : undefined}
@@ -80,7 +80,7 @@ function TestRow({ result, isExpanded, onToggle }) {
       )}
       {result.error && (
         <div className="mx-4 mb-3 mt-0">
-          <pre className="whitespace-pre-wrap rounded-[var(--adm-radius-sm)] px-4 py-3 font-mono text-xs leading-relaxed" style={{ backgroundColor: "var(--adm-danger-dim)", border: "1px solid rgba(239,68,68,0.2)", color: "var(--adm-color-red-soft)" }}>
+          <pre className="whitespace-pre-wrap rounded-[var(--adm-radius-sm)] px-4 py-3 font-mono text-xs leading-relaxed" style={{ backgroundColor: "var(--adm-danger-dim)", border: "1px solid color-mix(in srgb, var(--adm-danger) 20%, transparent)", color: "var(--adm-color-red-soft)" }}>
             {result.error}
           </pre>
         </div>

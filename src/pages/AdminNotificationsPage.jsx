@@ -131,7 +131,7 @@ const EMPTY_ACTIVE_FORMATS = {
   h2: false, quote: false, ul: false, ol: false, link: false,
 };
 
-const PIE_COLORS = ["#FF7A18", "#3b82f6", "#10b981"];
+const PIE_COLORS = ["var(--adm-accent)", "var(--adm-color-blue)", "var(--adm-success)"];
 
 // ── Helper fns ───────────────────────────────────────────────────────────────
 
@@ -1309,7 +1309,7 @@ function SendConfirmModal({ open, onClose, onConfirm, recipientLabel, sending })
  * @param {{ summary: object[], total: number }} props
  */
 function ResponseAnalytics({ summary, total }) {
-  const accent = "#FF7A18";
+  const accent = "var(--adm-accent)";
   return (
     <div className="flex flex-col gap-5">
       {summary.map((q) => {
@@ -1382,7 +1382,7 @@ function ResponseAnalytics({ summary, total }) {
  */
 function NotifDetailModal({ notif, onClose }) {
   if (!notif) return null;
-  const accent = "#FF7A18";
+  const accent = "var(--adm-accent)";
   const openRate = notif.recipientCount ? ((notif.openCount / notif.recipientCount) * 100).toFixed(1) : 0;
   const responseRate = notif.recipientCount ? ((notif.responseCount / notif.recipientCount) * 100).toFixed(1) : 0;
   const readBreakdown = notif.readBreakdown || [];

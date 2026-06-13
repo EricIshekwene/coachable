@@ -45,8 +45,12 @@ body {
     --color-BrandGreen: #4FA85D;
 }
 
-/* Light theme - only applies inside the app shell (.app-themed) */
-[data-theme="light"] .app-themed {
+/* Light theme overrides for the brand neutrals.
+   Applies to the app shell (.app-themed) AND to light-mode admin surfaces
+   ([data-admin-theme="light"]) so both worlds resolve the same brand tokens
+   from one source. Brand accent/green stay constant across themes. */
+[data-theme="light"] .app-themed,
+[data-admin-theme="light"] {
     --color-BrandBlack: #ffffff;
     --color-BrandBlack2: #fafbfc;
     --color-BrandGray: #6b7280;

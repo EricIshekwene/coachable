@@ -2,14 +2,14 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recha
 import AdminSpinner from "../components/AdminSpinner";
 
 const SPORT_COLORS = [
-  "#FF7A18", // orange — primary
-  "#3b82f6", // blue
-  "#22c55e", // green
-  "#a855f7", // purple
-  "#ec4899", // pink
-  "#f59e0b", // amber
-  "#14b8a6", // teal
-  "#6b7280", // gray
+  "var(--adm-accent)",       // orange — primary
+  "var(--adm-color-blue)",   // blue
+  "var(--adm-success)",      // green
+  "var(--adm-color-purple)", // purple
+  "var(--adm-color-pink)",   // pink
+  "var(--adm-warning)",      // amber
+  "var(--adm-color-cyan)",   // teal
+  "var(--adm-muted)",        // gray
 ];
 
 /** Capitalize first letter of each word, replace underscores. */

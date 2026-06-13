@@ -1,31 +1,48 @@
 /* Admin-scoped design tokens - only active inside [data-admin-theme] wrappers.
-   These cannot affect the Slate editor or app shell. */
+   These cannot affect the Slate editor or app shell.
+
+   SINGLE SOURCE OF TRUTH: the colors below are derived from the product brand
+   palette defined in src/index.css (@theme --color-Brand*). The admin world no
+   longer keeps its own parallel hex values — it aliases the brand tokens (and
+   mixes from them for the elevation ramp), so a change to a Brand* token in
+   index.css ripples through the app, the admin shell, AND this design system.
+   Only non-brand concerns (status colors, data-viz hues, shadows, radii) keep
+   their own admin values. See /admin/design-rules → Color for the documented map. */
 
 [data-admin-theme="dark"] {
-  --adm-bg:         #0f1117;
-  --adm-surface:    #181c23;
-  --adm-surface2:   #1e2330;
-  --adm-surface3:   #242935;
-  --adm-surface-tint:#20293a;
-  --adm-surface-elevated: #141922;
-  --adm-border:     rgba(255, 255, 255, 0.07);
-  --adm-border2:    rgba(255, 255, 255, 0.12);
-  --adm-border-strong: rgba(255, 255, 255, 0.18);
-  --adm-text:       #f0f2f6;
-  --adm-text2:      #c4c8d4;
-  --adm-text3:      #94a3b8;
-  --adm-muted:      #C0C8D0;
-  --adm-accent:     #FF7A18;
-  --adm-accent-dim: rgba(255, 122, 24, 0.12);
+  /* Core neutrals — aliased / derived from the brand palette.
+     FLAT SURFACES: components sit at the SAME color as the page background and
+     separate via a 1px border + shadow, not a lighter fill (matches the app).
+     Elevation lifts (surface2/3) are intentionally tiny — a hair toward BrandBlack2. */
+  --adm-bg:               var(--color-BrandBlack);                                      /* #121212 — page */
+  --adm-surface:          var(--color-BrandBlack);                                      /* same as bg — components match the background */
+  --adm-surface2:         color-mix(in srgb, var(--color-BrandBlack) 93%, var(--color-BrandBlack2) 7%);   /* barely-there lift: inputs / insets */
+  --adm-surface3:         color-mix(in srgb, var(--color-BrandBlack) 86%, var(--color-BrandBlack2) 14%);  /* small lift: deepest nesting */
+  --adm-surface-tint:     color-mix(in srgb, var(--color-BrandBlack) 95%, var(--color-BrandOrange) 5%);
+  --adm-surface-elevated: color-mix(in srgb, var(--color-BrandBlack) 95%, var(--color-BrandBlack2) 5%);   /* floating header/menu: tiny lift + shadow */
+  --adm-border:           color-mix(in srgb, var(--color-BrandText) 8%, transparent);
+  --adm-border2:          color-mix(in srgb, var(--color-BrandText) 14%, transparent);
+  --adm-border-strong:    color-mix(in srgb, var(--color-BrandText) 22%, transparent);
+  --adm-text:             var(--color-BrandText);                                       /* #f5f7fa */
+  --adm-text2:            var(--color-BrandGray);                                       /* #9AA0A6 */
+  --adm-text3:            color-mix(in srgb, var(--color-BrandGray) 72%, var(--color-BrandBlack) 28%);
+  --adm-muted:            color-mix(in srgb, var(--color-BrandGray) 84%, var(--color-BrandBlack) 16%);
+
+  /* Accent + success are brand colors */
+  --adm-accent:     var(--color-BrandOrange);                                           /* #FF7A18 */
+  --adm-accent-dim: color-mix(in srgb, var(--color-BrandOrange) 12%, transparent);
+  --adm-success:    var(--color-BrandGreen);                                            /* #4FA85D */
+  --adm-success-dim: color-mix(in srgb, var(--color-BrandGreen) 14%, transparent);
+
+  /* Status colors — semantic only, NOT part of the brand palette (admin-defined) */
   --adm-danger:     #ef4444;
   --adm-danger-dim: rgba(239, 68, 68, 0.1);
-  --adm-success:    #4ade80;
-  --adm-success-dim: rgba(74, 222, 128, 0.12);
   --adm-warning:    #fbbf24;
   --adm-warning-dim: rgba(251, 191, 36, 0.12);
   --adm-info:       #60a5fa;
   --adm-info-dim:   rgba(96, 165, 250, 0.12);
-  --adm-overlay:    rgba(15, 23, 42, 0.62);
+
+  --adm-overlay:    color-mix(in srgb, var(--color-BrandBlack) 62%, transparent);
   --adm-shadow:     0 1px 3px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.25);
   --adm-shadow-sm:  0 1px 2px rgba(0,0,0,0.3);
   --adm-shadow-lg:  0 20px 48px rgba(0,0,0,0.34), 0 8px 20px rgba(0,0,0,0.24);
@@ -35,7 +52,7 @@
   --adm-radius-lg:  14px;
   --adm-radius-xl:  18px;
 
-  /* Badge status colors - tuned for dark surfaces */
+  /* Badge status colors - tuned for dark surfaces (status/data-viz, not brand) */
   --adm-badge-blue-bg:    rgba(59,130,246,0.15);
   --adm-badge-blue-text:  #60a5fa;
   --adm-badge-green-bg:   rgba(74,222,128,0.15);
@@ -56,30 +73,40 @@
 }
 
 [data-admin-theme="light"] {
-  --adm-bg:         #f3f6fb;
-  --adm-surface:    #ffffff;
-  --adm-surface2:   #fcfdff;
-  --adm-surface3:   #f3f6fa;
-  --adm-surface-tint:#f8fbff;
-  --adm-surface-elevated: #ffffff;
-  --adm-border:     rgba(15, 23, 42, 0.10);
-  --adm-border2:    rgba(15, 23, 42, 0.18);
-  --adm-border-strong: rgba(15, 23, 42, 0.24);
-  --adm-text:       #0f172a;
-  --adm-text2:      #334155;
-  --adm-text3:      #64748b;
-  --adm-muted:      #5b667a;
-  --adm-accent:     #FF7A18;
-  --adm-accent-dim: rgba(255, 122, 24, 0.14);
+  /* Brand neutrals flip to light values via the [data-admin-theme="light"]
+     override in src/index.css. The page + surfaces anchor to the SAME brand
+     tokens the app uses (BrandBlack page, BrandBlack2 elevated), so admin light
+     reads as the app's crisp white — not a grayed-out page. Deeper insets step
+     toward BrandGray. */
+  --adm-bg:               var(--color-BrandBlack);                                      /* #ffffff — page */
+  --adm-surface:          var(--color-BrandBlack);                                      /* same as bg — components match the background */
+  --adm-surface2:         color-mix(in srgb, var(--color-BrandBlack) 96%, var(--color-BrandGray) 4%);   /* barely gray: inputs / insets */
+  --adm-surface3:         color-mix(in srgb, var(--color-BrandBlack) 91%, var(--color-BrandGray) 9%);   /* light gray inset: deepest nesting */
+  --adm-surface-tint:     color-mix(in srgb, var(--color-BrandBlack) 96%, var(--color-BrandOrange) 4%);
+  --adm-surface-elevated: var(--color-BrandBlack);                                      /* #ffffff — clean sticky header */
+  --adm-border:           color-mix(in srgb, var(--color-BrandText) 10%, transparent);
+  --adm-border2:          color-mix(in srgb, var(--color-BrandText) 18%, transparent);
+  --adm-border-strong:    color-mix(in srgb, var(--color-BrandText) 24%, transparent);
+  --adm-text:             var(--color-BrandText);                                       /* #1a1a1a */
+  --adm-text2:            color-mix(in srgb, var(--color-BrandGray) 72%, var(--color-BrandText) 28%);
+  --adm-text3:            var(--color-BrandGray);                                       /* #6b7280 */
+  --adm-muted:            color-mix(in srgb, var(--color-BrandGray) 85%, var(--color-BrandText) 15%);
+
+  /* Accent + success are brand colors */
+  --adm-accent:     var(--color-BrandOrange);
+  --adm-accent-dim: color-mix(in srgb, var(--color-BrandOrange) 14%, transparent);
+  --adm-success:    var(--color-BrandGreen);
+  --adm-success-dim: color-mix(in srgb, var(--color-BrandGreen) 14%, transparent);
+
+  /* Status colors — semantic only, NOT part of the brand palette (admin-defined) */
   --adm-danger:     #dc2626;
   --adm-danger-dim: rgba(220, 38, 38, 0.10);
-  --adm-success:    #16a34a;
-  --adm-success-dim: rgba(22, 163, 74, 0.12);
   --adm-warning:    #b45309;
   --adm-warning-dim: rgba(180, 83, 9, 0.12);
   --adm-info:       #2563eb;
   --adm-info-dim:   rgba(37, 99, 235, 0.12);
-  --adm-overlay:    rgba(15, 23, 42, 0.42);
+
+  --adm-overlay:    color-mix(in srgb, var(--color-BrandText) 42%, transparent);
   --adm-shadow:     0 12px 30px rgba(15,23,42,0.08), 0 2px 8px rgba(15,23,42,0.06);
   --adm-shadow-sm:  0 4px 14px rgba(15,23,42,0.05);
   --adm-shadow-lg:  0 24px 46px rgba(15,23,42,0.12), 0 8px 18px rgba(15,23,42,0.08);
