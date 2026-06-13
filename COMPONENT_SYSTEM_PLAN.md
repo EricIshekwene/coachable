@@ -184,14 +184,15 @@ The following must continue to work exactly as-is throughout every phase:
 
 ## Branch Strategy
 
-This branch (`claude/component-system-foundation`) holds the plan and all implementation work.  
-Each phase is merged to `main` as a separate PR when complete, so main is never broken.
+One branch per phase. Each phase is merged to `main` when complete before the next phase begins.
 
-| Branch | Contents |
-|--------|----------|
-| `main` | Always shippable |
-| `claude/component-system-foundation` | This plan file (Phase 0) |
-| `claude/rtl-testing-setup` | Phase 1 implementation |
-| `claude/component-extraction` | Phase 2 implementation |
-| `claude/app-shell-layout` | Phase 3 implementation |
-| `claude/dev-component-overlay` | Phase 4 implementation |
+**Why separate branches:** Phases are sequential but each takes multiple sessions. If all work lives on one branch, a problem in phase 3 blocks merging phases 1 and 2 — which are already working and shippable. Separate branches mean completed phases land in main immediately, keeping main clean and usable at all times. Each new phase branch is cut from main after the previous merge.
+
+| Branch | Phase | Merge when... |
+|--------|-------|---------------|
+| `main` | — | Always shippable |
+| `claude/component-system-foundation` | Phase 0 — Plan | Already merged |
+| `claude/app-shell-layout` | Phase 1 — AppShell + page layout | All pages using new shell, build passes |
+| `claude/component-extraction` | Phase 2 — Extract PlayCard, FolderCard, etc. | All target pages using barrel imports, build passes |
+| `claude/rtl-testing-setup` | Phase 3 — Vitest jsdom + RTL + page-based tests | Tests written for all extracted components, `vitest run` passes |
+| `claude/dev-component-overlay` | Phase 4 — Ctrl+Shift+D inspector overlay | Overlay works in dev, invisible in prod build |
