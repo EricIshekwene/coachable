@@ -5,13 +5,16 @@ import { useAppMessage } from "../context/AppMessageContext";
 import logo from "../assets/logos/full_Coachable_logo.png";
 import whiteLogo from "../assets/logos/White_Full_Coachable.png";
 import brandImage from "../assets/pictures/female_football_coach_short.png";
-import { isValidEmail, INPUT_LIMITS } from "../utils/inputValidation";
+import { validateEmail, INPUT_LIMITS } from "../utils/inputValidation";
 import { FiArrowLeft } from "react-icons/fi";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
   const [submitting, setSubmitting] = useState(false);
+
   const { login } = useAuth();
   const { showMessage } = useAppMessage();
   const navigate = useNavigate();
@@ -20,24 +23,41 @@ export default function Login() {
   const inviteCode = searchParams.get("invite") || "";
   const sportSlug = searchParams.get("sport") || null;
 
+  /** Validate a single field and return the error string (or ""). */
+  const validateField = (field, value) => {
+    if (field === "email") return validateEmail(value);
+    if (field === "password") return value.trim() ? "" : "Password is required";
+    return "";
+  };
+
+  /** Called when a field loses focus — marks it touched and shows its error. */
+  const handleBlur = (field, value) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    setErrors((prev) => ({ ...prev, [field]: validateField(field, value) }));
+  };
+
+  /** Clear an individual field's error as soon as the user starts correcting it. */
+  const handleChange = (field, value, setter) => {
+    setter(value);
+    if (touched[field]) {
+      setErrors((prev) => ({ ...prev, [field]: validateField(field, value) }));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const trimmedEmail = email.trim();
-    const trimmedPassword = password.trim();
 
-    if (!trimmedEmail || !trimmedPassword) {
-      showMessage("Missing fields", "Please enter both email and password.", "error");
-      return;
-    }
-
-    if (!isValidEmail(trimmedEmail)) {
-      showMessage("Invalid email", "Please enter a valid email address.", "error");
+    const emailErr = validateField("email", email);
+    const passwordErr = validateField("password", password);
+    if (emailErr || passwordErr) {
+      setErrors({ email: emailErr, password: passwordErr });
+      setTouched({ email: true, password: true });
       return;
     }
 
     setSubmitting(true);
     try {
-      const user = await login(trimmedEmail, trimmedPassword);
+      const user = await login(email.trim(), password);
       const onboardingParams = new URLSearchParams();
       if (inviteCode) onboardingParams.set("invite", inviteCode);
       if (returnTo && returnTo !== "/app/plays") onboardingParams.set("returnTo", returnTo);
@@ -51,8 +71,12 @@ export default function Login() {
     }
   };
 
-  const inputClass =
-    "w-full rounded-lg border border-BrandGray/40 bg-white px-3.5 py-2.5 font-DmSans text-sm outline-none transition placeholder:text-BrandGray hover:border-BrandGray focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]";
+  const fieldClass = (field) =>
+    `w-full rounded-lg border px-3.5 py-2.5 font-DmSans text-sm outline-none transition placeholder:text-BrandGray ${
+      errors[field]
+        ? "border-red-400 bg-red-50/20 focus:border-red-500 focus:shadow-[0_0_0_3px_rgba(239,68,68,0.08)]"
+        : "border-BrandGray/40 bg-white hover:border-BrandGray focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+    }`;
 
   return (
     <div className="font-DmSans md:flex" style={{ minHeight: "var(--app-viewport-height)" }}>
@@ -78,28 +102,26 @@ export default function Login() {
 
           <img src={logo} alt="Coachable" className="mb-10 block h-7 w-auto self-start object-contain" />
 
-          <h1 className="font-Manrope text-2xl font-bold tracking-tight text-BrandBlack">
-            Welcome back
-          </h1>
-          <p className="mt-1.5 text-sm text-BrandGray2">
-            Sign in to your account to continue.
-          </p>
+          <h1 className="font-Manrope text-2xl font-bold tracking-tight text-BrandBlack">Welcome back</h1>
+          <p className="mt-1.5 text-sm text-BrandGray2">Sign in to your account to continue.</p>
 
           <form noValidate onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold text-BrandBlack">Email</label>
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => handleChange("email", e.target.value, setEmail)}
+                onBlur={(e) => handleBlur("email", e.target.value)}
                 placeholder="you@example.com"
                 maxLength={INPUT_LIMITS.EMAIL}
                 autoComplete="email"
-                className={inputClass}
+                className={fieldClass("email")}
               />
+              {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
             </div>
 
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold text-BrandBlack">Password</label>
                 <Link to="/forgot-password" className="text-xs text-BrandOrange transition hover:opacity-80">
@@ -109,12 +131,14 @@ export default function Login() {
               <input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => handleChange("password", e.target.value, setPassword)}
+                onBlur={(e) => handleBlur("password", e.target.value)}
                 placeholder="Enter your password"
                 maxLength={INPUT_LIMITS.PASSWORD_MAX}
                 autoComplete="current-password"
-                className={inputClass}
+                className={fieldClass("password")}
               />
+              {errors.password && <p className="text-xs text-red-500">{errors.password}</p>}
             </div>
 
             <button
@@ -128,7 +152,16 @@ export default function Login() {
 
           <p className="mt-6 text-center text-sm text-BrandGray2">
             Don&apos;t have an account?{" "}
-            <Link to={(() => { const p = new URLSearchParams(); if (inviteCode) p.set("invite", inviteCode); if (returnTo && returnTo !== "/app/plays") p.set("returnTo", returnTo); const q = p.toString(); return `/signup${q ? `?${q}` : ""}`; })()} className="font-semibold text-BrandOrange transition hover:opacity-80">
+            <Link
+              to={(() => {
+                const p = new URLSearchParams();
+                if (inviteCode) p.set("invite", inviteCode);
+                if (returnTo && returnTo !== "/app/plays") p.set("returnTo", returnTo);
+                const q = p.toString();
+                return `/signup${q ? `?${q}` : ""}`;
+              })()}
+              className="font-semibold text-BrandOrange transition hover:opacity-80"
+            >
               Sign up
             </Link>
           </p>
@@ -137,17 +170,11 @@ export default function Login() {
 
       {/* Right - Brand panel */}
       <div className="relative hidden overflow-hidden md:flex md:w-1/2">
-        <img
-          src={brandImage}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover"
-        />
+        <img src={brandImage} alt="" className="absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/80" />
         <div className="relative z-10 flex h-full w-full flex-col items-start justify-end px-10 pb-16 lg:px-16 lg:pb-20">
           <img src={whiteLogo} alt="Coachable" className="absolute left-10 top-10 block h-7 w-auto object-contain opacity-70 lg:left-16 lg:top-14" />
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-BrandOrange">
-            The modern playbook
-          </p>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-BrandOrange">The modern playbook</p>
           <h2 className="font-Manrope text-5xl font-extrabold leading-[1.1] tracking-tight text-white lg:text-6xl xl:text-7xl">
             Design.<br />
             <span className="text-white/40">Animate.</span><br />
@@ -158,9 +185,7 @@ export default function Login() {
           </p>
           <div className="mt-8 flex items-center gap-2">
             <div className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            <span className="text-xs font-medium tracking-wide text-white/40">
-              Trusted by coaches at every level
-            </span>
+            <span className="text-xs font-medium tracking-wide text-white/40">Trusted by coaches at every level</span>
           </div>
         </div>
       </div>

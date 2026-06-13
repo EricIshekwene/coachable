@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { adminApi } from "../admin/adminTransport";
+import { validateEmail } from "../utils/inputValidation";
 
 /**
  * Login page for the scoped staff-admin area. Uses the standard /auth/login
@@ -15,11 +16,42 @@ export default function StaffLogin() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [touched, setTouched] = useState({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const validateField = (field, value) => {
+    if (field === "email") return validateEmail(value);
+    if (field === "password") return value.trim() ? "" : "Password is required";
+    return "";
+  };
+
+  const handleBlur = (field, value) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    setFieldErrors((prev) => ({ ...prev, [field]: validateField(field, value) }));
+  };
+
+  const handleChange = (field, value, setter) => {
+    setter(value);
+    if (touched[field]) setFieldErrors((prev) => ({ ...prev, [field]: validateField(field, value) }));
+  };
+
+  const fieldClass = (field) =>
+    `w-full rounded-lg px-4 py-3 text-sm outline-none transition ${
+      fieldErrors[field]
+        ? "bg-red-500/10 border border-red-500/40 focus:border-red-400"
+        : "bg-white/5 border border-white/10 focus:border-BrandOrange"
+    }`;
+
   async function handleSubmit(e) {
     e.preventDefault();
+    const emailErr = validateField("email", email);
+    const passwordErr = validateField("password", password);
+    setFieldErrors({ email: emailErr, password: passwordErr });
+    setTouched({ email: true, password: true });
+    if (emailErr || passwordErr) return;
+
     setError("");
     setLoading(true);
     try {
@@ -49,27 +81,33 @@ export default function StaffLogin() {
           <h1 className="text-2xl font-bold text-BrandOrange">coachable</h1>
           <p className="mt-1 text-sm text-white/60">Staff admin sign-in</p>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            required
-            autoComplete="email"
-            maxLength={254}
-            className="w-full rounded-lg bg-white/5 border border-white/10 px-4 py-3 text-sm outline-none focus:border-BrandOrange"
-          />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            required
-            autoComplete="current-password"
-            maxLength={256}
-            className="w-full rounded-lg bg-white/5 border border-white/10 px-4 py-3 text-sm outline-none focus:border-BrandOrange"
-          />
+        <form noValidate onSubmit={handleSubmit} className="space-y-3">
+          <div className="flex flex-col gap-1">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => handleChange("email", e.target.value, setEmail)}
+              onBlur={(e) => handleBlur("email", e.target.value)}
+              placeholder="Email"
+              autoComplete="email"
+              maxLength={254}
+              className={fieldClass("email")}
+            />
+            {fieldErrors.email && <p className="text-xs text-red-400">{fieldErrors.email}</p>}
+          </div>
+          <div className="flex flex-col gap-1">
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => handleChange("password", e.target.value, setPassword)}
+              onBlur={(e) => handleBlur("password", e.target.value)}
+              placeholder="Password"
+              autoComplete="current-password"
+              maxLength={256}
+              className={fieldClass("password")}
+            />
+            {fieldErrors.password && <p className="text-xs text-red-400">{fieldErrors.password}</p>}
+          </div>
           {error && (
             <div className="rounded-md bg-red-500/10 border border-red-500/30 px-3 py-2 text-xs text-red-300">
               {error}
