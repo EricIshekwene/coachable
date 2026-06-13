@@ -10,6 +10,7 @@ import {
 import { fetchPlays, deletePlay as apiDeletePlay, updatePlay, toggleFavorite as apiToggleFavorite, movePlayToFolder as apiMovePlayToFolder, sharePlay, fetchTrashedPlays, restorePlay as apiRestorePlay, permanentDeletePlay as apiPermanentDelete, duplicatePlay as apiDuplicatePlay, bulkDeletePlays, bulkMovePlays, bulkTagPlays, postToCommunity as apiPostToCommunity } from "../../utils/apiPlays";
 import { fetchFolders, createFolder as apiCreateFolder, updateFolder, deleteFolder as apiFolderDelete, shareFolder } from "../../utils/apiFolders";
 import PlayPreviewCard from "../../components/PlayPreviewCard";
+import { AppPage, AppHeader } from "../../components/layout";
 
 function formatRelativeTime(isoString) {
   if (!isoString) return "";
@@ -473,14 +474,14 @@ export default function Plays() {
   // Trash view
   if (showTrash) {
     return (
-      <div className="mx-auto max-w-4xl px-6 py-8 md:px-10 md:py-12">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="font-Manrope text-xl font-bold tracking-tight">Trash</h1>
-            <p className="mt-1 text-sm text-BrandGray">{trashedPlays.length} deleted play{trashedPlays.length !== 1 ? "s" : ""} · auto-deleted after 30 days</p>
-          </div>
-          <button onClick={() => setShowTrash(false)} className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-3.5 py-2.5 text-sm text-BrandGray transition hover:border-BrandGray hover:text-BrandText">Back to Playbook</button>
-        </div>
+      <AppPage maxWidth="4xl">
+        <AppHeader
+          title="Trash"
+          subtitle={`${trashedPlays.length} deleted play${trashedPlays.length !== 1 ? "s" : ""} · auto-deleted after 30 days`}
+          actions={
+            <button onClick={() => setShowTrash(false)} className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-3.5 py-2.5 text-sm text-BrandGray transition hover:border-BrandGray hover:text-BrandText">Back to Playbook</button>
+          }
+        />
 
         {trashedPlays.length === 0 ? (
           <div className="mt-20 flex flex-col items-center text-center">
@@ -504,31 +505,32 @@ export default function Plays() {
         )}
 
         {toast && (<div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-[fadeInUp_0.25s_ease-out]"><div className="flex items-center gap-2 rounded-lg border border-BrandGray2/20 bg-BrandBlack px-4 py-3 shadow-xl"><div className="h-1 w-1 rounded-full bg-BrandOrange" /><p className="text-sm text-BrandText">{toast}</p></div></div>)}
-      </div>
+      </AppPage>
     );
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8 md:px-10 md:py-12">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-Manrope text-xl font-bold tracking-tight">{currentFolder ? currentFolder.name : "Playbook"}</h1>
-          <p className="mt-1 text-sm text-BrandGray">{currentFolderId ? `${visiblePlays.length} play${visiblePlays.length !== 1 ? "s" : ""} in folder` : `${plays.length} plays · ${visibleFolders.length} folders`}</p>
-          {folderPath.length > 0 && (
-            <div className="mt-2 flex items-center gap-1 text-xs text-BrandGray">
-              <button onClick={() => setFolderPath([])} className="transition hover:text-BrandText">All Plays</button>
-              {folderPath.map((fId, idx) => { const f = folders.find((folder) => folder.id === fId); const isLast = idx === folderPath.length - 1; return (<div key={fId} className="flex items-center gap-1"><FiChevronRight className="text-[8px]" />{isLast ? <span>{f?.name}</span> : <button onClick={() => setFolderPath(folderPath.slice(0, idx + 1))} className="transition hover:text-BrandText">{f?.name}</button>}</div>); })}
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {isCoach && !bulkMode && (<button onClick={() => setBulkMode(true)} className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-3 py-2.5 text-sm text-BrandGray transition hover:border-BrandGray hover:text-BrandText"><FiCheckSquare className="text-sm" /></button>)}
-          {bulkMode && (<button onClick={exitBulkMode} className="flex items-center gap-2 rounded-lg border border-BrandOrange/50 bg-BrandOrange/10 px-3.5 py-2.5 text-sm text-BrandOrange transition hover:bg-BrandOrange/20"><FiX className="text-sm" />Cancel</button>)}
-          {isCoach && (<button onClick={() => { setShowTrash(true); loadTrash(); }} className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-3 py-2.5 text-sm text-BrandGray transition hover:border-BrandGray hover:text-BrandText"><FiTrash2 className="text-sm" /></button>)}
-          {isCoach && folderPath.length < 4 && (<button onClick={() => setNewFolderMode(true)} className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-3.5 py-2.5 text-sm text-BrandGray transition hover:border-BrandGray hover:text-BrandText disabled:opacity-50 disabled:cursor-not-allowed" disabled={folderPath.length >= 4}><FiFolder className="text-sm" />New Folder</button>)}
-          {canCreatePlay && (<Link to="/app/plays/new" className="flex items-center gap-2 rounded-lg bg-BrandOrange px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.97]"><FiPlus className="text-base" />New Play</Link>)}
-        </div>
-      </div>
+    <AppPage maxWidth="4xl">
+      <AppHeader
+        title={currentFolder ? currentFolder.name : "Playbook"}
+        subtitle={currentFolderId ? `${visiblePlays.length} play${visiblePlays.length !== 1 ? "s" : ""} in folder` : `${plays.length} plays · ${visibleFolders.length} folders`}
+        actions={
+          <>
+            {isCoach && !bulkMode && (<button onClick={() => setBulkMode(true)} className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-3 py-2.5 text-sm text-BrandGray transition hover:border-BrandGray hover:text-BrandText"><FiCheckSquare className="text-sm" /></button>)}
+            {bulkMode && (<button onClick={exitBulkMode} className="flex items-center gap-2 rounded-lg border border-BrandOrange/50 bg-BrandOrange/10 px-3.5 py-2.5 text-sm text-BrandOrange transition hover:bg-BrandOrange/20"><FiX className="text-sm" />Cancel</button>)}
+            {isCoach && (<button onClick={() => { setShowTrash(true); loadTrash(); }} className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-3 py-2.5 text-sm text-BrandGray transition hover:border-BrandGray hover:text-BrandText"><FiTrash2 className="text-sm" /></button>)}
+            {isCoach && folderPath.length < 4 && (<button onClick={() => setNewFolderMode(true)} className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-3.5 py-2.5 text-sm text-BrandGray transition hover:border-BrandGray hover:text-BrandText disabled:opacity-50 disabled:cursor-not-allowed" disabled={folderPath.length >= 4}><FiFolder className="text-sm" />New Folder</button>)}
+            {canCreatePlay && (<Link to="/app/plays/new" className="flex items-center gap-2 rounded-lg bg-BrandOrange px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.97]"><FiPlus className="text-base" />New Play</Link>)}
+          </>
+        }
+      >
+        {folderPath.length > 0 && (
+          <div className="mt-2 flex items-center gap-1 text-xs text-BrandGray">
+            <button onClick={() => setFolderPath([])} className="transition hover:text-BrandText">All Plays</button>
+            {folderPath.map((fId, idx) => { const f = folders.find((folder) => folder.id === fId); const isLast = idx === folderPath.length - 1; return (<div key={fId} className="flex items-center gap-1"><FiChevronRight className="text-[8px]" />{isLast ? <span>{f?.name}</span> : <button onClick={() => setFolderPath(folderPath.slice(0, idx + 1))} className="transition hover:text-BrandText">{f?.name}</button>}</div>); })}
+          </div>
+        )}
+      </AppHeader>
 
       {/* Search bar */}
       <div className="relative mt-5">
@@ -990,6 +992,6 @@ export default function Plays() {
       )}
 
       {toast && (<div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-[fadeInUp_0.25s_ease-out]"><div className="flex items-center gap-2 rounded-lg border border-BrandGray2/20 bg-BrandBlack px-4 py-3 shadow-xl"><div className="h-1 w-1 rounded-full bg-BrandOrange" /><p className="text-sm text-BrandText">{toast}</p></div></div>)}
-    </div>
+    </AppPage>
   );
 }

@@ -182,6 +182,7 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 | "app-wide messages" | [src/context/AppMessageContext.jsx](src/context/AppMessageContext.jsx) |
 | "routes", "router", "all pages" | [src/App.jsx](src/App.jsx) |
 | "app shell layout" (nav chrome) | [src/layouts/AppLayout.jsx](src/layouts/AppLayout.jsx) |
+| "page layout components", "AppShell", "AppPage", "AppSection", "AppCard", "AppHeader" | [src/components/layout/](src/components/layout/) ([LAYOUT.md](src/components/layout/LAYOUT.md), barrel: [index.js](src/components/layout/index.js)) |
 | "admin elevation / session" | [src/utils/adminElevation.js](src/utils/adminElevation.js) |
 | "error reporter" | [src/utils/errorReporter.js](src/utils/errorReporter.js) |
 | "mobile viewport fixes" | [src/utils/mobileViewport.js](src/utils/mobileViewport.js) |
@@ -363,6 +364,7 @@ Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PL
 All run via Vitest. One file per feature; create new ones here when adding tests.
 
 - Auth/account: `forgotPassword.test.js`, `accountDeletedEmail.test.js`, `onboarding.test.js`, `sportOnboarding.test.js` (canAdvance logic, sport payload, SPORTS shape, solo flow, Blank Canvas), `inputValidation.test.js` (validateEmail/Name/Password/ConfirmPassword, isValidEmail, isValidPhone, INPUT_LIMITS — 43 tests)
+- App layout system: `appLayout.test.js` (AppShell/AppPage/AppHeader/AppSection/AppCard — scroll-rule guard, maxWidth mapping, padding/header rendering logic; see `src/components/layout/LAYOUT.md`)
 - Admin shell: `adminBtn.test.js`, `adminModal.test.js`, `adminNav.test.js`, `adminShell.test.js`, `adminDangerMode.test.js`, `analyticsDashboard.test.js`, `usersHideFilters.test.js`, `designSystem.test.js` (design system nav registry: slug integrity, default section, prev/next adjacency), `designSystemSearch.test.js` (design system search ranking: keyword/label/summary matching, case-insensitivity, result limit), `designTokenUnification.test.js` (single-source-of-truth guard: admin `--adm-*` tokens must derive from the brand `--color-Brand*` palette; fails if admin drifts back to a parallel hex palette), `adminPagination.test.js` (getPaginationRange: short ranges, ellipsis collapsing, clamping)
 - Plays/folders/playbooks: `localStorageAutosave.test.js`, `platformPlays.test.js`, `playbookFolderBrowse.test.js`, `playbookSections.test.js`, `landingPlaybooksNav.test.js`, `playPreviewCardCones.test.js`, `playPreviewPlayer.test.js`, `playCopyAnalytics.test.js`, `sportPresets.test.js`, `presetBallCycle.test.js`, `presetEditorMode.test.js`, `hideFromPlayers.test.js`, `sportNavContext.test.js`, `syncSports.test.js`, `adminPlayCardConsistency.test.js` (PlayCard `canRemoveFromSection` logic + section play enrichment + picker exclusion)
 - Drawing/keyframe: `keyframeStyling.test.js`, `drawingModePreviewAnimation.test.js`, `drawingFlipReflect.test.js`, `drawingModeUndoRedo.test.js`, `drawingScopeSeparation.test.js`, `annotationDrawingVisibility.test.js`, `drawingExportV3Migration.test.js`, `trackSnap.test.js`

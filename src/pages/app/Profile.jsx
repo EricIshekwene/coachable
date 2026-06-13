@@ -11,6 +11,7 @@ import {
   FiXCircle,
 } from "react-icons/fi";
 import ConfirmModal from "../../components/subcomponents/ConfirmModal";
+import { AppShell, AppSection, AppCard } from "../../components/layout";
 
 export default function Profile() {
   const {
@@ -123,7 +124,7 @@ export default function Profile() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-8 md:px-10 md:py-12">
+    <AppShell title="Profile" maxWidth="2xl">
       <ConfirmModal
         open={confirmModal.open}
         message={confirmModal.message}
@@ -133,9 +134,8 @@ export default function Profile() {
         onConfirm={handleConfirmOk}
         onCancel={handleConfirmCancel}
       />
-      <h1 className="font-Manrope text-xl font-bold tracking-tight">Profile</h1>
 
-      <div className="mt-8 flex items-center gap-4 rounded-xl bg-BrandOrange/10 px-5 py-4">
+      <div className="flex items-center gap-4 rounded-xl bg-BrandOrange/10 px-5 py-4">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-BrandOrange/20 text-xl font-bold text-BrandOrange">
           {user?.name?.[0] || "?"}
         </div>
@@ -145,10 +145,9 @@ export default function Profile() {
         </div>
       </div>
 
-      <div className="mt-8 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-5">
-        <p className="text-xs font-semibold uppercase tracking-widest text-BrandGray2">Account Info</p>
-
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
+      <AppSection title="Account Info">
+        <AppCard>
+        <div className="grid gap-3 md:grid-cols-2">
           <div className="flex flex-col gap-1.5 md:col-span-2">
             <label className="text-xs font-semibold">Name</label>
             <div className="flex gap-2">
@@ -220,16 +219,13 @@ export default function Profile() {
             </div>
           </div>
         </div>
-      </div>
+        </AppCard>
+      </AppSection>
 
       {!isPlayerView && (
-        <div className="mt-6 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-5">
-          <div className="flex items-center gap-2">
-            <FiUsers className="text-sm text-BrandOrange" />
-            <p className="text-xs font-semibold uppercase tracking-widest text-BrandGray2">Ownership</p>
-          </div>
-
-          <p className="mt-2 text-sm text-BrandGray2">
+      <AppSection title="Ownership" icon={FiUsers}>
+        <AppCard>
+          <p className="text-sm text-BrandGray2">
             Current team owner: <span className="font-semibold text-BrandText">{owner?.name || "Unknown"}</span>
           </p>
 
@@ -273,17 +269,14 @@ export default function Profile() {
               Only the current team owner can transfer ownership.
             </p>
           )}
-        </div>
+        </AppCard>
+      </AppSection>
       )}
 
       {/* Team Management — player view */}
       {isPlayerView && (
-        <div className="mt-6 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-5">
-          <div className="flex items-center gap-2">
-            <FiUsers className="text-sm text-BrandOrange" />
-            <p className="text-xs font-semibold uppercase tracking-widest text-BrandGray2">Team</p>
-          </div>
-
+      <AppSection title="Team" icon={FiUsers}>
+        <AppCard>
           {user?.teamName && (
             <div className="mt-3 flex items-center gap-3 rounded-lg border border-BrandGray2/20 bg-BrandBlack2/20 px-3 py-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-BrandOrange/15 text-sm font-bold text-BrandOrange">
@@ -379,16 +372,17 @@ export default function Profile() {
               )}
             </div>
           )}
-        </div>
+        </AppCard>
+      </AppSection>
       )}
 
       <button
         onClick={handleLogout}
-        className="mt-8 flex w-full items-center justify-center gap-2 rounded-lg border border-red-500/30 py-2.5 text-sm text-red-400 transition hover:bg-red-500/10"
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-500/30 py-2.5 text-sm text-red-400 transition hover:bg-red-500/10"
       >
         <FiLogOut />
         Log out
       </button>
-    </div>
+    </AppShell>
   );
 }
