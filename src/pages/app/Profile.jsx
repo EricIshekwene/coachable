@@ -1,3 +1,4 @@
+import { Button, Input, Select } from "../../design-system/components";
 import { useMemo, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -149,9 +150,9 @@ export default function Profile() {
         <AppCard>
         <div className="grid gap-3 md:grid-cols-2">
           <div className="flex flex-col gap-1.5 md:col-span-2">
-            <label className="text-xs font-semibold">Name</label>
             <div className="flex gap-2">
-              <input
+              <Input
+                label="Name"
                 type="text"
                 value={nameInput}
                 onChange={(e) => setNameInput(e.target.value)}
@@ -160,14 +161,14 @@ export default function Profile() {
                 className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
                 placeholder="Your name"
               />
-              <button
+              <Button variant="primary"
                 type="button"
                 onClick={handleSaveName}
                 disabled={!nameInput.trim() || nameInput.trim() === user?.name}
                 className="rounded-lg bg-BrandOrange px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Save
-              </button>
+              </Button>
             </div>
             {showNameSaved && (
               <p className="flex items-center gap-1 text-xs text-BrandGreen">
@@ -178,9 +179,10 @@ export default function Profile() {
           </div>
 
           <div className="flex flex-col gap-1.5 md:col-span-2">
-            <label className="text-xs font-semibold">Email</label>
             <div className="flex gap-2">
-              <input
+              <Input
+                label="Email"
+                error={emailError}
                 type="email"
                 value={emailInput}
                 onChange={(e) => {
@@ -192,16 +194,15 @@ export default function Profile() {
                 className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
                 placeholder="name@example.com"
               />
-              <button
+              <Button variant="primary"
                 type="button"
                 onClick={handleChangeEmail}
                 disabled={emailSubmitting || !emailInput.trim() || emailInput.trim().toLowerCase() === user?.email}
                 className="rounded-lg border border-BrandOrange/40 px-4 py-2.5 text-sm font-semibold text-BrandOrange transition hover:bg-BrandOrange/10 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {emailSubmitting ? "Sending..." : "Change"}
-              </button>
+              </Button>
             </div>
-            {emailError && <p className="text-xs text-red-400">{emailError}</p>}
             {pendingEmailChange?.nextEmail && (
               <p className="text-xs text-BrandGray2">
                 Verification pending for <span className="font-semibold text-BrandText">{pendingEmailChange.nextEmail}</span>.
@@ -232,8 +233,8 @@ export default function Profile() {
           {(user?.role === "coach" || user?.role === "owner") && isTeamOwner ? (
             <>
               <div className="mt-4 flex flex-col gap-1.5">
-                <label className="text-xs font-semibold">Transfer ownership to</label>
-                <select
+                <Select
+                  label="Transfer ownership to"
                   value={selectedOwnerId}
                   onChange={(e) => setSelectedOwnerId(e.target.value)}
                   className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none transition hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
@@ -244,10 +245,10 @@ export default function Profile() {
                       {member.name} ({member.role})
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
 
-              <button
+              <Button variant="danger"
                 type="button"
                 onClick={handleTransferOwnership}
                 disabled={!selectedOwnerId || transferCandidates.length === 0}
@@ -255,7 +256,7 @@ export default function Profile() {
               >
                 <FiAlertTriangle className="text-sm" />
                 Transfer Ownership
-              </button>
+              </Button>
 
               {showOwnershipSaved && (
                 <p className="mt-2 flex items-center gap-1 text-xs text-BrandGreen">
@@ -291,10 +292,10 @@ export default function Profile() {
 
           {/* Join another team */}
           <div className="mt-4">
-            <label className="text-xs font-semibold">Join another team</label>
             <p className="mt-0.5 text-[11px] text-BrandGray2">Enter the team invite code from your coach.</p>
             <div className="mt-2 flex gap-2">
-              <input
+              <Input
+                label="Join another team"
                 type="text"
                 value={teamCode}
                 onChange={(e) => setTeamCode(e.target.value.toUpperCase())}
@@ -302,7 +303,7 @@ export default function Profile() {
                 maxLength={12}
                 className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 font-mono text-sm tracking-wider text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
               />
-              <button
+              <Button variant="primary"
                 type="button"
                 onClick={() => {
                   if (!teamCode.trim()) return;
@@ -315,7 +316,7 @@ export default function Profile() {
               >
                 <FiUserPlus className="text-sm" />
                 Join
-              </button>
+              </Button>
             </div>
             {showJoinSuccess && (
               <p className="mt-2 flex items-center gap-1 text-xs text-BrandGreen">
@@ -329,21 +330,21 @@ export default function Profile() {
           {user?.teamName && (
             <div className="mt-5 border-t border-BrandGray2/15 pt-4">
               {!showLeaveConfirm ? (
-                <button
+                <Button variant="danger"
                   type="button"
                   onClick={() => setShowLeaveConfirm(true)}
                   className="flex items-center gap-2 rounded-lg border border-red-500/30 px-4 py-2.5 text-sm text-red-300 transition hover:bg-red-500/10"
                 >
                   <FiXCircle className="text-sm" />
                   Leave {user.teamName}
-                </button>
+                </Button>
               ) : (
                 <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
                   <p className="text-xs text-red-300">
                     Are you sure you want to leave <span className="font-semibold">{user.teamName}</span>? You'll lose access to all plays.
                   </p>
                   <div className="mt-3 flex gap-2">
-                    <button
+                    <Button variant="danger"
                       type="button"
                       onClick={() => {
                         setShowLeaveConfirm(false);
@@ -353,14 +354,14 @@ export default function Profile() {
                       className="rounded-lg bg-red-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-red-600"
                     >
                       Yes, leave team
-                    </button>
-                    <button
+                    </Button>
+                    <Button variant="outline"
                       type="button"
                       onClick={() => setShowLeaveConfirm(false)}
                       className="rounded-lg border border-BrandGray2/30 px-4 py-2 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
                     >
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -376,13 +377,13 @@ export default function Profile() {
       </AppSection>
       )}
 
-      <button
+      <Button variant="danger"
         onClick={handleLogout}
         className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-500/30 py-2.5 text-sm text-red-400 transition hover:bg-red-500/10"
       >
         <FiLogOut />
         Log out
-      </button>
+      </Button>
     </AppShell>
   );
 }

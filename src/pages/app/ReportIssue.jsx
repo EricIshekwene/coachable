@@ -1,3 +1,4 @@
+import { Button, Input, Textarea } from "../../design-system/components";
 /**
  * ReportIssue page — allows beta testers to submit issues they've encountered.
  * Only accessible to users with isBetaTester=true.
@@ -67,12 +68,12 @@ export default function ReportIssue() {
           <p className="mt-2 text-sm text-BrandGray2">
             Thanks for the report! We'll look into it and get back to you if we need more details.
           </p>
-          <button
+          <Button variant="primary"
             onClick={handleReset}
             className="mt-8 rounded-xl bg-BrandOrange px-6 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
           >
             Report Another Issue
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -100,11 +101,9 @@ export default function ReportIssue() {
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           {/* Title */}
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-BrandGray">
-              Issue Title
-              <span className="ml-1 font-normal text-BrandGray2">({title.length}/{MAX_TITLE})</span>
-            </label>
-            <input
+            <Input
+              label="Issue Title"
+              hint={`${title.length}/${MAX_TITLE}`}
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value.slice(0, MAX_TITLE))}
@@ -118,11 +117,9 @@ export default function ReportIssue() {
 
           {/* Description */}
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-BrandGray">
-              Description
-              <span className="ml-1 font-normal text-BrandGray2">({description.length}/{MAX_DESC})</span>
-            </label>
-            <textarea
+            <Textarea
+              label="Description"
+              hint={`${description.length}/${MAX_DESC}`}
               value={description}
               onChange={(e) => setDescription(e.target.value.slice(0, MAX_DESC))}
               placeholder="Describe what happened, what you expected, and any steps to reproduce the issue..."
@@ -140,13 +137,13 @@ export default function ReportIssue() {
             </div>
           )}
 
-          <button
+          <Button variant="primary"
             type="submit"
             disabled={submitting || !title.trim() || !description.trim()}
             className="rounded-xl bg-BrandOrange py-3 text-sm font-semibold text-white transition hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
           >
             {submitting ? "Submitting..." : "Submit Issue"}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

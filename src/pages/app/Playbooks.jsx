@@ -1,3 +1,4 @@
+import { Button, Checkbox, Input } from "../../design-system/components";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -170,7 +171,7 @@ function PlayGrid({ plays, isCoach, copiedIds, onCopyPlay, onPreview }) {
             )}
 
             {isCoach && (
-              <button
+              <Button variant="primary"
                 onClick={(e) => { e.stopPropagation(); onCopyPlay(play); }}
                 disabled={copiedIds.has(play.id)}
                 className={`mt-4 flex w-full items-center justify-center gap-1.5 rounded-full py-2.5 text-xs font-semibold transition disabled:opacity-70 ${
@@ -183,7 +184,7 @@ function PlayGrid({ plays, isCoach, copiedIds, onCopyPlay, onPreview }) {
                   ? <><FiCheck className="text-xs" /> Added to Playbook</>
                   : <><FiPlus className="text-xs" /> Add to Playbook</>
                 }
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -300,12 +301,12 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
     <div className="min-h-full">
       <div className="sticky top-0 z-10 bg-BrandBlack/95 backdrop-blur-sm">
         <div className="border-b border-BrandGray2/20 px-6 py-4">
-          <button
+          <Button variant="ghost"
             onClick={onBack}
             className="mb-1 flex items-center gap-1.5 text-xs text-BrandGray transition hover:text-BrandText"
           >
             <FiChevronLeft className="text-xs" /> All Playbooks
-          </button>
+          </Button>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="font-Manrope text-lg font-bold text-BrandText">{section?.name || "Playbook"}</h2>
@@ -316,7 +317,7 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
               </p>
             </div>
             {isCoach && plays.length > 0 && (
-              <button
+              <Button variant="primary"
                 onClick={handleCopyAll}
                 disabled={copyingAll || allCopied}
                 className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:opacity-60 ${
@@ -333,7 +334,7 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
                   <FiPlus />
                 )}
                 {allCopied ? "Added to Playbook" : "Add All to Playbook"}
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -343,7 +344,7 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
             <div className="flex flex-col gap-3 md:flex-row md:items-center">
               <div className="relative flex-1">
                 <FiSearch className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-BrandGray2" />
-                <input
+                <Input
                   type="text"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
@@ -351,19 +352,19 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
                   className="w-full rounded-xl border border-BrandGray2/25 bg-BrandBlack2 py-2.5 pl-10 pr-10 text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2/40 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
                 />
                 {search && (
-                  <button
+                  <Button variant="ghost"
                     type="button"
                     onClick={() => setSearch("")}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg p-1 text-BrandGray2 transition hover:bg-BrandBlack hover:text-BrandText"
                     aria-label="Clear search"
                   >
                     <FiX className="text-sm" />
-                  </button>
+                  </Button>
                 )}
               </div>
 
               <div ref={filtersRef} className="relative">
-                <button
+                <Button variant="primary"
                   type="button"
                   onClick={() => setFiltersOpen((prev) => !prev)}
                   className={`flex min-w-[148px] items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition ${
@@ -380,7 +381,7 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
                     </span>
                   )}
                   <FiChevronDown className={`text-sm transition ${filtersOpen ? "rotate-180" : ""}`} />
-                </button>
+                </Button>
 
                 {filtersOpen && (
                   <div className="absolute right-0 top-[calc(100%+0.75rem)] z-20 w-[280px] rounded-2xl border border-BrandGray2/20 bg-BrandBlack p-3 shadow-2xl shadow-black/30">
@@ -388,14 +389,14 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
                       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-BrandGray2">
                         Section Tags
                       </p>
-                      <button
+                      <Button variant="ghost"
                         type="button"
                         onClick={clearTagFilters}
                         disabled={activeTags.length === 0}
                         className="text-xs font-semibold text-BrandGray transition hover:text-BrandOrange disabled:cursor-not-allowed disabled:text-BrandGray2/50"
                       >
                         Clear all
-                      </button>
+                      </Button>
                     </div>
 
                     {sectionTags.length === 0 ? (
@@ -410,22 +411,17 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
                           );
 
                           return (
-                            <label
+                            <Checkbox
                               key={tag}
+                              label={tag}
+                              checked={isActive}
+                              onChange={() => toggleTagFilter(tag)}
                               className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 text-sm transition ${
                                 isActive
                                   ? "border-BrandOrange/40 bg-BrandOrange/10 text-BrandText"
                                   : "border-transparent bg-BrandBlack2/60 text-BrandGray hover:border-BrandGray2/20 hover:text-BrandText"
                               }`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={isActive}
-                                onChange={() => toggleTagFilter(tag)}
-                                className="h-4 w-4 rounded border-BrandGray2/40 bg-BrandBlack2 accent-BrandOrange"
-                              />
-                              <span className="truncate">{tag}</span>
-                            </label>
+                            />
                           );
                         })}
                       </div>
@@ -482,7 +478,7 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
  */
 function BrowseTile({ title, description, playCount, onClick }) {
   return (
-    <button
+    <Button variant="outline"
       onClick={onClick}
       className="group flex flex-col overflow-hidden rounded-2xl border border-BrandGray2/20 bg-BrandBlack2 text-left transition hover:border-BrandOrange/40 hover:shadow-lg hover:shadow-BrandOrange/5"
     >
@@ -500,7 +496,7 @@ function BrowseTile({ title, description, playCount, onClick }) {
           {playCount} {playCount === 1 ? "play" : "plays"}
         </p>
       </div>
-    </button>
+    </Button>
   );
 }
 
@@ -521,7 +517,7 @@ function PlaybookTabs({ activeTab, onChange, hasCommunity }) {
       {tabs.map(({ key, label }) => {
         const isActive = activeTab === key;
         return (
-          <button
+          <Button variant="ghost"
             key={key}
             onClick={() => onChange(key)}
             className="relative pb-2.5 text-sm font-semibold transition-colors"
@@ -545,7 +541,7 @@ function PlaybookTabs({ activeTab, onChange, hasCommunity }) {
                 />
               </>
             )}
-          </button>
+          </Button>
         );
       })}
     </div>

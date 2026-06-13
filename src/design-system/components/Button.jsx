@@ -4,13 +4,18 @@ import { forwardRef } from "react";
  * Shared button with consistent variants.
  *
  * @param {{
- *   variant?: "primary"|"secondary"|"outline"|"danger"|"ghost",
+ *   variant?: "primary"|"secondary"|"outline"|"danger"|"danger-outline"|"ghost",
  *   size?: "sm"|"md"|"lg"|"icon",
  *   children: React.ReactNode,
  *   className?: string,
-  *   disabled?: boolean,
-  *   type?: "button"|"submit"|"reset",
-  *   onClick?: (e: React.MouseEvent) => void,
+ *   disabled?: boolean,
+ *   loading?: boolean,
+ *   fullWidth?: boolean,
+ *   startIcon?: React.ReactNode,
+ *   endIcon?: React.ReactNode,
+ *   as?: React.ElementType,
+ *   type?: "button"|"submit"|"reset",
+ *   onClick?: (e: React.MouseEvent) => void,
  *   title?: string,
  * }} props
  */
@@ -19,7 +24,12 @@ const Button = forwardRef(function Button({
   size = "md",
   children,
   className = "",
-  disabled,
+  disabled = false,
+  loading = false,
+  fullWidth = false,
+  startIcon,
+  endIcon,
+  as: Component = "button",
   type = "button",
   onClick,
   title,
@@ -58,27 +68,45 @@ const Button = forwardRef(function Button({
       color: "var(--ui-danger)",
       border: "1px solid color-mix(in srgb, var(--ui-danger) 20%, transparent)",
     },
+    "danger-outline": {
+      backgroundColor: "transparent",
+      color: "var(--ui-danger)",
+      border: "1px solid color-mix(in srgb, var(--ui-danger) 45%, transparent)",
+    },
     ghost: {
       backgroundColor: "transparent",
       color: "var(--ui-text-muted)",
       border: "1px solid transparent",
     },
   }[variant];
+  const isDisabled = disabled || loading;
+  const isNativeButton = Component === "button";
+
+  const handleClick = (event) => {
+    if (isDisabled) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    onClick?.(event);
+  };
 
   return (
-    <button
+    <Component
       ref={ref}
-      type={type}
+      {...(isNativeButton ? { type, disabled: isDisabled } : {})}
       title={title}
-      disabled={disabled}
-      onClick={onClick}
-      className={`inline-flex items-center justify-center gap-1.5 rounded-[var(--radius-md)] font-semibold transition-all duration-150 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-45 ${sizeClasses} ${className}`}
+      aria-disabled={isDisabled}
+      aria-busy={loading || undefined}
+      onClick={handleClick}
+      className={`relative inline-flex items-center justify-center gap-1.5 rounded-[var(--radius-md)] font-semibold transition-all duration-150 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-45 ${isDisabled && !isNativeButton ? "pointer-events-none opacity-45" : ""} ${fullWidth ? "w-full" : ""} ${sizeClasses} ${className}`}
       style={{
         ...variantStyle,
+        width: fullWidth ? "100%" : undefined,
         ...style,
       }}
       onMouseEnter={(e) => {
-        if (disabled) return;
+        if (isDisabled) return;
         if (variant === "primary") {
           e.currentTarget.style.transform = "translateY(-1px)";
           e.currentTarget.style.filter = "brightness(1.04)";
@@ -95,6 +123,9 @@ const Button = forwardRef(function Button({
           }
           if (variant === "danger") {
             e.currentTarget.style.backgroundColor = "color-mix(in srgb, var(--ui-danger-muted) 75%, var(--ui-surface))";
+          }
+          if (variant === "danger-outline") {
+            e.currentTarget.style.backgroundColor = "var(--ui-danger-muted)";
           }
         }
         onMouseEnter?.(e);
@@ -114,8 +145,20 @@ const Button = forwardRef(function Button({
       {...buttonProps}
       data-component="Button"
     >
-      {children}
-    </button>
+      <span className={`inline-flex items-center justify-center gap-1.5 ${loading ? "invisible" : ""}`}>
+        {startIcon}
+        {children}
+        {endIcon}
+      </span>
+      {loading ? (
+        <span
+          data-loading-spinner
+          aria-hidden="true"
+          className="absolute h-4 w-4 rounded-full border-2 border-current border-r-transparent"
+          style={{ animation: "spin 0.7s linear infinite" }}
+        />
+      ) : null}
+    </Component>
   );
 });
 

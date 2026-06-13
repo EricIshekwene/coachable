@@ -1,35 +1,36 @@
-import { forwardRef } from "react";
+import { forwardRef, useId } from "react";
+import Field from "./Field";
 import { FIELD_SIZE_STYLES, getFieldTone, applyFieldFocus, clearFieldFocus } from "./fieldStyles";
 
 /**
  * Styled admin select dropdown.
  *
- * @param {{ label?: string, className?: string } & React.SelectHTMLAttributes<HTMLSelectElement>} props
+ * @param {{ label?: React.ReactNode, hint?: React.ReactNode, error?: React.ReactNode, required?: boolean, className?: string } & React.SelectHTMLAttributes<HTMLSelectElement>} props
  */
 const Select = forwardRef(function Select({
   label,
   hint,
   error,
+  required = false,
   className = "",
   size = "md",
   children,
   ...selectProps
 }, ref) {
+  const generatedId = useId();
+  const selectId = selectProps.id ?? (label ? generatedId : undefined);
   const tone = getFieldTone({ disabled: selectProps.disabled, invalid: Boolean(error) || selectProps["aria-invalid"] === true });
   const sizeStyles = FIELD_SIZE_STYLES[size] ?? FIELD_SIZE_STYLES.md;
 
-  return (
-    <div data-component="Select" className={`flex flex-col gap-1 ${className}`}>
-      {label && (
-        <label className="text-xs font-semibold" style={{ color: "var(--ui-text-muted)" }}>
-          {label}
-        </label>
-      )}
-      <div className="relative">
+  const control = (
+    <div className="relative">
         <select
           ref={ref}
           {...selectProps}
+          id={selectId}
+          required={required || selectProps.required}
           aria-invalid={selectProps["aria-invalid"] ?? Boolean(error)}
+          data-component="Select"
           className={`w-full appearance-none rounded-[var(--radius-md)] outline-none transition-all ${sizeStyles.selectClassName}`}
           style={{
             backgroundColor: tone.backgroundColor,
@@ -62,15 +63,16 @@ const Select = forwardRef(function Select({
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </div>
-      {error ? (
-        <p className="text-xs" style={{ color: "var(--ui-danger)" }}>
-          {error}
-        </p>
-      ) : hint ? (
-        <p className="text-xs" style={{ color: "var(--ui-text-subtle)" }}>
-          {hint}
-        </p>
-      ) : null}
+  );
+
+  return label ? (
+    <Field label={label} hint={hint} error={error} required={required} htmlFor={selectId} className={className}>
+      {control}
+    </Field>
+  ) : (
+    <div className={className}>
+      {control}
+      {error || hint ? <Field hint={hint} error={error}>{null}</Field> : null}
     </div>
   );
 });

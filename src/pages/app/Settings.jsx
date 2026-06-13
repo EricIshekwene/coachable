@@ -1,3 +1,4 @@
+import { Button, Input, Select, Toggle } from "../../design-system/components";
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -46,33 +47,6 @@ function resolveTheme(theme) {
 function applyTheme(theme) {
   document.documentElement.setAttribute("data-theme", resolveTheme(theme));
   localStorage.setItem("theme", theme);
-}
-
-function ToggleRow({ label, description, enabled, onToggle }) {
-  return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border border-BrandGray2/20 bg-BrandBlack2/20 px-3 py-3">
-      <div>
-        <p className="text-sm font-semibold">{label}</p>
-        <p className="text-xs text-BrandGray2">{description}</p>
-      </div>
-      <button
-        type="button"
-        aria-pressed={enabled}
-        onClick={onToggle}
-        className={`relative inline-flex h-7 w-12 shrink-0 items-center overflow-hidden rounded-full border p-0.5 appearance-none transition-colors ${
-          enabled
-            ? "border-BrandOrange bg-BrandOrange/80"
-            : "border-BrandGray2/40 bg-BrandGray2/20"
-        }`}
-      >
-        <span
-          className={`pointer-events-none block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-            enabled ? "translate-x-6" : "translate-x-0"
-          }`}
-        />
-      </button>
-    </div>
-  );
 }
 
 export default function Settings() {
@@ -182,44 +156,44 @@ export default function Settings() {
         <div className="flex flex-col gap-2">
           {isPlayer ? (
             <>
-              <ToggleRow
+              <Toggle
                 label="New plays added"
                 description="Get notified when your coach adds new plays."
-                enabled={Boolean(notifications.newPlays)}
-                onToggle={() => toggleNotification("newPlays")}
+                checked={Boolean(notifications.newPlays)}
+                onChange={() => toggleNotification("newPlays")}
               />
-              <ToggleRow
+              <Toggle
                 label="Play updates"
                 description="Get notified when existing plays are modified."
-                enabled={Boolean(notifications.playUpdates)}
-                onToggle={() => toggleNotification("playUpdates")}
+                checked={Boolean(notifications.playUpdates)}
+                onChange={() => toggleNotification("playUpdates")}
               />
-              <ToggleRow
+              <Toggle
                 label="Team announcements"
                 description="Get notified about general team updates."
-                enabled={Boolean(notifications.teamAnnouncements)}
-                onToggle={() => toggleNotification("teamAnnouncements")}
+                checked={Boolean(notifications.teamAnnouncements)}
+                onChange={() => toggleNotification("teamAnnouncements")}
               />
             </>
           ) : (
             <>
-              <ToggleRow
+              <Toggle
                 label="Players join team"
                 description="Get notified when new players join your team."
-                enabled={Boolean(notifications.playersJoinTeam)}
-                onToggle={() => toggleNotification("playersJoinTeam")}
+                checked={Boolean(notifications.playersJoinTeam)}
+                onChange={() => toggleNotification("playersJoinTeam")}
               />
-              <ToggleRow
+              <Toggle
                 label="Coaches make changes"
                 description="Get notified when coaches edit plays or team settings."
-                enabled={Boolean(notifications.coachesMakeChanges)}
-                onToggle={() => toggleNotification("coachesMakeChanges")}
+                checked={Boolean(notifications.coachesMakeChanges)}
+                onChange={() => toggleNotification("coachesMakeChanges")}
               />
-              <ToggleRow
+              <Toggle
                 label="Invites accepted"
                 description="Get notified when pending invites are accepted."
-                enabled={Boolean(notifications.inviteAccepted)}
-                onToggle={() => toggleNotification("inviteAccepted")}
+                checked={Boolean(notifications.inviteAccepted)}
+                onChange={() => toggleNotification("inviteAccepted")}
               />
             </>
           )}
@@ -235,23 +209,23 @@ export default function Settings() {
         </div>
         <p className="mb-3 text-xs text-BrandGray2">Assistant coach permissions</p>
         <div className="flex flex-col gap-2">
-          <ToggleRow
+          <Toggle
             label="Create, edit, and delete plays"
             description="Allow assistant coaches to manage all play content."
-            enabled={Boolean(assistantPermissions.canCreateEditDeletePlays)}
-            onToggle={() => togglePermission("canCreateEditDeletePlays")}
+            checked={Boolean(assistantPermissions.canCreateEditDeletePlays)}
+            onChange={() => togglePermission("canCreateEditDeletePlays")}
           />
-          <ToggleRow
+          <Toggle
             label="Manage roster"
             description="Allow assistant coaches to add, remove, and update players."
-            enabled={Boolean(assistantPermissions.canManageRoster)}
-            onToggle={() => togglePermission("canManageRoster")}
+            checked={Boolean(assistantPermissions.canManageRoster)}
+            onChange={() => togglePermission("canManageRoster")}
           />
-          <ToggleRow
+          <Toggle
             label="Send invites"
             description="Allow assistant coaches to invite members to the team."
-            enabled={Boolean(assistantPermissions.canSendInvites)}
-            onToggle={() => togglePermission("canSendInvites")}
+            checked={Boolean(assistantPermissions.canSendInvites)}
+            onChange={() => togglePermission("canSendInvites")}
           />
         </div>
       </div>
@@ -268,8 +242,8 @@ export default function Settings() {
 
         <div className="grid gap-3 md:grid-cols-2">
           <div className="flex flex-col gap-1.5 md:col-span-2">
-            <label className="text-xs font-semibold">{isPersonal ? "Workspace Name" : "Team Name"}</label>
-            <input
+            <Input
+              label={isPersonal ? "Workspace Name" : "Team Name"}
               type="text"
               value={teamDefaults.teamName}
               onChange={(e) => setTeamDefaults((prev) => ({ ...prev, teamName: e.target.value }))}
@@ -280,8 +254,8 @@ export default function Settings() {
           </div>
 
           <div className={`flex flex-col gap-1.5 ${isPersonal ? "md:col-span-2" : ""}`}>
-            <label className="text-xs font-semibold">Sport</label>
-            <select
+            <Select
+              label="Sport"
               value={teamDefaults.sport}
               onChange={(e) => setTeamDefaults((prev) => ({ ...prev, sport: e.target.value }))}
               className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none transition hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
@@ -292,13 +266,13 @@ export default function Settings() {
                   {s.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {!isPersonal && (
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold">Season / Year</label>
-            <input
+            <Input
+              label="Season / Year"
               type="text"
               value={teamDefaults.seasonYear}
               onChange={(e) => setTeamDefaults((prev) => ({ ...prev, seasonYear: e.target.value }))}
@@ -322,7 +296,7 @@ export default function Settings() {
           <p className="text-xs text-BrandGray2">
             Preview the app as a player sees it. You'll see read-only plays, limited navigation, and player-level account options.
           </p>
-          <button
+          <Button variant="primary"
             type="button"
             onClick={() => {
               setPlayerViewMode(true);
@@ -332,7 +306,7 @@ export default function Settings() {
           >
             <FiEye className="text-sm" />
             Switch to Player View
-          </button>
+          </Button>
         </div>
       )}
 
@@ -343,7 +317,7 @@ export default function Settings() {
             const ThemeIcon = option.icon;
 
             return (
-              <button
+              <Button variant="primary"
                 key={option.value}
                 type="button"
                 onClick={() => setSelectedTheme(option.value)}
@@ -364,14 +338,14 @@ export default function Settings() {
                 </div>
                 <p className="text-sm font-semibold">{option.label}</p>
                 <p className="text-[11px] text-BrandGray2">{option.desc}</p>
-              </button>
+              </Button>
             );
           })}
         </div>
       </div>
 
       <div className="mt-8 flex items-center gap-3">
-        <button
+        <Button variant="primary"
           type="button"
           onClick={handleConfirm}
           disabled={!hasChanges}
@@ -385,16 +359,16 @@ export default function Settings() {
           ) : (
             "Confirm"
           )}
-        </button>
+        </Button>
 
         {hasChanges && (
-          <button
+          <Button variant="outline"
             type="button"
             onClick={handleCancel}
             className="rounded-lg border border-BrandGray2/30 px-4 py-2.5 text-sm text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
           >
             Cancel
-          </button>
+          </Button>
         )}
       </div>
 
@@ -490,12 +464,15 @@ function DangerZone({
           <p className="mt-1 text-xs text-BrandGray2">
             You are the owner of this team. You must transfer ownership to another member before you can leave.
           </p>
-          <Link
+          <Button
+            as={Link}
+            variant="outline"
+            size="sm"
             to="/app/profile"
             className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-BrandGray2/30 px-4 py-2 text-xs font-semibold text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
           >
             Go to Profile to Transfer Ownership
-          </Link>
+          </Button>
         </div>
       ) : (
         <div>
@@ -515,14 +492,15 @@ function DangerZone({
           )}
 
           {!showLeaveConfirm ? (
-            <button
+            <Button
+              variant="danger-outline"
               type="button"
               onClick={() => { setShowLeaveConfirm(true); setLeaveError(""); setDeleteConfirmText(""); }}
               className="mt-3 flex items-center gap-2 rounded-lg border border-red-500/40 px-4 py-2 text-xs font-semibold text-red-400 transition hover:border-red-500 hover:bg-red-500/10"
             >
               {isOwner ? <FiTrash2 className="text-sm" /> : <FiLogOut className="text-sm" />}
               {buttonLabel}
-            </button>
+            </Button>
           ) : (
             <div className="mt-3 rounded-lg border border-red-500/30 bg-BrandBlack2/30 p-3">
               <p className="text-xs font-semibold text-red-300">
@@ -536,7 +514,7 @@ function DangerZone({
                   <p className="mb-1.5 text-[11px] text-BrandGray2">
                     Type <span className="font-semibold text-BrandGray">"{confirmTarget}"</span> to confirm
                   </p>
-                  <input
+                  <Input
                     type="text"
                     value={deleteConfirmText}
                     onChange={(e) => setDeleteConfirmText(e.target.value)}
@@ -548,21 +526,24 @@ function DangerZone({
               )}
 
               <div className="mt-3 flex items-center gap-2">
-                <button
+                <Button
+                  variant="outline"
                   type="button"
                   onClick={handleCancelConfirm}
                   className="flex-1 rounded-lg border border-BrandGray2/30 py-2 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="danger"
+                  loading={leaveLoading}
                   type="button"
                   onClick={handleLeave}
                   disabled={leaveLoading || (isDeletingTeam && deleteConfirmText !== confirmTarget)}
                   className="flex-1 rounded-lg bg-red-600 py-2 text-xs font-semibold text-white transition hover:bg-red-500 disabled:opacity-50"
                 >
                   {leaveLoading ? "Processing…" : isDeletingTeam ? "Yes, Delete" : "Yes, Leave"}
-                </button>
+                </Button>
               </div>
             </div>
           )}

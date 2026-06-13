@@ -1,3 +1,4 @@
+import { Button, Input } from "../../design-system/components";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiX, FiClock, FiSearch } from "react-icons/fi";
@@ -233,13 +234,13 @@ export default function PlayNew() {
 
   return (
     <div className="mx-auto max-w-lg px-6 py-8 md:px-10 md:py-16">
-      <button
+      <Button variant="ghost"
         onClick={() => navigate("/app/plays")}
         className="mb-8 flex items-center gap-2 text-sm text-BrandGray transition hover:text-BrandText"
       >
         <FiArrowLeft />
         Back to Playbook
-      </button>
+      </Button>
 
       <h1 className="font-Manrope text-xl font-bold tracking-tight">Create New Play</h1>
       <p className="mt-1.5 text-sm text-BrandGray">
@@ -248,8 +249,8 @@ export default function PlayNew() {
 
       <form onSubmit={handleCreate} className="mt-8 flex flex-col gap-5">
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold">Title</label>
-          <input
+          <Input
+            label="Title"
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -268,7 +269,7 @@ export default function PlayNew() {
           {allPresets.length > 6 && (
             <div className="relative">
               <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-BrandGray2" />
-              <input
+              <Input
                 type="text"
                 value={presetSearch}
                 onChange={(e) => setPresetSearch(e.target.value)}
@@ -291,7 +292,7 @@ export default function PlayNew() {
                 {filteredPresets.map(({ id, label, playData: tileData }) => {
                   const isSelected = selectedPresetId === id;
                   return (
-                    <button
+                    <Button variant="primary"
                       key={id}
                       type="button"
                       onClick={() => setSelectedPresetId(id)}
@@ -325,7 +326,7 @@ export default function PlayNew() {
                           </span>
                         )}
                       </div>
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
@@ -338,7 +339,7 @@ export default function PlayNew() {
           <div className="flex flex-col gap-2">
             <label className="text-xs font-semibold">Editor Mode</label>
             <div className="flex gap-2">
-              <button
+              <Button variant="primary"
                 type="button"
                 onClick={() => setEditorMode("drawing")}
                 className={`flex flex-1 flex-col items-center gap-1 rounded-xl border-2 px-3 py-3 text-sm font-medium transition-all duration-200 focus:outline-none ${
@@ -352,8 +353,8 @@ export default function PlayNew() {
                 <span className={`text-xs font-normal ${editorMode === "drawing" ? "text-BrandOrange/70" : "text-BrandGray2"}`}>
                   For simple routes
                 </span>
-              </button>
-              <button
+              </Button>
+              <Button variant="primary"
                 type="button"
                 onClick={() => setEditorMode("keyframe")}
                 className={`flex flex-1 flex-col items-center gap-1 rounded-xl border-2 px-3 py-3 text-sm font-medium transition-all duration-200 focus:outline-none ${
@@ -367,7 +368,7 @@ export default function PlayNew() {
                 <span className={`text-xs font-normal ${editorMode === "keyframe" ? "text-BrandOrange/70" : "text-BrandGray2"}`}>
                   For complex movement
                 </span>
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -388,16 +389,16 @@ export default function PlayNew() {
                 className="inline-flex items-center gap-1 rounded-md bg-BrandOrange/10 px-2 py-1 text-xs text-BrandOrange"
               >
                 {tag}
-                <button
+                <Button variant="ghost"
                   type="button"
                   onClick={(e) => { e.stopPropagation(); removeTag(tag); }}
                   className="ml-0.5 rounded-sm text-BrandOrange/60 transition hover:text-BrandOrange"
                 >
                   <FiX className="text-[10px]" />
-                </button>
+                </Button>
               </span>
             ))}
-            <input
+            <Input
               ref={inputRef}
               type="text"
               value={tagInput}
@@ -425,7 +426,7 @@ export default function PlayNew() {
                   </div>
                 )}
                 {suggestions.map((tag, i) => (
-                  <button
+                  <Button variant="primary"
                     key={tag}
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
@@ -441,20 +442,20 @@ export default function PlayNew() {
                     <span className="ml-auto text-[10px] text-BrandGray2">
                       {i === highlightedIndex ? "Tab / Enter" : ""}
                     </span>
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
           )}
         </div>
 
-        <button
+        <Button variant="primary"
           type="submit"
           disabled={!title.trim() || submitting}
           className="mt-2 flex w-full items-center justify-center rounded-lg bg-BrandOrange py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Create & Open Editor
-        </button>
+        </Button>
       </form>
     </div>
   );

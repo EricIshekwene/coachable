@@ -1,3 +1,4 @@
+import { Button, Input } from "../../design-system/components";
 /**
  * How To page — searchable FAQs and tutorial videos.
  * FAQs are hardcoded with embedded keywords for search.
@@ -118,7 +119,7 @@ function FAQItem({ q, a, linkedVideo, onPlayVideo }) {
 
   return (
     <div className="border-b border-BrandGray2/15 last:border-b-0">
-      <button
+      <Button variant="ghost"
         onClick={() => setOpen((s) => !s)}
         className="flex w-full items-start justify-between gap-4 py-4 text-left"
       >
@@ -126,17 +127,17 @@ function FAQItem({ q, a, linkedVideo, onPlayVideo }) {
           {q}
         </span>
         <FiChevronDown className={`mt-0.5 shrink-0 text-BrandOrange transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
-      </button>
+      </Button>
       <div className={`overflow-hidden transition-all duration-200 ${open ? "max-h-72 pb-4" : "max-h-0"}`}>
         <p className="text-sm leading-relaxed text-BrandGray2">{a}</p>
         {videoReady && (
-          <button
+          <Button variant="ghost"
             onClick={() => onPlayVideo(ytId)}
             className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-BrandOrange transition hover:underline"
           >
             <FiPlay className="text-[11px]" />
             Watch video
-          </button>
+          </Button>
         )}
         {linkedVideo && !videoReady && (
           <p className="mt-2 text-xs italic text-BrandGray2/60">Video coming soon</p>
@@ -277,9 +278,9 @@ export default function DemoVideos() {
               />
             </div>
             <div className="flex justify-end border-t border-BrandGray2/20 bg-[#1a1a1a] px-4 py-2">
-              <button onClick={() => setActiveYtId(null)} className="text-xs text-BrandGray transition hover:text-white">
+              <Button variant="ghost" onClick={() => setActiveYtId(null)} className="text-xs text-BrandGray transition hover:text-white">
                 Close
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -294,7 +295,7 @@ export default function DemoVideos() {
       {/* Search */}
       <div className="relative mb-8 max-w-md">
         <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-BrandGray2" />
-        <input
+        <Input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -302,12 +303,12 @@ export default function DemoVideos() {
           className="w-full rounded-xl border border-BrandGray2/20 bg-BrandBlack2 py-2.5 pl-9 pr-9 text-sm text-BrandText outline-none transition focus:border-BrandOrange placeholder:text-BrandGray2"
         />
         {search && (
-          <button
+          <Button variant="ghost"
             onClick={() => setSearch("")}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-BrandGray2 transition hover:text-BrandText"
           >
             <FiX className="text-sm" />
-          </button>
+          </Button>
         )}
       </div>
 
@@ -315,9 +316,9 @@ export default function DemoVideos() {
       {!loading && search && !hasAnyResults && (
         <div className="rounded-xl border border-BrandGray2/10 py-12 text-center">
           <p className="text-BrandGray2">Nothing matched "<span className="text-BrandText">{search}</span>"</p>
-          <button onClick={() => setSearch("")} className="mt-2 text-sm text-BrandOrange hover:underline">
+          <Button variant="ghost" onClick={() => setSearch("")} className="mt-2 text-sm text-BrandOrange hover:underline">
             Clear search
-          </button>
+          </Button>
         </div>
       )}
 

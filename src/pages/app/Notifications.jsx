@@ -1,3 +1,4 @@
+import { Button, Checkbox, Input, RadioGroup, Select, Textarea } from "../../design-system/components";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { FiBell, FiAlertCircle, FiCheckCircle, FiStar, FiInbox } from "react-icons/fi";
@@ -24,8 +25,9 @@ function QuestionField({ question, value, onChange, disabled }) {
 
   if (q.type === "paragraph") {
     return (
-      <textarea
+      <Textarea
         rows={3}
+        required={required}
         disabled={disabled}
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
@@ -37,8 +39,9 @@ function QuestionField({ question, value, onChange, disabled }) {
 
   if (q.type === "short" || q.type === "file") {
     return (
-      <input
+      <Input
         type="text"
+        required={required}
         disabled={disabled}
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
@@ -50,8 +53,9 @@ function QuestionField({ question, value, onChange, disabled }) {
 
   if (q.type === "date") {
     return (
-      <input
+      <Input
         type="date"
+        required={required}
         disabled={disabled}
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
@@ -62,8 +66,9 @@ function QuestionField({ question, value, onChange, disabled }) {
 
   if (q.type === "dropdown") {
     return (
-      <select
+      <Select
         disabled={disabled}
+        required={required}
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
         className={`${INPUT_CLASS} max-w-xs disabled:opacity-70`}
@@ -72,40 +77,19 @@ function QuestionField({ question, value, onChange, disabled }) {
         {(q.options || []).map((opt, i) => (
           <option key={i} value={opt}>{opt || `Option ${i + 1}`}</option>
         ))}
-      </select>
+      </Select>
     );
   }
 
   if (q.type === "multiple" || q.type === "yes_no") {
     const options = q.type === "yes_no" ? ["Yes", "No"] : (q.options || []);
     return (
-      <div className="flex flex-col gap-2">
-        {options.map((opt, i) => {
-          const selected = value === opt;
-          return (
-            <button
-              key={i}
-              type="button"
-              disabled={disabled}
-              onClick={() => onChange(opt)}
-              className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left text-sm transition disabled:opacity-70 ${
-                selected
-                  ? "border-BrandOrange bg-BrandOrange/10 text-BrandText"
-                  : "border-BrandGray2/30 text-BrandGray hover:border-BrandGray2/60"
-              }`}
-            >
-              <span
-                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
-                  selected ? "border-BrandOrange" : "border-BrandGray2/50"
-                }`}
-              >
-                {selected && <span className="h-2 w-2 rounded-full bg-BrandOrange" />}
-              </span>
-              {opt || `Option ${i + 1}`}
-            </button>
-          );
-        })}
-      </div>
+      <RadioGroup
+        options={options.map((opt, i) => ({ value: opt, label: opt || `Option ${i + 1}` }))}
+        value={value || ""}
+        onChange={onChange}
+        disabled={disabled}
+      />
     );
   }
 
@@ -115,31 +99,16 @@ function QuestionField({ question, value, onChange, disabled }) {
       onChange(arr.includes(opt) ? arr.filter((v) => v !== opt) : [...arr, opt]);
     return (
       <div className="flex flex-col gap-2">
-        {(q.options || []).map((opt, i) => {
-          const checked = arr.includes(opt);
-          return (
-            <button
-              key={i}
-              type="button"
-              disabled={disabled}
-              onClick={() => toggle(opt)}
-              className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left text-sm transition disabled:opacity-70 ${
-                checked
-                  ? "border-BrandOrange bg-BrandOrange/10 text-BrandText"
-                  : "border-BrandGray2/30 text-BrandGray hover:border-BrandGray2/60"
-              }`}
-            >
-              <span
-                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 ${
-                  checked ? "border-BrandOrange bg-BrandOrange text-white" : "border-BrandGray2/50"
-                }`}
-              >
-                {checked && <FiCheckCircle className="text-[10px]" />}
-              </span>
-              {opt || `Option ${i + 1}`}
-            </button>
-          );
-        })}
+        {(q.options || []).map((opt, i) => (
+          <Checkbox
+            key={i}
+            label={opt || `Option ${i + 1}`}
+            checked={arr.includes(opt)}
+            disabled={disabled}
+            onChange={() => toggle(opt)}
+            className="rounded-lg border border-BrandGray2/30 px-3 py-2"
+          />
+        ))}
       </div>
     );
   }
@@ -151,7 +120,7 @@ function QuestionField({ question, value, onChange, disabled }) {
         {q.scaleMinLabel && <span className="text-xs text-BrandGray2">{q.scaleMinLabel}</span>}
         <div className="flex gap-2">
           {Array.from({ length: max }, (_, i) => i + 1).map((n) => (
-            <button
+            <Button variant="primary"
               key={n}
               type="button"
               disabled={disabled}
@@ -163,7 +132,7 @@ function QuestionField({ question, value, onChange, disabled }) {
               }`}
             >
               {n}
-            </button>
+            </Button>
           ))}
         </div>
         {q.scaleMaxLabel && <span className="text-xs text-BrandGray2">{q.scaleMaxLabel}</span>}
@@ -175,7 +144,7 @@ function QuestionField({ question, value, onChange, disabled }) {
     return (
       <div className="flex gap-1.5">
         {[1, 2, 3, 4, 5].map((n) => (
-          <button
+          <Button variant="ghost"
             key={n}
             type="button"
             disabled={disabled}
@@ -190,7 +159,7 @@ function QuestionField({ question, value, onChange, disabled }) {
                 color: Number(value) >= n ? "var(--color-BrandOrange)" : "var(--tw-prose-body, #9ca3af)",
               }}
             />
-          </button>
+          </Button>
         ))}
       </div>
     );
@@ -306,14 +275,16 @@ function NotificationDetail({ notif, onRespond }) {
               <FiAlertCircle className="shrink-0" /> {error}
             </div>
           )}
-          <button
+          <Button
             type="button"
+            variant="primary"
+            loading={submitting}
             onClick={handleSubmit}
             disabled={submitting}
             className="flex w-fit items-center gap-2 rounded-lg bg-BrandOrange px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-60"
           >
             {submitting ? "Submitting…" : "Submit response"}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -372,13 +343,13 @@ export default function NotificationsPage() {
             </p>
           </div>
           {unreadCount > 0 && (
-            <button
+            <Button variant="outline"
               type="button"
               onClick={markAllRead}
               className="rounded-lg border border-BrandGray2/30 px-3 py-2 text-xs font-semibold text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"
             >
               Mark all read
-            </button>
+            </Button>
           )}
         </div>
 
@@ -405,7 +376,7 @@ export default function NotificationsPage() {
               {notifications.map((n) => {
                 const active = n.id === selectedId;
                 return (
-                  <button
+                  <Button variant="primary"
                     key={n.id}
                     type="button"
                     onClick={() => handleSelect(n.id)}
@@ -437,7 +408,7 @@ export default function NotificationsPage() {
                         {n.respondedAt && <span className="text-green-400">✓ Responded</span>}
                       </div>
                     </div>
-                  </button>
+                  </Button>
                 );
               })}
             </div>

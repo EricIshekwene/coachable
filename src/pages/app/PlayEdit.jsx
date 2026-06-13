@@ -1,3 +1,4 @@
+import { Button } from "../../design-system/components";
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useMessagePopup } from "../../components/messaging/useMessagePopup";
@@ -29,30 +30,30 @@ export default function PlayEdit() {
       {/* Editor toolbar */}
       <div className="flex items-center justify-between border-b border-BrandGray2/20 px-4 py-2.5">
         <div className="flex items-center gap-3">
-          <button
+          <Button variant="ghost"
             onClick={handleExit}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"
           >
             <FiArrowLeft />
             Exit
-          </button>
+          </Button>
           <div className="h-4 w-px bg-BrandGray2/30" />
           <span className="font-DmSans text-xs text-BrandGray2">Editing play</span>
         </div>
         <div className="flex items-center gap-2">
-          <button
+          <Button variant="outline"
             onClick={() => showMessage("Play saved", "success")}
             className="flex items-center gap-1.5 rounded-lg border border-BrandGray2/30 px-3 py-1.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
           >
             <FiSave className="text-[10px]" />
             Save
-          </button>
-          <button
+          </Button>
+          <Button variant="primary"
             onClick={handleSaveAndExit}
             className="flex items-center gap-1.5 rounded-lg bg-BrandOrange px-3 py-1.5 text-xs font-semibold text-white transition hover:brightness-110"
           >
             Save & Exit
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -77,18 +78,18 @@ export default function PlayEdit() {
               Any unsaved changes will be lost.
             </p>
             <div className="mt-6 flex items-center gap-3">
-              <button
+              <Button variant="outline"
                 onClick={() => setShowExitConfirm(false)}
                 className="flex-1 rounded-lg border border-BrandGray2/30 py-2 text-sm text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button variant="danger"
                 onClick={confirmExit}
                 className="flex-1 rounded-lg bg-red-500/90 py-2 text-sm font-semibold text-white transition hover:bg-red-500"
               >
                 Exit
-              </button>
+              </Button>
             </div>
           </div>
         </div>

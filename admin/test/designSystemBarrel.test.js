@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import * as DS from "../../src/design-system/components";
 import * as Admin from "../../src/admin/components";
 import {
-  Alert, Avatar, Badge, Breadcrumbs, Button, Card, Checkbox, Chip, EmptyState,
+  Alert, Avatar, Badge, Breadcrumbs, Button, Card, Checkbox, Chip, EmptyState, Field,
   Input, Modal, Pagination, Progress, RadioGroup, Section, Select, Skeleton,
   Spinner, Tabs, Textarea, Toggle, Tooltip,
 } from "../../src/design-system/components";
@@ -21,7 +21,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 describe("design-system barrel", () => {
   const canonical = [
-    "Button", "Input", "Textarea", "Select", "Checkbox", "Toggle", "RadioGroup",
+    "Button", "Field", "Input", "Textarea", "Select", "Checkbox", "Toggle", "RadioGroup",
     "Card", "Section", "Modal", "Alert", "Spinner", "Skeleton", "Progress",
     "EmptyState", "Badge", "Chip", "Avatar", "Tabs", "Breadcrumbs", "Pagination",
     "Tooltip", "PageShell", "Page", "PageHeader",
@@ -37,6 +37,11 @@ describe("design-system barrel", () => {
     expect(source.indexOf('import { forwardRef } from "react";')).toBeLessThan(
       source.indexOf(`const ${name} = forwardRef`),
     );
+  });
+
+  test("Field has no admin compatibility alias", () => {
+    expect(Field).toBe(DS.Field);
+    expect(Admin.AdminField).toBeUndefined();
   });
 });
 

@@ -21,6 +21,16 @@ Shared component names use PascalCase and have no surface prefix.
 - Forward refs to a component's single primary focusable element. Multi-control composites do not expose an arbitrary child ref.
 - Add JSDoc for every exported component and document its props.
 
+## Form Components
+
+- `Field` owns shared label, required marker, hint, error, and character-count layout.
+- `Button` supports semantic variants including `danger-outline`, polymorphic `as`,
+  stable-width loading state, full-width layout, and start/end icons.
+- `Input` supports start icons, end actions, `default`/`search`/`code` appearances,
+  and optional self-wrapping `Field` props.
+- `Textarea` supports the shared `Field` props and `none`/`vertical`/`both` resize modes.
+- `Select` supports the shared `Field` props while retaining the canonical chevron.
+
 ## Admin Compatibility
 
 `src/admin/components/index.js` aliases canonical components under their existing `AdminX` names. Thin files remain at the legacy `src/admin/components/AdminX.jsx` paths for direct imports. New shared code should use canonical names.

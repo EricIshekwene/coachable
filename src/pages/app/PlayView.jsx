@@ -1,3 +1,4 @@
+import { Button, Textarea } from "../../design-system/components";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -132,13 +133,13 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
     return (
       <div className="mx-auto max-w-3xl px-6 py-8 md:px-10 md:py-12">
         {showBackButton && (
-          <button
+          <Button variant="ghost"
             onClick={() => navigate(backTo)}
             className="mb-8 flex items-center gap-2 text-sm text-BrandGray transition hover:text-BrandText"
           >
             <FiArrowLeft />
             {backLabel}
-          </button>
+          </Button>
         )}
         <h1 className="font-Manrope text-xl font-bold tracking-tight">Play not found</h1>
         <p className="mt-2 text-sm text-BrandGray">The play you're looking for doesn't exist.</p>
@@ -149,13 +150,13 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
   return (
     <div className="mx-auto max-w-4xl px-6 py-8 md:px-10 md:py-12">
       {showBackButton && (
-        <button
+        <Button variant="ghost"
           onClick={() => navigate(backTo)}
           className="mb-8 flex items-center gap-2 text-sm text-BrandGray transition hover:text-BrandText"
         >
           <FiArrowLeft />
           {backLabel}
-        </button>
+        </Button>
       )}
 
       <div className="flex items-start justify-between">
@@ -170,21 +171,25 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
         </div>
         {!effectiveViewOnly && play.teamId && (
           <div className="flex items-center gap-2">
-            <Link
+            <Button
+              as={Link}
+              variant="outline"
               to={`/app/plays/${playId}/view`}
               className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-4 py-2 text-sm font-semibold text-BrandGray transition hover:border-BrandOrange/50 hover:text-BrandOrange"
             >
               <FiExternalLink className="text-sm" />
               View in Slate
-            </Link>
+            </Button>
             {canCoachEdit && (
-              <Link
+              <Button
+                as={Link}
+                variant="primary"
                 to={`/app/plays/${playId}/edit`}
                 className="flex items-center gap-2 rounded-lg bg-BrandOrange px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
               >
                 <FiEdit2 className="text-sm" />
                 Edit
-              </Link>
+              </Button>
             )}
           </div>
         )}
@@ -204,21 +209,21 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
 
       {canCoachEdit && (
         <div className="mb-4 flex justify-end">
-          <button
+          <Button variant="outline"
             type="button"
             onClick={handleOpenNoteEditor}
             className="rounded-lg border border-BrandGray2/30 px-3.5 py-2 text-xs font-semibold text-BrandGray transition hover:border-BrandOrange/50 hover:text-BrandOrange"
           >
             {hasNotes ? "Edit Note" : "Add Note"}
-          </button>
+          </Button>
         </div>
       )}
 
       {canCoachEdit && editingNotes && (
         <section className="mb-8 rounded-2xl border border-BrandGray2/20 bg-BrandBlack2/30 p-4 sm:p-5">
-          <label className="text-xs font-semibold text-BrandText">Note</label>
-          <textarea
+          <Textarea
             ref={noteInputRef}
+            label="Note"
             value={noteDraft}
             onChange={(e) => setNoteDraft(e.target.value)}
             placeholder="Write your note for this play..."
@@ -228,21 +233,21 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
           <div className="mt-2 flex items-center justify-between">
             <span className="text-[11px] text-BrandGray2">{noteDraft.length}/500</span>
             <div className="flex items-center gap-2">
-              <button
+              <Button variant="outline"
                 type="button"
                 onClick={handleCancelNoteEditor}
                 className="rounded-lg border border-BrandGray2/30 px-3 py-1.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button variant="primary"
                 type="button"
                 onClick={handleSaveNote}
                 disabled={!canSaveNote}
                 className="rounded-lg bg-BrandOrange px-3 py-1.5 text-xs font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {savingNote ? "Saving..." : "Save Note"}
-              </button>
+              </Button>
             </div>
           </div>
           {noteError && <p className="mt-2 text-xs text-red-400">{noteError}</p>}

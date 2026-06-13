@@ -8,6 +8,7 @@
  *   onChange?: (value: string) => void,
  *   className?: string,
  *   name?: string,
+ *   disabled?: boolean,
  * }} props
  */
 export default function RadioGroup({
@@ -17,6 +18,7 @@ export default function RadioGroup({
   onChange,
   className = "",
   name = "admin-radio-group",
+  disabled = false,
   ...rest
 }) {
   return (
@@ -42,6 +44,7 @@ export default function RadioGroup({
                 type="radio"
                 name={name}
                 checked={checked}
+                disabled={disabled}
                 onChange={() => onChange?.(option.value)}
                 className="sr-only"
               />

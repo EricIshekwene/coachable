@@ -1,3 +1,4 @@
+import { Button, Input } from "../../design-system/components";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiCheck, FiMail } from "react-icons/fi";
@@ -114,14 +115,14 @@ export default function ProfileEmailVerification() {
 
   return (
     <div className="mx-auto max-w-lg px-6 py-8 md:px-10 md:py-12">
-      <button
+      <Button variant="ghost"
         type="button"
         onClick={handleBack}
         className="mb-6 inline-flex items-center gap-2 text-sm text-BrandGray transition hover:text-BrandText"
       >
         <FiArrowLeft className="text-sm" />
         Back to Profile
-      </button>
+      </Button>
 
       <div className="rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-6">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-BrandOrange/15 text-BrandOrange">
@@ -138,7 +139,7 @@ export default function ProfileEmailVerification() {
         <form onSubmit={handleSubmit} className="mt-6">
           <div className="flex justify-between gap-2">
             {digits.map((d, i) => (
-              <input
+              <Input
                 key={i}
                 ref={(el) => (inputRefs.current[i] = el)}
                 type="text"
@@ -156,7 +157,7 @@ export default function ProfileEmailVerification() {
 
           {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
 
-          <button
+          <Button variant="primary"
             type="submit"
             disabled={submitting || digits.some((d) => !d)}
             className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-BrandOrange py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
@@ -171,19 +172,19 @@ export default function ProfileEmailVerification() {
             ) : (
               "Confirm email change"
             )}
-          </button>
+          </Button>
         </form>
 
         <div className="mt-4 text-center">
           <p className="text-sm text-BrandGray2">
             Didn't get the code?{" "}
-            <button
+            <Button variant="ghost"
               onClick={handleResend}
               disabled={resendCooldown > 0}
               className="font-semibold text-BrandOrange transition hover:opacity-80 disabled:opacity-40"
             >
               {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend code"}
-            </button>
+            </Button>
           </p>
         </div>
       </div>

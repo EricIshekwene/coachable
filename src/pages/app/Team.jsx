@@ -1,3 +1,4 @@
+import { Button, Input } from "../../design-system/components";
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useAppMessage } from "../../context/AppMessageContext";
@@ -36,20 +37,20 @@ function InviteCodeSection({ role, code, copiedRole, onCopy, onRotate, onSendInv
         <div className="flex-1 rounded-lg border border-BrandGray2/30 bg-BrandBlack px-3.5 py-2.5 font-mono text-sm tracking-wider text-BrandOrange">
           {code}
         </div>
-        <button
+        <Button variant="outline"
           onClick={() => onCopy(role)}
           className="flex items-center gap-1.5 rounded-lg border border-BrandGray2/30 px-3 py-2.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
           title={`Copy ${role} code`}
         >
           {copiedRole === role ? <FiCheck className="text-BrandGreen" /> : <FiCopy />}
-        </button>
-        <button
+        </Button>
+        <Button variant="outline"
           onClick={() => onRotate(role)}
           className="flex items-center gap-1.5 rounded-lg border border-BrandGray2/30 px-3 py-2.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
           title={`Generate new ${role} code`}
         >
           <FiRefreshCw />
-        </button>
+        </Button>
       </div>
 
       {isCoachCode && (
@@ -62,7 +63,7 @@ function InviteCodeSection({ role, code, copiedRole, onCopy, onRotate, onSendInv
       <div className="mt-3 flex items-center gap-2">
         <div className="relative flex-1">
           <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-BrandGray2" />
-          <input
+          <Input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -73,7 +74,7 @@ function InviteCodeSection({ role, code, copiedRole, onCopy, onRotate, onSendInv
             className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 py-2 pl-8 pr-3 text-xs text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
           />
         </div>
-        <button
+        <Button variant="primary"
           onClick={handleSend}
           disabled={!email.trim() || sending || sent}
           className="flex items-center gap-1.5 rounded-lg bg-BrandOrange px-3.5 py-2 text-xs font-semibold text-white transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
@@ -91,7 +92,7 @@ function InviteCodeSection({ role, code, copiedRole, onCopy, onRotate, onSendInv
               Invite
             </>
           )}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -216,7 +217,7 @@ export default function Team() {
   });
 
   const filterBtn = (value, label) => (
-    <button
+    <Button variant="primary"
       onClick={() => setFilter(value)}
       className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
         filter === value
@@ -225,7 +226,7 @@ export default function Team() {
       }`}
     >
       {label}
-    </button>
+    </Button>
   );
 
   return (
@@ -296,7 +297,7 @@ export default function Team() {
         {/* Search */}
         <div className="relative mt-3">
           <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-BrandGray2" />
-          <input
+          <Input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -338,14 +339,14 @@ export default function Team() {
                 </span>
               )}
               {isOwner && member.id !== user?.id && (
-                <button
+                <Button variant="danger"
                   onClick={() => setConfirmRemove(member)}
                   disabled={removingId === member.id}
                   className="rounded-md p-1.5 text-BrandGray2 transition hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40"
                   title={`Remove ${member.name}`}
                 >
                   <FiUserMinus className="text-sm" />
-                </button>
+                </Button>
               )}
             </div>
           ))}
@@ -369,18 +370,18 @@ export default function Team() {
               Remove <strong className="text-BrandText">{confirmRemove.name}</strong> from the team? They will be notified by email.
             </p>
             <div className="mt-5 flex justify-end gap-2">
-              <button
+              <Button variant="outline"
                 onClick={() => setConfirmRemove(null)}
                 className="rounded-lg border border-BrandGray2/40 px-3.5 py-2 text-sm text-BrandGray transition hover:text-BrandText"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button variant="danger"
                 onClick={handleRemoveMember}
                 className="rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
               >
                 Remove
-              </button>
+              </Button>
             </div>
           </div>
         </div>

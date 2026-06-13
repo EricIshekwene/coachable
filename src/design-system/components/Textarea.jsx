@@ -1,37 +1,39 @@
-import { forwardRef } from "react";
+import { forwardRef, useId } from "react";
+import Field from "./Field";
 import { FIELD_SIZE_STYLES, getFieldTone, applyFieldFocus, clearFieldFocus } from "./fieldStyles";
 
 /**
  * Styled admin textarea with shared field tokens.
  *
- * @param {{ label?: string, hint?: string, error?: string, className?: string, size?: "sm"|"md"|"lg" } & React.TextareaHTMLAttributes<HTMLTextAreaElement>} props
+ * @param {{ label?: React.ReactNode, hint?: React.ReactNode, error?: React.ReactNode, required?: boolean, resize?: "none"|"vertical"|"both", className?: string, size?: "sm"|"md"|"lg" } & React.TextareaHTMLAttributes<HTMLTextAreaElement>} props
  */
 const Textarea = forwardRef(function Textarea({
   label,
   hint,
   error,
+  required = false,
+  resize = "vertical",
   className = "",
   size = "md",
   textareaClassName = "",
   rows = 4,
   ...textareaProps
 }, ref) {
+  const generatedId = useId();
+  const textareaId = textareaProps.id ?? (label ? generatedId : undefined);
   const tone = getFieldTone({ disabled: textareaProps.disabled, invalid: Boolean(error) || textareaProps["aria-invalid"] === true });
   const sizeStyles = FIELD_SIZE_STYLES[size] ?? FIELD_SIZE_STYLES.md;
 
-  return (
-    <div data-component="Textarea" className={`flex flex-col gap-1 ${className}`}>
-      {label ? (
-        <label className="text-xs font-semibold" style={{ color: "var(--ui-text-muted)" }}>
-          {label}
-        </label>
-      ) : null}
-      <textarea
+  const control = (
+    <textarea
         ref={ref}
         {...textareaProps}
+        id={textareaId}
         rows={rows}
+        required={required || textareaProps.required}
         aria-invalid={textareaProps["aria-invalid"] ?? Boolean(error)}
-        className={`w-full rounded-[var(--radius-md)] outline-none transition-all resize-y ${sizeStyles.textareaClassName} ${textareaClassName}`}
+        data-component="Textarea"
+        className={`w-full rounded-[var(--radius-md)] outline-none transition-all ${resize === "none" ? "resize-none" : resize === "both" ? "resize" : "resize-y"} ${sizeStyles.textareaClassName} ${textareaClassName} ${label ? "" : className}`}
         style={{
           backgroundColor: tone.backgroundColor,
           border: `1px solid ${tone.borderColor}`,
@@ -49,17 +51,13 @@ const Textarea = forwardRef(function Textarea({
           textareaProps.onBlur?.(e);
         }}
       />
-      {error ? (
-        <p className="text-xs" style={{ color: "var(--ui-danger)" }}>
-          {error}
-        </p>
-      ) : hint ? (
-        <p className="text-xs" style={{ color: "var(--ui-text-subtle)" }}>
-          {hint}
-        </p>
-      ) : null}
-    </div>
   );
+
+  return label ? (
+    <Field label={label} hint={hint} error={error} required={required} htmlFor={textareaId} className={className}>
+      {control}
+    </Field>
+  ) : control;
 });
 
 export default Textarea;
