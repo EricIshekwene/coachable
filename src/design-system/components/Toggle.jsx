@@ -1,3 +1,5 @@
+import { forwardRef } from "react";
+
 /**
  * Toggle switch for boolean admin settings.
  *
@@ -65,4 +67,3 @@ const Toggle = forwardRef(function Toggle({
 });
 
 export default Toggle;
-import { forwardRef } from "react";

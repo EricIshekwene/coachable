@@ -1,4 +1,7 @@
 import { describe, expect, test } from "vitest";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import * as DS from "../../src/design-system/components";
 import * as Admin from "../../src/admin/components";
 import {
@@ -14,6 +17,8 @@ function isReactComponentType(value) {
   return typeof value.$$typeof === "symbol";
 }
 
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+
 describe("design-system barrel", () => {
   const canonical = [
     "Button", "Input", "Textarea", "Select", "Checkbox", "Toggle", "RadioGroup",
@@ -25,6 +30,13 @@ describe("design-system barrel", () => {
   test.each(canonical)("%s is exported as a React component type", (name) => {
     expect(DS[name]).toBeDefined();
     expect(isReactComponentType(DS[name])).toBe(true);
+  });
+
+  test.each(["Checkbox", "Toggle"])("%s imports forwardRef before initialization", (name) => {
+    const source = readFileSync(resolve(ROOT, `src/design-system/components/${name}.jsx`), "utf8");
+    expect(source.indexOf('import { forwardRef } from "react";')).toBeLessThan(
+      source.indexOf(`const ${name} = forwardRef`),
+    );
   });
 });
 

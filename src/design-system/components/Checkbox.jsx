@@ -1,3 +1,5 @@
+import { forwardRef } from "react";
+
 /**
  * Styled checkbox with label, replacing raw `accent-BrandOrange` checkboxes.
  *
@@ -67,4 +69,3 @@ const Checkbox = forwardRef(function Checkbox({
 });
 
 export default Checkbox;
-import { forwardRef } from "react";
