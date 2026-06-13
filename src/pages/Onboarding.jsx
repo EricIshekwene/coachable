@@ -142,7 +142,7 @@ export default function Onboarding() {
             }}
           >
             <div className="mx-auto flex min-h-full w-full max-w-lg flex-col justify-start md:justify-center">
-              <button type="button" onClick={() => { logout(); navigate("/"); }} className="mb-6 inline-flex items-center gap-1.5 text-xs text-BrandGray2 transition hover:text-BrandBlack">
+              <button type="button" onClick={() => { logout(); navigate("/home"); }} className="mb-6 inline-flex items-center gap-1.5 text-xs text-BrandGray2 transition hover:text-BrandBlack">
                 <FiArrowLeft className="text-sm" /> Back to home
               </button>
               <img src={logo} alt="Coachable" className="mb-10 block h-7 w-auto self-start object-contain" />
@@ -212,7 +212,7 @@ export default function Onboarding() {
           }}
         >
           <div className="mx-auto flex min-h-full w-full max-w-lg flex-col justify-start md:justify-center">
-            <button type="button" onClick={() => { logout(); navigate("/"); }} className="mb-6 inline-flex items-center gap-1.5 text-xs text-BrandGray2 transition hover:text-BrandBlack">
+            <button type="button" onClick={() => { logout(); navigate("/home"); }} className="mb-6 inline-flex items-center gap-1.5 text-xs text-BrandGray2 transition hover:text-BrandBlack">
               <FiArrowLeft className="text-sm" /> Back to home
             </button>
             <img src={logo} alt="Coachable" className="mb-10 block h-7 w-auto self-start object-contain" />
@@ -359,7 +359,7 @@ export default function Onboarding() {
               >
                 <FiArrowLeft className="text-sm" /> Back
               </button>
-              <button type="button" onClick={() => { logout(); navigate("/"); }} className="text-xs text-BrandGray2 transition hover:text-BrandBlack">
+              <button type="button" onClick={() => { logout(); navigate("/home"); }} className="text-xs text-BrandGray2 transition hover:text-BrandBlack">
                 Back to home
               </button>
             </div>
