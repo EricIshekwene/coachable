@@ -25,3 +25,8 @@ export { default as AdminPagination } from "./AdminPagination";
 export { default as AdminSkeleton }   from "./AdminSkeleton";
 export { default as AdminProgress }   from "./AdminProgress";
 export { default as AdminBreadcrumbs } from "./AdminBreadcrumbs";
+
+// Plays-manager card/row components (extracted from AdminPlaysPage)
+export { default as AdminPlayCard }    from "./AdminPlayCard";
+export { default as AdminFolderCard }  from "./AdminFolderCard";
+export { default as AdminSectionRow }  from "./AdminSectionRow";
