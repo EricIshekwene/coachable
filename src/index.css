@@ -65,6 +65,30 @@ body {
     --shadow:    0 1px 3px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.25);
     --shadow-lg: 0 20px 48px rgba(0,0,0,0.34), 0 8px 20px rgba(0,0,0,0.24);
 
+    /* Shared semantic UI tokens */
+    --ui-bg:               var(--color-BrandBlack);
+    --ui-surface:          color-mix(in srgb, var(--color-BrandBlack) 96%, white 4%);
+    --ui-surface-2:        color-mix(in srgb, var(--color-BrandBlack) 90%, white 10%);
+    --ui-surface-3:        color-mix(in srgb, var(--color-BrandBlack) 84%, white 16%);
+    --ui-surface-elevated: color-mix(in srgb, var(--color-BrandBlack) 78%, white 22%);
+    --ui-border:           color-mix(in srgb, white 12%, transparent);
+    --ui-border-strong:    color-mix(in srgb, white 24%, transparent);
+    --ui-text:             var(--color-BrandWhite);
+    --ui-text-muted:       color-mix(in srgb, var(--color-BrandWhite) 70%, transparent);
+    --ui-text-subtle:      color-mix(in srgb, var(--color-BrandWhite) 45%, transparent);
+    --ui-on-accent:        #fff;
+    --ui-accent:           var(--color-BrandOrange);
+    --ui-accent-muted:     color-mix(in srgb, var(--color-BrandOrange) 20%, transparent);
+    --ui-success:          var(--color-BrandGreen);
+    --ui-success-muted:    color-mix(in srgb, var(--color-BrandGreen) 18%, transparent);
+    --ui-warning:          #f59e0b;
+    --ui-warning-muted:    color-mix(in srgb, #f59e0b 18%, transparent);
+    --ui-danger:           #ef4444;
+    --ui-danger-muted:     color-mix(in srgb, #ef4444 18%, transparent);
+    --ui-info:             #3b82f6;
+    --ui-info-muted:       color-mix(in srgb, #3b82f6 18%, transparent);
+    --ui-overlay:          color-mix(in srgb, var(--color-BrandBlack) 80%, transparent);
+
     /* Icon sizes */
     --icon-sm: 14px;
     --icon-md: 16px;
@@ -104,6 +128,21 @@ body {
     --color-BrandGray: #6b7280;
     --color-BrandGray2: #9ca3af;
     --color-BrandText: #1a1a1a;
+}
+
+[data-theme="light"] .app-themed,
+[data-admin-theme="light"] {
+    --ui-bg:               var(--color-BrandWhite);
+    --ui-surface:          color-mix(in srgb, var(--color-BrandWhite) 96%, black 4%);
+    --ui-surface-2:        color-mix(in srgb, var(--color-BrandWhite) 90%, black 10%);
+    --ui-surface-3:        color-mix(in srgb, var(--color-BrandWhite) 84%, black 16%);
+    --ui-surface-elevated: color-mix(in srgb, var(--color-BrandWhite) 78%, black 22%);
+    --ui-border:           color-mix(in srgb, black 12%, transparent);
+    --ui-border-strong:    color-mix(in srgb, black 24%, transparent);
+    --ui-text:             var(--color-BrandBlack);
+    --ui-text-muted:       color-mix(in srgb, var(--color-BrandBlack) 70%, transparent);
+    --ui-text-subtle:      color-mix(in srgb, var(--color-BrandBlack) 45%, transparent);
+    --ui-overlay:          color-mix(in srgb, var(--color-BrandWhite) 80%, transparent);
 }
 
 

@@ -6,7 +6,7 @@
  * parallel set of raw values.
  *
  * Currently guards:
- *   - Color: admin --adm-* color tokens must derive from --color-Brand* (brand palette)
+ *   - Color: shared --ui-* tokens derive from brand tokens; admin aliases --ui-*
  *   - Radius: admin --adm-radius* must alias the shared --radius-* scale from index.css
  *   - Shadow: admin --adm-shadow* must alias the shared --shadow-* scale from index.css
  *
@@ -46,7 +46,29 @@ describe("brand palette is the single source of truth", () => {
   });
 });
 
-describe("admin tokens derive from the brand palette", () => {
+describe("shared semantic UI tokens", () => {
+  const expectedTokens = [
+    "--ui-bg", "--ui-surface", "--ui-surface-2", "--ui-surface-3",
+    "--ui-surface-elevated", "--ui-border", "--ui-border-strong", "--ui-text",
+    "--ui-text-muted", "--ui-text-subtle", "--ui-accent", "--ui-accent-muted",
+    "--ui-success", "--ui-success-muted", "--ui-warning", "--ui-warning-muted",
+    "--ui-danger", "--ui-danger-muted", "--ui-info", "--ui-info-muted", "--ui-overlay",
+  ];
+
+  it.each(expectedTokens)("%s is declared in a :root block", (token) => {
+    const roots = [...indexCss.matchAll(/:root\s*\{([\s\S]*?)\}/g)].map((match) => match[1]);
+    expect(roots.some((body) => body.includes(`${token}:`))).toBe(true);
+  });
+
+  it("core semantic tokens derive from the brand palette", () => {
+    expect(indexCss).toMatch(/--ui-bg:\s*var\(--color-BrandBlack\)/);
+    expect(indexCss).toMatch(/--ui-text:\s*var\(--color-BrandWhite\)/);
+    expect(indexCss).toMatch(/--ui-accent:\s*var\(--color-BrandOrange\)/);
+    expect(indexCss).toMatch(/--ui-success:\s*var\(--color-BrandGreen\)/);
+  });
+});
+
+describe("admin tokens derive from the shared semantic layer", () => {
   const dark = ruleBody(adminCss, '[data-admin-theme="dark"]');
   const light = ruleBody(adminCss, '[data-admin-theme="light"]');
 
@@ -55,8 +77,7 @@ describe("admin tokens derive from the brand palette", () => {
     expect(light.length).toBeGreaterThan(0);
   });
 
-  // Core color tokens that MUST reference a brand token (directly or via color-mix).
-  const mustReferenceBrand = [
+  const mustReferenceUi = [
     "--adm-bg",
     "--adm-surface",
     "--adm-text",
@@ -65,20 +86,20 @@ describe("admin tokens derive from the brand palette", () => {
     "--adm-success",
   ];
 
-  for (const token of mustReferenceBrand) {
-    it(`${token} references --color-Brand* in both themes`, () => {
+  for (const token of mustReferenceUi) {
+    it(`${token} references --ui-* in both themes`, () => {
       for (const [name, body] of [["dark", dark], ["light", light]]) {
         const line = body.split(";").find((l) => l.includes(`${token}:`)) ?? "";
-        expect(line, `${token} in ${name}`).toMatch(/var\(--color-Brand/);
+        expect(line, `${token} in ${name}`).toMatch(/var\(--ui-/);
       }
     });
   }
 
-  it("brand accent + success alias the exact brand tokens", () => {
-    expect(dark).toMatch(/--adm-accent:\s*var\(--color-BrandOrange\)/);
-    expect(dark).toMatch(/--adm-success:\s*var\(--color-BrandGreen\)/);
-    expect(light).toMatch(/--adm-accent:\s*var\(--color-BrandOrange\)/);
-    expect(light).toMatch(/--adm-success:\s*var\(--color-BrandGreen\)/);
+  it("accent + success alias the exact semantic tokens", () => {
+    expect(dark).toMatch(/--adm-accent:\s*var\(--ui-accent\)/);
+    expect(dark).toMatch(/--adm-success:\s*var\(--ui-success\)/);
+    expect(light).toMatch(/--adm-accent:\s*var\(--ui-accent\)/);
+    expect(light).toMatch(/--adm-success:\s*var\(--ui-success\)/);
   });
 
   it("does not reintroduce the old off-brand hex values for core tokens", () => {

@@ -14,35 +14,34 @@
      FLAT SURFACES: components sit at the SAME color as the page background and
      separate via a 1px border + shadow, not a lighter fill (matches the app).
      Elevation lifts (surface2/3) are intentionally tiny — a hair toward BrandBlack2. */
-  --adm-bg:               var(--color-BrandBlack);                                      /* #121212 — page */
-  --adm-surface:          var(--color-BrandBlack);                                      /* same as bg — components match the background */
-  --adm-surface2:         color-mix(in srgb, var(--color-BrandBlack) 93%, var(--color-BrandBlack2) 7%);   /* barely-there lift: inputs / insets */
-  --adm-surface3:         color-mix(in srgb, var(--color-BrandBlack) 86%, var(--color-BrandBlack2) 14%);  /* small lift: deepest nesting */
+  --adm-bg:               var(--ui-bg);                                      /* #121212 — page */
+  --adm-surface:          var(--ui-surface);                                      /* same as bg — components match the background */
+  --adm-surface2:         var(--ui-surface-2);   /* barely-there lift: inputs / insets */
+  --adm-surface3:         var(--ui-surface-3);  /* small lift: deepest nesting */
   --adm-surface-tint:     color-mix(in srgb, var(--color-BrandBlack) 95%, var(--color-BrandOrange) 5%);
-  --adm-surface-elevated: color-mix(in srgb, var(--color-BrandBlack) 95%, var(--color-BrandBlack2) 5%);   /* floating header/menu: tiny lift + shadow */
-  --adm-border:           color-mix(in srgb, var(--color-BrandText) 8%, transparent);
+  --adm-surface-elevated: var(--ui-surface-elevated);   /* floating header/menu: tiny lift + shadow */
+  --adm-border:           var(--ui-border);
   --adm-border2:          color-mix(in srgb, var(--color-BrandText) 14%, transparent);
-  --adm-border-strong:    color-mix(in srgb, var(--color-BrandText) 22%, transparent);
-  --adm-text:             var(--color-BrandText);                                       /* #f5f7fa */
-  --adm-text2:            var(--color-BrandGray);                                       /* #9AA0A6 */
-  --adm-text3:            color-mix(in srgb, var(--color-BrandGray) 72%, var(--color-BrandBlack) 28%);
-  --adm-muted:            color-mix(in srgb, var(--color-BrandGray) 84%, var(--color-BrandBlack) 16%);
+  --adm-border-strong:    var(--ui-border-strong);
+  --adm-text:             var(--ui-text);                                       /* #f5f7fa */
+  --adm-text2:            var(--ui-text-muted);                                       /* #9AA0A6 */
+  --adm-text3:            var(--ui-text-subtle);
+  --adm-muted:            var(--ui-text-muted);
 
   /* Accent + success are brand colors */
-  --adm-accent:     var(--color-BrandOrange);                                           /* #FF7A18 */
-  --adm-accent-dim: color-mix(in srgb, var(--color-BrandOrange) 12%, transparent);
-  --adm-success:    var(--color-BrandGreen);                                            /* #4FA85D */
-  --adm-success-dim: color-mix(in srgb, var(--color-BrandGreen) 14%, transparent);
+  --adm-accent:           var(--ui-accent);                                           /* #FF7A18 */
+  --adm-accent-dim:       var(--ui-accent-muted);
+  --adm-success:          var(--ui-success);                                            /* #4FA85D */
+  --adm-success-dim:      var(--ui-success-muted);
 
   /* Status colors — semantic only, NOT part of the brand palette (admin-defined) */
-  --adm-danger:     #ef4444;
-  --adm-danger-dim: rgba(239, 68, 68, 0.1);
-  --adm-warning:    #fbbf24;
-  --adm-warning-dim: rgba(251, 191, 36, 0.12);
-  --adm-info:       #60a5fa;
-  --adm-info-dim:   rgba(96, 165, 250, 0.12);
-
-  --adm-overlay:    color-mix(in srgb, var(--color-BrandBlack) 62%, transparent);
+  --adm-danger:           var(--ui-danger);
+  --adm-danger-dim:       var(--ui-danger-muted);
+  --adm-warning:          var(--ui-warning);
+  --adm-warning-dim:      var(--ui-warning-muted);
+  --adm-info:             var(--ui-info);
+  --adm-info-dim:         var(--ui-info-muted);
+  --adm-overlay:          var(--ui-overlay);
   /* Radius + shadow alias the shared scale defined in src/index.css :root */
   --adm-shadow:     var(--shadow);
   --adm-shadow-sm:  var(--shadow-sm);
@@ -79,35 +78,34 @@
      tokens the app uses (BrandBlack page, BrandBlack2 elevated), so admin light
      reads as the app's crisp white — not a grayed-out page. Deeper insets step
      toward BrandGray. */
-  --adm-bg:               var(--color-BrandBlack);                                      /* #ffffff — page */
-  --adm-surface:          var(--color-BrandBlack);                                      /* same as bg — components match the background */
-  --adm-surface2:         color-mix(in srgb, var(--color-BrandBlack) 96%, var(--color-BrandGray) 4%);   /* barely gray: inputs / insets */
-  --adm-surface3:         color-mix(in srgb, var(--color-BrandBlack) 91%, var(--color-BrandGray) 9%);   /* light gray inset: deepest nesting */
+  --adm-bg:               var(--ui-bg);                                      /* #ffffff — page */
+  --adm-surface:          var(--ui-surface);                                      /* same as bg — components match the background */
+  --adm-surface2:         var(--ui-surface-2);   /* barely gray: inputs / insets */
+  --adm-surface3:         var(--ui-surface-3);   /* light gray inset: deepest nesting */
   --adm-surface-tint:     color-mix(in srgb, var(--color-BrandBlack) 96%, var(--color-BrandOrange) 4%);
-  --adm-surface-elevated: var(--color-BrandBlack);                                      /* #ffffff — clean sticky header */
-  --adm-border:           color-mix(in srgb, var(--color-BrandText) 10%, transparent);
+  --adm-surface-elevated: var(--ui-surface-elevated);                                      /* #ffffff — clean sticky header */
+  --adm-border:           var(--ui-border);
   --adm-border2:          color-mix(in srgb, var(--color-BrandText) 18%, transparent);
-  --adm-border-strong:    color-mix(in srgb, var(--color-BrandText) 24%, transparent);
-  --adm-text:             var(--color-BrandText);                                       /* #1a1a1a */
-  --adm-text2:            color-mix(in srgb, var(--color-BrandGray) 72%, var(--color-BrandText) 28%);
-  --adm-text3:            var(--color-BrandGray);                                       /* #6b7280 */
-  --adm-muted:            color-mix(in srgb, var(--color-BrandGray) 85%, var(--color-BrandText) 15%);
+  --adm-border-strong:    var(--ui-border-strong);
+  --adm-text:             var(--ui-text);                                       /* #1a1a1a */
+  --adm-text2:            var(--ui-text-muted);
+  --adm-text3:            var(--ui-text-subtle);                                       /* #6b7280 */
+  --adm-muted:            var(--ui-text-muted);
 
   /* Accent + success are brand colors */
-  --adm-accent:     var(--color-BrandOrange);
-  --adm-accent-dim: color-mix(in srgb, var(--color-BrandOrange) 14%, transparent);
-  --adm-success:    var(--color-BrandGreen);
-  --adm-success-dim: color-mix(in srgb, var(--color-BrandGreen) 14%, transparent);
+  --adm-accent:           var(--ui-accent);
+  --adm-accent-dim:       var(--ui-accent-muted);
+  --adm-success:          var(--ui-success);
+  --adm-success-dim:      var(--ui-success-muted);
 
   /* Status colors — semantic only, NOT part of the brand palette (admin-defined) */
-  --adm-danger:     #dc2626;
-  --adm-danger-dim: rgba(220, 38, 38, 0.10);
-  --adm-warning:    #b45309;
-  --adm-warning-dim: rgba(180, 83, 9, 0.12);
-  --adm-info:       #2563eb;
-  --adm-info-dim:   rgba(37, 99, 235, 0.12);
-
-  --adm-overlay:    color-mix(in srgb, var(--color-BrandText) 42%, transparent);
+  --adm-danger:           var(--ui-danger);
+  --adm-danger-dim:       var(--ui-danger-muted);
+  --adm-warning:          var(--ui-warning);
+  --adm-warning-dim:      var(--ui-warning-muted);
+  --adm-info:             var(--ui-info);
+  --adm-info-dim:         var(--ui-info-muted);
+  --adm-overlay:          var(--ui-overlay);
   /* Radius + shadow alias the shared scale defined in src/index.css :root.
      Light shadow values are injected via the [data-admin-theme="light"] override
      in index.css, so var(--shadow) here already resolves to the light values. */

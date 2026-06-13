@@ -311,6 +311,10 @@ Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PL
 ---
 
 ## Admin shared UI (`src/admin/`)
+| User says... | Primary file(s) | Notes |
+|---|---|---|
+| "design-system primitives", "Button", "Input", "Modal", "Card", etc. | [src/design-system/components/](src/design-system/components/) (barrel: [index.js](src/design-system/components/index.js)) | Canonical shared components; AdminX names are barrel aliases |
+
 - [adminNav.js](src/admin/adminNav.js) — admin nav config
 - [AdminContext.jsx](src/admin/AdminContext.jsx) — theme + admin session context + (for staff mode) permissions, hasPerm, hasSportScope
 - [adminTransport.js](src/admin/adminTransport.js) — `adminFetchOptions`, `adminApi` — shared transport that sends BOTH legacy admin session header AND JWT cookie + Bearer so the same /admin/* endpoints work for owner and staff
