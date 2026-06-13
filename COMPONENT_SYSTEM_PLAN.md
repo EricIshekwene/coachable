@@ -1,52 +1,16 @@
 # Coachable Component System Foundation Plan
 
-## Questions for You (Answer These First)
+## Decisions (Locked)
 
----
+**Q1 — Component naming:** Descriptive and specific to the component's purpose. No rigid prefix — name should immediately tell you what the component is. Examples: `PlayCard`, `PageShell`, `SectionBlock`, `NavBar`. Avoid long compound names.
 
-**Q1 — Main app component naming prefix**
-When we create shared layout components for the main app (mirrors of AdminShell, AdminPage, etc.), what prefix should they use?
+**Q2 — Shared component location:** `src/design-system/components/` — unified folder for everything, used by both admin and app. All components are treated as shared by default; admin-specific behavior is handled via props, not separate files.
 
-- A) `App*` — AppShell, AppPage, AppCard, AppSection
-- B) `Coach*` — CoachShell, CoachPage, CoachCard
-- C) No prefix — Shell, Page, Card (simpler, but harder to grep)
-- D) Other (write in):
+**Q3 — Dev overlay:** Keyboard shortcut toggle `Ctrl+Shift+D` — outlines + name badges appear everywhere across the app. Off by default, toggled on when building.
 
----
+**Q4 — Test location + scope:** `src/test/` for component/virtual DOM tests, `admin/test/` for API/integration tests. Tests are written **per page** (not per route), covering what a user at a given role sees on that page. Staff roles must be included alongside user/admin.
 
-**Q2 — Where do shared components live?**
-Some components (e.g., PlayCard) could be used in both admin and the main app. How should we handle sharing?
-
-- A) Keep separate: admin components → `src/admin/components/`, app components → `src/components/` (two barrels, no overlap)
-- B) Create a unified `src/design-system/components/` folder for anything used in both
-- C) Only share if truly used in both places — otherwise keep it with whoever owns it
-
----
-
-**Q3 — Dev component overlay behavior**
-The "hover to see component name" inspector for new developers:
-
-- A) Keyboard shortcut toggle (Ctrl+Shift+D) — outlines + name badges appear everywhere across the whole app
-- B) Hover only — small badge pops up on mouseover of any design-system component (always on in dev, invisible in prod)
-- C) Only visible inside the `/design-system` docs pages (scoped, zero risk of interfering with real UI)
-
----
-
-**Q4 — Test file location**
-Where should new component-level (virtual DOM / role-permission) tests live?
-
-- A) All tests in `admin/test/` — matches existing convention, one place to look
-- B) Co-located — `AdminPlayCard.test.jsx` lives next to `AdminPlayCard.jsx`
-- C) Split: `src/test/` for component tests, `admin/test/` for API/integration tests
-
----
-
-**Q5 — Phase priority**
-What do we tackle first?
-
-- A) Testing setup first — install RTL, configure Vitest jsdom, write sample tests so every new component is tested from day 1
-- B) Component extraction first — pull PlayCard, FolderCard, etc. out of pages into the barrel, then add tests
-- C) AppShell / page layout first — nail the consistent page skeleton so contributors know what to copy
+**Q5 — Phase order (decided):** AppShell first → Component extraction second → Testing setup third → Dev overlay fourth. AppShell establishes the structure that extraction populates; testing then locks in those extracted components. This is the only order where each phase builds on the previous.
 
 ---
 
