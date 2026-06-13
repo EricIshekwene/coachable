@@ -52,12 +52,16 @@ What do we tackle first?
 
 ## Direction Summary
 
-We are building the foundation that will make Coachable contributor-ready. Three sessions of prior planning converge on the same goal: stop writing raw div-soup in page files and replace it with named, testable, reusable components — exactly what admin already does well. The main work is:
+The real problem is styling errors and technical debt — every new feature or agent session reinvents layout from scratch because the right components aren't easy to find or obviously reachable. Admin already solved this: it has 28 named components in a barrel, and pages pull from that barrel cleanly. The main app has no equivalent, so every page session produces new raw div-soup that drifts from the design system.
 
-1. **Virtual DOM testing** (Vitest + React Testing Library) so role/permission rendering can be verified automatically
-2. **Component extraction** (pull PlayCard, FolderCard, etc. out of page files into the barrel)
-3. **AppShell layout system** (consistent page skeleton for main app, like AdminShell is for admin)
-4. **Dev component inspector overlay** (hover/toggle badge showing component name + usage, dev-only)
+The goal here is a **styling guardrail**: make it harder to write raw JSX than to just pull a pre-styled component from the barrel. The dev overlay supports this by showing what already exists while building. Tests lock in that existing components don't regress when someone touches them.
+
+Priority order reflects this — the guardrail (AppShell + component extraction) comes first, tests second, overlay third:
+
+1. **AppShell / page layout system** (consistent page skeleton so the correct structure is the path of least resistance)
+2. **Component extraction** (pull PlayCard, FolderCard, etc. into the barrel so they're one import away)
+3. **Virtual DOM testing** (lock in that components render correctly so extraction doesn't silently break things)
+4. **Dev component inspector overlay** (hover/toggle badge showing component name + usage, dev-only — makes the barrel discoverable while building)
 
 GitHub CI (automated PR checks) is deferred — it depends on this test infrastructure being solid first.
 
