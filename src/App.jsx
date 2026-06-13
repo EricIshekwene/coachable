@@ -96,8 +96,14 @@ export function SlateRoot({ adminMode = false, sport = null, initialPlayData = n
 
   return (
     <div
-      className="w-full bg-BrandBlack flex flex-row justify-between relative overflow-hidden"
-      style={{ height: "100dvh" }}
+      className="fixed inset-0 bg-[#121212] flex flex-row justify-between overflow-hidden"
+      style={{
+        "--color-BrandBlack":  "#121212",
+        "--color-BrandBlack2": "#2a2e34",
+        "--color-BrandGray":   "#9AA0A6",
+        "--color-BrandGray2":  "#4b5157",
+        "--color-BrandText":   "#f5f7fa",
+      }}
     >
       <MessagePopup
         message={messagePopup.message}
@@ -131,8 +137,14 @@ export function SlateDrawingRoot() {
   useThemeColor("#121212");
   return (
     <div
-      className="w-full bg-BrandBlack flex flex-row justify-between relative overflow-hidden"
-      style={{ height: "100dvh" }}
+      className="fixed inset-0 bg-[#121212] flex flex-row justify-between overflow-hidden"
+      style={{
+        "--color-BrandBlack":  "#121212",
+        "--color-BrandBlack2": "#2a2e34",
+        "--color-BrandGray":   "#9AA0A6",
+        "--color-BrandGray2":  "#4b5157",
+        "--color-BrandText":   "#f5f7fa",
+      }}
     >
       <MessagePopup
         message={messagePopup.message}
@@ -161,8 +173,14 @@ export function SlateRecordRoot() {
   useThemeColor("#121212");
   return (
     <div
-      className="w-full bg-BrandBlack flex flex-row justify-between relative overflow-hidden"
-      style={{ height: "100dvh" }}
+      className="fixed inset-0 bg-[#121212] flex flex-row justify-between overflow-hidden"
+      style={{
+        "--color-BrandBlack":  "#121212",
+        "--color-BrandBlack2": "#2a2e34",
+        "--color-BrandGray":   "#9AA0A6",
+        "--color-BrandGray2":  "#4b5157",
+        "--color-BrandText":   "#f5f7fa",
+      }}
     >
       <MessagePopup
         message={messagePopup.message}

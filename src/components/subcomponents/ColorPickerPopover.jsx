@@ -39,7 +39,7 @@ export const ColorPickerPopover = ({ color, onChange }) => {
 
         /* Labels (hex / r g b a) */
         .sketch-picker label {
-          color: #FF7A18 !important; /* BrandOrange */
+          color: var(--color-BrandOrange) !important;
           font-size: 0.75rem !important;
         }
 
@@ -57,7 +57,7 @@ export const ColorPickerPopover = ({ color, onChange }) => {
 
         /* Wrapper around the actual input */
         .sketch-picker input {
-          background: #121212 !important; /* BrandBlack */
+          background: var(--color-BrandBlack) !important;
           border: none !important;        /* kill borders */
           outline: none !important;
           box-shadow: none !important;

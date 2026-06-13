@@ -28,17 +28,26 @@ export function NotificationsProvider({ children, enabled = true }) {
 
   const refresh = useCallback(async () => {
     if (!enabled) return;
-    try {
-      const data = await fetchNotifications();
-      if (!mountedRef.current) return;
-      setNotifications(data.notifications || []);
-      setError("");
-    } catch (err) {
-      if (!mountedRef.current) return;
-      setError(err?.message || "Could not load notifications");
-    } finally {
-      if (mountedRef.current) setLoading(false);
+    let lastErr = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) {
+        await new Promise((r) => setTimeout(r, 1500));
+        if (!mountedRef.current) return;
+      }
+      try {
+        const data = await fetchNotifications();
+        if (!mountedRef.current) return;
+        setNotifications(data.notifications || []);
+        setError("");
+        setLoading(false);
+        return;
+      } catch (err) {
+        lastErr = err;
+        if (!mountedRef.current) return;
+      }
     }
+    setError(lastErr?.message || "Could not load notifications");
+    setLoading(false);
   }, [enabled]);
 
   useEffect(() => {

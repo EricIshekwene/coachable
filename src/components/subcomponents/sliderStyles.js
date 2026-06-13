@@ -1,12 +1,12 @@
 export const BRAND_SLIDER_SX = {
   width: "100%",
-  color: "#FF7A18",
+  color: "var(--color-BrandOrange)",
   height: 3,
   padding: "8px 0",
   "& .MuiSlider-thumb": {
     width: 14,
     height: 14,
-    backgroundColor: "#FF7A18",
+    backgroundColor: "var(--color-BrandOrange)",
     border: "none",
     boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
     transition: "box-shadow 0.2s ease",
@@ -14,14 +14,14 @@ export const BRAND_SLIDER_SX = {
       boxShadow: "none",
     },
     "&:hover, &.Mui-focusVisible": {
-      boxShadow: "0 0 0 6px rgba(255, 122, 24, 0.15)",
+      boxShadow: "0 0 0 6px color-mix(in srgb, var(--color-BrandOrange) 15%, transparent)",
     },
     "&.Mui-active": {
-      boxShadow: "0 0 0 8px rgba(255, 122, 24, 0.2)",
+      boxShadow: "0 0 0 8px color-mix(in srgb, var(--color-BrandOrange) 20%, transparent)",
     },
   },
   "& .MuiSlider-track": {
-    background: "linear-gradient(90deg, #FF7A18, #FF9F4A)",
+    background: "linear-gradient(90deg, var(--color-BrandOrange), color-mix(in srgb, var(--color-BrandOrange) 75%, #fff 25%))",
     height: 3,
     border: "none",
     borderRadius: 999,

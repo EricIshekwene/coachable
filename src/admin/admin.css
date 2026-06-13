@@ -43,14 +43,15 @@
   --adm-info-dim:   rgba(96, 165, 250, 0.12);
 
   --adm-overlay:    color-mix(in srgb, var(--color-BrandBlack) 62%, transparent);
-  --adm-shadow:     0 1px 3px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.25);
-  --adm-shadow-sm:  0 1px 2px rgba(0,0,0,0.3);
-  --adm-shadow-lg:  0 20px 48px rgba(0,0,0,0.34), 0 8px 20px rgba(0,0,0,0.24);
-  --adm-radius:     10px;
-  --adm-radius-sm:  6px;
-  --adm-radius-md:  8px;
-  --adm-radius-lg:  14px;
-  --adm-radius-xl:  18px;
+  /* Radius + shadow alias the shared scale defined in src/index.css :root */
+  --adm-shadow:     var(--shadow);
+  --adm-shadow-sm:  var(--shadow-sm);
+  --adm-shadow-lg:  var(--shadow-lg);
+  --adm-radius:     var(--radius);
+  --adm-radius-sm:  var(--radius-sm);
+  --adm-radius-md:  var(--radius-md);
+  --adm-radius-lg:  var(--radius-lg);
+  --adm-radius-xl:  var(--radius-xl);
 
   /* Badge status colors - tuned for dark surfaces (status/data-viz, not brand) */
   --adm-badge-blue-bg:    rgba(59,130,246,0.15);
@@ -107,14 +108,17 @@
   --adm-info-dim:   rgba(37, 99, 235, 0.12);
 
   --adm-overlay:    color-mix(in srgb, var(--color-BrandText) 42%, transparent);
-  --adm-shadow:     0 12px 30px rgba(15,23,42,0.08), 0 2px 8px rgba(15,23,42,0.06);
-  --adm-shadow-sm:  0 4px 14px rgba(15,23,42,0.05);
-  --adm-shadow-lg:  0 24px 46px rgba(15,23,42,0.12), 0 8px 18px rgba(15,23,42,0.08);
-  --adm-radius:     10px;
-  --adm-radius-sm:  6px;
-  --adm-radius-md:  8px;
-  --adm-radius-lg:  14px;
-  --adm-radius-xl:  18px;
+  /* Radius + shadow alias the shared scale defined in src/index.css :root.
+     Light shadow values are injected via the [data-admin-theme="light"] override
+     in index.css, so var(--shadow) here already resolves to the light values. */
+  --adm-shadow:     var(--shadow);
+  --adm-shadow-sm:  var(--shadow-sm);
+  --adm-shadow-lg:  var(--shadow-lg);
+  --adm-radius:     var(--radius);
+  --adm-radius-sm:  var(--radius-sm);
+  --adm-radius-md:  var(--radius-md);
+  --adm-radius-lg:  var(--radius-lg);
+  --adm-radius-xl:  var(--radius-xl);
 
   /* Badge status colors - darker, more saturated for light surfaces */
   --adm-badge-blue-bg:    rgba(29,78,216,0.12);

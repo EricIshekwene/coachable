@@ -392,7 +392,7 @@ function PresetTile({ preset, selected, onClick }) {
       </div>
       <span
         className="px-0.5 text-xs font-semibold leading-tight"
-        style={{ color: selected ? "#FF7A18" : "rgba(255,255,255,0.7)" }}
+        style={{ color: selected ? "var(--color-BrandOrange)" : "rgba(255,255,255,0.7)" }}
       >
         {preset.name}
       </span>
@@ -420,8 +420,8 @@ function BlankPresetTile({ selected, onClick, color, fieldImage, imageRotation }
         className="relative w-full aspect-16/10 rounded-xl overflow-hidden transition-all duration-200"
         style={{
           backgroundColor: color,
-          outline: selected ? "2px solid rgba(255,122,24,0.9)" : "2px solid rgba(255,255,255,0.08)",
-          boxShadow: selected ? "0 0 0 3px rgba(255,122,24,0.25)" : undefined,
+          outline: selected ? "2px solid color-mix(in srgb, var(--color-BrandOrange) 90%, transparent)" : "2px solid rgba(255,255,255,0.08)",
+          boxShadow: selected ? "0 0 0 3px color-mix(in srgb, var(--color-BrandOrange) 25%, transparent)" : undefined,
         }}
       >
         {fieldImage ? (
@@ -454,7 +454,7 @@ function BlankPresetTile({ selected, onClick, color, fieldImage, imageRotation }
       </div>
       <span
         className="px-0.5 text-xs font-semibold leading-tight"
-        style={{ color: selected ? "#FF7A18" : "rgba(255,255,255,0.7)" }}
+        style={{ color: selected ? "var(--color-BrandOrange)" : "rgba(255,255,255,0.7)" }}
       >
         Blank
       </span>
@@ -478,15 +478,15 @@ function ModeCard({ emoji, label, description, selected, onClick }) {
       onClick={onClick}
       className="flex flex-1 flex-col items-center gap-1 rounded-xl border p-3 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-BrandOrange/40"
       style={{
-        borderColor: selected ? "rgba(255,122,24,0.8)" : "rgba(255,255,255,0.08)",
-        backgroundColor: selected ? "rgba(255,122,24,0.12)" : "rgba(255,255,255,0.04)",
-        color: selected ? "#FF7A18" : "rgba(255,255,255,0.6)",
-        boxShadow: selected ? "0 0 0 1px rgba(255,122,24,0.3)" : undefined,
+        borderColor: selected ? "color-mix(in srgb, var(--color-BrandOrange) 80%, transparent)" : "rgba(255,255,255,0.08)",
+        backgroundColor: selected ? "color-mix(in srgb, var(--color-BrandOrange) 12%, transparent)" : "rgba(255,255,255,0.04)",
+        color: selected ? "var(--color-BrandOrange)" : "rgba(255,255,255,0.6)",
+        boxShadow: selected ? "0 0 0 1px color-mix(in srgb, var(--color-BrandOrange) 30%, transparent)" : undefined,
       }}
     >
       <span className="text-base">{emoji}</span>
       <span className="font-semibold">{label}</span>
-      <span className="text-xs font-normal text-center" style={{ color: selected ? "rgba(255,122,24,0.7)" : "rgba(255,255,255,0.3)" }}>
+      <span className="text-xs font-normal text-center" style={{ color: selected ? "color-mix(in srgb, var(--color-BrandOrange) 70%, transparent)" : "rgba(255,255,255,0.3)" }}>
         {description}
       </span>
     </button>

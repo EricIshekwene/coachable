@@ -124,7 +124,7 @@ export default function PlayEditPage() {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-[#121212]">
         <div className="flex flex-col items-center gap-4">
-          <div className="h-10 w-10 rounded-full border-[3px] border-[#FF7A18]/30 border-t-[#FF7A18] animate-spin" />
+          <div className="h-10 w-10 rounded-full border-[3px] border-BrandOrange/30 border-t-BrandOrange animate-spin" />
           <p className="text-sm font-DmSans text-[#9AA0A6]">Loading editor...</p>
         </div>
       </div>
@@ -148,7 +148,7 @@ export default function PlayEditPage() {
         style={{ opacity: ready ? 0 : 1, pointerEvents: ready ? "none" : "auto" }}
       >
         <div className="flex flex-col items-center gap-4">
-          <div className="h-10 w-10 rounded-full border-[3px] border-[#FF7A18]/30 border-t-[#FF7A18] animate-spin" />
+          <div className="h-10 w-10 rounded-full border-[3px] border-BrandOrange/30 border-t-BrandOrange animate-spin" />
           <p className="text-sm font-DmSans text-[#9AA0A6]">Loading editor...</p>
         </div>
       </div>

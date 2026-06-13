@@ -3,34 +3,33 @@ import { DSPageHeading, DSGroup, DSTile, DSTokenTable, DSChecklist } from "../ds
 const SPACING = [0, 2, 4, 6, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96];
 
 const RADIUS = [
-  { token: "--adm-radius-sm", value: "6px", note: "chips, small controls, tabs" },
-  { token: "--adm-radius-md", value: "8px", note: "buttons, inputs" },
-  { token: "--adm-radius", value: "10px", note: "default cards, tiles" },
-  { token: "--adm-radius-lg", value: "14px", note: "large cards, panels" },
-  { token: "--adm-radius-xl", value: "18px", note: "modals, hero surfaces" },
-  { token: "pill / full", value: "9999px", note: "badges, avatars, toggles" },
+  { token: "--radius-sm / --adm-radius-sm", value: "6px", note: "chips, small controls, tabs" },
+  { token: "--radius-md / --adm-radius-md", value: "8px", note: "buttons, inputs" },
+  { token: "--radius / --adm-radius",       value: "10px", note: "default cards, tiles" },
+  { token: "--radius-lg / --adm-radius-lg", value: "14px", note: "large cards, panels" },
+  { token: "--radius-xl / --adm-radius-xl", value: "18px", note: "modals, hero surfaces" },
+  { token: "--radius-pill",                 value: "9999px", note: "badges, avatars, toggles" },
 ];
 
 const SHADOW = [
-  { token: "--adm-shadow-sm", value: "subtle resting elevation", note: "cards, secondary buttons" },
-  { token: "--adm-shadow", value: "standard card / dropdown", note: "menus, popovers" },
-  { token: "--adm-shadow-lg", value: "modal / overlay", note: "dialogs, command menu" },
+  { token: "--shadow-sm / --adm-shadow-sm", value: "subtle resting elevation", note: "cards, secondary buttons" },
+  { token: "--shadow / --adm-shadow",       value: "standard card / dropdown", note: "menus, popovers" },
+  { token: "--shadow-lg / --adm-shadow-lg", value: "modal / overlay", note: "dialogs, command menu" },
 ];
 
 const ZINDEX = [
   { token: "base", value: "0", note: "page content" },
-  { token: "sticky / header", value: "40", note: "AdminShell mobile bar" },
-  { token: "sidebar drawer", value: "40", note: "off-canvas admin nav" },
-  { token: "overlay scrim", value: "30–50", note: "modal backdrop" },
-  { token: "modal / popover", value: "50+", note: "dialogs, menus, tooltips" },
-  { token: "toast / critical", value: "top-most", note: "MessagePopup" },
+  { token: "--z-overlay",   value: "30",  note: "modal backdrop scrim" },
+  { token: "--z-sticky",    value: "40",  note: "AdminShell mobile bar, off-canvas nav" },
+  { token: "--z-modal",     value: "50",  note: "dialogs, menus, tooltips" },
+  { token: "--z-toast",     value: "99",  note: "MessagePopup / critical alerts" },
 ];
 
 const MOTION = [
-  { token: "duration-fast", value: "150ms", note: "hover, button press (active:scale .985)" },
-  { token: "duration-medium", value: "200ms", note: "drawer / sidebar slide, dropdowns" },
-  { token: "duration-slow", value: "300ms+", note: "page / sheet transitions" },
-  { token: "easing-standard", value: "ease / ease-out", note: "most transitions" },
+  { token: "--duration-fast · 150ms", value: "hover, button press (active:scale .985)" },
+  { token: "--duration-base · 200ms", value: "drawer / sidebar slide, dropdowns" },
+  { token: "--duration-slow · 300ms", value: "page / sheet transitions" },
+  { token: "--ease-standard",         value: "ease-out — enter; ease-in — exit" },
 ];
 
 const BREAKPOINTS = [
@@ -110,7 +109,7 @@ export default function SpacingSection() {
         <DSTokenTable rows={ZINDEX} />
       </DSGroup>
 
-      <DSGroup title="Motion tokens">
+      <DSGroup title="Motion tokens" description="Defined in src/index.css @theme — available as Tailwind utilities (duration-fast, duration-base, duration-slow, ease-standard).">
         <DSTokenTable rows={MOTION} />
       </DSGroup>
 

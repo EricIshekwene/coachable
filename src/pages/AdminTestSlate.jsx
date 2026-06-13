@@ -23,9 +23,14 @@ export default function AdminTestSlate() {
 
   return (
     <div
-      data-admin-theme={theme}
-      className="relative flex h-full w-full flex-row justify-between overflow-hidden"
-      style={{ height: "100dvh", backgroundColor: "var(--adm-bg)" }}
+      className="fixed inset-0 bg-[#121212] flex flex-row justify-between overflow-hidden"
+      style={{
+        "--color-BrandBlack":  "#121212",
+        "--color-BrandBlack2": "#2a2e34",
+        "--color-BrandGray":   "#9AA0A6",
+        "--color-BrandGray2":  "#4b5157",
+        "--color-BrandText":   "#f5f7fa",
+      }}
     >
       <MessagePopup
         message={messagePopup.message}

@@ -1,14 +1,17 @@
 /**
  * designTokenUnification.test.js
  *
- * Guards the "single source of truth" rule established on the
- * design-rule-correction branch: the admin --adm-* color tokens must DERIVE
- * from the product brand palette (--color-Brand* in src/index.css), not keep
- * their own parallel hex values. This is a static-analysis test over the two
- * CSS files so it stays fast and environment-free.
+ * Guards the "single source of truth" rule: every axis of the design system
+ * must derive from the canonical tokens in src/index.css, not maintain a
+ * parallel set of raw values.
  *
- * If these assertions fail, the admin world has drifted back into a separate
- * palette and the design-rules "single source of truth" claim is no longer true.
+ * Currently guards:
+ *   - Color: admin --adm-* color tokens must derive from --color-Brand* (brand palette)
+ *   - Radius: admin --adm-radius* must alias the shared --radius-* scale from index.css
+ *   - Shadow: admin --adm-shadow* must alias the shared --shadow-* scale from index.css
+ *
+ * These are static-analysis tests — they read the CSS files directly, so they
+ * stay fast and environment-free.
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
@@ -84,4 +87,56 @@ describe("admin tokens derive from the brand palette", () => {
     expect(dark).not.toMatch(/--adm-text:\s*#f0f2f6/);
     expect(dark).not.toMatch(/--adm-success:\s*#4ade80/);
   });
+});
+
+describe("shared radius + shadow scale is the single source", () => {
+  // index.css must define the canonical radius and shadow tokens
+  it("index.css :root defines the canonical radius scale", () => {
+    expect(indexCss).toMatch(/--radius-sm:\s*6px/);
+    expect(indexCss).toMatch(/--radius-md:\s*8px/);
+    expect(indexCss).toMatch(/--radius:\s*10px/);
+    expect(indexCss).toMatch(/--radius-lg:\s*14px/);
+    expect(indexCss).toMatch(/--radius-xl:\s*18px/);
+  });
+
+  it("index.css :root defines the canonical shadow scale", () => {
+    expect(indexCss).toMatch(/--shadow-sm:/);
+    expect(indexCss).toMatch(/--shadow:/);
+    expect(indexCss).toMatch(/--shadow-lg:/);
+  });
+
+  it("index.css defines motion tokens in @theme", () => {
+    expect(indexCss).toMatch(/--duration-fast:\s*150ms/);
+    expect(indexCss).toMatch(/--duration-base:\s*200ms/);
+    expect(indexCss).toMatch(/--duration-slow:\s*300ms/);
+  });
+
+  const adminCssForStructure = readFileSync(
+    resolve(ROOT, "src/admin/admin.css"),
+    "utf8",
+  );
+
+  // Admin radius tokens must alias the shared scale — no hard-coded px values
+  const radiusTokens = ["--adm-radius", "--adm-radius-sm", "--adm-radius-md", "--adm-radius-lg", "--adm-radius-xl"];
+  for (const token of radiusTokens) {
+    it(`${token} aliases var(--radius*)`, () => {
+      const matches = adminCssForStructure.match(new RegExp(`${token}:\\s*([^;]+)`, "g")) ?? [];
+      expect(matches.length).toBeGreaterThan(0);
+      for (const match of matches) {
+        expect(match, `${token} must alias a shared --radius-* token`).toMatch(/var\(--radius/);
+      }
+    });
+  }
+
+  // Admin shadow tokens must alias the shared scale — no raw box-shadow literals
+  const shadowTokens = ["--adm-shadow", "--adm-shadow-sm", "--adm-shadow-lg"];
+  for (const token of shadowTokens) {
+    it(`${token} aliases var(--shadow*)`, () => {
+      const matches = adminCssForStructure.match(new RegExp(`${token}:\\s*([^;]+)`, "g")) ?? [];
+      expect(matches.length).toBeGreaterThan(0);
+      for (const match of matches) {
+        expect(match, `${token} must alias a shared --shadow-* token`).toMatch(/var\(--shadow/);
+      }
+    });
+  }
 });

@@ -525,7 +525,7 @@ function PlaybookTabs({ activeTab, onChange, hasCommunity }) {
             key={key}
             onClick={() => onChange(key)}
             className="relative pb-2.5 text-sm font-semibold transition-colors"
-            style={{ color: isActive ? "#FF7A18" : undefined }}
+            style={{ color: isActive ? "var(--color-BrandOrange)" : undefined }}
           >
             <span className={isActive ? "text-BrandOrange" : "text-BrandGray hover:text-BrandText"}>
               {label}

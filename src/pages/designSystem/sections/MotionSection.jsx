@@ -23,8 +23,8 @@ export default function MotionSection() {
             { label: "Hover brighten", cls: "hover:brightness-110" },
           ].map((t) => (
             <DSTile key={t.label}>
-              <div className={`flex h-20 cursor-pointer items-center justify-center rounded-[var(--adm-radius)] text-sm font-semibold transition-all duration-150 ${t.cls}`}
-                style={{ background: "linear-gradient(135deg, #ff8d3d, #FF7A18)", color: "#fff" }}>
+              <div className={`flex h-20 cursor-pointer items-center justify-center rounded-[var(--adm-radius)] text-sm font-semibold transition-all duration-fast ${t.cls}`}
+                style={{ background: "linear-gradient(135deg, var(--color-BrandOrange), color-mix(in srgb, var(--color-BrandOrange) 85%, #fff 15%))", color: "#fff" }}>
                 {t.label}
               </div>
             </DSTile>
@@ -32,12 +32,12 @@ export default function MotionSection() {
         </div>
       </DSGroup>
 
-      <DSGroup title="Timing & easing">
+      <DSGroup title="Timing & easing" description="Defined in src/index.css @theme — use Tailwind duration-fast / duration-base / duration-slow or var(--duration-fast) in inline styles.">
         <DSTokenTable rows={[
-          { token: "fast · 150ms", value: "hover, press, button state, tab switch" },
-          { token: "medium · 200ms", value: "dropdown, drawer/sidebar slide, toast" },
-          { token: "slow · 300ms+", value: "page transition, bottom sheet" },
-          { token: "easing", value: "ease-out for enter, ease-in for exit" },
+          { token: "--duration-fast · 150ms",  value: "hover, press, button state, tab switch" },
+          { token: "--duration-base · 200ms",  value: "dropdown, drawer/sidebar slide, toast" },
+          { token: "--duration-slow · 300ms+", value: "page transition, bottom sheet" },
+          { token: "--ease-standard",          value: "ease-out — enter; ease-in — exit" },
         ]} />
       </DSGroup>
 

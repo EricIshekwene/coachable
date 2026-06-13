@@ -98,12 +98,11 @@ Search) and not just by label.
 - **Editor & meta:** Slate editor UI, Documentation & contribution
 
 ## Token worlds documented
-Both are covered and kept separate:
-- **App / brand:** Tailwind `@theme` `Brand*` tokens, Manrope/DmSans, `#121212`
-  base, app-shell light mode (`[data-theme]`). Swatches read these live vars.
-- **Admin:** the `--adm-*` token set with light/dark via `[data-admin-theme]`.
-- **Slate editor:** a separate near-black canvas language (its own section,
-  rendering the real editor components in preview mode).
+The design system documents a **single-source** token hierarchy (not separate palettes):
+- **Canonical brand palette:** Tailwind `@theme` `--color-Brand*` tokens in `src/index.css` — one change ripples through app, admin, and design system.
+- **Shared primitives:** `--radius-*`, `--shadow-*`, `--duration-*`, `--z-*` defined in `src/index.css` `:root` / `@theme`.
+- **Admin aliases:** `--adm-*` tokens in `src/admin/admin.css` derive from the canonical layer via `var()` — they never hold independent hex values.
+- **Slate editor:** a separate near-black canvas language (its own section, rendering the real editor components in preview mode). Canvas draw-call colors route through `src/theme/canvasColors.js` (planned) rather than raw CSS vars.
 
 ## Live component sources reused
 Migrated/embedded real components include: `AdminBtn`, `AdminInput`/`Select`/
@@ -152,6 +151,11 @@ existing product UI was changed.
   blank-query handling, label/keyword/summary matching, case/punctuation
   insensitivity, descending scores, the result limit, and that every result
   maps to a real section.
+- `admin/test/designTokenUnification.test.js` guards the single-source-of-truth
+  rule: asserts that admin color tokens alias `--color-Brand*`, that admin
+  `--adm-radius*` / `--adm-shadow*` alias the shared `--radius-*` / `--shadow-*`
+  scale, and that motion tokens exist in `@theme`. Fails the build if any axis
+  drifts back to raw hex or ad-hoc values.
 
 ## Extending it
 1. Add a section file under `sections/`.

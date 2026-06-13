@@ -28,7 +28,7 @@ export default function SharedPlayView() {
   if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-[#121212]">
-        <div className="h-10 w-10 rounded-full border-[3px] border-[#FF7A18]/30 border-t-[#FF7A18] animate-spin" />
+        <div className="h-10 w-10 rounded-full border-[3px] border-BrandOrange/30 border-t-BrandOrange animate-spin" />
       </div>
     );
   }
@@ -40,7 +40,7 @@ export default function SharedPlayView() {
         <p className="mt-2 text-sm text-[#9AA0A6]">This share link may have expired or been revoked.</p>
         <button
           onClick={() => navigate("/")}
-          className="mt-6 rounded-lg bg-[#FF7A18] px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
+          className="mt-6 rounded-lg bg-BrandOrange px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
         >
           Go Home
         </button>
@@ -55,7 +55,7 @@ export default function SharedPlayView() {
         style={{ opacity: ready ? 0 : 1, pointerEvents: ready ? "none" : "auto" }}
       >
         <div className="flex flex-col items-center gap-4">
-          <div className="h-10 w-10 rounded-full border-[3px] border-[#FF7A18]/30 border-t-[#FF7A18] animate-spin" />
+          <div className="h-10 w-10 rounded-full border-[3px] border-BrandOrange/30 border-t-BrandOrange animate-spin" />
           <p className="text-sm font-DmSans text-[#9AA0A6]">Loading play...</p>
         </div>
       </div>

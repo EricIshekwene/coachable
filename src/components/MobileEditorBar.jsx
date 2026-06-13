@@ -716,8 +716,8 @@ function PlayersSheet({
                             className="w-8 h-8 rounded-full border-2 transition-transform active:scale-90"
                             style={{
                               backgroundColor: hex,
-                              borderColor: isActive ? "#FF7A18" : "transparent",
-                              boxShadow: isActive ? "0 0 0 2px #FF7A18" : "0 0 0 1px rgba(255,255,255,0.2)",
+                              borderColor: isActive ? "var(--color-BrandOrange)" : "transparent",
+                              boxShadow: isActive ? "0 0 0 2px var(--color-BrandOrange)" : "0 0 0 1px rgba(255,255,255,0.2)",
                             }}
                             aria-label={`Set colour ${hex}`}
                           />

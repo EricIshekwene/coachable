@@ -83,7 +83,7 @@ function ColorSwatches({ value, onChange }) {
               style={{
                 backgroundColor: c,
                 boxShadow: selected
-                  ? `inset 0 0 0 2px ${isDark ? "#555" : "rgba(0,0,0,0.35)"}, 0 0 0 1.5px #FF7A18`
+                  ? `inset 0 0 0 2px ${isDark ? "#555" : "rgba(0,0,0,0.35)"}, 0 0 0 1.5px var(--color-BrandOrange)`
                   : "inset 0 0 0 1px rgba(255,255,255,0.08)",
               }}
             />
@@ -100,7 +100,7 @@ function ColorSwatches({ value, onChange }) {
           `}
           style={isCustom ? {
             backgroundColor: value,
-            boxShadow: `inset 0 0 0 2px rgba(0,0,0,0.35), 0 0 0 1.5px #FF7A18`,
+            boxShadow: `inset 0 0 0 2px rgba(0,0,0,0.35), 0 0 0 1.5px var(--color-BrandOrange)`,
           } : undefined}
           title="Custom color"
         >
@@ -200,7 +200,7 @@ function SliderControl({ label, value, onChange, min, max, step = 1, isPercentag
 
 /** Small SVG preview of an arrow head style */
 function ArrowHeadPreview({ type, isActive }) {
-  const color = isActive ? "#1a1a1a" : "#FF7A18";
+  const color = isActive ? "var(--color-BrandBlack)" : "var(--color-BrandOrange)";
   return (
     <svg width="36" height="18" viewBox="0 0 36 18" className="block">
       <line x1="2" y1="9" x2="24" y2="9" stroke={color} strokeWidth="2" strokeLinecap="round" />
@@ -313,13 +313,13 @@ function DrawSubToolStyle({
             <path
               d="M2 8 Q6 2 10 6 Q14 10 18 4"
               fill="none"
-              stroke={drawArrowTip ? "#1a1a1a" : "#FF7A18"}
+              stroke={drawArrowTip ? "var(--color-BrandBlack)" : "var(--color-BrandOrange)"}
               strokeWidth="1.5"
               strokeLinecap="round"
             />
             <polygon
               points="15,2 19,4 16,7"
-              fill={drawArrowTip ? "#1a1a1a" : "#FF7A18"}
+              fill={drawArrowTip ? "var(--color-BrandBlack)" : "var(--color-BrandOrange)"}
             />
           </svg>
           Arrow Tip
@@ -465,7 +465,7 @@ function TextContentEditor({ text, drawingId, onUpdate }) {
 
 /** Small SVG preview of a shape type */
 function ShapeTypePreview({ type, isActive }) {
-  const color = isActive ? "#1a1a1a" : "#FF7A18";
+  const color = isActive ? "var(--color-BrandBlack)" : "var(--color-BrandOrange)";
   if (type === "custom") {
     return (
       <span className="w-6 h-6 flex items-center justify-center">
@@ -505,7 +505,7 @@ function ShapeColorPicker({ value, onChange, noneTitle = "No color" }) {
           className="w-4.5 h-4.5 rounded shrink-0 relative overflow-hidden transition-transform duration-75 hover:scale-110 active:scale-95"
           style={{
             boxShadow: value === "transparent"
-              ? "inset 0 0 0 2px #555, 0 0 0 1.5px #FF7A18"
+              ? "inset 0 0 0 2px #555, 0 0 0 1.5px var(--color-BrandOrange)"
               : "inset 0 0 0 1px rgba(255,255,255,0.08)",
           }}
           title={noneTitle}
@@ -527,7 +527,7 @@ function ShapeColorPicker({ value, onChange, noneTitle = "No color" }) {
               style={{
                 backgroundColor: c,
                 boxShadow: selected
-                  ? `inset 0 0 0 2px ${isDark ? "#555" : "rgba(0,0,0,0.35)"}, 0 0 0 1.5px #FF7A18`
+                  ? `inset 0 0 0 2px ${isDark ? "#555" : "rgba(0,0,0,0.35)"}, 0 0 0 1.5px var(--color-BrandOrange)`
                   : "inset 0 0 0 1px rgba(255,255,255,0.08)",
               }}
             />
@@ -544,7 +544,7 @@ function ShapeColorPicker({ value, onChange, noneTitle = "No color" }) {
           `}
           style={isCustom ? {
             backgroundColor: value,
-            boxShadow: "inset 0 0 0 2px rgba(0,0,0,0.35), 0 0 0 1.5px #FF7A18",
+            boxShadow: "inset 0 0 0 2px rgba(0,0,0,0.35), 0 0 0 1.5px var(--color-BrandOrange)",
           } : undefined}
           title="Custom color"
         >

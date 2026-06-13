@@ -248,21 +248,23 @@ export default function AdminPresetEditPage() {
 
   return (
     <div
-      data-admin-theme={theme}
-      className="relative flex h-full w-full flex-row justify-between overflow-hidden"
-      style={{ height: "100dvh", backgroundColor: "var(--adm-bg)" }}
+      className="fixed inset-0 bg-[#121212] flex flex-row justify-between overflow-hidden"
+      style={{
+        "--color-BrandBlack":  "#121212",
+        "--color-BrandBlack2": "#2a2e34",
+        "--color-BrandGray":   "#9AA0A6",
+        "--color-BrandGray2":  "#4b5157",
+        "--color-BrandText":   "#f5f7fa",
+      }}
     >
       {/* Loading overlay */}
       <div
-        className="absolute inset-0 z-100 flex items-center justify-center transition-opacity duration-500"
-        style={{ opacity: ready ? 0 : 1, pointerEvents: ready ? "none" : "auto", backgroundColor: "var(--adm-bg)" }}
+        className="absolute inset-0 z-100 flex items-center justify-center bg-[#121212] transition-opacity duration-500"
+        style={{ opacity: ready ? 0 : 1, pointerEvents: ready ? "none" : "auto" }}
       >
         <div className="flex flex-col items-center gap-4">
-          <div
-            className="h-10 w-10 animate-spin rounded-full border-[3px]"
-            style={{ borderColor: "var(--adm-border2)", borderTopColor: "var(--adm-accent)" }}
-          />
-          <p className="text-sm font-DmSans" style={{ color: "var(--adm-text2)" }}>Loading editor...</p>
+          <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-BrandOrange/30 border-t-BrandOrange" />
+          <p className="text-sm font-DmSans text-[#9AA0A6]">Loading editor...</p>
         </div>
       </div>
 

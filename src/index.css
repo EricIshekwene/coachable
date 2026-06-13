@@ -45,6 +45,54 @@ body {
     --color-BrandGreen: #4FA85D;
 }
 
+/* ─── Shared design tokens ─────────────────────────────────────────────────
+   Canonical radius, shadow, and icon-size primitives. Both the admin world
+   (via --adm-radius* / --adm-shadow* in admin.css) and the app shell
+   consume these values directly, so changing one token ripples everywhere.
+   Shadows default to dark-surface values; the light-mode block below
+   overrides them for light admin and app-themed surfaces. */
+:root {
+    /* Radius scale */
+    --radius-sm:   6px;
+    --radius-md:   8px;
+    --radius:     10px;
+    --radius-lg:  14px;
+    --radius-xl:  18px;
+    --radius-pill: 9999px;
+
+    /* Shadow scale — dark defaults */
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow:    0 1px 3px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.25);
+    --shadow-lg: 0 20px 48px rgba(0,0,0,0.34), 0 8px 20px rgba(0,0,0,0.24);
+
+    /* Icon sizes */
+    --icon-sm: 14px;
+    --icon-md: 16px;
+    --icon-lg: 20px;
+}
+
+/* Light-mode shadow overrides (applied alongside brand neutral overrides below) */
+[data-theme="light"] .app-themed,
+[data-admin-theme="light"] {
+    --shadow-sm: 0 4px 14px rgba(15,23,42,0.05);
+    --shadow:    0 12px 30px rgba(15,23,42,0.08), 0 2px 8px rgba(15,23,42,0.06);
+    --shadow-lg: 0 24px 46px rgba(15,23,42,0.12), 0 8px 18px rgba(15,23,42,0.08);
+}
+
+@theme {
+    /* Motion tokens — become duration-fast, duration-base, duration-slow Tailwind utilities */
+    --duration-fast: 150ms;
+    --duration-base: 200ms;
+    --duration-slow: 300ms;
+    --ease-standard: ease-out;
+
+    /* Z-index stacking scale — become z-sticky, z-overlay, z-modal, z-toast utilities */
+    --z-sticky:  40;
+    --z-overlay: 30;
+    --z-modal:   50;
+    --z-toast:   99;
+}
+
 /* Light theme overrides for the brand neutrals.
    Applies to the app shell (.app-themed) AND to light-mode admin surfaces
    ([data-admin-theme="light"]) so both worlds resolve the same brand tokens

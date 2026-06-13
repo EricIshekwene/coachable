@@ -186,8 +186,8 @@ function QuestionField({ question, value, onChange, disabled }) {
             <FiStar
               className="h-7 w-7"
               style={{
-                fill: Number(value) >= n ? "#FF7A18" : "transparent",
-                color: Number(value) >= n ? "#FF7A18" : "var(--tw-prose-body, #9ca3af)",
+                fill: Number(value) >= n ? "var(--color-BrandOrange)" : "transparent",
+                color: Number(value) >= n ? "var(--color-BrandOrange)" : "var(--tw-prose-body, #9ca3af)",
               }}
             />
           </button>
