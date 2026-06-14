@@ -35,6 +35,8 @@ describe("design-system barrel", () => {
     "SearchInput", "SettingsRow", "FilterBar", "BulkBar", "DangerZone",
     // Session 7 — dashboard & stat tiles
     "StatCard",
+    // Q4 Session 3 — atomic components
+    "IconBubble", "AccordionItem", "InlineEdit", "TimestampChip", "TokenBox", "AuthCard",
   ];
 
   test.each(canonical)("%s is exported as a React component type", (name) => {

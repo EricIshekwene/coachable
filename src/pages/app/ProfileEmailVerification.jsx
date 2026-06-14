@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Input } from "../../design-system/components";
+import { Alert, Button, Card, IconBubble, Input } from "../../design-system/components";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiCheck, FiMail } from "react-icons/fi";
@@ -125,9 +125,7 @@ export default function ProfileEmailVerification() {
       </Button>
 
       <Card padding="lg" style={{ backgroundColor: "var(--ui-surface-2)" }}>
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-BrandOrange/15 text-BrandOrange">
-          <FiMail className="text-lg" />
-        </div>
+        <IconBubble icon={<FiMail className="text-lg" />} tone="orange" size="lg" />
 
         <h1 className="mt-4 font-Manrope text-xl font-bold tracking-tight">Verify your new email</h1>
         <p className="mt-2 text-sm" style={{ color: "var(--ui-text-subtle)" }}>

@@ -46,6 +46,14 @@ export { default as DangerZone }   from "./DangerZone";
 // Dashboard & stat tiles
 export { default as StatCard }     from "./StatCard";
 
+// Q4 Session 3 — atomic components
+export { default as IconBubble }    from "./IconBubble";
+export { default as AccordionItem } from "./AccordionItem";
+export { default as InlineEdit }    from "./InlineEdit";
+export { default as TimestampChip } from "./TimestampChip";
+export { default as TokenBox }      from "./TokenBox";
+export { default as AuthCard }      from "./AuthCard";
+
 // Layout (re-export only; files stay at src/components/layout/)
 export { default as PageShell }  from "../../components/layout/AppShell";
 export { default as Page }       from "../../components/layout/AppPage";

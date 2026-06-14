@@ -1,4 +1,4 @@
-import { Avatar, Badge, Button, Card, ConfirmDialog, EmptyState, Input, Section, Tabs } from "../../design-system/components";
+import { Avatar, Badge, Button, Card, ConfirmDialog, EmptyState, Input, Section, Tabs, TokenBox } from "../../design-system/components";
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useAppMessage } from "../../context/AppMessageContext";
@@ -34,9 +34,7 @@ function InviteCodeSection({ role, code, copiedRole, onCopy, onRotate, onSendInv
 
       {/* Code + actions row */}
       <div className="flex items-center gap-2">
-        <div className="flex-1 rounded-lg border border-[color:var(--ui-border)] bg-BrandBlack px-3.5 py-2.5 font-mono text-sm tracking-wider text-BrandOrange">
-          {code}
-        </div>
+        <TokenBox value={code} className="flex-1" />
         <Button variant="outline"
           onClick={() => onCopy(role)}
           className="flex items-center gap-1.5 rounded-lg border border-[color:var(--ui-border)] px-3 py-2.5 text-xs text-[color:var(--ui-text-muted)] transition hover:border-[color:var(--ui-border-strong)] hover:text-[color:var(--ui-text)]"

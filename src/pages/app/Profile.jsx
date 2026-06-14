@@ -1,4 +1,4 @@
-import { Alert, Avatar, Button, Card, ConfirmDialog, Divider, Input, Section, Select } from "../../design-system/components";
+import { Alert, Avatar, Button, Card, ConfirmDialog, Divider, IconBubble, Input, Section, Select } from "../../design-system/components";
 import { useMemo, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -210,9 +210,7 @@ export default function Profile() {
           </div>
 
           <div className="flex items-center gap-3 rounded-lg border border-[color:var(--ui-border)] px-3 py-3 md:col-span-2" style={{ backgroundColor: "var(--ui-surface-2)" }}>
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg text-[color:var(--ui-text-muted)]" style={{ backgroundColor: "var(--ui-surface-3)" }}>
-              <FiShield className="text-sm" />
-            </div>
+            <IconBubble icon={<FiShield className="text-sm" />} tone="gray" size="sm" />
             <div>
               <p className="text-[10px] uppercase tracking-widest" style={{ color: "var(--ui-text-subtle)" }}>Role</p>
               <p className="text-sm font-semibold capitalize">{isPlayerView ? "player" : (user?.role || "No role")}</p>

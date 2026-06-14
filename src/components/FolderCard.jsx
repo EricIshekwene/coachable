@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { FiFolder, FiMoreHorizontal, FiChevronRight, FiCopy, FiEdit3, FiTrash2 } from "react-icons/fi";
-import { Badge, Button, Divider, Menu, MenuItem } from "../design-system/components";
+import { Badge, Button, Divider, InlineEdit, Menu, MenuItem } from "../design-system/components";
 
 /**
  * A folder card for the main-app Plays grid. Self-contained: owns its own
@@ -85,15 +85,17 @@ export default function FolderCard({
           <div className="flex items-start gap-2">
             <div className="min-w-0 flex-1">
               {renaming ? (
-                <input
-                  ref={renameRef}
+                <InlineEdit
                   value={renameValue}
-                  onChange={(e) => setRenameValue(e.target.value)}
-                  onBlur={confirmRename}
-                  onKeyDown={(e) => { if (e.key === "Enter") confirmRename(); if (e.key === "Escape") setRenaming(false); }}
+                  onCommit={(v) => {
+                    const trimmed = v.trim();
+                    if (trimmed && trimmed !== folder.name) onRename(folder.id, trimmed);
+                    setRenaming(false);
+                  }}
+                  onCancel={() => setRenaming(false)}
                   onClick={(e) => e.stopPropagation()}
                   maxLength={200}
-                  className="w-full rounded bg-transparent px-1 text-sm font-semibold outline-none ring-1 ring-BrandOrange"
+                  className="text-sm"
                 />
               ) : (
                 <p className="truncate font-Manrope text-sm font-semibold" style={{ color: "var(--ui-text)" }}>{folder.name}</p>

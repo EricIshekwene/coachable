@@ -1,4 +1,4 @@
-import { Alert, Badge, Button, Card, Divider, EmptyState, Input, Modal, Section, Spinner } from "../../design-system/components";
+import { AccordionItem, Alert, Badge, Button, Card, Divider, EmptyState, Input, Modal, Section, Spinner } from "../../design-system/components";
 /**
  * How To page — searchable FAQs and tutorial videos.
  * FAQs are hardcoded with embedded keywords for search.
@@ -8,7 +8,7 @@ import { Alert, Badge, Button, Card, Divider, EmptyState, Input, Modal, Section,
  * @module DemoVideos
  */
 import { useState, useEffect, useMemo } from "react";
-import { FiPlay, FiClock, FiSearch, FiX, FiChevronDown } from "react-icons/fi";
+import { FiPlay, FiClock, FiSearch, FiX } from "react-icons/fi";
 import { apiFetch } from "../../utils/api";
 
 // ── Hardcoded FAQ data (keywords embedded for search, not shown to user) ──────
@@ -113,37 +113,27 @@ function buildEmbedUrl(id) {
  * @param {Function} props.onPlayVideo
  */
 function FAQItem({ q, a, linkedVideo, onPlayVideo }) {
-  const [open, setOpen] = useState(false);
   const ytId = linkedVideo ? extractYouTubeId(linkedVideo.youtubeUrl) : null;
   const videoReady = linkedVideo?.done && ytId;
 
+  const actions = videoReady ? (
+    <Button
+      variant="ghost"
+      onClick={() => onPlayVideo(ytId)}
+      className="flex items-center gap-1.5 text-xs font-semibold transition hover:underline"
+      style={{ color: "var(--ui-accent)" }}
+    >
+      <FiPlay className="text-[11px]" />
+      Watch video
+    </Button>
+  ) : linkedVideo && !videoReady ? (
+    <p className="text-xs italic opacity-50" style={{ color: "var(--ui-text-subtle)" }}>Video coming soon</p>
+  ) : null;
+
   return (
-    <div className="border-b border-[color:var(--ui-border)] last:border-b-0">
-      <Button variant="ghost"
-        onClick={() => setOpen((s) => !s)}
-        className="flex w-full items-start justify-between gap-4 py-4 text-left"
-      >
-        <span className={`text-sm font-semibold leading-snug transition-colors ${open ? "text-[color:var(--ui-text)]" : "text-[color:var(--ui-text-muted)]"}`}>
-          {q}
-        </span>
-        <FiChevronDown className={`mt-0.5 shrink-0 text-BrandOrange transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
-      </Button>
-      <div className={`overflow-hidden transition-all duration-200 ${open ? "max-h-72 pb-4" : "max-h-0"}`}>
-        <p className="text-sm leading-relaxed" style={{ color: "var(--ui-text-subtle)" }}>{a}</p>
-        {videoReady && (
-          <Button variant="ghost"
-            onClick={() => onPlayVideo(ytId)}
-            className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-BrandOrange transition hover:underline"
-          >
-            <FiPlay className="text-[11px]" />
-            Watch video
-          </Button>
-        )}
-        {linkedVideo && !videoReady && (
-          <p className="mt-2 text-xs italic opacity-50" style={{ color: "var(--ui-text-subtle)" }}>Video coming soon</p>
-        )}
-      </div>
-    </div>
+    <AccordionItem title={q} actions={actions}>
+      {a}
+    </AccordionItem>
   );
 }
 

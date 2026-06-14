@@ -1,4 +1,4 @@
-import { Alert, Badge, Button, Card, EmptyState, Input, Textarea } from "../../design-system/components";
+import { Alert, Badge, Button, Card, EmptyState, IconBubble, Input, Textarea } from "../../design-system/components";
 /**
  * ReportIssue page — allows beta testers to submit issues they've encountered.
  * Only accessible to users with isBetaTester=true.
@@ -75,9 +75,7 @@ export default function ReportIssue() {
       <div className="mx-auto max-w-xl px-6 py-10">
         {/* Header */}
         <div className="mb-8 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/15">
-            <FiFlag className="text-lg text-purple-400" />
-          </div>
+          <IconBubble icon={<FiFlag className="text-lg" />} tone="purple" />
           <div>
             <div className="flex items-center gap-2">
               <h1 className="font-Manrope text-lg font-bold">Report an Issue</h1>

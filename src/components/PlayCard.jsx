@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  FiEyeOff, FiEye, FiStar, FiMoreHorizontal, FiClock, FiEdit2, FiEdit3, FiTag,
+  FiEyeOff, FiEye, FiStar, FiMoreHorizontal, FiEdit2, FiEdit3, FiTag,
   FiCheckSquare, FiSquare, FiExternalLink, FiCopy, FiSend, FiFolder, FiTrash2,
 } from "react-icons/fi";
 import PlayPreviewCard from "./PlayPreviewCard";
-import { Button, Chip, Divider, Menu, MenuItem } from "../design-system/components";
+import { Button, Chip, Divider, InlineEdit, Menu, MenuItem, TimestampChip } from "../design-system/components";
 
 /**
  * Formats an ISO timestamp as a short relative string ("Just now", "5m ago", …).
@@ -149,14 +149,16 @@ export default function PlayCard({
                 {play.hiddenFromPlayers && isCoach && <FiEyeOff className="shrink-0 text-sm" style={{ color: "var(--ui-text-subtle)" }} title="Hidden from players" />}
                 {play.favorited && <FiStar className="shrink-0 fill-BrandOrange text-sm text-BrandOrange" />}
                 {renaming ? (
-                  <input
-                    ref={renameRef}
+                  <InlineEdit
                     value={renameValue}
-                    onChange={(e) => setRenameValue(e.target.value)}
-                    onBlur={confirmRename}
-                    onKeyDown={(e) => { if (e.key === "Enter") confirmRename(); if (e.key === "Escape") setRenaming(false); }}
+                    onCommit={(v) => {
+                      const trimmed = v.trim();
+                      if (trimmed && trimmed !== play.title) onRename(play.id, trimmed);
+                      setRenaming(false);
+                    }}
+                    onCancel={() => setRenaming(false)}
                     onClick={(e) => e.stopPropagation()}
-                    className="min-w-0 flex-1 rounded bg-transparent px-1 font-Manrope text-sm font-semibold outline-none ring-1 ring-BrandOrange"
+                    className="min-w-0 flex-1 font-Manrope text-sm"
                   />
                 ) : (
                   <h3 className="min-w-0 flex-1 truncate font-Manrope text-sm font-semibold" style={{ color: "var(--ui-text)" }}>{play.title}</h3>
@@ -223,10 +225,7 @@ export default function PlayCard({
           )}
 
           <div className="mt-auto flex items-center justify-between gap-3 pt-4">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--ui-border)] px-2.5 py-1 text-[11px]" style={{ backgroundColor: "var(--ui-surface-2)", color: "var(--ui-text-subtle)" }}>
-              <FiClock className="text-[10px]" />
-              {formatRelativeTime(play.updatedAt || play.createdAt)}
-            </span>
+            <TimestampChip>{formatRelativeTime(play.updatedAt || play.createdAt)}</TimestampChip>
             {canEdit && (
               <Button
                 variant="outline"
