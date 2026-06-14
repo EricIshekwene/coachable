@@ -1,4 +1,4 @@
-import { Button, Input } from "../../design-system/components";
+import { Button, Card, Chip, Divider, Input } from "../../design-system/components";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiX, FiClock, FiSearch } from "react-icons/fi";
@@ -292,9 +292,13 @@ export default function PlayNew() {
                 {filteredPresets.map(({ id, label, playData: tileData }) => {
                   const isSelected = selectedPresetId === id;
                   return (
-                    <Button variant="primary"
+                    <Card
+                      as="button"
                       key={id}
                       type="button"
+                      padding="sm"
+                      interactive
+                      selected={isSelected}
                       onClick={() => setSelectedPresetId(id)}
                       className={`group flex flex-col gap-1.5 rounded-xl border-2 p-1.5 text-left transition-all duration-200 focus:outline-none ${
                         isSelected
@@ -326,7 +330,7 @@ export default function PlayNew() {
                           </span>
                         )}
                       </div>
-                    </Button>
+                    </Card>
                   );
                 })}
               </div>
@@ -384,19 +388,7 @@ export default function PlayNew() {
             onClick={() => inputRef.current?.focus()}
           >
             {tags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center gap-1 rounded-md bg-BrandOrange/10 px-2 py-1 text-xs text-BrandOrange"
-              >
-                {tag}
-                <Button variant="ghost"
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); removeTag(tag); }}
-                  className="ml-0.5 rounded-sm text-BrandOrange/60 transition hover:text-BrandOrange"
-                >
-                  <FiX className="text-[10px]" />
-                </Button>
-              </span>
+              <Chip key={tag} tone="accent" onRemove={() => removeTag(tag)}>{tag}</Chip>
             ))}
             <Input
               ref={inputRef}
@@ -449,6 +441,7 @@ export default function PlayNew() {
           )}
         </div>
 
+        <Divider />
         <Button variant="primary"
           type="submit"
           disabled={!title.trim() || submitting}

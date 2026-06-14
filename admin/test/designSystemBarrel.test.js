@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import * as DS from "../../src/design-system/components";
 import * as Admin from "../../src/admin/components";
 import {
-  Alert, Avatar, Badge, Breadcrumbs, Button, Card, Checkbox, Chip, EmptyState, Field,
+  Alert, Avatar, Badge, Breadcrumbs, Button, Card, Checkbox, Chip, Divider, EmptyState, Field,
   Input, Modal, Pagination, Progress, RadioGroup, Section, Select, Skeleton,
   Spinner, Tabs, Textarea, Toggle, Tooltip,
 } from "../../src/design-system/components";
@@ -24,7 +24,7 @@ describe("design-system barrel", () => {
     "Button", "Field", "Input", "Textarea", "Select", "Checkbox", "Toggle", "RadioGroup",
     "Card", "Section", "Modal", "Alert", "Spinner", "Skeleton", "Progress",
     "EmptyState", "Badge", "Chip", "Avatar", "Tabs", "Breadcrumbs", "Pagination",
-    "Tooltip", "PageShell", "Page", "PageHeader",
+    "Tooltip", "Divider", "PageShell", "Page", "PageHeader",
   ];
 
   test.each(canonical)("%s is exported as a React component type", (name) => {

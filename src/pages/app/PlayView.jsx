@@ -1,8 +1,8 @@
-import { Button, Textarea } from "../../design-system/components";
+import { Alert, Badge, Button, Card, Chip, Spinner, Textarea } from "../../design-system/components";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { FiArrowLeft, FiEdit2, FiClock, FiTag, FiExternalLink, FiLoader } from "react-icons/fi";
+import { FiArrowLeft, FiEdit2, FiClock, FiTag, FiExternalLink } from "react-icons/fi";
 import { fetchPlay, updatePlay } from "../../utils/apiPlays";
 import PlayPreviewPlayer from "../../components/PlayPreviewPlayer";
 
@@ -126,7 +126,7 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
   }, [play, noteDraft, user, canSaveNote, teamId]);
 
   if (loadingPlay) {
-    return (<div className="flex items-center justify-center py-32"><FiLoader className="animate-spin text-2xl text-BrandGray2" /></div>);
+    return (<div className="flex items-center justify-center py-32"><Spinner size="lg" label="Loading play" /></div>);
   }
 
   if (!play) {
@@ -220,7 +220,7 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
       )}
 
       {canCoachEdit && editingNotes && (
-        <section className="mb-8 rounded-2xl border border-BrandGray2/20 bg-BrandBlack2/30 p-4 sm:p-5">
+        <Card as="section" padding="md" className="mb-8 bg-BrandBlack2/30 sm:p-5">
           <Textarea
             ref={noteInputRef}
             label="Note"
@@ -250,32 +250,24 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
               </Button>
             </div>
           </div>
-          {noteError && <p className="mt-2 text-xs text-red-400">{noteError}</p>}
-        </section>
+          {noteError && <Alert className="mt-2" tone="error" title="Could not save note">{noteError}</Alert>}
+        </Card>
       )}
 
       {/* Tags */}
       {play.tags && play.tags.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {play.tags.map((tag) => (
-            <span
-              key={tag}
-              className="inline-flex items-center gap-1 rounded-md bg-BrandGray2/20 px-2.5 py-1 text-xs text-BrandGray"
-            >
-              <FiTag className="text-[10px]" />
-              {tag}
-            </span>
+            <Chip key={tag} leadingIcon={<FiTag className="text-[10px]" />}>{tag}</Chip>
           ))}
         </div>
       )}
 
       {/* Notes */}
       {hasNotes && !editingNotes && (
-        <section className="mt-8 rounded-2xl border border-BrandGray2/20 bg-BrandBlack2/30 p-4 sm:p-5">
+        <Card as="section" padding="md" className="mt-8 bg-BrandBlack2/30 sm:p-5">
           <div className="flex items-center justify-between gap-3">
-            <span className="inline-flex items-center rounded-full bg-BrandOrange/15 px-3 py-1 text-[11px] font-semibold text-BrandOrange">
-              {noteAuthorName}
-            </span>
+            <Badge tone="info" dot>{noteAuthorName}</Badge>
             {noteDate && (
               <span className="text-[11px] text-BrandGray2">{noteDate}</span>
             )}
@@ -283,7 +275,7 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
           <p className="mt-3 whitespace-pre-wrap font-DmSans text-sm leading-6 text-BrandText">
             {notesBody}
           </p>
-        </section>
+        </Card>
       )}
     </div>
   );

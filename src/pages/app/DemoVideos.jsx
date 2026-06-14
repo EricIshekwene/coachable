@@ -1,4 +1,4 @@
-import { Button, Input } from "../../design-system/components";
+import { Alert, Badge, Button, Card, Divider, EmptyState, Input, Section, Spinner } from "../../design-system/components";
 /**
  * How To page — searchable FAQs and tutorial videos.
  * FAQs are hardcoded with embedded keywords for search.
@@ -158,7 +158,9 @@ function VideoCard({ video, onPlay }) {
   const isReady = video.done && ytId;
 
   return (
-    <div
+    <Card
+      padding="none"
+      interactive={isReady}
       className={`group relative overflow-hidden rounded-2xl border transition ${
         isReady
           ? "cursor-pointer border-BrandGray2/20 hover:border-BrandOrange/60"
@@ -187,9 +189,7 @@ function VideoCard({ video, onPlay }) {
         )}
         {!isReady && (
           <div className="absolute bottom-2 left-2">
-            <span className="rounded-full bg-BrandBlack/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-BrandGray2 backdrop-blur-sm">
-              Coming Soon
-            </span>
+            <Badge size="xs">Coming Soon</Badge>
           </div>
         )}
       </div>
@@ -198,7 +198,7 @@ function VideoCard({ video, onPlay }) {
           {video.title}
         </p>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -277,7 +277,8 @@ export default function DemoVideos() {
                 title="Tutorial video"
               />
             </div>
-            <div className="flex justify-end border-t border-BrandGray2/20 bg-[#1a1a1a] px-4 py-2">
+            <Divider />
+            <div className="flex justify-end bg-[#1a1a1a] px-4 py-2">
               <Button variant="ghost" onClick={() => setActiveYtId(null)} className="text-xs text-BrandGray transition hover:text-white">
                 Close
               </Button>
@@ -314,23 +315,22 @@ export default function DemoVideos() {
 
       {/* No results */}
       {!loading && search && !hasAnyResults && (
-        <div className="rounded-xl border border-BrandGray2/10 py-12 text-center">
-          <p className="text-BrandGray2">Nothing matched "<span className="text-BrandText">{search}</span>"</p>
-          <Button variant="ghost" onClick={() => setSearch("")} className="mt-2 text-sm text-BrandOrange hover:underline">
-            Clear search
-          </Button>
-        </div>
+        <EmptyState
+          title={`Nothing matched "${search}"`}
+          action={<Button variant="ghost" onClick={() => setSearch("")}>Clear search</Button>}
+          contained
+        />
       )}
 
       {/* Videos */}
       {loading && (
         <div className="flex justify-center py-10">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-BrandOrange/30 border-t-BrandOrange" />
+          <Spinner size="lg" label="Loading tutorial videos" />
         </div>
       )}
 
       {error && (
-        <div className="rounded-lg bg-red-600/10 px-4 py-3 text-sm text-red-400">{error}</div>
+        <Alert tone="error" title="Could not load videos">{error}</Alert>
       )}
 
       {!loading && !search && videos.length === 0 && (
@@ -340,32 +340,29 @@ export default function DemoVideos() {
       )}
 
       {!loading && readyVideos.length > 0 && (
-        <section className="mb-8">
-          <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-BrandGray2">Tutorial Videos</h2>
+        <Section title="Tutorial Videos" variant="compact" className="mb-8">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {readyVideos.map((video) => (
               <VideoCard key={video.id} video={video} onPlay={setActiveYtId} />
             ))}
           </div>
-        </section>
+        </Section>
       )}
 
       {!loading && comingSoonVideos.length > 0 && (
-        <section className="mb-10">
-          <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-BrandGray2">Coming Soon</h2>
+        <Section title="Coming Soon" variant="compact" className="mb-10">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {comingSoonVideos.map((video) => (
               <VideoCard key={video.id} video={video} onPlay={setActiveYtId} />
             ))}
           </div>
-        </section>
+        </Section>
       )}
 
       {/* FAQs */}
       {filteredFaqs.length > 0 && (
-        <section className="mb-10">
-          <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-BrandGray2">Quick Answers</h2>
-          <div className="rounded-2xl border border-BrandGray2/15 bg-BrandBlack2/40 px-5">
+        <Section title="Quick Answers" variant="compact" className="mb-10">
+          <Card padding="none" className="px-5">
             {filteredFaqs.map((faq) => (
               <FAQItem
                 key={faq.q}
@@ -375,8 +372,8 @@ export default function DemoVideos() {
                 onPlayVideo={setActiveYtId}
               />
             ))}
-          </div>
-        </section>
+          </Card>
+        </Section>
       )}
     </div>
   );

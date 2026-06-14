@@ -1,4 +1,4 @@
-import { Button, Input, Select, Toggle } from "../../design-system/components";
+import { Alert, Button, Card, Input, Section, Select, Tabs, Toggle } from "../../design-system/components";
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -148,11 +148,8 @@ export default function Settings() {
       </p>
 
       {!isPersonal && (
-      <div className="mt-8 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <FiBell className="text-sm text-BrandOrange" />
-          <p className="text-xs font-semibold uppercase tracking-widest text-BrandGray2">Notification Preferences</p>
-        </div>
+      <Card className="mt-8 bg-BrandBlack2/30">
+        <Section title="Notification Preferences" icon={<FiBell />} variant="compact">
         <div className="flex flex-col gap-2">
           {isPlayer ? (
             <>
@@ -198,15 +195,13 @@ export default function Settings() {
             </>
           )}
         </div>
-      </div>
+        </Section>
+      </Card>
       )}
 
       {!isPlayer && !isPersonal && (
-      <div className="mt-6 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <FiShield className="text-sm text-BrandOrange" />
-          <p className="text-xs font-semibold uppercase tracking-widest text-BrandGray2">Roles and Permissions</p>
-        </div>
+      <Card className="mt-6 bg-BrandBlack2/30">
+        <Section title="Roles and Permissions" icon={<FiShield />} variant="compact">
         <p className="mb-3 text-xs text-BrandGray2">Assistant coach permissions</p>
         <div className="flex flex-col gap-2">
           <Toggle
@@ -228,17 +223,13 @@ export default function Settings() {
             onChange={() => togglePermission("canSendInvites")}
           />
         </div>
-      </div>
+        </Section>
+      </Card>
       )}
 
       {!isPlayer && (
-      <div className="mt-6 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <FiUsers className="text-sm text-BrandOrange" />
-          <p className="text-xs font-semibold uppercase tracking-widest text-BrandGray2">
-            {isPersonal ? "Workspace Settings" : "Team Defaults"}
-          </p>
-        </div>
+      <Card className="mt-6 bg-BrandBlack2/30">
+        <Section title={isPersonal ? "Workspace Settings" : "Team Defaults"} icon={<FiUsers />} variant="compact">
 
         <div className="grid gap-3 md:grid-cols-2">
           <div className="flex flex-col gap-1.5 md:col-span-2">
@@ -284,15 +275,13 @@ export default function Settings() {
           )}
 
         </div>
-      </div>
+        </Section>
+      </Card>
       )}
 
       {(user?.role === "coach" || user?.role === "owner") && !playerViewMode && !isPersonal && (
-        <div className="mt-6 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-5">
-          <div className="mb-4 flex items-center gap-2">
-            <FiEye className="text-sm text-BrandOrange" />
-            <p className="text-xs font-semibold uppercase tracking-widest text-BrandGray2">Player View</p>
-          </div>
+        <Card className="mt-6 bg-BrandBlack2/30">
+          <Section title="Player View" icon={<FiEye />} variant="compact">
           <p className="text-xs text-BrandGray2">
             Preview the app as a player sees it. You'll see read-only plays, limited navigation, and player-level account options.
           </p>
@@ -307,42 +296,31 @@ export default function Settings() {
             <FiEye className="text-sm" />
             Switch to Player View
           </Button>
-        </div>
+          </Section>
+        </Card>
       )}
 
-      <div className="mt-6">
-        <p className="text-xs font-semibold uppercase tracking-widest text-BrandGray2">Appearance</p>
-        <div className="mt-4 grid grid-cols-3 gap-3">
-          {THEME_OPTIONS.map((option) => {
+      <Section title="Appearance" variant="compact" className="mt-6">
+        <Tabs
+          className="w-full [&>button]:flex-1"
+          variant="segmented"
+          value={selectedTheme}
+          onChange={setSelectedTheme}
+          items={THEME_OPTIONS.map((option) => {
             const ThemeIcon = option.icon;
-
-            return (
-              <Button variant="primary"
-                key={option.value}
-                type="button"
-                onClick={() => setSelectedTheme(option.value)}
-                className={`flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition ${
-                  selectedTheme === option.value
-                    ? "border-BrandOrange bg-BrandOrange/5 shadow-[0_0_0_3px_rgba(255,122,24,0.08)]"
-                    : "border-BrandGray2/20 hover:border-BrandGray2/40"
-                }`}
-              >
-                <div
-                  className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${
-                    selectedTheme === option.value ? "bg-BrandOrange/15" : "bg-BrandGray2/15"
-                  }`}
-                >
-                  <ThemeIcon
-                    className={`text-lg ${selectedTheme === option.value ? "text-BrandOrange" : "text-BrandGray"}`}
-                  />
-                </div>
-                <p className="text-sm font-semibold">{option.label}</p>
-                <p className="text-[11px] text-BrandGray2">{option.desc}</p>
-              </Button>
-            );
+            return {
+              value: option.value,
+              label: (
+                <span className="flex flex-col items-center gap-1">
+                  <ThemeIcon className="text-lg" />
+                  <span>{option.label}</span>
+                  <span className="text-[11px] font-normal opacity-70">{option.desc}</span>
+                </span>
+              ),
+            };
           })}
-        </div>
-      </div>
+        />
+      </Section>
 
       <div className="mt-8 flex items-center gap-3">
         <Button variant="primary"
@@ -452,11 +430,14 @@ function DangerZone({
   };
 
   return (
-    <div className="mt-10 rounded-xl border border-red-500/20 bg-red-500/5 p-5">
-      <div className="mb-3 flex items-center gap-2">
-        <FiAlertTriangle className="text-sm text-red-400" />
-        <p className="text-xs font-semibold uppercase tracking-widest text-red-400">Danger Zone</p>
-      </div>
+    <Card
+      className="mt-10"
+      style={{
+        backgroundColor: "var(--ui-danger-muted)",
+        borderColor: "color-mix(in srgb, var(--ui-danger) 20%, transparent)",
+      }}
+    >
+      <Section title="Danger Zone" icon={<FiAlertTriangle />} variant="compact">
 
       {ownerMustTransfer ? (
         <div>
@@ -488,7 +469,7 @@ function DangerZone({
           </p>
 
           {leaveError && (
-            <p className="mt-2 text-xs text-red-400">{leaveError}</p>
+            <Alert className="mt-2" tone="error" title="Could not complete request">{leaveError}</Alert>
           )}
 
           {!showLeaveConfirm ? (
@@ -549,6 +530,7 @@ function DangerZone({
           )}
         </div>
       )}
-    </div>
+      </Section>
+    </Card>
   );
 }

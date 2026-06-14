@@ -313,7 +313,7 @@ Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PL
 ## Admin shared UI (`src/admin/`)
 | User says... | Primary file(s) | Notes |
 |---|---|---|
-| "design-system primitives", "Button", "Input", "Field", "Modal", "Card", etc. | [src/design-system/components/](src/design-system/components/) (barrel: [index.js](src/design-system/components/index.js)) | Canonical shared components; `Field` owns label/hint/error/count layout; AdminX names are barrel aliases. Session 2 form migration: [SESSION_2_FORM_MIGRATION.md](src/design-system/SESSION_2_FORM_MIGRATION.md) |
+| "design-system primitives", "Button", "Input", "Field", "Modal", "Card", "Divider", etc. | [src/design-system/components/](src/design-system/components/) (barrel: [index.js](src/design-system/components/index.js)) | Canonical shared components; `Field` owns label/hint/error/count layout; `Divider` provides tokenized horizontal/vertical separation; AdminX names are barrel aliases. Session 2 form migration: [SESSION_2_FORM_MIGRATION.md](src/design-system/SESSION_2_FORM_MIGRATION.md). Session 3 feedback/surface migration: [SESSION_3_FEEDBACK_SURFACE_MIGRATION.md](src/design-system/SESSION_3_FEEDBACK_SURFACE_MIGRATION.md) |
 
 - [adminNav.js](src/admin/adminNav.js) — admin nav config
 - [AdminContext.jsx](src/admin/AdminContext.jsx) — theme + admin session context + (for staff mode) permissions, hasPerm, hasSportScope
@@ -378,6 +378,8 @@ Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PL
 ## Tests (`admin/test/`)
 All run via Vitest. One file per feature; create new ones here when adding tests.
 
+- Shared design system: `sharedFormControls.test.jsx`, `sharedFeedbackComponents.test.js`, `designSystemBarrel.test.js`
+
 - Auth/account: `forgotPassword.test.js`, `accountDeletedEmail.test.js`, `onboarding.test.js`, `sportOnboarding.test.js` (canAdvance logic, sport payload, SPORTS shape, solo flow, Blank Canvas), `inputValidation.test.js` (validateEmail/Name/Password/ConfirmPassword, isValidEmail, isValidPhone, INPUT_LIMITS — 43 tests)
 - App layout system: `appLayout.test.js` (AppShell/AppPage/AppHeader/AppSection/AppCard — scroll-rule guard, maxWidth mapping, padding/header rendering logic; see `src/components/layout/LAYOUT.md`)
 - Admin shell: `adminBtn.test.js`, `adminModal.test.js`, `adminNav.test.js`, `adminShell.test.js`, `adminDangerMode.test.js`, `analyticsDashboard.test.js`, `usersHideFilters.test.js`, `designSystem.test.js` (design system nav registry: slug integrity, default section, prev/next adjacency), `designSystemSearch.test.js` (design system search ranking: keyword/label/summary matching, case-insensitivity, result limit), `designTokenUnification.test.js` (single-source-of-truth guard: admin `--adm-*` tokens must derive from the brand `--color-Brand*` palette; fails if admin drifts back to a parallel hex palette), `adminPagination.test.js` (getPaginationRange: short ranges, ellipsis collapsing, clamping), `componentExtraction.test.js` (Phase 2 component logic mirrors: AdminPlayCard permission flags + menu-step machine, AdminFolderCard/FolderCard inline-rename flow, AdminSectionRow priority warning + play-picker filter, PlayCard bulk-select + rename + canPost guard, FolderCard subfolder subtitle + drag ring)
@@ -395,6 +397,7 @@ Suites used by the admin test runner: [src/testing/suites/](src/testing/suites/)
 - `FolderCard.test.jsx` — folder name/subtitle, play-count singular/plural, subfolder count, isDragOver "Drop Here" label, isCoach menu gate, inline rename flow (12 tests)
 - `PlayCard.test.jsx` — title, bulkMode checkbox visibility, onToggleSelect click in bulk mode, isCoach three-dots gate, canPostToCommunity gate (9 tests)
 - `DevOverlay.test.jsx` — Ctrl+Shift+D toggle on, toggle off, non-matching keys ignored (3 tests)
+- `Tabs.test.jsx` — controlled tab changes and active `aria-selected` state
 - `setup.js` — Vitest setup: extends expect with `@testing-library/jest-dom` matchers; `globals: true` in vitest.config.js enables RTL auto-cleanup via global afterEach
 
 ---

@@ -1,7 +1,7 @@
-import { Button, Checkbox, Input, RadioGroup, Select, Textarea } from "../../design-system/components";
+import { Alert, Badge, Button, Card, Checkbox, EmptyState, Input, RadioGroup, Select, Spinner, Textarea } from "../../design-system/components";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { FiBell, FiAlertCircle, FiCheckCircle, FiStar, FiInbox } from "react-icons/fi";
+import { FiBell, FiAlertCircle, FiStar, FiInbox } from "react-icons/fi";
 import { useNotifications } from "../../context/NotificationsContext";
 
 /** Friendly absolute date, e.g. "May 22, 2026 · 3:14 PM". */
@@ -242,9 +242,10 @@ function NotificationDetail({ notif, onRespond }) {
           const num = qIndex;
           const readOnly = !showForm;
           return (
-            <div
+            <Card
               key={b.id}
-              className="rounded-xl border border-BrandGray2/20 bg-BrandBlack2/40 p-4"
+              padding="sm"
+              className="bg-BrandBlack2/40"
             >
               <div className="mb-3 flex items-start gap-2">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-BrandOrange/15 text-xs font-bold text-BrandOrange">
@@ -263,7 +264,7 @@ function NotificationDetail({ notif, onRespond }) {
                   disabled={readOnly}
                 />
               </div>
-            </div>
+            </Card>
           );
         })}
       </div>
@@ -271,9 +272,7 @@ function NotificationDetail({ notif, onRespond }) {
       {showForm && (
         <div className="flex flex-col gap-3">
           {error && (
-            <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
-              <FiAlertCircle className="shrink-0" /> {error}
-            </div>
+            <Alert tone="error" title="Could not submit response">{error}</Alert>
           )}
           <Button
             type="button"
@@ -289,9 +288,7 @@ function NotificationDetail({ notif, onRespond }) {
       )}
 
       {(responded || justSubmitted) && questions.length > 0 && (
-        <div className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2.5 text-sm text-green-400">
-          <FiCheckCircle className="shrink-0" /> Your response has been recorded. Thank you!
-        </div>
+        <Alert tone="success" title="Response recorded">Thank you!</Alert>
       )}
     </div>
   );
@@ -355,20 +352,17 @@ export default function NotificationsPage() {
 
         {loading ? (
           <div className="flex justify-center py-20">
-            <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-BrandOrange/30 border-t-BrandOrange" />
+            <Spinner size="lg" label="Loading notifications" />
           </div>
         ) : error ? (
-          <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-            <FiAlertCircle className="shrink-0" /> {error}
-          </div>
+          <Alert tone="error" title="Could not load notifications">{error}</Alert>
         ) : notifications.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-BrandGray2/20 py-20 text-center">
-            <FiInbox className="text-3xl text-BrandGray2" />
-            <p className="text-sm font-semibold text-BrandText">No notifications yet</p>
-            <p className="max-w-xs text-xs text-BrandGray2">
-              When your coach or the Coachable team sends you something, it'll show up here.
-            </p>
-          </div>
+          <EmptyState
+            icon={<FiInbox className="text-2xl" />}
+            title="No notifications yet"
+            description="When your coach or the Coachable team sends you something, it'll show up here."
+            contained
+          />
         ) : (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-[320px_1fr]">
             {/* List */}
@@ -401,9 +395,7 @@ export default function NotificationsPage() {
                       <div className="mt-1 flex items-center gap-2 text-[10px] text-BrandGray2">
                         <span>{fmtDateTime(n.sentAt)}</span>
                         {n.hasQuestions && !n.respondedAt && (
-                          <span className="rounded-full bg-BrandOrange/15 px-1.5 py-0.5 font-semibold text-BrandOrange">
-                            Needs response
-                          </span>
+                          <Badge tone="warning" size="xs">Needs response</Badge>
                         )}
                         {n.respondedAt && <span className="text-green-400">✓ Responded</span>}
                       </div>
@@ -414,16 +406,13 @@ export default function NotificationsPage() {
             </div>
 
             {/* Detail */}
-            <div className="rounded-xl border border-BrandGray2/20 p-5 sm:p-6">
+            <Card padding="md" className="sm:p-6">
               {selected ? (
                 <NotificationDetail notif={selected} onRespond={respond} />
               ) : (
-                <div className="flex flex-col items-center gap-2 py-16 text-center">
-                  <FiBell className="text-2xl text-BrandGray2" />
-                  <p className="text-sm text-BrandGray">Select a notification to read it.</p>
-                </div>
+                <EmptyState icon={<FiBell />} title="Select a notification" description="Choose an item to read it." />
               )}
-            </div>
+            </Card>
           </div>
         )}
       </div>

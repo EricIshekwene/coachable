@@ -1,4 +1,4 @@
-import { Button } from "../../design-system/components";
+import { Button, Divider } from "../../design-system/components";
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useMessagePopup } from "../../components/messaging/useMessagePopup";
@@ -37,7 +37,7 @@ export default function PlayEdit() {
             <FiArrowLeft />
             Exit
           </Button>
-          <div className="h-4 w-px bg-BrandGray2/30" />
+          <Divider orientation="vertical" className="h-4" />
           <span className="font-DmSans text-xs text-BrandGray2">Editing play</span>
         </div>
         <div className="flex items-center gap-2">

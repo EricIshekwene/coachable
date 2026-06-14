@@ -1,4 +1,4 @@
-import { Button, Input, Select } from "../../design-system/components";
+import { Alert, Avatar, Button, Card, Divider, Input, Section, Select } from "../../design-system/components";
 import { useMemo, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -12,7 +12,7 @@ import {
   FiXCircle,
 } from "react-icons/fi";
 import ConfirmModal from "../../components/subcomponents/ConfirmModal";
-import { AppShell, AppSection, AppCard } from "../../components/layout";
+import { AppShell } from "../../components/layout";
 
 export default function Profile() {
   const {
@@ -137,17 +137,15 @@ export default function Profile() {
       />
 
       <div className="flex items-center gap-4 rounded-xl bg-BrandOrange/10 px-5 py-4">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-BrandOrange/20 text-xl font-bold text-BrandOrange">
-          {user?.name?.[0] || "?"}
-        </div>
+        <Avatar name={user?.name || "Guest"} size="lg" />
         <div>
           <p className="font-Manrope text-base font-semibold">{user?.name || "Guest"}</p>
           <p className="text-xs capitalize text-BrandGray2">{isPlayerView ? "player" : (user?.role || "No role")}</p>
         </div>
       </div>
 
-      <AppSection title="Account Info">
-        <AppCard>
+      <Section title="Account Info">
+        <Card>
         <div className="grid gap-3 md:grid-cols-2">
           <div className="flex flex-col gap-1.5 md:col-span-2">
             <div className="flex gap-2">
@@ -220,12 +218,12 @@ export default function Profile() {
             </div>
           </div>
         </div>
-        </AppCard>
-      </AppSection>
+        </Card>
+      </Section>
 
       {!isPlayerView && (
-      <AppSection title="Ownership" icon={FiUsers}>
-        <AppCard>
+      <Section title="Ownership" icon={<FiUsers />}>
+        <Card>
           <p className="text-sm text-BrandGray2">
             Current team owner: <span className="font-semibold text-BrandText">{owner?.name || "Unknown"}</span>
           </p>
@@ -270,14 +268,14 @@ export default function Profile() {
               Only the current team owner can transfer ownership.
             </p>
           )}
-        </AppCard>
-      </AppSection>
+        </Card>
+      </Section>
       )}
 
       {/* Team Management — player view */}
       {isPlayerView && (
-      <AppSection title="Team" icon={FiUsers}>
-        <AppCard>
+      <Section title="Team" icon={<FiUsers />}>
+        <Card>
           {user?.teamName && (
             <div className="mt-3 flex items-center gap-3 rounded-lg border border-BrandGray2/20 bg-BrandBlack2/20 px-3 py-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-BrandOrange/15 text-sm font-bold text-BrandOrange">
@@ -328,7 +326,8 @@ export default function Profile() {
 
           {/* Leave team */}
           {user?.teamName && (
-            <div className="mt-5 border-t border-BrandGray2/15 pt-4">
+            <div className="mt-5 pt-4">
+              <Divider className="mb-4" />
               {!showLeaveConfirm ? (
                 <Button variant="danger"
                   type="button"
@@ -339,8 +338,8 @@ export default function Profile() {
                   Leave {user.teamName}
                 </Button>
               ) : (
-                <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
-                  <p className="text-xs text-red-300">
+                <Alert tone="warning" title={`Leave ${user.teamName}?`}>
+                  <p className="text-xs">
                     Are you sure you want to leave <span className="font-semibold">{user.teamName}</span>? You'll lose access to all plays.
                   </p>
                   <div className="mt-3 flex gap-2">
@@ -363,7 +362,7 @@ export default function Profile() {
                       Cancel
                     </Button>
                   </div>
-                </div>
+                </Alert>
               )}
               {showLeftTeam && (
                 <p className="mt-2 flex items-center gap-1 text-xs text-red-400">
@@ -373,8 +372,8 @@ export default function Profile() {
               )}
             </div>
           )}
-        </AppCard>
-      </AppSection>
+        </Card>
+      </Section>
       )}
 
       <Button variant="danger"

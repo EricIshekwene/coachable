@@ -2,7 +2,7 @@
  * Inline alert surface with semantic tones.
  *
  * @param {{
- *   tone?: "info"|"success"|"warning"|"danger",
+ *   tone?: "info"|"success"|"warning"|"danger"|"error",
  *   title?: React.ReactNode,
  *   children?: React.ReactNode,
  *   className?: string,
@@ -30,7 +30,7 @@ export default function Alert({ tone = "info", title, children, className = "", 
       border: "color-mix(in srgb, var(--ui-danger) 24%, transparent)",
       color: "var(--ui-danger)",
     },
-  }[tone];
+  }[tone === "error" ? "danger" : tone];
 
   return (
     <div

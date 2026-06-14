@@ -1,4 +1,4 @@
-import { Button, Input, Textarea } from "../../design-system/components";
+import { Alert, Badge, Button, Card, EmptyState, Input, Textarea } from "../../design-system/components";
 /**
  * ReportIssue page — allows beta testers to submit issues they've encountered.
  * Only accessible to users with isBetaTester=true.
@@ -60,21 +60,12 @@ export default function ReportIssue() {
   if (submitted) {
     return (
       <div className="overflow-y-auto" style={{ height: "100%" }}>
-        <div className="mx-auto max-w-xl px-6 py-16 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-green-500/15">
-            <FiCheckCircle className="text-2xl text-green-400" />
-          </div>
-          <h1 className="font-Manrope text-xl font-bold">Issue Submitted</h1>
-          <p className="mt-2 text-sm text-BrandGray2">
-            Thanks for the report! We'll look into it and get back to you if we need more details.
-          </p>
-          <Button variant="primary"
-            onClick={handleReset}
-            className="mt-8 rounded-xl bg-BrandOrange px-6 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
-          >
-            Report Another Issue
-          </Button>
-        </div>
+        <EmptyState
+          icon={<FiCheckCircle />}
+          title="Issue Submitted"
+          description="Thanks for the report! We'll look into it and get back to you if we need more details."
+          action={<Button variant="primary" onClick={handleReset}>Report Another Issue</Button>}
+        />
       </div>
     );
   }
@@ -90,15 +81,13 @@ export default function ReportIssue() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="font-Manrope text-lg font-bold">Report an Issue</h1>
-              <span className="rounded bg-purple-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-purple-400">
-                Beta
-              </span>
+              <Badge tone="info" size="xs">Beta</Badge>
             </div>
             <p className="text-xs text-BrandGray2">Found something broken? Let us know.</p>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <Card as="form" onSubmit={handleSubmit} className="flex flex-col gap-5">
           {/* Title */}
           <div>
             <Input
@@ -132,9 +121,7 @@ export default function ReportIssue() {
           </div>
 
           {error && (
-            <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-              {error}
-            </div>
+            <Alert tone="error" title="Could not submit issue">{error}</Alert>
           )}
 
           <Button variant="primary"
@@ -144,7 +131,7 @@ export default function ReportIssue() {
           >
             {submitting ? "Submitting..." : "Submit Issue"}
           </Button>
-        </form>
+        </Card>
       </div>
     </div>
   );

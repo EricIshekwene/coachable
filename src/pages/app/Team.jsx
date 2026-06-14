@@ -1,4 +1,4 @@
-import { Button, Input } from "../../design-system/components";
+import { Avatar, Badge, Button, Card, EmptyState, Input, Section, Tabs } from "../../design-system/components";
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useAppMessage } from "../../context/AppMessageContext";
@@ -27,7 +27,7 @@ function InviteCodeSection({ role, code, copiedRole, onCopy, onRotate, onSendInv
   };
 
   return (
-    <div className="rounded-lg border border-BrandGray2/20 bg-BrandBlack2/20 p-4">
+    <Card padding="sm" className="bg-BrandBlack2/20">
       <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-BrandGray">
         <Icon className="text-[10px]" /> {label}
       </p>
@@ -94,7 +94,7 @@ function InviteCodeSection({ role, code, copiedRole, onCopy, onRotate, onSendInv
           )}
         </Button>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -102,23 +102,6 @@ export default function Team() {
   const { user, teamMembers, removeMember, playerViewMode } = useAuth();
   const { showMessage } = useAppMessage();
 
-  // Solo users don't have a real team — show a CTA instead
-  if (user?.isPersonalTeam) {
-    return (
-      <div className="mx-auto max-w-lg px-6 py-16 text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-BrandGray2/10">
-          <FiUser className="text-2xl text-BrandGray2" />
-        </div>
-        <h1 className="mt-6 font-Manrope text-xl font-bold tracking-tight">You're in solo mode</h1>
-        <p className="mt-2 text-sm text-BrandGray">
-          You're creating plays on your own. Create or join a team to collaborate with coaches and players.
-        </p>
-        <p className="mt-4 text-xs text-BrandGray2">
-          You can create or join a team from Settings.
-        </p>
-      </div>
-    );
-  }
   const isOwner = (user?.role === "owner" || user?.id === user?.ownerId) && !playerViewMode;
   const isCoach = (user?.role === "coach" || isOwner) && !playerViewMode;
   const [copiedRole, setCopiedRole] = useState(null);
@@ -135,6 +118,17 @@ export default function Team() {
       .then((data) => setInviteCodes(data.codes || { player: "", coach: "" }))
       .catch(() => {});
   }, [isCoach, user?.teamId]);
+
+  // Solo users do not have a real team, but hooks must still run in a stable order.
+  if (user?.isPersonalTeam) {
+    return (
+      <EmptyState
+        icon={<FiUser />}
+        title="You're in solo mode"
+        description="Create or join a team from Settings to collaborate with coaches and players."
+      />
+    );
+  }
 
   const handleCopy = async (role) => {
     try {
@@ -216,25 +210,12 @@ export default function Team() {
     return true;
   });
 
-  const filterBtn = (value, label) => (
-    <Button variant="primary"
-      onClick={() => setFilter(value)}
-      className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
-        filter === value
-          ? "bg-BrandOrange/10 text-BrandOrange"
-          : "text-BrandGray2 hover:text-BrandText"
-      }`}
-    >
-      {label}
-    </Button>
-  );
-
   return (
     <div className="mx-auto max-w-2xl px-6 py-8 md:px-10 md:py-12">
       <h1 className="font-Manrope text-xl font-bold tracking-tight">Team</h1>
 
       {/* Team info card */}
-      <div className="mt-6 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-5">
+      <Card className="mt-6 bg-BrandBlack2/30">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[10px] uppercase tracking-widest text-BrandGray2">Team name</p>
@@ -243,20 +224,15 @@ export default function Team() {
             </p>
           </div>
           {user?.sport && (
-            <span className="rounded-md bg-BrandOrange/10 px-2.5 py-1 text-xs text-BrandOrange capitalize">
-              {user.sport}
-            </span>
+            <Badge tone="info">{user.sport}</Badge>
           )}
         </div>
-      </div>
+      </Card>
 
       {/* Invite section (coach only) */}
       {isCoach && (
-        <div className="mt-6 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-5">
-          <p className="text-xs font-semibold">Invite codes</p>
-          <p className="mt-1 mb-4 text-xs text-BrandGray2">
-            Share the right code based on the person's role, or send an invite email directly.
-          </p>
+        <Card className="mt-6 bg-BrandBlack2/30">
+          <Section title="Invite codes" subtitle="Share the right code based on the person's role, or send an invite email directly." variant="compact">
 
           <div className="flex flex-col gap-3">
             <InviteCodeSection
@@ -278,21 +254,28 @@ export default function Team() {
               sending={sending}
             />
           </div>
-        </div>
+          </Section>
+        </Card>
       )}
 
       {/* Members list */}
-      <div className="mt-6">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold">
-            Members <span className="font-normal text-BrandGray2">({filteredMembers.length})</span>
-          </p>
-          <div className="flex items-center gap-1">
-            {filterBtn("all", "All")}
-            {filterBtn("coach", "Coaches")}
-            {filterBtn("player", "Players")}
-          </div>
-        </div>
+      <Section
+        className="mt-6"
+        title={`Members (${filteredMembers.length})`}
+        variant="compact"
+        actions={(
+          <Tabs
+            size="sm"
+            value={filter}
+            onChange={setFilter}
+            items={[
+              { value: "all", label: "All" },
+              { value: "coach", label: "Coaches" },
+              { value: "player", label: "Players" },
+            ]}
+          />
+        )}
+      >
 
         {/* Search */}
         <div className="relative mt-3">
@@ -316,27 +299,16 @@ export default function Team() {
               key={member.id}
               className="flex items-center gap-3 rounded-lg px-3 py-3 transition hover:bg-BrandBlack2/50"
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-BrandGray2/20 text-xs font-bold text-BrandGray">
-                {member.name[0]}
-              </div>
+              <Avatar name={member.name} size="sm" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">{member.name}</p>
                 <p className="truncate text-[11px] text-BrandGray2">{member.email}</p>
               </div>
-              <span
-                className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-wider ${
-                  member.role === "coach"
-                    ? "bg-BrandOrange/10 text-BrandOrange"
-                    : "bg-BrandGray2/15 text-BrandGray"
-                }`}
-              >
-                {member.role === "coach" ? <FiShield className="text-[9px]" /> : <FiUser className="text-[9px]" />}
+              <Badge tone={member.role === "coach" ? "warning" : "default"} size="xs" dot>
                 {member.role}
-              </span>
+              </Badge>
               {member.id === user?.ownerId && (
-                <span className="rounded-md bg-BrandGreen/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-BrandGreen">
-                  Owner
-                </span>
+                <Badge tone="success" size="xs">Owner</Badge>
               )}
               {isOwner && member.id !== user?.id && (
                 <Button variant="danger"
@@ -351,7 +323,7 @@ export default function Team() {
             </div>
           ))}
         </div>
-      </div>
+      </Section>
 
       {/* Remove member confirmation modal */}
       {confirmRemove && (

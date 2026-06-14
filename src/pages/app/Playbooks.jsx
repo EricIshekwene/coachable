@@ -1,4 +1,4 @@
-import { Button, Checkbox, Input } from "../../design-system/components";
+import { Alert, Badge, Button, Card, Checkbox, Chip, EmptyState, Input, Spinner, Tabs } from "../../design-system/components";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -97,18 +97,17 @@ function filterSectionPlays(plays, searchValue, activeTags) {
 function PlayGrid({ plays, isCoach, copiedIds, onCopyPlay, onPreview }) {
   if (plays.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <FiBookOpen className="mb-3 text-3xl text-BrandGray2" />
-        <p className="font-semibold text-BrandText">No plays in this section yet</p>
-      </div>
+      <EmptyState icon={<FiBookOpen />} title="No plays in this section yet" />
     );
   }
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {plays.map((play) => (
-        <div
+        <Card
           key={play.id}
+          padding="none"
+          interactive
           onClick={() => onPreview(play)}
           className="group flex cursor-pointer flex-col overflow-hidden rounded-3xl border border-BrandGray2/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0)),rgba(24,26,31,0.96)] transition hover:border-BrandOrange/25 hover:shadow-[0_18px_50px_rgba(0,0,0,0.24)]"
         >
@@ -132,9 +131,9 @@ function PlayGrid({ plays, isCoach, copiedIds, onCopyPlay, onPreview }) {
                 </div>
               )}
               {play.tags?.length > 0 && (
-                <div className="pointer-events-none absolute right-5 top-5 rounded-full border border-black/10 bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-white/85 backdrop-blur-sm">
+                <Badge className="pointer-events-none absolute right-5 top-5 backdrop-blur-sm" size="xs">
                   {play.tags.length} tag{play.tags.length !== 1 ? "s" : ""}
-                </div>
+                </Badge>
               )}
             </div>
           </div>
@@ -159,13 +158,7 @@ function PlayGrid({ plays, isCoach, copiedIds, onCopyPlay, onPreview }) {
             {play.tags?.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {play.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center gap-1 rounded-full border border-BrandGray2/15 bg-BrandBlack/35 px-2.5 py-1 text-[10px] text-BrandGray"
-                  >
-                    <FiTag className="text-[8px]" />
-                    {tag}
-                  </span>
+                  <Chip key={tag} leadingIcon={<FiTag className="text-[8px]" />}>{tag}</Chip>
                 ))}
               </div>
             )}
@@ -187,7 +180,7 @@ function PlayGrid({ plays, isCoach, copiedIds, onCopyPlay, onPreview }) {
               </Button>
             )}
           </div>
-        </div>
+        </Card>
       ))}
     </div>
   );
@@ -327,7 +320,7 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
                 }`}
               >
                 {copyingAll ? (
-                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  <Spinner size="sm" tone="default" label="Adding playbook" />
                 ) : allCopied ? (
                   <FiCheck />
                 ) : (
@@ -376,9 +369,7 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
                   <FiFilter className="text-sm" />
                   Filter
                   {activeTags.length > 0 && (
-                    <span className="rounded-full bg-BrandOrange px-2 py-0.5 text-[10px] font-bold leading-none text-white">
-                      {activeTags.length}
-                    </span>
+                    <Badge size="xs">{activeTags.length}</Badge>
                   )}
                   <FiChevronDown className={`text-sm transition ${filtersOpen ? "rotate-180" : ""}`} />
                 </Button>
@@ -436,11 +427,11 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
 
       <div className="px-6 py-6">
         {error && (
-          <div className="mb-4 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>
+          <Alert className="mb-4" tone="error" title="Could not load playbook">{error}</Alert>
         )}
         {loading ? (
           <div className="flex justify-center py-16">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-BrandOrange/30 border-t-BrandOrange" />
+            <Spinner size="lg" label="Loading playbook" />
           </div>
         ) : (
           <PlayGrid
@@ -478,7 +469,11 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
  */
 function BrowseTile({ title, description, playCount, onClick }) {
   return (
-    <Button variant="outline"
+    <Card
+      as="button"
+      type="button"
+      padding="none"
+      interactive
       onClick={onClick}
       className="group flex flex-col overflow-hidden rounded-2xl border border-BrandGray2/20 bg-BrandBlack2 text-left transition hover:border-BrandOrange/40 hover:shadow-lg hover:shadow-BrandOrange/5"
     >
@@ -496,7 +491,7 @@ function BrowseTile({ title, description, playCount, onClick }) {
           {playCount} {playCount === 1 ? "play" : "plays"}
         </p>
       </div>
-    </Button>
+    </Card>
   );
 }
 
@@ -507,44 +502,16 @@ function BrowseTile({ title, description, playCount, onClick }) {
  * @param {{ activeTab: string, onChange: Function }} props
  */
 function PlaybookTabs({ activeTab, onChange, hasCommunity }) {
-  const tabs = [
-    { key: "platform", label: "Platform" },
-    ...(hasCommunity ? [{ key: "community", label: "Community" }] : []),
-  ];
-
   return (
-    <div className="flex items-end gap-6">
-      {tabs.map(({ key, label }) => {
-        const isActive = activeTab === key;
-        return (
-          <Button variant="ghost"
-            key={key}
-            onClick={() => onChange(key)}
-            className="relative pb-2.5 text-sm font-semibold transition-colors"
-            style={{ color: isActive ? "var(--color-BrandOrange)" : undefined }}
-          >
-            <span className={isActive ? "text-BrandOrange" : "text-BrandGray hover:text-BrandText"}>
-              {label}
-            </span>
-            {isActive && (
-              <>
-                {/* underline */}
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-BrandOrange" />
-                {/* radial glow bleeding upward from the underline */}
-                <span
-                  className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2"
-                  style={{
-                    width: "120%",
-                    height: "32px",
-                    background: "radial-gradient(ellipse at 50% 100%, rgba(255,122,24,0.28) 0%, transparent 70%)",
-                  }}
-                />
-              </>
-            )}
-          </Button>
-        );
-      })}
-    </div>
+    <Tabs
+      variant="underline"
+      value={activeTab}
+      onChange={onChange}
+      items={[
+        { value: "platform", label: "Platform" },
+        ...(hasCommunity ? [{ value: "community", label: "Community" }] : []),
+      ]}
+    />
   );
 }
 
@@ -624,26 +591,22 @@ export default function Playbooks() {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>
+        <Alert className="mb-4" tone="error" title="Could not load playbooks">{error}</Alert>
       )}
 
       {loading ? (
         <div className="flex justify-center py-20">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-BrandOrange/30 border-t-BrandOrange" />
+          <Spinner size="lg" label="Loading playbooks" />
         </div>
       ) : visibleSections.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-BrandGray2/20 py-20 text-center">
-          <FiBookOpen className="mb-4 text-4xl text-BrandGray2" />
-          <p className="font-Manrope font-semibold text-BrandText">
-            {activeTab === "community" ? "No community plays yet" : "No playbooks yet"}
-          </p>
-          <p className="mt-1 text-sm text-BrandGray">
-            {activeTab === "community"
-              ? "Plays posted to the community will appear here once published."
-              : "Check back soon — collections for your sport will appear here once published."
-            }
-          </p>
-        </div>
+        <EmptyState
+          icon={<FiBookOpen />}
+          title={activeTab === "community" ? "No community plays yet" : "No playbooks yet"}
+          description={activeTab === "community"
+            ? "Plays posted to the community will appear here once published."
+            : "Check back soon - collections for your sport will appear here once published."}
+          contained
+        />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visibleSections.map((section) => (

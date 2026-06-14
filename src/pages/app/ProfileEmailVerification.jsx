@@ -1,4 +1,4 @@
-import { Button, Input } from "../../design-system/components";
+import { Alert, Button, Card, Input } from "../../design-system/components";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiCheck, FiMail } from "react-icons/fi";
@@ -124,7 +124,7 @@ export default function ProfileEmailVerification() {
         Back to Profile
       </Button>
 
-      <div className="rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 p-6">
+      <Card padding="lg" className="bg-BrandBlack2/30">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-BrandOrange/15 text-BrandOrange">
           <FiMail className="text-lg" />
         </div>
@@ -155,7 +155,7 @@ export default function ProfileEmailVerification() {
             ))}
           </div>
 
-          {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
+          {error && <Alert className="mt-3" tone="error" title="Verification failed">{error}</Alert>}
 
           <Button variant="primary"
             type="submit"
@@ -187,7 +187,7 @@ export default function ProfileEmailVerification() {
             </Button>
           </p>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

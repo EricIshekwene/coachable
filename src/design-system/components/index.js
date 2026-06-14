@@ -22,6 +22,7 @@ export { default as Tabs }        from "./Tabs";
 export { default as Breadcrumbs } from "./Breadcrumbs";
 export { default as Pagination }  from "./Pagination";
 export { default as Tooltip }     from "./Tooltip";
+export { default as Divider }     from "./Divider";
 
 // Layout (re-export only; files stay at src/components/layout/)
 export { default as PageShell }  from "../../components/layout/AppShell";

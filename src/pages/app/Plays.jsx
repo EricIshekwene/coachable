@@ -1,11 +1,11 @@
-import { Button, Input, Textarea, Select } from "../../design-system/components";
+import { Breadcrumbs, Button, Card, Chip, EmptyState, Input, Section, Spinner, Textarea, Select } from "../../design-system/components";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import {
   FiPlus, FiPlay, FiClock, FiTag, FiFolder,
-  FiLoader, FiSearch, FiRotateCcw, FiX, FiCheckSquare,
-  FiTrash2, FiChevronRight, FiSend,
+  FiSearch, FiRotateCcw, FiX, FiCheckSquare,
+  FiTrash2, FiSend,
 } from "react-icons/fi";
 import { fetchPlays, deletePlay as apiDeletePlay, updatePlay, toggleFavorite as apiToggleFavorite, movePlayToFolder as apiMovePlayToFolder, sharePlay, fetchTrashedPlays, restorePlay as apiRestorePlay, permanentDeletePlay as apiPermanentDelete, duplicatePlay as apiDuplicatePlay, bulkDeletePlays, bulkMovePlays, bulkTagPlays, postToCommunity as apiPostToCommunity } from "../../utils/apiPlays";
 import { fetchFolders, createFolder as apiCreateFolder, updateFolder, deleteFolder as apiFolderDelete, shareFolder } from "../../utils/apiFolders";
@@ -370,7 +370,7 @@ export default function Plays() {
     : [];
 
   if (loadingData) {
-    return (<div className="flex items-center justify-center py-32"><FiLoader className="animate-spin text-2xl text-BrandGray2" /></div>);
+    return (<div className="flex items-center justify-center py-32"><Spinner size="lg" label="Loading plays" /></div>);
   }
 
   if (showTrash) {
@@ -384,22 +384,18 @@ export default function Plays() {
           }
         />
         {trashedPlays.length === 0 ? (
-          <div className="mt-20 flex flex-col items-center text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-BrandGray2/10"><FiTrash2 className="text-2xl text-BrandGray2" /></div>
-            <p className="mt-4 text-sm font-semibold">Trash is empty</p>
-            <p className="mt-1 text-xs text-BrandGray2">Deleted plays will appear here for 30 days.</p>
-          </div>
+          <EmptyState icon={<FiTrash2 />} title="Trash is empty" description="Deleted plays will appear here for 30 days." />
         ) : (
           <div className="mt-6 flex flex-col gap-2">
             {trashedPlays.map((play) => (
-              <div key={play.id} className="flex items-center gap-4 rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30 px-5 py-4">
+              <Card key={play.id} padding="md" className="flex items-center gap-4 bg-BrandBlack2/30">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{play.title}</p>
                   <p className="mt-0.5 text-[11px] text-BrandGray2">Deleted {formatRelativeTime(play.archivedAt)}</p>
                 </div>
                 <Button variant="outline" onClick={() => handleRestorePlay(play.id)} className="flex items-center gap-1.5 rounded-lg border border-BrandGray2/30 px-3 py-2 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"><FiRotateCcw className="text-xs" />Restore</Button>
                 <Button variant="danger" onClick={() => handlePermanentDelete(play.id)} className="flex items-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-2 text-xs text-red-400 transition hover:bg-red-500/10"><FiTrash2 className="text-xs" />Delete Forever</Button>
-              </div>
+              </Card>
             ))}
           </div>
         )}
@@ -428,10 +424,18 @@ export default function Plays() {
         }
       >
         {folderPath.length > 0 && (
-          <div className="mt-2 flex items-center gap-1 text-xs text-BrandGray">
-            <Button variant="ghost" onClick={() => setFolderPath([])} className="transition hover:text-BrandText">All Plays</Button>
-            {folderPath.map((fId, idx) => { const f = folders.find((folder) => folder.id === fId); const isLast = idx === folderPath.length - 1; return (<div key={fId} className="flex items-center gap-1"><FiChevronRight className="text-[8px]" />{isLast ? <span>{f?.name}</span> : <Button variant="ghost" onClick={() => setFolderPath(folderPath.slice(0, idx + 1))} className="transition hover:text-BrandText">{f?.name}</Button>}</div>); })}
-          </div>
+          <Breadcrumbs
+            className="mt-2"
+            items={[
+              { label: "All Plays", onClick: () => setFolderPath([]) },
+              ...folderPath.map((fId, idx) => ({
+                label: folders.find((folder) => folder.id === fId)?.name || "Folder",
+                onClick: idx < folderPath.length - 1
+                  ? () => setFolderPath(folderPath.slice(0, idx + 1))
+                  : undefined,
+              })),
+            ]}
+          />
         )}
       </AppHeader>
 
@@ -457,18 +461,14 @@ export default function Plays() {
       {allTags.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {allTags.map((tag) => (
-            <Button variant="primary"
+            <Chip
               key={tag}
               onClick={() => setActiveTag(activeTag === tag ? null : tag)}
-              className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] transition ${
-                activeTag === tag
-                  ? "bg-BrandOrange/20 text-BrandOrange border border-BrandOrange/40"
-                  : "bg-BrandGray2/15 text-BrandGray border border-transparent hover:bg-BrandGray2/25 hover:text-BrandText"
-              }`}
+              selected={activeTag === tag}
+              leadingIcon={<FiTag className="text-[9px]" />}
             >
-              <FiTag className="text-[9px]" />
               {tag}
-            </Button>
+            </Chip>
           ))}
           {activeTag && (
             <Button variant="ghost" onClick={() => setActiveTag(null)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-BrandGray2 transition hover:text-BrandText">
@@ -501,8 +501,7 @@ export default function Plays() {
 
       {/* Recently edited */}
       {recentlyEdited.length > 0 && (
-        <div className="mt-6">
-          <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-BrandGray2">Recently Edited</p>
+        <Section title="Recently Edited" variant="compact" className="mt-6">
           <div className="hide-scroll flex gap-2 overflow-x-auto pb-1">
             {recentlyEdited.map((play) => (
               <Button variant="outline"
@@ -518,13 +517,12 @@ export default function Plays() {
               </Button>
             ))}
           </div>
-        </div>
+        </Section>
       )}
 
       {/* Folders grid */}
       {(visibleFolders.length > 0 || newFolderMode) && (
-        <div className="mt-6">
-          <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-BrandGray2">Folders</p>
+        <Section title="Folders" variant="compact" className="mt-6">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {visibleFolders.map((folder) => {
               const subFolderCount = folders.filter((f) => f.parentId === folder.id).length;
@@ -549,7 +547,7 @@ export default function Plays() {
               );
             })}
             {newFolderMode && (
-              <div className="overflow-hidden rounded-2xl border border-BrandOrange/40 bg-[linear-gradient(180deg,rgba(255,122,24,0.09),rgba(255,122,24,0.03))]">
+              <Card padding="none" selected className="overflow-hidden bg-[linear-gradient(180deg,rgba(255,122,24,0.09),rgba(255,122,24,0.03))]">
                 <div className="flex items-center gap-4 p-4">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-BrandOrange/35 bg-BrandOrange/16">
                     <FiFolder className="text-lg text-BrandOrange" />
@@ -568,16 +566,16 @@ export default function Plays() {
                     />
                   </div>
                 </div>
-              </div>
+              </Card>
             )}
           </div>
-        </div>
+        </Section>
       )}
 
       {/* Plays grid */}
       <div className="mt-6">
         <div className="mb-3 flex items-center justify-between">
-          {!currentFolderId && <p className="text-[10px] font-semibold uppercase tracking-widest text-BrandGray2">Plays</p>}
+          {!currentFolderId && <Section title="Plays" variant="compact" />}
           <Select
             value={playSort}
             onChange={(e) => setPlaySort(e.target.value)}
@@ -624,11 +622,12 @@ export default function Plays() {
       </div>
 
       {visiblePlays.length === 0 && visibleFolders.length === 0 && !loadingData && (
-        <div className="mt-20 flex flex-col items-center text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-BrandGray2/10">{isSearching ? <FiSearch className="text-2xl text-BrandGray2" /> : <FiPlay className="text-2xl text-BrandGray2" />}</div>
-          <p className="mt-4 text-sm font-semibold">{isSearching ? "No results found" : currentFolderId ? "No plays in this folder" : "No plays yet"}</p>
-          <p className="mt-1 text-xs text-BrandGray2">{isSearching ? `No plays match "${search.trim()}"` : currentFolderId ? "Drag plays here or use the menu to move them." : canCreatePlay ? "Create your first play to get started." : "Your coach hasn't added any plays yet."}</p>
-        </div>
+        <EmptyState
+          className="mt-20"
+          icon={isSearching ? <FiSearch /> : <FiPlay />}
+          title={isSearching ? "No results found" : currentFolderId ? "No plays in this folder" : "No plays yet"}
+          description={isSearching ? `No plays match "${search.trim()}"` : currentFolderId ? "Drag plays here or use the menu to move them." : canCreatePlay ? "Create your first play to get started." : "Your coach hasn't added any plays yet."}
+        />
       )}
 
       {/* Move-to-folder modal */}
@@ -728,7 +727,7 @@ export default function Plays() {
             <div className="mt-4 flex justify-end gap-2">
               <Button variant="outline" onClick={() => setPostTarget(null)} disabled={postLoading} className="rounded-lg border border-BrandGray2/30 px-3.5 py-2 text-sm text-BrandGray transition hover:text-BrandText disabled:opacity-50">Cancel</Button>
               <Button variant="primary" onClick={handlePostToCommunity} disabled={!postTitle.trim() || postLoading} className="flex items-center gap-2 rounded-lg bg-BrandOrange px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50">
-                {postLoading ? <FiLoader className="animate-spin text-sm" /> : <FiSend className="text-sm" />}
+                {postLoading ? <Spinner size="sm" tone="default" label="Posting play" /> : <FiSend className="text-sm" />}
                 {postLoading ? "Posting..." : "Post"}
               </Button>
             </div>
