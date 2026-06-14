@@ -1,4 +1,4 @@
-import { Button, Divider } from "../../design-system/components";
+import { Button, ConfirmDialog, Divider } from "../../design-system/components";
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useMessagePopup } from "../../components/messaging/useMessagePopup";
@@ -70,30 +70,15 @@ export default function PlayEdit() {
       </div>
 
       {/* Exit confirmation modal */}
-      {showExitConfirm && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 font-DmSans">
-          <div className="w-full max-w-sm rounded-xl border border-[color:var(--ui-border)] bg-BrandBlack p-6">
-            <h2 className="font-Manrope text-base font-bold">Exit without saving?</h2>
-            <p className="mt-2 text-sm" style={{ color: "var(--ui-text-subtle)" }}>
-              Any unsaved changes will be lost.
-            </p>
-            <div className="mt-6 flex items-center gap-3">
-              <Button variant="outline"
-                onClick={() => setShowExitConfirm(false)}
-                className="flex-1 rounded-lg border border-[color:var(--ui-border)] py-2 text-sm text-[color:var(--ui-text-muted)] transition hover:border-[color:var(--ui-border-strong)] hover:text-[color:var(--ui-text)]"
-              >
-                Cancel
-              </Button>
-              <Button variant="danger"
-                onClick={confirmExit}
-                className="flex-1 rounded-lg bg-red-500/90 py-2 text-sm font-semibold text-white transition hover:bg-red-500"
-              >
-                Exit
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={showExitConfirm}
+        title="Exit without saving?"
+        description="Any unsaved changes will be lost."
+        tone="danger"
+        confirmLabel="Exit"
+        onConfirm={confirmExit}
+        onCancel={() => setShowExitConfirm(false)}
+      />
     </div>
   );
 }

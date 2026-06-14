@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { FiFolder, FiMoreHorizontal, FiChevronRight, FiCopy, FiEdit3, FiTrash2 } from "react-icons/fi";
-import { Menu, MenuItem } from "../design-system/components";
+import { Badge, Button, Divider, Menu, MenuItem } from "../design-system/components";
 
 /**
  * A folder card for the main-app Plays grid. Self-contained: owns its own
@@ -106,13 +106,15 @@ export default function FolderCard({
 
             {isCoach && (
               <div className="shrink-0">
-                <button
+                <Button
                   ref={menuBtnRef}
+                  variant="ghost"
+                  size="icon"
                   onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}
-                  className="rounded-lg p-1.5 text-[color:var(--ui-text-subtle)] opacity-100 transition hover:bg-[color:var(--ui-surface-2)] hover:text-[color:var(--ui-text)] md:opacity-0 group-hover:opacity-100"
+                  className="opacity-100 md:opacity-0 group-hover:opacity-100"
                 >
                   <FiMoreHorizontal className="text-sm" />
-                </button>
+                </Button>
                 <Menu
                   open={menuOpen}
                   anchorRef={menuBtnRef}
@@ -122,7 +124,7 @@ export default function FolderCard({
                 >
                   <MenuItem icon={<FiCopy />} onSelect={() => { onShare(folder.id); setMenuOpen(false); }}>Share Folder</MenuItem>
                   <MenuItem icon={<FiEdit3 />} onSelect={startRename}>Rename</MenuItem>
-                  <div style={{ height: 1, backgroundColor: "var(--ui-border)", margin: "4px 8px" }} />
+                  <Divider className="mx-2 my-1" />
                   <MenuItem icon={<FiTrash2 />} destructive onSelect={() => { onDelete(folder.id); setMenuOpen(false); }}>Delete</MenuItem>
                 </Menu>
               </div>
@@ -131,13 +133,9 @@ export default function FolderCard({
 
           <div className="mt-3 flex items-center justify-between gap-3">
             <div className="flex flex-wrap gap-2">
-              <span className="rounded-full border border-[color:var(--ui-border)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ backgroundColor: "var(--ui-surface-2)", color: "var(--ui-text-subtle)" }}>
-                Folder
-              </span>
+              <Badge className="uppercase tracking-[0.14em]">Folder</Badge>
               {isDragOver && (
-                <span className="rounded-full border border-BrandOrange/35 bg-BrandOrange/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-BrandOrange">
-                  Drop Here
-                </span>
+                <Badge status="info" className="uppercase tracking-[0.14em]">Drop Here</Badge>
               )}
             </div>
             <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[color:var(--ui-border)] text-[color:var(--ui-text-muted)] transition group-hover:border-BrandOrange/30 group-hover:text-BrandOrange" style={{ backgroundColor: "var(--ui-surface-2)" }}>

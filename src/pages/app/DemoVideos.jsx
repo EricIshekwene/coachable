@@ -332,9 +332,7 @@ export default function DemoVideos() {
       )}
 
       {!loading && !search && videos.length === 0 && (
-        <div className="rounded-xl border border-[color:var(--ui-border)] py-12 text-center">
-          <p style={{ color: "var(--ui-text-subtle)" }}>No videos yet — check back soon</p>
-        </div>
+        <EmptyState title="No videos yet" subtitle="Check back soon" contained />
       )}
 
       {!loading && readyVideos.length > 0 && (

@@ -1,4 +1,4 @@
-import { Alert, Badge, Button, Card, Checkbox, Chip, EmptyState, Input, Popover, Spinner, Tabs } from "../../design-system/components";
+import { Alert, Badge, Button, Card, Checkbox, Chip, EmptyState, Input, Popover, SearchInput, Spinner, Tabs } from "../../design-system/components";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -325,27 +325,13 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
         {plays.length > 0 && (
           <div className="border-b border-[color:var(--ui-border)] px-6 py-3">
             <div className="flex flex-col gap-3 md:flex-row md:items-center">
-              <div className="relative flex-1">
-                <FiSearch className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm" style={{ color: "var(--ui-text-subtle)" }} />
-                <Input
-                  type="text"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search plays by title or tag..."
-                  className="w-full rounded-xl border border-[color:var(--ui-border)] py-2.5 pl-10 pr-10 text-sm outline-none transition hover:border-[color:var(--ui-border-strong)] focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
-                  style={{ backgroundColor: "var(--ui-surface)", color: "var(--ui-text)" }}
-                />
-                {search && (
-                  <Button variant="ghost"
-                    type="button"
-                    onClick={() => setSearch("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg p-1 text-[color:var(--ui-text-subtle)] transition hover:text-[color:var(--ui-text)]"
-                    aria-label="Clear search"
-                  >
-                    <FiX className="text-sm" />
-                  </Button>
-                )}
-              </div>
+              <SearchInput
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                onClear={() => setSearch("")}
+                placeholder="Search plays by title or tag..."
+                className="flex-1"
+              />
 
               <div>
                 <Button variant="primary"

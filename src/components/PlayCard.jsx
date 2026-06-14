@@ -4,7 +4,7 @@ import {
   FiCheckSquare, FiSquare, FiExternalLink, FiCopy, FiSend, FiFolder, FiTrash2,
 } from "react-icons/fi";
 import PlayPreviewCard from "./PlayPreviewCard";
-import { Menu, MenuItem } from "../design-system/components";
+import { Button, Chip, Divider, Menu, MenuItem } from "../design-system/components";
 
 /**
  * Formats an ISO timestamp as a short relative string ("Just now", "5m ago", …).
@@ -169,13 +169,15 @@ export default function PlayCard({
 
             {isCoach && (
               <div className="shrink-0">
-                <button
+                <Button
                   ref={menuBtnRef}
+                  variant="ghost"
+                  size="icon"
                   onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}
-                  className="rounded-lg p-1.5 text-[color:var(--ui-text-subtle)] opacity-100 transition hover:bg-[color:var(--ui-surface-2)] hover:text-[color:var(--ui-text)] md:opacity-0 group-hover:opacity-100"
+                  className="opacity-100 md:opacity-0 group-hover:opacity-100"
                 >
                   <FiMoreHorizontal className="text-sm" />
-                </button>
+                </Button>
                 <Menu
                   open={menuOpen}
                   anchorRef={menuBtnRef}
@@ -205,7 +207,7 @@ export default function PlayCard({
                   {inFolder && (
                     <MenuItem icon={<FiFolder />} onSelect={() => { onRemoveFromFolder(play.id); setMenuOpen(false); }}>Remove from Folder</MenuItem>
                   )}
-                  <div style={{ height: 1, backgroundColor: "var(--ui-border)", margin: "4px 8px" }} />
+                  <Divider className="mx-2 my-1" />
                   <MenuItem icon={<FiTrash2 />} destructive onSelect={() => { onDelete(play.id); setMenuOpen(false); }}>Move to Trash</MenuItem>
                 </Menu>
               </div>
@@ -215,10 +217,7 @@ export default function PlayCard({
           {(play.tags || []).length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
               {play.tags.map((tag) => (
-                <span key={tag} className="inline-flex items-center gap-1 rounded-full border border-[color:var(--ui-border)] px-2.5 py-1 text-[10px]" style={{ backgroundColor: "var(--ui-surface-2)", color: "var(--ui-text-muted)" }}>
-                  <FiTag className="text-[8px]" />
-                  {tag}
-                </span>
+                <Chip key={tag} leadingIcon={<FiTag className="text-[8px]" />}>{tag}</Chip>
               ))}
             </div>
           )}
@@ -229,14 +228,14 @@ export default function PlayCard({
               {formatRelativeTime(play.updatedAt || play.createdAt)}
             </span>
             {canEdit && (
-              <button
+              <Button
+                variant="outline"
+                size="sm"
+                startIcon={<FiEdit2 />}
                 onClick={(e) => { e.stopPropagation(); onEdit(play.id); }}
-                className="flex items-center gap-1 rounded-full border border-[color:var(--ui-border)] px-3 py-1.5 text-[11px] text-[color:var(--ui-text-muted)] transition hover:border-BrandOrange/30 hover:text-BrandOrange"
-                style={{ backgroundColor: "var(--ui-surface-2)" }}
               >
-                <FiEdit2 className="text-[10px]" />
                 Edit
-              </button>
+              </Button>
             )}
           </div>
         </div>

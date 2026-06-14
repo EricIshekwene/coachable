@@ -669,9 +669,7 @@ export default function Plays() {
         {allTags.length > 0 && (
           <div className="mb-4 flex flex-wrap gap-1.5">
             {allTags.filter((t) => !bulkTagInput || t.toLowerCase().includes(bulkTagInput.toLowerCase())).slice(0, 12).map((tag) => (
-              <Button variant="ghost" key={tag} onClick={() => setBulkTagInput(tag)} className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] text-[color:var(--ui-text-muted)] transition hover:text-[color:var(--ui-text)]" style={{ backgroundColor: "var(--ui-surface-2)" }}>
-                <FiTag className="text-[8px]" />{tag}
-              </Button>
+              <Chip key={tag} onClick={() => setBulkTagInput(tag)} leadingIcon={<FiTag className="text-[8px]" />}>{tag}</Chip>
             ))}
           </div>
         )}

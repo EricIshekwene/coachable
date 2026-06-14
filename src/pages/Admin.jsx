@@ -27,8 +27,10 @@ import {
   Select,
   Checkbox,
   Modal,
+  Avatar,
   Badge,
   EmptyState,
+  SearchInput,
   Spinner,
   DataTable,
 } from "../design-system/components";
@@ -1068,14 +1070,7 @@ export default function Admin() {
         const hasCoachingRole = Boolean(u.can_view_activity);
         return (
           <div className="flex items-start gap-3">
-            <div
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
-              style={hasCoachingRole
-                ? { backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }
-                : { backgroundColor: "var(--adm-surface3)", color: "var(--adm-text2)" }}
-            >
-              {getUserInitials(u.name, u.email)}
-            </div>
+            <Avatar name={u.name || u.email} size="md" />
             <div className="min-w-0 flex-1">
               <button
                 type="button"
@@ -1118,9 +1113,9 @@ export default function Admin() {
         return (
           <div className="flex gap-1 overflow-hidden">
             {memberships.slice(0, 1).map((m) => (
-              <span key={`${u.id}-${m.teamId}-${m.role}`} className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold truncate" style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-text2)" }}>
-                {m.teamName} <span className="ml-1 shrink-0" style={{ color: "var(--adm-muted)" }}>{formatRole(m.role)}</span>
-              </span>
+              <Badge key={`${u.id}-${m.teamId}-${m.role}`} className="truncate">
+                {m.teamName} <span className="ml-1 shrink-0 opacity-60">{formatRole(m.role)}</span>
+              </Badge>
             ))}
             {memberships.length > 1 && (
               <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap" style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-muted)" }}>
@@ -1141,9 +1136,7 @@ export default function Admin() {
         const isPlayerOnly = memberships.length > 0 && memberships.every((m) => m.role === "player");
         if (isPlayerOnly) return <span className="text-xs" style={{ color: "var(--adm-muted)" }}>—</span>;
         return (
-          <span className="inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }}>
-            {u.plays_created ?? 0}
-          </span>
+          <Badge status="info">{u.plays_created ?? 0}</Badge>
         );
       },
     },
@@ -1415,36 +1408,19 @@ export default function Admin() {
               <div className="flex flex-col gap-3">
               {/* Row 1: search + hide + copy */}
               <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-                <div className="relative min-w-[240px] flex-1">
-                  <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--adm-muted)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35m1.85-5.15a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" />
-                  </svg>
-                  <input
-                    type="text"
-                    value={usersSearch}
-                    onChange={(e) => setUsersSearch(e.target.value)}
-                    placeholder="Search by name, email, or team"
-                    className="w-full rounded-[var(--adm-radius)] py-3 pl-10 pr-16 text-sm outline-none transition-colors"
-                    style={{ backgroundColor: "var(--adm-bg)", border: "1px solid var(--adm-border2)", color: "var(--adm-text)" }}
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor = "var(--adm-accent)";
-                      e.currentTarget.style.boxShadow = "0 0 0 3px var(--adm-accent-dim)";
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = "var(--adm-border2)";
-                      e.currentTarget.style.boxShadow = "none";
-                    }}
-                  />
-                  {usersSearch && (
-                    <button type="button" onClick={() => setUsersSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs transition-opacity hover:opacity-70" style={{ color: "var(--adm-muted)" }}>
-                      Clear
-                    </button>
-                  )}
-                </div>
-                <span className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-[11px] font-semibold" style={{ backgroundColor: filteredUsers.length === users.length ? "var(--adm-surface3)" : "var(--adm-accent-dim)", color: filteredUsers.length === users.length ? "var(--adm-muted)" : "var(--adm-accent)" }}>
-                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: filteredUsers.length === users.length ? "var(--adm-muted)" : "var(--adm-accent)" }} />
+                <SearchInput
+                  value={usersSearch}
+                  onChange={(e) => setUsersSearch(e.target.value)}
+                  onClear={() => setUsersSearch("")}
+                  placeholder="Search by name, email, or team"
+                  className="min-w-[240px] flex-1"
+                />
+                <Badge
+                  status={filteredUsers.length !== users.length ? "info" : undefined}
+                  dot
+                >
                   {filteredUsers.length === users.length ? "Full directory" : "Filtered view"}
-                </span>
+                </Badge>
                 <div className="relative shrink-0" ref={hideDropdownRef}>
                   <Button variant="secondary" size="sm" onClick={() => setHideDropdownOpen((o) => !o)}>
                     Hide {hideOptions.size > 0 && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-white leading-none" style={{ backgroundColor: "var(--adm-accent)" }}>{hideOptions.size}</span>}
