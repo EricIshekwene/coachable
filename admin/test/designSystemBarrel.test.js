@@ -22,7 +22,8 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 describe("design-system barrel", () => {
   const canonical = [
     "Button", "Field", "Input", "Textarea", "Select", "Checkbox", "Toggle", "RadioGroup",
-    "Card", "Section", "Modal", "Alert", "Spinner", "Skeleton", "Progress",
+    "Card", "Section", "Modal", "ConfirmDialog", "Toast", "Menu", "MenuItem", "Popover",
+    "Alert", "Spinner", "Skeleton", "Progress",
     "EmptyState", "Badge", "Chip", "Avatar", "Tabs", "Breadcrumbs", "Pagination",
     "Tooltip", "Divider", "PageShell", "Page", "PageHeader",
   ];

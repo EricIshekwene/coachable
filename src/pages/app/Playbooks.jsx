@@ -1,4 +1,4 @@
-import { Alert, Badge, Button, Card, Checkbox, Chip, EmptyState, Input, Spinner, Tabs } from "../../design-system/components";
+import { Alert, Badge, Button, Card, Checkbox, Chip, EmptyState, Input, Popover, Spinner, Tabs } from "../../design-system/components";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -208,7 +208,7 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
   const [search, setSearch] = useState("");
   const [activeTags, setActiveTags] = useState([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const filtersRef = useRef(null);
+  const filterBtnRef = useRef(null);
 
   useEffect(() => {
     setLoading(true);
@@ -235,17 +235,6 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
   );
   const hasActivePlayFilters = search.trim().length > 0 || activeTags.length > 0;
   const totalPlayCount = loading ? Number(section?.playCount || 0) : plays.length;
-
-  useEffect(() => {
-    const handlePointerDown = (event) => {
-      if (!filtersRef.current?.contains(event.target)) {
-        setFiltersOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, []);
 
   useEffect(() => {
     const availableKeys = new Set(sectionTags.map(normalizeFilterValue));
@@ -356,8 +345,9 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
                 )}
               </div>
 
-              <div ref={filtersRef} className="relative">
+              <div>
                 <Button variant="primary"
+                  ref={filterBtnRef}
                   type="button"
                   onClick={() => setFiltersOpen((prev) => !prev)}
                   className={`flex min-w-[148px] items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition ${
@@ -374,8 +364,14 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
                   <FiChevronDown className={`text-sm transition ${filtersOpen ? "rotate-180" : ""}`} />
                 </Button>
 
-                {filtersOpen && (
-                  <div className="absolute right-0 top-[calc(100%+0.75rem)] z-20 w-[280px] rounded-2xl border border-BrandGray2/20 bg-BrandBlack p-3 shadow-2xl shadow-black/30">
+                <Popover
+                  open={filtersOpen}
+                  anchorRef={filterBtnRef}
+                  onClose={() => setFiltersOpen(false)}
+                  placement="bottom-end"
+                  size="md"
+                >
+                  <div className="p-3">
                     <div className="mb-2 flex items-center justify-between gap-3">
                       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-BrandGray2">
                         Section Tags
@@ -418,7 +414,7 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
                       </div>
                     )}
                   </div>
-                )}
+                </Popover>
               </div>
             </div>
           </div>

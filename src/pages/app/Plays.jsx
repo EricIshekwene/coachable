@@ -1,4 +1,4 @@
-import { Breadcrumbs, Button, Card, Chip, EmptyState, Input, Section, Spinner, Textarea, Select } from "../../design-system/components";
+import { Breadcrumbs, Button, Card, Chip, EmptyState, Input, Modal, Section, Spinner, Textarea, Select, Toast } from "../../design-system/components";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -100,11 +100,6 @@ export default function Plays() {
   }, [teamId]);
 
   useEffect(() => { if (newFolderMode) newFolderRef.current?.focus(); }, [newFolderMode]);
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 2500);
-    return () => clearTimeout(t);
-  }, [toast]);
 
   const showToast = (msg) => setToast(msg);
 
@@ -399,7 +394,7 @@ export default function Plays() {
             ))}
           </div>
         )}
-        {toast && (<div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-[fadeInUp_0.25s_ease-out]"><div className="flex items-center gap-2 rounded-lg border border-BrandGray2/20 bg-BrandBlack px-4 py-3 shadow-xl"><div className="h-1 w-1 rounded-full bg-BrandOrange" /><p className="text-sm text-BrandText">{toast}</p></div></div>)}
+        <Toast open={!!toast} title={toast ?? ""} onClose={() => setToast(null)} duration={2500} position="bottom-center" />
       </AppPage>
     );
   }
@@ -631,131 +626,115 @@ export default function Plays() {
       )}
 
       {/* Move-to-folder modal */}
-      {moveTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 font-DmSans" onClick={() => setMoveTarget(null)}>
-          <div className="w-full max-w-sm rounded-xl border border-BrandGray2/20 bg-BrandBlack p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="font-Manrope text-base font-bold">Move to folder</h2>
-            <p className="mt-1 text-sm text-BrandGray2">Select a folder for &ldquo;{plays.find((p) => p.id === moveTarget)?.title}&rdquo;</p>
-            <div className="mt-4 flex flex-col gap-1">
-              {folders.map((folder) => { const alreadyIn = folder.playIds.includes(moveTarget); return (<Button variant="ghost" key={folder.id} disabled={alreadyIn} onClick={() => handleMovePlayToFolder(moveTarget, folder.id)} className={`flex items-center gap-3 rounded-lg px-3.5 py-3 text-left text-sm transition ${alreadyIn ? "cursor-not-allowed text-BrandGray2/50" : "text-BrandGray hover:bg-BrandBlack2 hover:text-BrandText"}`}><FiFolder className="text-base" />{folder.name}{alreadyIn && <span className="ml-auto text-[10px] text-BrandGray2">Already in folder</span>}</Button>); })}
-            </div>
-          </div>
+      <Modal open={!!moveTarget} onClose={() => setMoveTarget(null)} title="Move to folder" size="sm">
+        <p className="mb-4 text-sm" style={{ color: "var(--ui-text-muted)" }}>
+          Select a folder for &ldquo;{plays.find((p) => p.id === moveTarget)?.title}&rdquo;
+        </p>
+        <div className="flex flex-col gap-1">
+          {folders.map((folder) => {
+            const alreadyIn = folder.playIds.includes(moveTarget);
+            return (
+              <Button variant="ghost" key={folder.id} disabled={alreadyIn} onClick={() => handleMovePlayToFolder(moveTarget, folder.id)}
+                className={`flex items-center gap-3 rounded-lg px-3.5 py-3 text-left text-sm transition ${alreadyIn ? "cursor-not-allowed text-BrandGray2/50" : "text-BrandGray hover:bg-BrandBlack2 hover:text-BrandText"}`}>
+                <FiFolder className="text-base" />{folder.name}
+                {alreadyIn && <span className="ml-auto text-[10px] text-BrandGray2">Already in folder</span>}
+              </Button>
+            );
+          })}
         </div>
-      )}
+      </Modal>
 
       {/* Bulk move modal */}
-      {bulkMoveOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 font-DmSans" onClick={() => setBulkMoveOpen(false)}>
-          <div className="w-full max-w-sm rounded-xl border border-BrandGray2/20 bg-BrandBlack p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="font-Manrope text-base font-bold">Move {bulkSelected.size} play{bulkSelected.size !== 1 ? "s" : ""} to folder</h2>
-            <div className="mt-4 flex flex-col gap-1">
-              {folders.map((folder) => (
-                <Button variant="ghost" key={folder.id} onClick={() => handleBulkMove(folder.id)} className="flex items-center gap-3 rounded-lg px-3.5 py-3 text-left text-sm text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText">
-                  <FiFolder className="text-base" />{folder.name}
-                </Button>
-              ))}
-            </div>
-          </div>
+      <Modal open={bulkMoveOpen} onClose={() => setBulkMoveOpen(false)} title={`Move ${bulkSelected.size} play${bulkSelected.size !== 1 ? "s" : ""} to folder`} size="sm">
+        <div className="flex flex-col gap-1">
+          {folders.map((folder) => (
+            <Button variant="ghost" key={folder.id} onClick={() => handleBulkMove(folder.id)}
+              className="flex items-center gap-3 rounded-lg px-3.5 py-3 text-left text-sm text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText">
+              <FiFolder className="text-base" />{folder.name}
+            </Button>
+          ))}
         </div>
-      )}
+      </Modal>
 
       {/* Bulk tag modal */}
-      {bulkTagOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 font-DmSans" onClick={() => { setBulkTagOpen(false); setBulkTagInput(""); }}>
-          <div className="w-full max-w-sm rounded-xl border border-BrandGray2/20 bg-BrandBlack p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="font-Manrope text-base font-bold">Add tag to {bulkSelected.size} play{bulkSelected.size !== 1 ? "s" : ""}</h2>
-            <Input
-              autoFocus
-              type="text"
-              value={bulkTagInput}
-              onChange={(e) => setBulkTagInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleBulkTag(); if (e.key === "Escape") { setBulkTagOpen(false); setBulkTagInput(""); } }}
-              placeholder="Tag name..."
-              maxLength={40}
-              className="mt-4 w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none placeholder:text-BrandGray2 focus:border-BrandOrange"
-            />
-            {allTags.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {allTags.filter((t) => !bulkTagInput || t.toLowerCase().includes(bulkTagInput.toLowerCase())).slice(0, 12).map((tag) => (
-                  <Button variant="ghost" key={tag} onClick={() => setBulkTagInput(tag)} className="inline-flex items-center gap-1 rounded-md bg-BrandGray2/15 px-2 py-0.5 text-[10px] text-BrandGray transition hover:bg-BrandGray2/25 hover:text-BrandText">
-                    <FiTag className="text-[8px]" />{tag}
-                  </Button>
-                ))}
-              </div>
-            )}
-            <div className="mt-4 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => { setBulkTagOpen(false); setBulkTagInput(""); }} className="rounded-lg border border-BrandGray2/30 px-3.5 py-2 text-sm text-BrandGray transition hover:text-BrandText">Cancel</Button>
-              <Button variant="primary" onClick={handleBulkTag} disabled={!bulkTagInput.trim()} className="rounded-lg bg-BrandOrange px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50">Add Tag</Button>
-            </div>
+      <Modal open={bulkTagOpen} onClose={() => { setBulkTagOpen(false); setBulkTagInput(""); }}
+        title={`Add tag to ${bulkSelected.size} play${bulkSelected.size !== 1 ? "s" : ""}`} size="sm">
+        <Input
+          autoFocus
+          type="text"
+          value={bulkTagInput}
+          onChange={(e) => setBulkTagInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") handleBulkTag(); if (e.key === "Escape") { setBulkTagOpen(false); setBulkTagInput(""); } }}
+          placeholder="Tag name..."
+          maxLength={40}
+          className="mb-3 w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none placeholder:text-BrandGray2 focus:border-BrandOrange"
+        />
+        {allTags.length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-1.5">
+            {allTags.filter((t) => !bulkTagInput || t.toLowerCase().includes(bulkTagInput.toLowerCase())).slice(0, 12).map((tag) => (
+              <Button variant="ghost" key={tag} onClick={() => setBulkTagInput(tag)} className="inline-flex items-center gap-1 rounded-md bg-BrandGray2/15 px-2 py-0.5 text-[10px] text-BrandGray transition hover:bg-BrandGray2/25 hover:text-BrandText">
+                <FiTag className="text-[8px]" />{tag}
+              </Button>
+            ))}
           </div>
+        )}
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => { setBulkTagOpen(false); setBulkTagInput(""); }}>Cancel</Button>
+          <Button variant="primary" onClick={handleBulkTag} disabled={!bulkTagInput.trim()}>Add Tag</Button>
         </div>
-      )}
+      </Modal>
 
       {/* Post to Community modal */}
-      {postTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 font-DmSans" onClick={() => !postLoading && setPostTarget(null)}>
-          <div className="w-full max-w-sm rounded-xl border border-BrandGray2/20 bg-BrandBlack p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="font-Manrope text-base font-bold">Post to Community</h2>
-            <p className="mt-1 text-sm text-BrandGray2">This play will be added to the community playbook for your sport.</p>
-            <div className="mt-4 flex flex-col gap-3">
-              <div>
-                <Input
-                  label="Title"
-                  autoFocus
-                  type="text"
-                  value={postTitle}
-                  onChange={(e) => setPostTitle(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && postTitle.trim()) handlePostToCommunity(); if (e.key === "Escape") setPostTarget(null); }}
-                  placeholder="Play title..."
-                  maxLength={200}
-                  className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none placeholder:text-BrandGray2 focus:border-BrandOrange"
-                />
-              </div>
-              <div>
-                <Textarea
-                  label="Description"
-                  hint="Optional"
-                  value={postBio}
-                  onChange={(e) => setPostBio(e.target.value)}
-                  placeholder="Describe this play..."
-                  rows={3}
-                  maxLength={2000}
-                  className="w-full resize-none rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none placeholder:text-BrandGray2 focus:border-BrandOrange"
-                />
-              </div>
-            </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setPostTarget(null)} disabled={postLoading} className="rounded-lg border border-BrandGray2/30 px-3.5 py-2 text-sm text-BrandGray transition hover:text-BrandText disabled:opacity-50">Cancel</Button>
-              <Button variant="primary" onClick={handlePostToCommunity} disabled={!postTitle.trim() || postLoading} className="flex items-center gap-2 rounded-lg bg-BrandOrange px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50">
-                {postLoading ? <Spinner size="sm" tone="default" label="Posting play" /> : <FiSend className="text-sm" />}
-                {postLoading ? "Posting..." : "Post"}
-              </Button>
-            </div>
-          </div>
+      <Modal open={!!postTarget} onClose={() => !postLoading && setPostTarget(null)} title="Post to Community" size="sm">
+        <p className="mb-4 text-sm" style={{ color: "var(--ui-text-muted)" }}>
+          This play will be added to the community playbook for your sport.
+        </p>
+        <div className="flex flex-col gap-3">
+          <Input
+            label="Title"
+            autoFocus
+            type="text"
+            value={postTitle}
+            onChange={(e) => setPostTitle(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && postTitle.trim()) handlePostToCommunity(); if (e.key === "Escape") setPostTarget(null); }}
+            placeholder="Play title..."
+            maxLength={200}
+          />
+          <Textarea
+            label="Description"
+            hint="Optional"
+            value={postBio}
+            onChange={(e) => setPostBio(e.target.value)}
+            placeholder="Describe this play..."
+            rows={3}
+            maxLength={2000}
+          />
         </div>
-      )}
-
-      {copyFallbackUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 font-DmSans" onClick={() => setCopyFallbackUrl(null)}>
-          <div className="w-full max-w-sm rounded-xl border border-BrandGray2/20 bg-BrandBlack p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="font-Manrope text-base font-bold">Copy this link</h2>
-            <p className="mt-1 text-sm text-BrandGray2">Your browser blocked clipboard access. Copy manually:</p>
-            <Input
-              autoFocus
-              readOnly
-              value={copyFallbackUrl}
-              onFocus={(e) => e.target.select()}
-              onClick={(e) => e.target.select()}
-              className="mt-4 w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none focus:border-BrandOrange"
-            />
-            <div className="mt-4 flex justify-end">
-              <Button variant="primary" onClick={() => setCopyFallbackUrl(null)} className="rounded-lg bg-BrandOrange px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110">Done</Button>
-            </div>
-          </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="outline" onClick={() => setPostTarget(null)} disabled={postLoading}>Cancel</Button>
+          <Button variant="primary" onClick={handlePostToCommunity} disabled={!postTitle.trim() || postLoading}
+            loading={postLoading} startIcon={!postLoading ? <FiSend className="text-sm" /> : undefined}>
+            {postLoading ? "Posting..." : "Post"}
+          </Button>
         </div>
-      )}
+      </Modal>
 
-      {toast && (<div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-[fadeInUp_0.25s_ease-out]"><div className="flex items-center gap-2 rounded-lg border border-BrandGray2/20 bg-BrandBlack px-4 py-3 shadow-xl"><div className="h-1 w-1 rounded-full bg-BrandOrange" /><p className="text-sm text-BrandText">{toast}</p></div></div>)}
+      {/* Copy link fallback modal */}
+      <Modal open={!!copyFallbackUrl} onClose={() => setCopyFallbackUrl(null)} title="Copy this link" size="sm">
+        <p className="mb-3 text-sm" style={{ color: "var(--ui-text-muted)" }}>Your browser blocked clipboard access. Copy manually:</p>
+        <Input
+          autoFocus
+          readOnly
+          value={copyFallbackUrl ?? ""}
+          onFocus={(e) => e.target.select()}
+          onClick={(e) => e.target.select()}
+        />
+        <div className="mt-4 flex justify-end">
+          <Button variant="primary" onClick={() => setCopyFallbackUrl(null)}>Done</Button>
+        </div>
+      </Modal>
+
+      <Toast open={!!toast} title={toast ?? ""} onClose={() => setToast(null)} duration={2500} position="bottom-center" />
     </AppPage>
   );
 }

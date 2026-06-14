@@ -119,7 +119,7 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 | "save prefab modal" | [src/components/SavePrefabModal.jsx](src/components/SavePrefabModal.jsx) |
 | "save to playbook modal" | [src/components/SaveToPlaybookModal.jsx](src/components/SaveToPlaybookModal.jsx) |
 | "auth prompt modal" | [src/components/AuthPromptModal.jsx](src/components/AuthPromptModal.jsx) |
-| "confirm modal" | [src/components/subcomponents/ConfirmModal.jsx](src/components/subcomponents/ConfirmModal.jsx) |
+| "confirm modal" | [src/components/subcomponents/ConfirmModal.jsx](src/components/subcomponents/ConfirmModal.jsx) — compatibility shim over `ConfirmDialog` (Session 4); new code should use `ConfirmDialog` from the design-system barrel |
 | "color picker popover" | [src/components/subcomponents/ColorPickerPopover.jsx](src/components/subcomponents/ColorPickerPopover.jsx) |
 | "prefabs popover" | [src/components/subcomponents/PrefabsPopover.jsx](src/components/subcomponents/PrefabsPopover.jsx) |
 | "generic popovers" | [src/components/subcomponents/Popovers.jsx](src/components/subcomponents/Popovers.jsx) |
@@ -203,8 +203,8 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 | "admin play card", "AdminPlayCard" | [src/admin/components/AdminPlayCard.jsx](src/admin/components/AdminPlayCard.jsx) — extracted from AdminPlaysPage; multi-step menu, permission flags, inline rename; barrel: `src/admin/components/index.js` |
 | "admin folder card", "AdminFolderCard" | [src/admin/components/AdminFolderCard.jsx](src/admin/components/AdminFolderCard.jsx) — folder card with inline rename; barrel: `src/admin/components/index.js` |
 | "admin section row", "AdminSectionRow" | [src/admin/components/AdminSectionRow.jsx](src/admin/components/AdminSectionRow.jsx) — section row with play picker and priority toggle; barrel: `src/admin/components/index.js` |
-| "app play card", "PlayCard" (app Plays page) | [src/components/PlayCard.jsx](src/components/PlayCard.jsx) — self-contained play card (rename, favorite, share, bulk, drag); barrel: `src/components/index.js` |
-| "app folder card", "FolderCard" (app Plays page) | [src/components/FolderCard.jsx](src/components/FolderCard.jsx) — folder card with drag-drop, inline rename; barrel: `src/components/index.js` |
+| "app play card", "PlayCard" (app Plays page) | [src/components/PlayCard.jsx](src/components/PlayCard.jsx) — self-contained play card (rename, favorite, share, bulk, drag); context menu uses `<Menu>` + `<MenuItem>` from design-system (Session 4); barrel: `src/components/index.js` |
+| "app folder card", "FolderCard" (app Plays page) | [src/components/FolderCard.jsx](src/components/FolderCard.jsx) — folder card with drag-drop, inline rename; context menu uses `<Menu>` + `<MenuItem>` from design-system (Session 4); barrel: `src/components/index.js` |
 | "team switcher" | [src/components/TeamSwitcher.jsx](src/components/TeamSwitcher.jsx) |
 | "sport-aware public nav" | [src/components/SportAwarePublicNav.jsx](src/components/SportAwarePublicNav.jsx) |
 
@@ -313,7 +313,7 @@ Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PL
 ## Admin shared UI (`src/admin/`)
 | User says... | Primary file(s) | Notes |
 |---|---|---|
-| "design-system primitives", "Button", "Input", "Field", "Modal", "Card", "Divider", etc. | [src/design-system/components/](src/design-system/components/) (barrel: [index.js](src/design-system/components/index.js)) | Canonical shared components; `Field` owns label/hint/error/count layout; `Divider` provides tokenized horizontal/vertical separation; AdminX names are barrel aliases. Session 2 form migration: [SESSION_2_FORM_MIGRATION.md](src/design-system/SESSION_2_FORM_MIGRATION.md). Session 3 feedback/surface migration: [SESSION_3_FEEDBACK_SURFACE_MIGRATION.md](src/design-system/SESSION_3_FEEDBACK_SURFACE_MIGRATION.md) |
+| "design-system primitives", "Button", "Input", "Field", "Modal", "Card", "Divider", "ConfirmDialog", "Toast", "Menu", "MenuItem", "Popover", etc. | [src/design-system/components/](src/design-system/components/) (barrel: [index.js](src/design-system/components/index.js)) | Canonical shared components; `Field` owns label/hint/error/count layout; `Divider` provides tokenized horizontal/vertical separation; AdminX names are barrel aliases. Session 2 form migration: [SESSION_2_FORM_MIGRATION.md](src/design-system/SESSION_2_FORM_MIGRATION.md). Session 3 feedback/surface migration: [SESSION_3_FEEDBACK_SURFACE_MIGRATION.md](src/design-system/SESSION_3_FEEDBACK_SURFACE_MIGRATION.md). Session 4 overlays (ConfirmDialog, Toast, Menu/MenuItem, Popover): [SESSION_4_OVERLAYS.md](src/design-system/SESSION_4_OVERLAYS.md) |
 
 - [adminNav.js](src/admin/adminNav.js) — admin nav config
 - [AdminContext.jsx](src/admin/AdminContext.jsx) — theme + admin session context + (for staff mode) permissions, hasPerm, hasSportScope

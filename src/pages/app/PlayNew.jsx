@@ -1,4 +1,4 @@
-import { Button, Card, Chip, Divider, Input } from "../../design-system/components";
+import { Button, Card, Chip, Divider, Input, Popover } from "../../design-system/components";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiX, FiClock, FiSearch } from "react-icons/fi";
@@ -69,6 +69,7 @@ export default function PlayNew() {
   const [presetSearch, setPresetSearch] = useState("");
   const [editorMode, setEditorMode] = useState("drawing");
   const inputRef = useRef(null);
+  const tagContainerRef = useRef(null);
   const navigate = useNavigate();
   const { showMessage } = useAppMessage();
   const { user } = useAuth();
@@ -384,6 +385,7 @@ export default function PlayNew() {
 
           {/* Tag chips + input */}
           <div
+            ref={tagContainerRef}
             className="flex min-h-10.5 flex-wrap items-center gap-1.5 rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-2.5 py-2 transition focus-within:border-BrandOrange focus-within:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
             onClick={() => inputRef.current?.focus()}
           >
@@ -408,37 +410,40 @@ export default function PlayNew() {
           </div>
 
           {/* Suggestions dropdown */}
-          {showSuggestions && suggestions.length > 0 && (
-            <div className="relative">
-              <div className="absolute left-0 right-0 top-0 z-20 max-h-56 overflow-auto rounded-lg border border-BrandGray2/30 bg-BrandBlack shadow-lg">
-                {isRecentSection && (
-                  <div className="flex items-center gap-1.5 border-b border-BrandGray2/15 px-3.5 py-1.5">
-                    <FiClock className="text-[10px] text-BrandGray2" />
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-BrandGray2">Recent</span>
-                  </div>
-                )}
-                {suggestions.map((tag, i) => (
-                  <Button variant="primary"
-                    key={tag}
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => addTag(tag)}
-                    onMouseEnter={() => setHighlightedIndex(i)}
-                    className={`flex w-full items-center px-3.5 py-2.5 text-left text-sm transition ${
-                      i === highlightedIndex
-                        ? "bg-BrandOrange/10 text-BrandOrange"
-                        : "text-BrandGray hover:bg-BrandBlack2 hover:text-BrandText"
-                    }`}
-                  >
-                    {tag}
-                    <span className="ml-auto text-[10px] text-BrandGray2">
-                      {i === highlightedIndex ? "Tab / Enter" : ""}
-                    </span>
-                  </Button>
-                ))}
-              </div>
+          <Popover
+            open={showSuggestions && suggestions.length > 0}
+            anchorRef={tagContainerRef}
+            onClose={() => setShowSuggestions(false)}
+            placement="bottom-start"
+          >
+            <div className="max-h-56 overflow-auto" style={{ minWidth: 220 }}>
+              {isRecentSection && (
+                <div className="flex items-center gap-1.5 border-b border-BrandGray2/15 px-3.5 py-1.5">
+                  <FiClock className="text-[10px] text-BrandGray2" />
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-BrandGray2">Recent</span>
+                </div>
+              )}
+              {suggestions.map((tag, i) => (
+                <Button variant="primary"
+                  key={tag}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => addTag(tag)}
+                  onMouseEnter={() => setHighlightedIndex(i)}
+                  className={`flex w-full items-center px-3.5 py-2.5 text-left text-sm transition ${
+                    i === highlightedIndex
+                      ? "bg-BrandOrange/10 text-BrandOrange"
+                      : "text-BrandGray hover:bg-BrandBlack2 hover:text-BrandText"
+                  }`}
+                >
+                  {tag}
+                  <span className="ml-auto text-[10px] text-BrandGray2">
+                    {i === highlightedIndex ? "Tab / Enter" : ""}
+                  </span>
+                </Button>
+              ))}
             </div>
-          )}
+          </Popover>
         </div>
 
         <Divider />

@@ -12,7 +12,10 @@ import { useEffect, useRef } from "react";
  *   hideClose?: boolean,
  * }} props
  */
-export default function Modal({ open, onClose, title, children, width = "max-w-md", hideClose = false, className = "", style, onMouseDown, ...rest }) {
+const SIZE_WIDTH = { sm: "max-w-sm", md: "max-w-md", lg: "max-w-lg", xl: "max-w-xl" };
+
+export default function Modal({ open, onClose, title, children, width, size, noPadding = false, hideClose = false, className = "", style, onMouseDown, ...rest }) {
+  const resolvedWidth = width ?? (size ? (SIZE_WIDTH[size] ?? "max-w-md") : "max-w-md");
   const overlayRef = useRef(null);
 
   // Close on Escape
@@ -38,7 +41,7 @@ export default function Modal({ open, onClose, title, children, width = "max-w-m
       {...rest}
     >
       <div
-        className={`relative max-h-[calc(100dvh-2rem)] w-full overflow-y-auto rounded-[var(--radius-lg)] p-4 sm:p-6 ${width}`}
+        className={`relative max-h-[calc(100dvh-2rem)] w-full overflow-y-auto rounded-[var(--radius-lg)] ${noPadding ? "" : "p-4 sm:p-6"} ${resolvedWidth}`}
         style={{
           backgroundColor: "var(--ui-surface-elevated)",
           border: "1px solid var(--ui-border-strong)",

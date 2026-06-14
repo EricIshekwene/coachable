@@ -4,6 +4,7 @@ import {
   FiCheckSquare, FiSquare, FiExternalLink, FiCopy, FiSend, FiFolder, FiTrash2,
 } from "react-icons/fi";
 import PlayPreviewCard from "./PlayPreviewCard";
+import { Menu, MenuItem } from "../design-system/components";
 
 /**
  * Formats an ISO timestamp as a short relative string ("Just now", "5m ago", …).
@@ -86,17 +87,8 @@ export default function PlayCard({
   const [menuOpen, setMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(play.title || "");
-  const menuRef = useRef(null);
+  const menuBtnRef = useRef(null);
   const renameRef = useRef(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handler = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [menuOpen]);
 
   useEffect(() => { if (renaming) renameRef.current?.focus(); }, [renaming]);
 
@@ -119,9 +111,7 @@ export default function PlayCard({
       draggable={isCoach && !bulkMode}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
-      className={`group relative flex cursor-grab flex-col rounded-2xl border transition active:cursor-grabbing ${
-        menuOpen ? "z-20 overflow-visible" : "overflow-hidden"
-      } ${
+      className={`group relative flex cursor-grab flex-col overflow-hidden rounded-2xl border transition active:cursor-grabbing ${
         bulkMode && selected
           ? "border-BrandOrange/50 bg-BrandOrange/6 shadow-[0_0_0_1px_rgba(255,122,24,0.16)]"
           : "border-BrandGray2/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0)),rgba(24,26,31,0.96)] hover:border-BrandOrange/25 hover:shadow-[0_4px_16px_rgba(0,0,0,0.14)]"
@@ -178,30 +168,46 @@ export default function PlayCard({
             </div>
 
             {isCoach && (
-              <div className="relative shrink-0" ref={menuRef}>
+              <div className="shrink-0">
                 <button
+                  ref={menuBtnRef}
                   onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}
                   className="rounded-lg p-1.5 text-BrandGray2 opacity-100 transition hover:bg-BrandBlack2 hover:text-BrandText md:opacity-0 group-hover:opacity-100"
                 >
                   <FiMoreHorizontal className="text-sm" />
                 </button>
-                {menuOpen && (
-                  <div className="absolute right-0 bottom-full z-50 mb-1 w-48 rounded-lg border border-BrandGray2/20 bg-BrandBlack shadow-xl" onClick={(e) => e.stopPropagation()}>
-                    <button onClick={() => { onOpen(play.id); setMenuOpen(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiExternalLink className="text-sm" /> Open</button>
-                    <button onClick={() => { onToggleFavorite(play.id); setMenuOpen(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiStar className={`text-sm ${play.favorited ? "fill-BrandOrange text-BrandOrange" : ""}`} />{play.favorited ? "Unfavorite" : "Favorite"}</button>
-                    <button onClick={() => { onShare(play.id); setMenuOpen(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiCopy className="text-sm" /> Share</button>
-                    <button onClick={() => { onDuplicate(play.id); setMenuOpen(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiCopy className="text-sm" /> Duplicate</button>
-                    <button onClick={() => { onToggleHidden(play.id); setMenuOpen(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText">{play.hiddenFromPlayers ? <><FiEye className="text-sm" /> Show to Players</> : <><FiEyeOff className="text-sm" /> Hide from Players</>}</button>
-                    {canPostToCommunity && (
-                      <button onClick={() => { onPostToCommunity(play.id); setMenuOpen(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiSend className="text-sm" /> Post to Community</button>
-                    )}
-                    <button onClick={startRename} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiEdit3 className="text-sm" /> Rename</button>
-                    {hasFolders && (<button onClick={() => { onMoveRequest(play.id); setMenuOpen(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiFolder className="text-sm" /> Move to Folder</button>)}
-                    {inFolder && (<button onClick={() => { onRemoveFromFolder(play.id); setMenuOpen(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiFolder className="text-sm" /> Remove from Folder</button>)}
-                    <div className="mx-2 my-1 h-px bg-BrandGray2/15" />
-                    <button onClick={() => { onDelete(play.id); setMenuOpen(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-red-400 transition hover:bg-red-500/10"><FiTrash2 className="text-sm" /> Move to Trash</button>
-                  </div>
-                )}
+                <Menu
+                  open={menuOpen}
+                  anchorRef={menuBtnRef}
+                  onClose={() => setMenuOpen(false)}
+                  placement="top-end"
+                  width={192}
+                >
+                  <MenuItem icon={<FiExternalLink />} onSelect={() => { onOpen(play.id); setMenuOpen(false); }}>Open</MenuItem>
+                  <MenuItem icon={<FiStar className={play.favorited ? "fill-BrandOrange text-BrandOrange" : ""} />} onSelect={() => { onToggleFavorite(play.id); setMenuOpen(false); }}>
+                    {play.favorited ? "Unfavorite" : "Favorite"}
+                  </MenuItem>
+                  <MenuItem icon={<FiCopy />} onSelect={() => { onShare(play.id); setMenuOpen(false); }}>Share</MenuItem>
+                  <MenuItem icon={<FiCopy />} onSelect={() => { onDuplicate(play.id); setMenuOpen(false); }}>Duplicate</MenuItem>
+                  <MenuItem
+                    icon={play.hiddenFromPlayers ? <FiEye /> : <FiEyeOff />}
+                    onSelect={() => { onToggleHidden(play.id); setMenuOpen(false); }}
+                  >
+                    {play.hiddenFromPlayers ? "Show to Players" : "Hide from Players"}
+                  </MenuItem>
+                  {canPostToCommunity && (
+                    <MenuItem icon={<FiSend />} onSelect={() => { onPostToCommunity(play.id); setMenuOpen(false); }}>Post to Community</MenuItem>
+                  )}
+                  <MenuItem icon={<FiEdit3 />} onSelect={startRename}>Rename</MenuItem>
+                  {hasFolders && (
+                    <MenuItem icon={<FiFolder />} onSelect={() => { onMoveRequest(play.id); setMenuOpen(false); }}>Move to Folder</MenuItem>
+                  )}
+                  {inFolder && (
+                    <MenuItem icon={<FiFolder />} onSelect={() => { onRemoveFromFolder(play.id); setMenuOpen(false); }}>Remove from Folder</MenuItem>
+                  )}
+                  <div style={{ height: 1, backgroundColor: "var(--ui-border)", margin: "4px 8px" }} />
+                  <MenuItem icon={<FiTrash2 />} destructive onSelect={() => { onDelete(play.id); setMenuOpen(false); }}>Move to Trash</MenuItem>
+                </Menu>
               </div>
             )}
           </div>

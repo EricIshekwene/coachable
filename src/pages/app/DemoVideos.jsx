@@ -1,4 +1,4 @@
-import { Alert, Badge, Button, Card, Divider, EmptyState, Input, Section, Spinner } from "../../design-system/components";
+import { Alert, Badge, Button, Card, Divider, EmptyState, Input, Modal, Section, Spinner } from "../../design-system/components";
 /**
  * How To page — searchable FAQs and tutorial videos.
  * FAQs are hardcoded with embedded keywords for search.
@@ -259,33 +259,30 @@ export default function DemoVideos() {
   return (
     <div className="overflow-y-auto px-4 py-6 sm:px-6 sm:py-8" style={{ minHeight: "100%" }}>
       {/* Video player modal */}
-      {activeYtId && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
-          onClick={() => setActiveYtId(null)}
-        >
-          <div
-            className="w-full max-w-3xl overflow-hidden rounded-2xl shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="relative" style={{ paddingBottom: "56.25%" }}>
-              <iframe
-                src={buildEmbedUrl(activeYtId)}
-                className="absolute inset-0 h-full w-full"
-                allow="autoplay; encrypted-media; picture-in-picture"
-                allowFullScreen
-                title="Tutorial video"
-              />
-            </div>
-            <Divider />
-            <div className="flex justify-end bg-[#1a1a1a] px-4 py-2">
-              <Button variant="ghost" onClick={() => setActiveYtId(null)} className="text-xs text-BrandGray transition hover:text-white">
-                Close
-              </Button>
-            </div>
-          </div>
+      <Modal
+        open={!!activeYtId}
+        onClose={() => setActiveYtId(null)}
+        width="max-w-3xl"
+        hideClose
+        noPadding
+        style={{ backgroundColor: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)" }}
+      >
+        <div className="relative" style={{ paddingBottom: "56.25%" }}>
+          <iframe
+            src={activeYtId ? buildEmbedUrl(activeYtId) : undefined}
+            className="absolute inset-0 h-full w-full"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+            title="Tutorial video"
+          />
         </div>
-      )}
+        <Divider />
+        <div className="flex justify-end px-4 py-2" style={{ backgroundColor: "#1a1a1a" }}>
+          <Button variant="ghost" onClick={() => setActiveYtId(null)} className="text-xs text-BrandGray transition hover:text-white">
+            Close
+          </Button>
+        </div>
+      </Modal>
 
       {/* Header */}
       <div className="mb-5">

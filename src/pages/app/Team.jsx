@@ -1,4 +1,4 @@
-import { Avatar, Badge, Button, Card, EmptyState, Input, Section, Tabs } from "../../design-system/components";
+import { Avatar, Badge, Button, Card, ConfirmDialog, EmptyState, Input, Section, Tabs } from "../../design-system/components";
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useAppMessage } from "../../context/AppMessageContext";
@@ -325,39 +325,17 @@ export default function Team() {
         </div>
       </Section>
 
-      {/* Remove member confirmation modal */}
-      {confirmRemove && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setConfirmRemove(null)}>
-          <div className="w-full max-w-sm rounded-xl border border-BrandGray2/20 bg-BrandBlack p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/15">
-                <FiUserMinus className="text-red-400" />
-              </div>
-              <div>
-                <h2 className="font-Manrope text-base font-bold text-BrandText">Remove member</h2>
-                <p className="text-xs text-BrandGray2">This action cannot be undone</p>
-              </div>
-            </div>
-            <p className="text-sm text-BrandGray leading-relaxed">
-              Remove <strong className="text-BrandText">{confirmRemove.name}</strong> from the team? They will be notified by email.
-            </p>
-            <div className="mt-5 flex justify-end gap-2">
-              <Button variant="outline"
-                onClick={() => setConfirmRemove(null)}
-                className="rounded-lg border border-BrandGray2/40 px-3.5 py-2 text-sm text-BrandGray transition hover:text-BrandText"
-              >
-                Cancel
-              </Button>
-              <Button variant="danger"
-                onClick={handleRemoveMember}
-                className="rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
-              >
-                Remove
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Remove member confirmation dialog */}
+      <ConfirmDialog
+        open={!!confirmRemove}
+        title="Remove member"
+        description={confirmRemove ? `Remove ${confirmRemove.name} from the team? This action cannot be undone. They will be notified by email.` : ""}
+        confirmLabel="Remove"
+        cancelLabel="Cancel"
+        tone="danger"
+        onConfirm={handleRemoveMember}
+        onCancel={() => setConfirmRemove(null)}
+      />
     </div>
   );
 }

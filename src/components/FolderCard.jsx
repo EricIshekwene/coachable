@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { FiFolder, FiMoreHorizontal, FiChevronRight, FiCopy, FiEdit3, FiTrash2 } from "react-icons/fi";
+import { Menu, MenuItem } from "../design-system/components";
 
 /**
  * A folder card for the main-app Plays grid. Self-contained: owns its own
@@ -40,17 +41,8 @@ export default function FolderCard({
   const [menuOpen, setMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(folder.name);
-  const menuRef = useRef(null);
+  const menuBtnRef = useRef(null);
   const renameRef = useRef(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handler = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [menuOpen]);
 
   useEffect(() => { if (renaming) renameRef.current?.focus(); }, [renaming]);
 
@@ -73,9 +65,7 @@ export default function FolderCard({
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
-      className={`group relative cursor-pointer rounded-2xl border transition ${
-        menuOpen ? "z-20 overflow-visible" : "overflow-hidden"
-      } ${
+      className={`group relative cursor-pointer overflow-hidden rounded-2xl border transition ${
         isDragOver
           ? "border-BrandOrange/60 bg-BrandOrange/8 shadow-[0_0_0_2px_rgba(255,122,24,0.18)]"
           : "border-BrandGray2/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0)),rgba(24,26,31,0.96)] hover:border-BrandOrange/25 hover:bg-[linear-gradient(180deg,rgba(255,122,24,0.05),rgba(255,255,255,0.02)),rgba(24,26,31,0.98)]"
@@ -115,21 +105,26 @@ export default function FolderCard({
             </div>
 
             {isCoach && (
-              <div className="relative shrink-0" ref={menuRef}>
+              <div className="shrink-0">
                 <button
+                  ref={menuBtnRef}
                   onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}
                   className="rounded-lg p-1.5 text-BrandGray2 opacity-100 transition hover:bg-BrandBlack2 hover:text-BrandText md:opacity-0 group-hover:opacity-100"
                 >
                   <FiMoreHorizontal className="text-sm" />
                 </button>
-                {menuOpen && (
-                  <div className="absolute right-0 bottom-full z-50 mb-1 w-48 rounded-lg border border-BrandGray2/20 bg-BrandBlack shadow-xl" onClick={(e) => e.stopPropagation()}>
-                    <button onClick={() => { onShare(folder.id); setMenuOpen(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiCopy className="text-sm" /> Share Folder</button>
-                    <button onClick={startRename} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"><FiEdit3 className="text-sm" /> Rename</button>
-                    <div className="mx-2 my-1 h-px bg-BrandGray2/15" />
-                    <button onClick={() => { onDelete(folder.id); setMenuOpen(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs text-red-400 transition hover:bg-red-500/10"><FiTrash2 className="text-sm" /> Delete</button>
-                  </div>
-                )}
+                <Menu
+                  open={menuOpen}
+                  anchorRef={menuBtnRef}
+                  onClose={() => setMenuOpen(false)}
+                  placement="top-end"
+                  width={192}
+                >
+                  <MenuItem icon={<FiCopy />} onSelect={() => { onShare(folder.id); setMenuOpen(false); }}>Share Folder</MenuItem>
+                  <MenuItem icon={<FiEdit3 />} onSelect={startRename}>Rename</MenuItem>
+                  <div style={{ height: 1, backgroundColor: "var(--ui-border)", margin: "4px 8px" }} />
+                  <MenuItem icon={<FiTrash2 />} destructive onSelect={() => { onDelete(folder.id); setMenuOpen(false); }}>Delete</MenuItem>
+                </Menu>
               </div>
             )}
           </div>

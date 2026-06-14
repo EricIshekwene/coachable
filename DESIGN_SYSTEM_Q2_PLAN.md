@@ -41,6 +41,78 @@ Grep hits from excluded paths are retained in the audit evidence and marked
 - Current MUI usage is `Slider` only, in editor/canvas-adjacent components. No current
   source file imports MUI `Dialog` or `Modal`.
 
+---
+
+## 0. Cross-cutting Implementation Rules
+
+These rules apply to every session. They supplement `CLAUDE.md`/`AGENTS.md` and are
+repeated here so the executing agent always has them in scope.
+
+### `data-component` attribute
+
+Every component created in `src/design-system/components/` **must** add
+`data-component="ComponentName"` to its outermost DOM element. This is the attribute
+the Dev Overlay (Ctrl+Shift+D, `src/components/DevOverlay/`) reads to render component
+badges. No exceptions — a component without this attr is invisible to the overlay.
+
+```jsx
+// example
+export default function Button({ ... }) {
+  return (
+    <button data-component="Button" ...>
+      {children}
+    </button>
+  );
+}
+```
+
+### Layout components — re-export only, do not move files
+
+The five layout primitives already exist at `src/components/layout/`:
+`AppShell`, `AppPage`, `AppHeader`, `AppSection`, `AppCard`.
+
+Do **not** move those files. Instead, the Session 1 design-system barrel re-exports them
+under their canonical shared names:
+
+```js
+// src/design-system/components/index.js
+export { default as PageShell } from "../../components/layout/AppShell";
+export { default as Page }      from "../../components/layout/AppPage";
+export { default as PageHeader } from "../../components/layout/AppHeader";
+// Section and Card will be the new shared primitives; AppSection/AppCard become aliases.
+```
+
+`src/components/layout/index.js` stays intact for the existing callers.
+
+### `--ui-*` token placement
+
+Add `--ui-*` tokens to the **`:root` block** in `src/index.css`, not under `@theme`.
+`@theme` generates Tailwind utility classes; `:root` declares runtime CSS custom
+properties that components read with `var()`. Keep them beside the existing radius and
+shadow tokens.
+
+### Test file location
+
+| Test type | Location |
+|---|---|
+| Logic-mirror tests (pure class/state/resolver logic — no DOM) | `admin/test/` — new file per group, e.g. `sharedPrimitives.test.js` |
+| RTL / interaction tests (keyboard, focus, aria, click) | `src/test/` — one file per component or group |
+
+### CRAWLER_MAP.md
+
+Update `CRAWLER_MAP.md` in the same commit as any new file, rename, or directory
+creation. Add new design-system entries under the `Admin shared UI` or a new
+`Design system primitives` block — do not let them be undiscoverable.
+
+### Implementation documentation
+
+`src/design-system/DESIGN_SYSTEM.md` must be created in Session 1. It must cover:
+directory layout, canonical barrel import path, naming convention, `--ui-*` token
+usage rule, `data-component` requirement, alias policy, and how to add a new component.
+Update it at the end of each subsequent session.
+
+---
+
 ## 1. Audit Results
 
 ### 1.1 Requested grep baseline
@@ -190,11 +262,20 @@ Execute in four focused sessions. Every session ends with the existing Vitest su
 `npm run build` passing.
 
 1. **Token layer, barrel, and low-risk aliases**
-   - Create the `--ui-*` semantic token layer and shared barrel.
-   - Move/copy the existing generic admin primitives to canonical shared names.
-   - Convert `AdminX` exports to aliases without changing call sites.
-   - Scope: token CSS, barrel, approximately 20 mostly mechanical primitive moves,
-     static guard tests.
+   - Add `--ui-*` semantic tokens to the `:root` block of `src/index.css` (see §5).
+   - Create `src/design-system/components/` directory and `index.js` barrel.
+   - Copy/adapt the 22 existing admin primitives to canonical shared files under
+     `src/design-system/components/`. Each file replaces `--adm-*` with `--ui-*`
+     tokens and adds `data-component="Name"` on its root element.
+   - Re-export the five layout components from the barrel under their `Page*` canonical
+     names (do not move the files — see §0).
+   - Update `src/admin/components/index.js` to re-export canonical names as `AdminX`
+     aliases. Keep thin files at existing `AdminX.jsx` paths for direct-file imports.
+   - Create `src/design-system/DESIGN_SYSTEM.md`.
+   - Add a static guard test proving the barrel exports all canonical names.
+   - Update `CRAWLER_MAP.md`.
+   - Scope: token CSS, barrel, ~22 component files, layout re-exports, guard test,
+     docs — no app page migration yet.
 
 2. **Buttons and form controls**
    - Build/finalize `Button`, `Field`, `Input`, `Textarea`, `Select`, `Checkbox`,
@@ -283,8 +364,9 @@ This preserves all admin pages, staff routes, and tests throughout migration.
 ### Decision: promote a neutral semantic `--ui-*` layer
 
 Shared components must not depend on admin-named variables, and they should not encode
-long Tailwind class recipes for every semantic state. Add a shared semantic layer in
-`src/index.css`:
+long Tailwind class recipes for every semantic state. Add a shared semantic layer to
+the **`:root` block** in `src/index.css` (not under `@theme` — these are runtime CSS
+custom properties, not Tailwind utility generators):
 
 - `--ui-bg`
 - `--ui-surface`, `--ui-surface-2`, `--ui-surface-3`, `--ui-surface-elevated`

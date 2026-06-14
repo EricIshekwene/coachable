@@ -54,6 +54,21 @@ layout shift. Use `Alert` for persistent status attached to page content; use th
 application toast/message system for brief confirmation that does not need to remain
 in the document flow.
 
+## Overlay Components (Session 4)
+
+| Component | Purpose | Key props |
+|---|---|---|
+| `Modal` | Blocking dialog | `open`, `onClose`, `title`, `size` (sm/md/lg/xl), `noPadding`, `hideClose` |
+| `ConfirmDialog` | Pre-wired confirm/cancel modal | `tone` ("danger"), `loading`, `onConfirm`, `onCancel` |
+| `Toast` | Transient status notification (portal) | `tone`, `duration`, `position`, `onClose` |
+| `Menu` | Floating context menu (portal) | `anchorRef`, `placement`, `width` |
+| `MenuItem` | Item within Menu | `icon`, `destructive`, `disabled`, `onSelect` |
+| `Popover` | Floating content panel (portal) | `anchorRef`, `placement`, `size` |
+
+**ConfirmModal migration path**: `src/components/subcomponents/ConfirmModal.jsx` is now a shim over `ConfirmDialog`. New code should import `ConfirmDialog` from the design-system barrel.
+
+All portal-based components (`Toast`, `Menu`, `Popover`) are SSR-safe: no DOM globals are accessed during module initialization. Outside-pointer dismissal uses `pointerdown` capture phase. Focus management follows WAI-ARIA patterns.
+
 ## Admin Compatibility
 
 `src/admin/components/index.js` aliases canonical components under their existing `AdminX` names. Thin files remain at the legacy `src/admin/components/AdminX.jsx` paths for direct imports. New shared code should use canonical names.
