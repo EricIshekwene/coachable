@@ -1,4 +1,4 @@
-import { AdminBtn } from "../../../admin/components";
+import { Button } from "../../../design-system/components";
 import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSRef } from "../dsPrimitives";
 
 /**
@@ -44,7 +44,7 @@ export default function MarketingSection() {
                 {plan.featured ? <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }}>Popular</span> : null}
                 <p className="mt-2 text-sm font-semibold" style={{ color: "var(--adm-text)" }}>{plan.name}</p>
                 <p className="mt-1 text-2xl font-semibold" style={{ color: "var(--adm-text)" }}>{plan.price}<span className="text-xs" style={{ color: "var(--adm-text3)" }}>/mo</span></p>
-                <AdminBtn variant={plan.featured ? "primary" : "secondary"} size="sm" className="mt-3 w-full">Choose {plan.name}</AdminBtn>
+                <Button variant={plan.featured ? "primary" : "secondary"} size="sm" className="mt-3 w-full">Choose {plan.name}</Button>
               </div>
             ))}
           </div>

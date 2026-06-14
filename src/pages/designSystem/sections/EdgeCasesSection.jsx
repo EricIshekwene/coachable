@@ -1,4 +1,4 @@
-import { AdminAvatar, AdminBadge } from "../../../admin/components";
+import { Avatar, Badge } from "../../../design-system/components";
 import { DSPageHeading, DSGroup, DSTile, DSChecklist } from "../dsPrimitives";
 
 /**
@@ -20,7 +20,7 @@ export default function EdgeCasesSection() {
         <div className="grid gap-4 md:grid-cols-3">
           <DSTile title="Long name + no avatar">
             <div className="flex items-center gap-3">
-              <AdminAvatar name="Maximilian Featherstone-Worthington" size="md" />
+              <Avatar name="Maximilian Featherstone-Worthington" size="md" />
               <p className="min-w-0 truncate text-sm font-semibold" style={{ color: "var(--adm-text)" }}>Maximilian Featherstone-Worthington III</p>
             </div>
           </DSTile>
@@ -37,7 +37,7 @@ export default function EdgeCasesSection() {
             <div className="flex items-center justify-between text-sm"><span style={{ color: "var(--adm-text3)" }}>Last active</span><span style={{ color: "var(--adm-text3)" }}>—</span></div>
           </DSTile>
           <DSTile title="No permission">
-            <div className="flex items-center gap-2"><AdminBadge status="warning">Locked</AdminBadge><span className="text-xs" style={{ color: "var(--adm-text3)" }}>Upgrade required</span></div>
+            <div className="flex items-center gap-2"><Badge status="warning">Locked</Badge><span className="text-xs" style={{ color: "var(--adm-text3)" }}>Upgrade required</span></div>
           </DSTile>
           <DSTile title="Overflowing chips">
             <div className="flex max-w-full gap-1.5 overflow-hidden">

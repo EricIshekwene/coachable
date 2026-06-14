@@ -9,7 +9,7 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import AdminSpinner from "../components/AdminSpinner";
+import { Spinner } from "../../design-system/components";
 
 function ActivityHoverCursor({ x, y, width, height, gradientId }) {
   return (
@@ -39,7 +39,7 @@ function fmtDate(str) {
  */
 export default function PlayActivityChart({ data, height = 180 }) {
   const hoverGradientId = `playActivityHover${useId().replace(/:/g, "")}`;
-  if (!data) return <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center" }}><AdminSpinner /></div>;
+  if (!data) return <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center" }}><Spinner /></div>;
   if (!data.length) return <p style={{ color: "var(--adm-muted)", fontSize: 13, textAlign: "center", paddingTop: 60 }}>No play activity in this period</p>;
 
   const accent  = "var(--adm-accent)";

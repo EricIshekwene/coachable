@@ -4,8 +4,8 @@ import PlayPreviewCard from "../components/PlayPreviewCard";
 import { useAdmin } from "../admin/AdminContext";
 import { adminPath } from "../admin/adminNav";
 import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
-import { AdminShell, AdminHeader, AdminPage, AdminBtn, AdminSpinner } from "../admin/components";
-import AdminModal from "../admin/components/AdminModal";
+import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
+import { Button, Spinner, Modal } from "../design-system/components";
 import { isAdminElevated } from "../utils/adminElevation";
 
 const SESSION_KEY = "coachable_admin_session";
@@ -249,23 +249,23 @@ export default function AdminUserActivity() {
         backTo={adminPath(basePath, "")}
         actions={
           <div className="flex items-center gap-2">
-            <AdminBtn variant="secondary" size="sm" onClick={fetchUserActivity} disabled={loading}>
-              {loading ? <AdminSpinner size={12} /> : "Refresh"}
-            </AdminBtn>
+            <Button variant="secondary" size="sm" onClick={fetchUserActivity} disabled={loading}>
+              {loading ? <Spinner size={12} /> : "Refresh"}
+            </Button>
             {user && (
-              <AdminBtn
+              <Button
                 variant="danger"
                 size="sm"
                 onClick={() => { setDeleteError(""); setDeleteModalOpen(true); }}
               >
                 Delete user
-              </AdminBtn>
+              </Button>
             )}
           </div>
         }
       />
 
-      <AdminModal
+      <Modal
         open={deleteModalOpen}
         onClose={() => (deleting ? null : setDeleteModalOpen(false))}
         title="Delete user"
@@ -277,14 +277,14 @@ export default function AdminUserActivity() {
           <p className="mt-3 text-xs" style={{ color: "var(--adm-danger)" }}>{deleteError}</p>
         )}
         <div className="mt-5 flex justify-end gap-2">
-          <AdminBtn variant="secondary" size="sm" onClick={() => setDeleteModalOpen(false)} disabled={deleting}>
+          <Button variant="secondary" size="sm" onClick={() => setDeleteModalOpen(false)} disabled={deleting}>
             Cancel
-          </AdminBtn>
-          <AdminBtn variant="danger" size="sm" onClick={handleDeleteUser} disabled={deleting}>
+          </Button>
+          <Button variant="danger" size="sm" onClick={handleDeleteUser} disabled={deleting}>
             {deleting ? "Deleting..." : "Delete"}
-          </AdminBtn>
+          </Button>
         </div>
-      </AdminModal>
+      </Modal>
 
       <AdminPage>
         {error && (
@@ -294,7 +294,7 @@ export default function AdminUserActivity() {
         )}
 
         {loading && !user && (
-          <div className="flex items-center justify-center py-24"><AdminSpinner size={32} /></div>
+          <div className="flex items-center justify-center py-24"><Spinner size={32} /></div>
         )}
 
         {!loading && !user && (
@@ -388,15 +388,15 @@ export default function AdminUserActivity() {
                     <h2 className="font-Manrope text-lg font-bold" style={{ color: "var(--adm-text)" }}>Restore Deleted Teams</h2>
                     <p className="mt-1 text-sm" style={{ color: "var(--adm-muted)" }}>Teams deleted by this user, recoverable within 30 days.</p>
                   </div>
-                  <AdminBtn variant="secondary" size="sm" onClick={handleToggleRestoreDeleted}>
+                  <Button variant="secondary" size="sm" onClick={handleToggleRestoreDeleted}>
                     {showRestoreDeleted ? "Hide" : "Show Deleted"}
-                  </AdminBtn>
+                  </Button>
                 </div>
                 {showRestoreDeleted && (
                   <div className="mt-4">
                     {deletedTeamsError && <div className="mb-3 rounded-[var(--adm-radius-sm)] px-4 py-3 text-sm" style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}>{deletedTeamsError}</div>}
                     {deletedTeamsLoading ? (
-                      <div className="flex justify-center py-8"><AdminSpinner /></div>
+                      <div className="flex justify-center py-8"><Spinner /></div>
                     ) : deletedTeams.length === 0 ? (
                       <div className="px-4 py-6 text-sm" style={{ ...innerCard, color: "var(--adm-muted)" }}>No deleted teams found for this user.</div>
                     ) : (
@@ -412,9 +412,9 @@ export default function AdminUserActivity() {
                                   {daysLeft > 0 ? `${daysLeft}d until permanent deletion` : "Expires today"}
                                 </p>
                               </div>
-                              <AdminBtn variant="secondary" size="sm" onClick={() => handleRestoreTeam(team.id)} disabled={restoringId === team.id}>
+                              <Button variant="secondary" size="sm" onClick={() => handleRestoreTeam(team.id)} disabled={restoringId === team.id}>
                                 {restoringId === team.id ? "Restoring…" : "Restore"}
-                              </AdminBtn>
+                              </Button>
                             </div>
                           );
                         })}

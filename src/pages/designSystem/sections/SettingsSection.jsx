@@ -1,4 +1,4 @@
-import { AdminToggle, AdminBtn, AdminSettingsRow, AdminDangerZone } from "../../../admin/components";
+import { Toggle, Button, SettingsRow, DangerZone } from "../../../design-system/components";
 import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSRef } from "../dsPrimitives";
 
 /**
@@ -24,12 +24,12 @@ export default function SettingsSection() {
               { title: "Product updates", desc: "Occasional news about new Coachable features.", on: false },
               { title: "Security alerts", desc: "Always on for important account activity.", on: true },
             ].map((row, i) => (
-              <AdminSettingsRow
+              <SettingsRow
                 key={row.title}
                 label={row.title}
                 description={row.desc}
                 divider={i > 0}
-                control={<AdminToggle checked={row.on} onChange={() => {}} />}
+                control={<Toggle checked={row.on} onChange={() => {}} />}
               />
             ))}
           </div>
@@ -38,12 +38,12 @@ export default function SettingsSection() {
 
       <DSGroup title="Danger zone" status="live">
         <DSTile>
-          <AdminDangerZone
+          <DangerZone
             title="Delete account"
             description="Permanently removes your account and all data. This cannot be undone."
           >
-            <AdminBtn variant="danger" size="sm">Delete account</AdminBtn>
-          </AdminDangerZone>
+            <Button variant="danger" size="sm">Delete account</Button>
+          </DangerZone>
         </DSTile>
       </DSGroup>
 

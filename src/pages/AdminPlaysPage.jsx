@@ -4,7 +4,8 @@ import { useAdmin } from "../admin/AdminContext";
 import darkLogo from "../assets/logos/full_Coachable_logo.png";
 import whiteLogo from "../assets/logos/White_Full_Coachable.png";
 import { adminPath } from "../admin/adminNav";
-import { AdminShell, AdminModal, AdminBtn, AdminInput, AdminSelect, AdminSpinner, AdminPlayCard, AdminFolderCard, AdminSectionRow } from "../admin/components";
+import { AdminShell, AdminPlayCard, AdminFolderCard, AdminSectionRow } from "../admin/components";
+import { Modal, Button, Input, Select, Spinner, ConfirmDialog } from "../design-system/components";
 import { PANEL_STYLE, INSET_STYLE, MENU_STYLE, MENU_DIVIDER_STYLE } from "../admin/components/adminPlayStyles";
 import {
   FiPlus, FiTrash2, FiFolder, FiFolderPlus,
@@ -12,7 +13,6 @@ import {
   FiBookOpen, FiEye, FiEyeOff, FiSliders,
 } from "react-icons/fi";
 import PlayPreviewCard from "../components/PlayPreviewCard";
-import ConfirmModal from "../components/subcomponents/ConfirmModal";
 import {
   isAdminElevated,
   getAdminElevatedUntil,
@@ -814,7 +814,7 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError, can
 
           {loadingSections ? (
             <div className="flex justify-center py-8">
-              <AdminSpinner size={24} />
+              <Spinner size={24} />
             </div>
           ) : sportGroups.length === 0 && !creatingSection ? (
             <p className="px-1 text-xs" style={{ color: "var(--adm-muted)" }}>No sections yet</p>
@@ -1245,7 +1245,7 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError, can
               {/* Plays grid — uses the same PlayCard as the main plays tab */}
               {loadingPlays ? (
                 <div className="flex justify-center py-8">
-                  <AdminSpinner size={24} />
+                  <Spinner size={24} />
                 </div>
               ) : sectionPlays.length === 0 ? (
                 <div
@@ -1301,12 +1301,12 @@ function PlaybookSectionPanel({ session, allPlays, folders, error, setError, can
       </div>
 
       {/* Confirm delete modal */}
-      <ConfirmModal
+      <ConfirmDialog
         open={!!deleteTarget}
-        message={`Delete "${deleteTarget?.name}"?`}
-        subtitle="All play assignments in this section will be removed. This cannot be undone."
+        title={`Delete "${deleteTarget?.name}"?`}
+        description="All play assignments in this section will be removed. This cannot be undone."
         confirmLabel="Delete"
-        danger
+        tone="danger"
         onConfirm={handleDeleteSection}
         onCancel={() => setDeleteTarget(null)}
       />
@@ -1830,9 +1830,9 @@ export default function AdminPlaysPage() {
   return (
     <AdminShell sidebar={false}>
       {/* New Play sport + mode picker */}
-      <AdminModal open={newPlayModal} onClose={() => setNewPlayModal(false)} title="New Play">
+      <Modal open={newPlayModal} onClose={() => setNewPlayModal(false)} title="New Play">
         <p className="mb-4 text-sm" style={{ color: "var(--adm-muted)" }}>Choose the sport. This sets the field type and defaults.</p>
-        <AdminSelect
+        <Select
           autoFocus
           value={newPlaySport}
           onChange={(e) => {
@@ -1844,7 +1844,7 @@ export default function AdminPlaysPage() {
           {["Rugby", "Football", "Soccer", "Lacrosse", "Womens Lacrosse", "Basketball", "Field Hockey", "Ice Hockey", "Blank"].map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}
-        </AdminSelect>
+        </Select>
         {newPlaySport === "Football" && (
           <div className="mb-4">
             <p className="mb-2 text-xs font-medium" style={{ color: "var(--adm-muted)" }}>Editor mode</p>
@@ -1881,10 +1881,10 @@ export default function AdminPlaysPage() {
           </div>
         )}
         <div className="flex gap-2">
-          <AdminBtn variant="secondary" className="flex-1" onClick={() => setNewPlayModal(false)}>Cancel</AdminBtn>
-          <AdminBtn variant="primary" className="flex-1" onClick={handleNewPlayConfirm}>Create Play</AdminBtn>
+          <Button variant="secondary" className="flex-1" onClick={() => setNewPlayModal(false)}>Cancel</Button>
+          <Button variant="primary" className="flex-1" onClick={handleNewPlayConfirm}>Create Play</Button>
         </div>
-      </AdminModal>
+      </Modal>
 
       {/* Combined preset + editor-mode picker (sport folders) */}
       {presetPickerSport && (() => {
@@ -1898,7 +1898,7 @@ export default function AdminPlaysPage() {
           backgroundColor: selected ? "color-mix(in srgb, var(--adm-accent) 8%, transparent)" : "var(--adm-surface2)",
         });
         return (
-          <AdminModal open onClose={() => setPresetPickerSport(null)} title="New Play">
+          <Modal open onClose={() => setPresetPickerSport(null)} title="New Play">
             <p className="mb-3 text-sm" style={{ color: "var(--adm-muted)" }}>{presetPickerSport} · Pick a starting preset. Hidden presets are only visible to admins.</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <button
@@ -1977,36 +1977,36 @@ export default function AdminPlaysPage() {
             )}
 
             <div className="mt-4 flex gap-2">
-              <AdminBtn variant="secondary" className="flex-1" onClick={() => setPresetPickerSport(null)}>Cancel</AdminBtn>
-              <AdminBtn variant="primary" className="flex-1" onClick={handlePresetPickerConfirm}>Open Editor</AdminBtn>
+              <Button variant="secondary" className="flex-1" onClick={() => setPresetPickerSport(null)}>Cancel</Button>
+              <Button variant="primary" className="flex-1" onClick={handlePresetPickerConfirm}>Open Editor</Button>
             </div>
-          </AdminModal>
+          </Modal>
         );
       })()}
 
       {/* Danger Mode modal */}
-      <AdminModal open={elevateModal} onClose={handleElevateCancel} title="Danger Mode Required">
+      <Modal open={elevateModal} onClose={handleElevateCancel} title="Danger Mode Required">
         <form onSubmit={handleElevate} className="flex flex-col gap-3">
           {elevateStep === "password" ? (
             <>
               <p className="text-sm" style={{ color: "var(--adm-danger)" }}>Re-enter your admin password to unlock destructive operations for 10 minutes.</p>
-              <AdminInput type="password" value={elevatePassword} onChange={(e) => setElevatePassword(e.target.value)} placeholder="Admin password" autoFocus />
+              <Input type="password" value={elevatePassword} onChange={(e) => setElevatePassword(e.target.value)} placeholder="Admin password" autoFocus />
             </>
           ) : (
             <>
               <p className="text-sm" style={{ color: "var(--adm-muted)" }}>A verification code was sent to {elevateMaskedEmail}. Enter it below.</p>
-              <AdminInput type="text" value={elevateCode} onChange={(e) => setElevateCode(e.target.value)} placeholder="6-digit code" autoFocus />
+              <Input type="text" value={elevateCode} onChange={(e) => setElevateCode(e.target.value)} placeholder="6-digit code" autoFocus />
             </>
           )}
           {elevateError && <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{elevateError}</p>}
           <div className="flex gap-2">
-            <AdminBtn type="button" variant="secondary" className="flex-1" onClick={handleElevateCancel}>Cancel</AdminBtn>
-            <AdminBtn type="submit" variant="danger" className="flex-1" disabled={elevating || (elevateStep === "password" ? !elevatePassword : !elevateCode)}>
+            <Button type="button" variant="secondary" className="flex-1" onClick={handleElevateCancel}>Cancel</Button>
+            <Button type="submit" variant="danger" className="flex-1" disabled={elevating || (elevateStep === "password" ? !elevatePassword : !elevateCode)}>
               {elevating ? "Verifying..." : elevateStep === "password" ? "Unlock Danger Mode" : "Confirm Code"}
-            </AdminBtn>
+            </Button>
           </div>
         </form>
-      </AdminModal>
+      </Modal>
 
       {/* Header */}
       <div className="sticky top-0 z-20 backdrop-blur-sm" style={{ borderBottom: "1px solid var(--adm-border)", backgroundColor: "var(--adm-bg)" }}>
@@ -2039,9 +2039,9 @@ export default function AdminPlaysPage() {
           <span className="text-xs" style={{ color: "var(--adm-muted)" }}>{plays.length} total</span>
           <div className="flex w-full flex-wrap items-center gap-2 lg:ml-auto lg:w-auto lg:justify-end">
             {canAddPlays && (
-              <AdminBtn variant="primary" size="sm" onClick={handleNew}><FiPlus className="mr-1 inline" /> New Play</AdminBtn>
+              <Button variant="primary" size="sm" onClick={handleNew}><FiPlus className="mr-1 inline" /> New Play</Button>
             )}
-            <AdminBtn variant="secondary" size="sm" onClick={() => navigate(adminPath(basePath, ""))}>Dashboard</AdminBtn>
+            <Button variant="secondary" size="sm" onClick={() => navigate(adminPath(basePath, ""))}>Dashboard</Button>
           </div>
         </div>
       </div>
@@ -2079,7 +2079,7 @@ export default function AdminPlaysPage() {
           <p className="mb-6 text-xs" style={{ color: "var(--adm-muted)" }}>Assign a platform play to each section. The play&apos;s animation will be shown as a live preview on that page.</p>
           {error && <div className="mb-4 rounded-[var(--adm-radius-sm)] px-4 py-2 text-sm" style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}>{error}</div>}
           {loading ? (
-            <div className="flex items-center justify-center py-20"><AdminSpinner size={32} /></div>
+            <div className="flex items-center justify-center py-20"><Spinner size={32} /></div>
           ) : (
             <div className="space-y-3">
               {sections.map((section) => (
@@ -2254,7 +2254,7 @@ export default function AdminPlaysPage() {
             </div>
 
             {error && <div className="mb-4 rounded-[var(--adm-radius-sm)] px-4 py-2 text-sm" style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}>{error}</div>}
-            {loading && <div className="flex items-center justify-center py-20"><AdminSpinner size={32} /></div>}
+            {loading && <div className="flex items-center justify-center py-20"><Spinner size={32} /></div>}
 
             {!loading && visiblePlays.length === 0 && (
               <div className="flex flex-col items-center justify-center rounded-[var(--adm-radius)] py-20 text-center" style={{ border: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface2)" }}>
@@ -2265,7 +2265,7 @@ export default function AdminPlaysPage() {
                   {search ? "No plays match your search" : currentFolder ? `No plays in "${currentFolder.name}"` : "No platform plays yet"}
                 </p>
                 <p className="mt-1 text-xs" style={{ color: "var(--adm-muted)" }}>{search ? "Try a different search term" : "Create your first play to feature on the landing page"}</p>
-                {!search && <AdminBtn variant="primary" className="mt-5" onClick={handleNew}><FiPlus className="mr-1 inline" /> New Play</AdminBtn>}
+                {!search && <Button variant="primary" className="mt-5" onClick={handleNew}><FiPlus className="mr-1 inline" /> New Play</Button>}
               </div>
             )}
 
@@ -2313,12 +2313,12 @@ export default function AdminPlaysPage() {
         </div>
       )}
 
-      <ConfirmModal
+      <ConfirmDialog
         open={!!confirmModal}
-        message={confirmModal?.type === "play" ? `Delete "${confirmModal.item.title}"?` : `Delete folder "${confirmModal?.item.name}"?`}
-        subtitle={confirmModal?.type === "play" ? "This cannot be undone." : "Plays inside will become un-foldered."}
+        title={confirmModal?.type === "play" ? `Delete "${confirmModal.item.title}"?` : `Delete folder "${confirmModal?.item.name}"?`}
+        description={confirmModal?.type === "play" ? "This cannot be undone." : "Plays inside will become un-foldered."}
         confirmLabel="Delete"
-        danger
+        tone="danger"
         onConfirm={handleDeleteConfirmed}
         onCancel={() => setConfirmModal(null)}
       />

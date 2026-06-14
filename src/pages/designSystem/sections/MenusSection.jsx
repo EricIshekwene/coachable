@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FiMoreHorizontal, FiEdit2, FiShare2, FiTrash2, FiCheck, FiChevronRight } from "react-icons/fi";
-import { AdminBtn } from "../../../admin/components";
+import { Button } from "../../../design-system/components";
 import { DSPageHeading, DSGroup, DSTile, DSChecklist } from "../dsPrimitives";
 
 /**
@@ -23,7 +23,7 @@ export default function MenusSection() {
       <DSGroup title="Overflow menu" status="live">
         <DSTile>
           <div className="relative inline-block">
-            <AdminBtn variant="secondary" size="sm" onClick={() => setOpen((o) => !o)}>Actions <FiMoreHorizontal /></AdminBtn>
+            <Button variant="secondary" size="sm" onClick={() => setOpen((o) => !o)}>Actions <FiMoreHorizontal /></Button>
             {open ? (
               <div className="absolute left-0 top-11 z-10 w-56 overflow-hidden rounded-xl py-1.5" style={{ backgroundColor: "var(--adm-surface-elevated)", border: "1px solid var(--adm-border2)", boxShadow: "var(--adm-shadow)" }}>
                 {[{ Icon: FiEdit2, label: "Edit", kbd: "E" }, { Icon: FiShare2, label: "Share", kbd: "S" }, { Icon: FiCheck, label: "Mark reviewed" }].map((item) => (

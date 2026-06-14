@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AdminBadge, AdminDataTable, AdminAvatar } from "../../../admin/components";
+import { Badge, DataTable, Avatar } from "../../../design-system/components";
 import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSAnatomy } from "../dsPrimitives";
 
 const ROWS = [
@@ -20,7 +20,7 @@ const TABLE_COLUMNS = [
     label: "User",
     render: (row) => (
       <div className="flex items-center gap-3">
-        <AdminAvatar name={row.name} size="sm" />
+        <Avatar name={row.name} size="sm" />
         <span className="text-sm font-semibold" style={{ color: "var(--ui-text)" }}>{row.name}</span>
       </div>
     ),
@@ -41,7 +41,7 @@ const TABLE_COLUMNS = [
   {
     key: "verified",
     label: "Status",
-    render: (row) => <AdminBadge status={row.verified ? "resolved" : "warning"}>{row.verified ? "Verified" : "Unverified"}</AdminBadge>,
+    render: (row) => <Badge status={row.verified ? "resolved" : "warning"}>{row.verified ? "Verified" : "Unverified"}</Badge>,
   },
 ];
 
@@ -68,7 +68,7 @@ export default function TablesSection() {
 
       <DSGroup title="Directory table" status="live" description="DataTable with search, avatar cells, numeric pill, and status badge.">
         <DSTile padding={false} className="overflow-hidden p-0">
-          <AdminDataTable
+          <DataTable
             columns={TABLE_COLUMNS}
             data={filteredRows}
             keyField="id"

@@ -1,4 +1,4 @@
-import { AdminInput, AdminBtn, AdminCheckbox } from "../../../admin/components";
+import { Input, Button, Checkbox } from "../../../design-system/components";
 import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSRef } from "../dsPrimitives";
 
 /**
@@ -22,13 +22,13 @@ export default function AuthSection() {
             <p className="font-Manrope text-lg font-semibold" style={{ color: "var(--adm-text)" }}>Welcome back</p>
             <p className="mt-1 text-xs" style={{ color: "var(--adm-text3)" }}>Log in to your Coachable account.</p>
             <div className="mt-5 space-y-3">
-              <AdminInput label="Email" type="email" placeholder="coach@team.com" onChange={() => {}} />
-              <AdminInput label="Password" type="password" placeholder="••••••••" onChange={() => {}} />
+              <Input label="Email" type="email" placeholder="coach@team.com" onChange={() => {}} />
+              <Input label="Password" type="password" placeholder="••••••••" onChange={() => {}} />
               <div className="flex items-center justify-between">
-                <AdminCheckbox checked label="Remember me" onChange={() => {}} />
+                <Checkbox checked label="Remember me" onChange={() => {}} />
                 <button className="text-xs font-semibold" style={{ color: "var(--adm-accent)" }}>Forgot password?</button>
               </div>
-              <AdminBtn variant="primary" className="w-full">Log in</AdminBtn>
+              <Button variant="primary" className="w-full">Log in</Button>
             </div>
             <p className="mt-4 text-center text-xs" style={{ color: "var(--adm-text3)" }}>New to Coachable? <span style={{ color: "var(--adm-accent)" }}>Create an account</span></p>
           </div>

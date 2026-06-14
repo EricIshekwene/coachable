@@ -22,23 +22,21 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, PieChart, Pie, Cell, AreaChart, Area,
 } from "recharts";
+import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
 import {
-  AdminBtn,
-  AdminCard,
-  AdminDataTable,
-  AdminHeader,
-  AdminInput,
-  AdminModal,
-  AdminPage,
-  AdminSection,
-  AdminSelect,
-  AdminShell,
-  AdminSpinner,
-  AdminBadge,
-  AdminAlert,
-  AdminEmptyState,
-  AdminTextarea,
-} from "../admin/components";
+  Button,
+  Card,
+  DataTable,
+  Input,
+  Modal,
+  Section,
+  Select,
+  Spinner,
+  Badge,
+  Alert,
+  EmptyState,
+  Textarea,
+} from "../design-system/components";
 import { useAdmin } from "../admin/AdminContext";
 import { adminApi } from "../admin/adminTransport";
 
@@ -753,11 +751,11 @@ function AddBlockMenu({ onPick, compact = false, align = "left", label = "Add bl
           <FiPlus className="text-sm" />
         </button>
       ) : (
-        <AdminBtn variant="outline" onClick={() => setOpen((v) => !v)}>
+        <Button variant="outline" onClick={() => setOpen((v) => !v)}>
           <FiPlus />
           {label}
           <FiChevronDown className="text-xs" />
-        </AdminBtn>
+        </Button>
       )}
 
       {open && (
@@ -1036,7 +1034,7 @@ function AudienceSelector({ mode, sport, playFilter, signupFrom, signupTo, onUpd
         >
           <div>
             <label className={LABEL_CLASS} style={{ color: "var(--adm-muted)" }}>Filter by sport</label>
-            <AdminSelect
+            <Select
               value={sport}
               onChange={(e) => onUpdate("sport", e.target.value)}
               size="sm"
@@ -1044,12 +1042,12 @@ function AudienceSelector({ mode, sport, playFilter, signupFrom, signupTo, onUpd
               {SPORT_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
-            </AdminSelect>
+            </Select>
           </div>
 
           <div>
             <label className={LABEL_CLASS} style={{ color: "var(--adm-muted)" }}>Play activity</label>
-            <AdminSelect
+            <Select
               value={playFilter}
               onChange={(e) => onUpdate("playFilter", e.target.value)}
               size="sm"
@@ -1057,12 +1055,12 @@ function AudienceSelector({ mode, sport, playFilter, signupFrom, signupTo, onUpd
               {PLAY_FILTER_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
-            </AdminSelect>
+            </Select>
           </div>
 
           <div>
             <label className={LABEL_CLASS} style={{ color: "var(--adm-muted)" }}>Signed up after</label>
-            <AdminInput
+            <Input
               type="date"
               value={signupFrom}
               onChange={(e) => onUpdate("signupFrom", e.target.value)}
@@ -1072,7 +1070,7 @@ function AudienceSelector({ mode, sport, playFilter, signupFrom, signupTo, onUpd
 
           <div>
             <label className={LABEL_CLASS} style={{ color: "var(--adm-muted)" }}>Signed up before</label>
-            <AdminInput
+            <Input
               type="date"
               value={signupTo}
               onChange={(e) => onUpdate("signupTo", e.target.value)}
@@ -1215,9 +1213,9 @@ function NotificationPreview({ title, subject, priority, blocks = [] }) {
         </div>
       </div>
 
-      <AdminAlert tone="info" title="Sample data">
+      <Alert tone="info" title="Sample data">
         This preview uses sample recipient data. Real names and team info will be filled in at send time.
-      </AdminAlert>
+      </Alert>
     </div>
   );
 }
@@ -1233,26 +1231,26 @@ function TestSendModal({ open, onClose, onSend, sending }) {
   const [team,  setTeam]  = useState("Demo Team");
 
   return (
-    <AdminModal open={open} onClose={onClose} title="Test Send" width="max-w-sm">
+    <Modal open={open} onClose={onClose} title="Test Send" width="max-w-sm">
       <div className="flex flex-col gap-4">
         <p className="text-sm" style={{ color: "var(--adm-text2)" }}>
           Send this notification to a single test recipient. Real users will not be notified.
         </p>
 
-        <AdminInput
+        <Input
           label="Test email address"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
         />
-        <AdminInput
+        <Input
           label="Recipient name (for merge tags)"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Alex Johnson"
         />
-        <AdminInput
+        <Input
           label="Team name (for merge tags)"
           value={team}
           onChange={(e) => setTeam(e.target.value)}
@@ -1260,20 +1258,20 @@ function TestSendModal({ open, onClose, onSend, sending }) {
         />
 
         <div className="flex items-center justify-end gap-2 pt-2">
-          <AdminBtn variant="ghost" onClick={onClose} disabled={sending}>
+          <Button variant="ghost" onClick={onClose} disabled={sending}>
             Cancel
-          </AdminBtn>
-          <AdminBtn
+          </Button>
+          <Button
             variant="primary"
             onClick={() => onSend({ email, name, team })}
             disabled={sending || !email.trim()}
           >
-            {sending ? <AdminSpinner size="sm" /> : <FiSend />}
+            {sending ? <Spinner size="sm" /> : <FiSend />}
             Send test
-          </AdminBtn>
+          </Button>
         </div>
       </div>
-    </AdminModal>
+    </Modal>
   );
 }
 
@@ -1284,21 +1282,21 @@ function TestSendModal({ open, onClose, onSend, sending }) {
  */
 function SendConfirmModal({ open, onClose, onConfirm, recipientLabel, sending }) {
   return (
-    <AdminModal open={open} onClose={onClose} title="Confirm Send" width="max-w-sm">
+    <Modal open={open} onClose={onClose} title="Confirm Send" width="max-w-sm">
       <div className="flex flex-col gap-4">
-        <AdminAlert tone="warning" title="This will send to real users">
+        <Alert tone="warning" title="This will send to real users">
           You are about to send this notification to <strong>{recipientLabel}</strong>.
           This action cannot be undone.
-        </AdminAlert>
+        </Alert>
         <div className="flex items-center justify-end gap-2 pt-1">
-          <AdminBtn variant="ghost" onClick={onClose} disabled={sending}>Cancel</AdminBtn>
-          <AdminBtn variant="primary" onClick={onConfirm} disabled={sending}>
-            {sending ? <AdminSpinner size="sm" /> : <FiSend />}
+          <Button variant="ghost" onClick={onClose} disabled={sending}>Cancel</Button>
+          <Button variant="primary" onClick={onConfirm} disabled={sending}>
+            {sending ? <Spinner size="sm" /> : <FiSend />}
             Yes, send now
-          </AdminBtn>
+          </Button>
         </div>
       </div>
-    </AdminModal>
+    </Modal>
   );
 }
 
@@ -1390,12 +1388,12 @@ function NotifDetailModal({ notif, onClose }) {
   const hasReadData = readBreakdown.some((d) => d.value > 0);
 
   return (
-    <AdminModal open={!!notif} onClose={onClose} title={notif.title} width="max-w-2xl">
+    <Modal open={!!notif} onClose={onClose} title={notif.title} width="max-w-2xl">
       <div className="flex flex-col gap-6">
         {/* Meta row */}
         <div className="flex flex-wrap items-center gap-3">
-          <AdminBadge status="info">In-App</AdminBadge>
-          {notif.isTest ? <AdminBadge status="warning">Test</AdminBadge> : <AdminBadge status="resolved">Sent</AdminBadge>}
+          <Badge status="info">In-App</Badge>
+          {notif.isTest ? <Badge status="warning">Test</Badge> : <Badge status="resolved">Sent</Badge>}
           <span className="text-xs" style={{ color: "var(--adm-muted)" }}>
             {fmtDate(notif.sentAt)} · {notif.audienceLabel}
           </span>
@@ -1518,20 +1516,20 @@ function NotifDetailModal({ notif, onClose }) {
                   {notif.responseCount} total
                 </span>
               </div>
-              <AdminBtn size="sm" variant="outline" onClick={() => exportResponsesCsv(notif)}>
+              <Button size="sm" variant="outline" onClick={() => exportResponsesCsv(notif)}>
                 <FiDownload />
                 Export CSV
-              </AdminBtn>
+              </Button>
             </div>
             <ResponseAnalytics summary={notif.responseSummary} total={notif.responseCount} />
           </div>
         )}
 
         <div className="flex justify-end">
-          <AdminBtn variant="ghost" onClick={onClose}>Close</AdminBtn>
+          <Button variant="ghost" onClick={onClose}>Close</Button>
         </div>
       </div>
-    </AdminModal>
+    </Modal>
   );
 }
 
@@ -1724,7 +1722,7 @@ export default function AdminNotificationsPage() {
         <div className="flex flex-col gap-8 pb-16">
 
           {/* ── Send Notification ─────────────────────────────────────── */}
-          <AdminSection
+          <Section
             title="Send Notification"
             subtitle="Compose a notification, target your audience, preview, then send."
           >
@@ -1732,33 +1730,33 @@ export default function AdminNotificationsPage() {
 
               {/* Send result banners */}
               {sendResult?.type === "test" && (
-                <AdminAlert tone="success" title="Test sent">
+                <Alert tone="success" title="Test sent">
                   Notification sent to <strong>{sendResult.email}</strong>. Check your inbox.
-                </AdminAlert>
+                </Alert>
               )}
               {sendResult?.type === "broadcast" && (
-                <AdminAlert tone="success" title="Notification sent">
+                <Alert tone="success" title="Notification sent">
                   Your notification was queued for delivery to <strong>{audienceLabel}</strong>.
-                </AdminAlert>
+                </Alert>
               )}
               {sendError && (
-                <AdminAlert tone="warning" title="Note">
+                <Alert tone="warning" title="Note">
                   {sendError}
-                </AdminAlert>
+                </Alert>
               )}
 
               {/* ── Setup fields ──────────────────────────────────────── */}
-              <AdminCard>
+              <Card>
                 <div className="flex flex-col gap-5">
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <AdminInput
+                    <Input
                       label="Notification title"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       placeholder="e.g. New feature announcement"
                       hint="Internal label — not shown to recipients"
                     />
-                    <AdminInput
+                    <Input
                       label="Subject / headline"
                       value={subject}
                       onChange={(e) => setSubject(e.target.value)}
@@ -1772,14 +1770,14 @@ export default function AdminNotificationsPage() {
                       <label className={LABEL_CLASS} style={{ color: "var(--adm-text2)" }}>
                         Priority
                       </label>
-                      <AdminSelect
+                      <Select
                         value={priority}
                         onChange={(e) => setPriority(e.target.value)}
                       >
                         {PRIORITY_OPTIONS.map((o) => (
                           <option key={o.value} value={o.value}>{o.label}</option>
                         ))}
-                      </AdminSelect>
+                      </Select>
                     </div>
                     <div className="flex items-end">
                       <div
@@ -1792,10 +1790,10 @@ export default function AdminNotificationsPage() {
                     </div>
                   </div>
                 </div>
-              </AdminCard>
+              </Card>
 
               {/* ── Audience ──────────────────────────────────────────── */}
-              <AdminCard>
+              <Card>
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center gap-2 mb-1">
                     <FiUsers className="text-sm" style={{ color: "var(--adm-accent)" }} />
@@ -1813,10 +1811,10 @@ export default function AdminNotificationsPage() {
                     reach={reach}
                   />
                 </div>
-              </AdminCard>
+              </Card>
 
               {/* ── Body composer + response form ─────────────────────── */}
-              <AdminCard padding={false}>
+              <Card padding={false}>
                 {/* Tab bar */}
                 <div
                   className="flex items-center gap-1 px-4 pt-4 pb-0"
@@ -1866,7 +1864,7 @@ export default function AdminNotificationsPage() {
                     />
                   )}
                 </div>
-              </AdminCard>
+              </Card>
 
               {/* ── Actions ───────────────────────────────────────────── */}
               <div
@@ -1882,30 +1880,30 @@ export default function AdminNotificationsPage() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <AdminBtn
+                  <Button
                     variant="outline"
                     onClick={() => setTestSendOpen(true)}
                     disabled={!canCompose || sending}
                   >
                     <FiEye />
                     Test Send
-                  </AdminBtn>
-                  <AdminBtn
+                  </Button>
+                  <Button
                     variant="primary"
                     onClick={() => setConfirmOpen(true)}
                     disabled={!canCompose || sending}
                   >
-                    {sending ? <AdminSpinner size="sm" /> : <FiSend />}
+                    {sending ? <Spinner size="sm" /> : <FiSend />}
                     Send Notification
-                  </AdminBtn>
+                  </Button>
                 </div>
               </div>
 
             </div>
-          </AdminSection>
+          </Section>
 
           {/* ── Past Notifications ────────────────────────────────────── */}
-          <AdminSection
+          <Section
             title="Past Notifications"
             subtitle="Review previously sent notifications and their engagement metrics."
           >
@@ -1958,17 +1956,17 @@ export default function AdminNotificationsPage() {
               </div>
             </div>
 
-            <AdminCard padding={false}>
+            <Card padding={false}>
               {pastLoading ? (
-                <div className="flex justify-center py-16"><AdminSpinner /></div>
+                <div className="flex justify-center py-16"><Spinner /></div>
               ) : filteredPast.length === 0 ? (
-                <AdminEmptyState
+                <EmptyState
                   icon={<FiBell />}
                   title={searchQ ? "No notifications found" : "No notifications sent yet"}
                   subtitle={searchQ ? "Try adjusting your search query." : "Compose and send your first notification above — it'll appear here with delivery and response analytics."}
                 />
               ) : (
-                <AdminDataTable
+                <DataTable
                   columns={[
                     {
                       key: "title",
@@ -2007,10 +2005,10 @@ export default function AdminNotificationsPage() {
                       key: "actions",
                       label: "",
                       render: (n) => (
-                        <AdminBtn size="sm" variant="ghost" onClick={() => openDetail(n.id)}>
+                        <Button size="sm" variant="ghost" onClick={() => openDetail(n.id)}>
                           <FiBarChart2 />
                           Details
-                        </AdminBtn>
+                        </Button>
                       ),
                     },
                   ]}
@@ -2019,8 +2017,8 @@ export default function AdminNotificationsPage() {
                   size="sm"
                 />
               )}
-            </AdminCard>
-          </AdminSection>
+            </Card>
+          </Section>
 
         </div>
       </AdminPage>

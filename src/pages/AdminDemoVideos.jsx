@@ -8,14 +8,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { FiPlus, FiEdit2, FiTrash2, FiCheck, FiX, FiChevronUp, FiChevronDown } from "react-icons/fi";
-import ConfirmModal from "../components/subcomponents/ConfirmModal";
 import { useAdmin } from "../admin/AdminContext";
 import { adminPath } from "../admin/adminNav";
 import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
-import {
-  AdminShell, AdminHeader, AdminPage, AdminCard, AdminSection,
-  AdminBtn, AdminInput, AdminModal, AdminEmptyState, AdminSpinner,
-} from "../admin/components";
+import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
+import { Card, Section, Button, Input, Modal, EmptyState, Spinner, ConfirmDialog } from "../design-system/components";
 import {
   isAdminElevated,
   setAdminElevated,
@@ -390,33 +387,33 @@ export default function AdminDemoVideos() {
   if (!authed) {
     return (
       <AdminShell className="flex items-center justify-center">
-        <AdminCard>
+        <Card>
           <p className="mb-3 text-sm" style={{ color: "var(--adm-muted)" }}>Admin session required</p>
           <Link to={adminPath(basePath, "")} className="text-sm transition-opacity hover:opacity-70" style={{ color: "var(--adm-accent)" }}>Go to Admin Login</Link>
-        </AdminCard>
+        </Card>
       </AdminShell>
     );
   }
 
   return (
     <AdminShell>
-      <ConfirmModal
+      <ConfirmDialog
         open={confirmModal.open}
-        message={confirmModal.message}
-        subtitle={confirmModal.subtitle}
+        title={confirmModal.message}
+        description={confirmModal.subtitle}
         confirmLabel={confirmModal.confirmLabel}
-        danger={confirmModal.danger}
+        tone={confirmModal.danger ? "danger" : "default"}
         onConfirm={handleConfirmOk}
         onCancel={handleConfirmCancel}
       />
 
       {/* Danger Mode modal */}
-      <AdminModal open={dangerModal} onClose={handleDangerCancel} title="Danger Mode Required">
+      <Modal open={dangerModal} onClose={handleDangerCancel} title="Danger Mode Required">
         <form onSubmit={handleDangerSubmit}>
           {dangerStep === "password" ? (
             <>
               <p className="mb-4 text-sm" style={{ color: "var(--adm-muted)" }}>Re-enter your admin password to unlock destructive actions for 10 minutes.</p>
-              <AdminInput
+              <Input
                 type="password"
                 autoFocus
                 value={dangerPassword}
@@ -428,7 +425,7 @@ export default function AdminDemoVideos() {
           ) : (
             <>
               <p className="mb-4 text-sm" style={{ color: "var(--adm-muted)" }}>A verification code was sent to {dangerMaskedEmail}. Enter it below.</p>
-              <AdminInput
+              <Input
                 type="text"
                 autoFocus
                 value={dangerCode}
@@ -440,16 +437,16 @@ export default function AdminDemoVideos() {
           )}
           {dangerError && <p className="mb-3 text-xs" style={{ color: "var(--adm-danger)" }}>{dangerError}</p>}
           <div className="flex gap-2">
-            <AdminBtn type="button" variant="secondary" className="flex-1" onClick={handleDangerCancel}>Cancel</AdminBtn>
-            <AdminBtn type="submit" variant="danger" className="flex-1" disabled={dangerLoading || (dangerStep === "password" ? !dangerPassword : !dangerCode)}>
+            <Button type="button" variant="secondary" className="flex-1" onClick={handleDangerCancel}>Cancel</Button>
+            <Button type="submit" variant="danger" className="flex-1" disabled={dangerLoading || (dangerStep === "password" ? !dangerPassword : !dangerCode)}>
               {dangerLoading ? "Verifying..." : dangerStep === "password" ? "Unlock Danger Mode" : "Confirm Code"}
-            </AdminBtn>
+            </Button>
           </div>
         </form>
-      </AdminModal>
+      </Modal>
 
       {/* Preview modal */}
-      <AdminModal open={Boolean(previewId)} onClose={() => setPreviewId(null)}>
+      <Modal open={Boolean(previewId)} onClose={() => setPreviewId(null)}>
         {previewId && (
           <div className="overflow-hidden rounded-[var(--adm-radius)]" style={{ width: "min(640px, 90vw)" }}>
             <div className="relative" style={{ paddingBottom: "56.25%" }}>
@@ -463,7 +460,7 @@ export default function AdminDemoVideos() {
             </div>
           </div>
         )}
-      </AdminModal>
+      </Modal>
 
       <AdminHeader
         title="Demo Videos"
@@ -471,17 +468,17 @@ export default function AdminDemoVideos() {
         backTo={adminPath(basePath, "")}
         actions={
           <div className="flex gap-2">
-            <AdminBtn variant="secondary" size="sm" onClick={loadVideos} disabled={loading}>
-              {loading ? <AdminSpinner size={12} /> : "Refresh"}
-            </AdminBtn>
-            <AdminBtn variant="primary" size="sm" onClick={() => { setShowAdd((s) => !s); setAddForm(BLANK_FORM); }}>
+            <Button variant="secondary" size="sm" onClick={loadVideos} disabled={loading}>
+              {loading ? <Spinner size={12} /> : "Refresh"}
+            </Button>
+            <Button variant="primary" size="sm" onClick={() => { setShowAdd((s) => !s); setAddForm(BLANK_FORM); }}>
               <FiPlus className="mr-1 inline" /> Add Video
-            </AdminBtn>
+            </Button>
           </div>
         }
       />
       <AdminPage>
-        <AdminSection
+        <Section
           title="Demo Videos"
           subtitle={`${videos.length} video${videos.length !== 1 ? "s" : ""} · use arrows to reorder`}
         >
@@ -491,10 +488,10 @@ export default function AdminDemoVideos() {
 
           {/* Add form */}
           {showAdd && (
-            <AdminCard>
+            <Card>
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--adm-accent)" }}>New Video</p>
               <form onSubmit={handleAdd} className="space-y-3">
-                <AdminInput
+                <Input
                   label="Title *"
                   autoFocus
                   value={addForm.title}
@@ -502,7 +499,7 @@ export default function AdminDemoVideos() {
                   placeholder="How to animate movement"
                 />
                 <div>
-                  <AdminInput
+                  <Input
                     label="YouTube URL"
                     value={addForm.youtubeUrl}
                     onChange={(e) => setAddForm((f) => ({ ...f, youtubeUrl: e.target.value }))}
@@ -538,18 +535,18 @@ export default function AdminDemoVideos() {
                   <span className="text-sm" style={{ color: "var(--adm-text2)" }}>Video recorded / ready</span>
                 </div>
                 <div className="flex gap-2 pt-1">
-                  <AdminBtn type="button" variant="secondary" onClick={() => setShowAdd(false)}>Cancel</AdminBtn>
-                  <AdminBtn type="submit" variant="primary" disabled={addSaving || !addForm.title.trim()}>
+                  <Button type="button" variant="secondary" onClick={() => setShowAdd(false)}>Cancel</Button>
+                  <Button type="submit" variant="primary" disabled={addSaving || !addForm.title.trim()}>
                     {addSaving ? "Saving…" : "Add Video"}
-                  </AdminBtn>
+                  </Button>
                 </div>
               </form>
-            </AdminCard>
+            </Card>
           )}
 
           {/* Video list */}
           {videos.length === 0 && !loading ? (
-            <AdminEmptyState title="No videos yet" subtitle='Click "Add Video" to create your first entry' />
+            <EmptyState title="No videos yet" subtitle='Click "Add Video" to create your first entry' />
           ) : (
             <div className="space-y-2">
               {videos.map((video, index) => {
@@ -557,19 +554,19 @@ export default function AdminDemoVideos() {
                 const ytId = extractYouTubeId(video.youtubeUrl);
 
                 return (
-                  <AdminCard key={video.id} padding={false} className="overflow-hidden">
+                  <Card key={video.id} padding={false} className="overflow-hidden">
                     {isEditing ? (
                       <div className="p-4">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--adm-accent)" }}>Editing</p>
                         <div className="space-y-3">
-                          <AdminInput
+                          <Input
                             label="Title *"
                             autoFocus
                             value={editForm.title}
                             onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
                           />
                           <div>
-                            <AdminInput
+                            <Input
                               label="YouTube URL"
                               value={editForm.youtubeUrl}
                               onChange={(e) => setEditForm((f) => ({ ...f, youtubeUrl: e.target.value }))}
@@ -602,11 +599,11 @@ export default function AdminDemoVideos() {
                             <span className="text-sm" style={{ color: "var(--adm-text2)" }}>Video recorded / ready</span>
                           </div>
                           <div className="flex gap-2 pt-1">
-                            <AdminBtn variant="secondary" onClick={cancelEdit}>Cancel</AdminBtn>
-                            <AdminBtn variant="primary" onClick={() => handleSaveEdit(video.id)} disabled={editSaving || !editForm.title.trim()}>
+                            <Button variant="secondary" onClick={cancelEdit}>Cancel</Button>
+                            <Button variant="primary" onClick={() => handleSaveEdit(video.id)} disabled={editSaving || !editForm.title.trim()}>
                               <FiCheck className="mr-1 inline text-xs" />
                               {editSaving ? "Saving…" : "Save"}
-                            </AdminBtn>
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -672,23 +669,23 @@ export default function AdminDemoVideos() {
 
                         {/* Actions */}
                         <div className="flex shrink-0 items-center gap-1">
-                          <AdminBtn variant="ghost" size="sm" onClick={() => startEdit(video)} title="Edit">
+                          <Button variant="ghost" size="sm" onClick={() => startEdit(video)} title="Edit">
                             <FiEdit2 className="text-sm" />
-                          </AdminBtn>
+                          </Button>
                           {isOwner && (
-                            <AdminBtn variant="danger" size="sm" onClick={() => handleDelete(video)} title="Delete">
+                            <Button variant="danger" size="sm" onClick={() => handleDelete(video)} title="Delete">
                               <FiTrash2 className="text-sm" />
-                            </AdminBtn>
+                            </Button>
                           )}
                         </div>
                       </div>
                     )}
-                  </AdminCard>
+                  </Card>
                 );
               })}
             </div>
           )}
-        </AdminSection>
+        </Section>
       </AdminPage>
     </AdminShell>
   );

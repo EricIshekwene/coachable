@@ -34,13 +34,15 @@ function component(rel) {
 }
 
 // ── Session 5: tables & lists ──────────────────────────────────────────────────
+// Note: Q4 Session 1 alias purge — sections now import directly from DS barrel.
 
 describe("TablesSection reconciliation", () => {
   const src = section("TablesSection");
 
-  it("imports AdminDataTable from admin barrel", () => {
-    expect(src).toContain("AdminDataTable");
-    expect(src).toContain("../../../admin/components");
+  it("imports DataTable from DS barrel (not admin alias)", () => {
+    expect(src).toContain("DataTable");
+    expect(src).toContain("design-system/components");
+    expect(src).not.toContain("AdminDataTable");
   });
 
   it("does not use raw <table> element", () => {
@@ -55,9 +57,10 @@ describe("TablesSection reconciliation", () => {
 describe("ListsSection reconciliation", () => {
   const src = section("ListsSection");
 
-  it("imports AdminListItem from admin barrel", () => {
-    expect(src).toContain("AdminListItem");
-    expect(src).toContain("../../../admin/components");
+  it("imports ListItem from DS barrel (not admin alias)", () => {
+    expect(src).toContain("ListItem");
+    expect(src).toContain("design-system/components");
+    expect(src).not.toContain("AdminListItem");
   });
 
   it("marks at least one list group as live", () => {
@@ -70,47 +73,53 @@ describe("ListsSection reconciliation", () => {
 describe("SearchSection reconciliation", () => {
   const src = section("SearchSection");
 
-  it("imports AdminSearchInput from admin barrel", () => {
-    expect(src).toContain("AdminSearchInput");
-    expect(src).toContain("../../../admin/components");
+  it("imports SearchInput from DS barrel (not admin alias)", () => {
+    expect(src).toContain("SearchInput");
+    expect(src).toContain("design-system/components");
+    expect(src).not.toContain("AdminSearchInput");
   });
 
   it("does not inline the search icon + input pattern (uses component)", () => {
-    expect(src).toContain("<AdminSearchInput");
+    expect(src).toContain("<SearchInput");
   });
 });
 
 describe("SettingsSection reconciliation", () => {
   const src = section("SettingsSection");
 
-  it("imports AdminSettingsRow from admin barrel", () => {
-    expect(src).toContain("AdminSettingsRow");
-    expect(src).toContain("../../../admin/components");
+  it("imports SettingsRow from DS barrel (not admin alias)", () => {
+    expect(src).toContain("SettingsRow");
+    expect(src).toContain("design-system/components");
+    expect(src).not.toContain("AdminSettingsRow");
   });
 
-  it("imports AdminDangerZone from admin barrel", () => {
-    expect(src).toContain("AdminDangerZone");
+  it("imports DangerZone from DS barrel (not admin alias)", () => {
+    expect(src).toContain("DangerZone");
+    expect(src).not.toContain("AdminDangerZone");
   });
 });
 
 describe("DashboardSection reconciliation", () => {
   const src = section("DashboardSection");
 
-  it("imports AdminFilterBar from admin barrel", () => {
-    expect(src).toContain("AdminFilterBar");
-    expect(src).toContain("../../../admin/components");
+  it("imports FilterBar from DS barrel (not admin alias)", () => {
+    expect(src).toContain("FilterBar");
+    expect(src).toContain("design-system/components");
+    expect(src).not.toContain("AdminFilterBar");
   });
 
-  it("imports AdminBulkBar from admin barrel", () => {
-    expect(src).toContain("AdminBulkBar");
+  it("imports BulkBar from DS barrel (not admin alias)", () => {
+    expect(src).toContain("BulkBar");
+    expect(src).not.toContain("AdminBulkBar");
   });
 
-  it("imports AdminStatCard from admin barrel (Session 7)", () => {
-    expect(src).toContain("AdminStatCard");
+  it("imports StatCard from DS barrel (not admin alias)", () => {
+    expect(src).toContain("StatCard");
+    expect(src).not.toContain("AdminStatCard");
   });
 
   it("has a live StatCard demo group", () => {
-    expect(src).toContain("<AdminStatCard");
+    expect(src).toContain("<StatCard");
     expect(src).toContain('status="live"');
   });
 });
@@ -249,38 +258,35 @@ describe("Design-system barrel completeness", () => {
   });
 });
 
-describe("Admin barrel completeness", () => {
+describe("Admin barrel — Q4 Session 1 purge guard", () => {
   const barrelSrc = readFileSync(resolve(ROOT, "src/admin/components/index.js"), "utf8");
 
-  it("exports AdminStatCard alias", () => {
-    expect(barrelSrc).toContain("AdminStatCard");
-  });
-
-  it("exports AdminNotificationItem", () => {
+  it("still exports AdminNotificationItem (legitimate non-alias)", () => {
     expect(barrelSrc).toContain("AdminNotificationItem");
   });
 
-  it("exports AdminSidebarNavItem", () => {
+  it("still exports AdminSidebarNavItem (legitimate non-alias)", () => {
     expect(barrelSrc).toContain("AdminSidebarNavItem");
   });
 
-  it("exports AdminSelectableCard", () => {
+  it("still exports AdminSelectableCard (legitimate non-alias)", () => {
     expect(barrelSrc).toContain("AdminSelectableCard");
   });
 
-  it("exports all Session-5 admin aliases", () => {
-    expect(barrelSrc).toContain("AdminDataTable");
-    expect(barrelSrc).toContain("AdminTh");
-    expect(barrelSrc).toContain("AdminTd");
-    expect(barrelSrc).toContain("AdminTableSearchHeader");
-    expect(barrelSrc).toContain("AdminListItem");
+  it("no longer exports DS aliases (Session-5 tables)", () => {
+    expect(barrelSrc).not.toContain("AdminDataTable");
+    expect(barrelSrc).not.toContain("AdminListItem");
   });
 
-  it("exports all Session-6 admin aliases", () => {
-    expect(barrelSrc).toContain("AdminSearchInput");
-    expect(barrelSrc).toContain("AdminSettingsRow");
-    expect(barrelSrc).toContain("AdminFilterBar");
-    expect(barrelSrc).toContain("AdminBulkBar");
-    expect(barrelSrc).toContain("AdminDangerZone");
+  it("no longer exports DS aliases (Session-6 patterns)", () => {
+    expect(barrelSrc).not.toContain("AdminSearchInput");
+    expect(barrelSrc).not.toContain("AdminSettingsRow");
+    expect(barrelSrc).not.toContain("AdminFilterBar");
+    expect(barrelSrc).not.toContain("AdminBulkBar");
+    expect(barrelSrc).not.toContain("AdminDangerZone");
+  });
+
+  it("no longer exports AdminStatCard DS alias", () => {
+    expect(barrelSrc).not.toContain("AdminStatCard");
   });
 });

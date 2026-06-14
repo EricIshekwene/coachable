@@ -13,8 +13,7 @@
 
 import { useEffect, useState } from "react";
 import { adminApi } from "./adminTransport";
-import AdminEmptyState from "./components/AdminEmptyState";
-import AdminSpinner from "./components/AdminSpinner";
+import { EmptyState, Spinner } from "../design-system/components";
 import { FiToggleLeft } from "react-icons/fi";
 
 export default function AdminFlagGate({ flagName, children }) {
@@ -38,14 +37,14 @@ export default function AdminFlagGate({ flagName, children }) {
   if (status === "loading") {
     return (
       <div className="flex h-64 items-center justify-center">
-        <AdminSpinner />
+        <Spinner />
       </div>
     );
   }
 
   if (status === "disabled") {
     return (
-      <AdminEmptyState
+      <EmptyState
         icon={<FiToggleLeft size={20} />}
         title="Feature disabled"
         subtitle={`The "${flagName}" feature flag is globally disabled. Enable it from Admin → Feature Flags to use this page.`}

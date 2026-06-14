@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { FiSearch, FiCommand, FiCornerDownLeft } from "react-icons/fi";
-import { AdminSearchInput } from "../../../admin/components";
+import { SearchInput } from "../../../design-system/components";
 import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSMeta, DSDoDont, DSRef } from "../dsPrimitives";
 
 /** Sample rows for the live local-search demo. */
@@ -79,7 +79,7 @@ export default function SearchSection() {
       <DSGroup title="Local search" status="live" description="Filters on-screen rows live and highlights the matched span. Type below.">
         <DSTile>
           <div className="mx-auto max-w-sm">
-            <AdminSearchInput
+            <SearchInput
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onClear={q ? () => setQ("") : undefined}

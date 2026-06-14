@@ -16,11 +16,8 @@ import {
 } from "react-icons/fi";
 import { useAdmin } from "../admin/AdminContext";
 import { adminApi } from "../admin/adminTransport";
-import {
-  AdminShell, AdminHeader, AdminPage, AdminCard, AdminSection,
-  AdminBtn, AdminInput, AdminTextarea, AdminSelect, AdminToggle,
-  AdminModal, AdminBadge, AdminEmptyState, AdminSpinner, AdminAlert,
-} from "../admin/components";
+import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
+import { Card, Section, Button, Input, Textarea, Select, Toggle, Modal, Badge, EmptyState, Spinner, Alert } from "../design-system/components";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -181,7 +178,7 @@ function RuleEditor({ rule, index, onChange, onRemove }) {
           </span>
         </button>
 
-        <AdminSelect
+        <Select
           value={rule.type}
           onChange={(e) => onChange(defaultRule(e.target.value))}
           style={{ padding: "3px 8px", fontSize: "11px", minWidth: 130 }}
@@ -189,7 +186,7 @@ function RuleEditor({ rule, index, onChange, onRemove }) {
           {RULE_TYPES.map((rt) => (
             <option key={rt.value} value={rt.value}>{rt.label}</option>
           ))}
-        </AdminSelect>
+        </Select>
 
         <button
           type="button"
@@ -289,7 +286,7 @@ function RuleEditor({ rule, index, onChange, onRemove }) {
                 <p className="text-xs font-semibold" style={{ color: "var(--adm-text2)" }}>
                   State / Region codes <span style={{ color: "var(--adm-text3)", fontWeight: 400 }}>(comma-separated — e.g. OH, CA, TX)</span>
                 </p>
-                <AdminInput
+                <Input
                   placeholder="OH, CA, TX"
                   value={rule.states || ""}
                   onChange={(e) => set({ states: e.target.value })}
@@ -352,7 +349,7 @@ function FlagModal({ flag, onClose, onSave }) {
   };
 
   return (
-    <AdminModal
+    <Modal
       title={isNew ? "New Feature Flag" : `Edit: ${flag.name}`}
       onClose={onClose}
       footer={
@@ -361,10 +358,10 @@ function FlagModal({ flag, onClose, onSave }) {
             <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{saveError}</p>
           )}
           <div className="ml-auto flex gap-2">
-            <AdminBtn variant="ghost" onClick={onClose}>Cancel</AdminBtn>
-            <AdminBtn variant="primary" onClick={handleSave} disabled={saving}>
+            <Button variant="ghost" onClick={onClose}>Cancel</Button>
+            <Button variant="primary" onClick={handleSave} disabled={saving}>
               {saving ? "Saving…" : isNew ? "Create flag" : "Save changes"}
-            </AdminBtn>
+            </Button>
           </div>
         </div>
       }
@@ -375,7 +372,7 @@ function FlagModal({ flag, onClose, onSave }) {
           <label className="text-xs font-semibold" style={{ color: "var(--adm-text2)" }}>
             Flag name <span style={{ color: "var(--adm-danger)" }}>*</span>
           </label>
-          <AdminInput
+          <Input
             placeholder="e.g. in_app_notifications"
             value={form.name}
             onChange={(e) =>
@@ -393,7 +390,7 @@ function FlagModal({ flag, onClose, onSave }) {
           <label className="text-xs font-semibold" style={{ color: "var(--adm-text2)" }}>
             Description
           </label>
-          <AdminTextarea
+          <Textarea
             placeholder="What does this flag control?"
             value={form.description}
             onChange={(e) => setField("description", e.target.value)}
@@ -411,7 +408,7 @@ function FlagModal({ flag, onClose, onSave }) {
             border: `1px solid ${form.enabled ? "color-mix(in srgb, var(--adm-accent) 22%, transparent)" : "var(--adm-border)"}`,
           }}
         >
-          <AdminToggle
+          <Toggle
             checked={form.enabled}
             onChange={(v) => setField("enabled", v)}
             label="Globally enabled"
@@ -430,10 +427,10 @@ function FlagModal({ flag, onClose, onSave }) {
                 All rules must match (AND). No rules = on for everyone when globally enabled.
               </p>
             </div>
-            <AdminBtn size="sm" variant="outline" onClick={addRule}>
+            <Button size="sm" variant="outline" onClick={addRule}>
               <FiPlus size={12} />
               Add rule
-            </AdminBtn>
+            </Button>
           </div>
 
           {form.rules.length === 0 && (
@@ -466,7 +463,7 @@ function FlagModal({ flag, onClose, onSave }) {
           </div>
         </div>
       </div>
-    </AdminModal>
+    </Modal>
   );
 }
 
@@ -512,9 +509,9 @@ function FlagCard({ flag, onEdit, onToggle }) {
             >
               {flag.name}
             </span>
-            <AdminBadge status={flag.enabled ? "pass" : "fail"}>
+            <Badge status={flag.enabled ? "pass" : "fail"}>
               {flag.enabled ? "On" : "Off"}
-            </AdminBadge>
+            </Badge>
             {hasRules && (
               <span
                 className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
@@ -659,7 +656,7 @@ export default function AdminFeatureFlagsPage() {
     return (
       <AdminShell>
         <AdminPage>
-          <AdminEmptyState
+          <EmptyState
             icon={<FiInfo size={20} />}
             title="Owner access required"
             subtitle="Feature flags can only be managed by the account owner."
@@ -680,14 +677,14 @@ export default function AdminFeatureFlagsPage() {
       />
 
       <AdminPage className="overflow-y-auto">
-        <AdminSection>
+        <Section>
           {/* Info callout */}
-          <AdminAlert tone="info" className="mb-6">
+          <Alert tone="info" className="mb-6">
             <strong>How targeting works:</strong> Rules restrict who sees the feature.
             Filters include sport, team role, user type, stable % rollout (same user always
             in or out), and IP-based geolocation. All rules must match (AND logic). An
             empty rules list means <em>everyone</em> when the flag is globally on.
-          </AdminAlert>
+          </Alert>
 
           {/* Stats strip */}
           {!loading && !loadError && flags.length > 0 && (
@@ -706,21 +703,21 @@ export default function AdminFeatureFlagsPage() {
           {/* States */}
           {loading && (
             <div className="flex justify-center py-16">
-              <AdminSpinner />
+              <Spinner />
             </div>
           )}
 
           {!loading && loadError && (
-            <AdminEmptyState
+            <EmptyState
               icon={<FiInfo size={20} />}
               title="Failed to load flags"
               subtitle={loadError}
-              action={<AdminBtn onClick={load}>Retry</AdminBtn>}
+              action={<Button onClick={load}>Retry</Button>}
             />
           )}
 
           {!loading && !loadError && flags.length === 0 && (
-            <AdminEmptyState
+            <EmptyState
               icon={<FiSliders size={20} />}
               title="No feature flags"
               subtitle="Feature flags are hardcoded — add new ones in the codebase."
@@ -739,7 +736,7 @@ export default function AdminFeatureFlagsPage() {
               ))}
             </div>
           )}
-        </AdminSection>
+        </Section>
       </AdminPage>
 
       {/* Create / edit modal */}

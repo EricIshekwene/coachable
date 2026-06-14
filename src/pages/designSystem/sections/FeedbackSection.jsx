@@ -1,5 +1,5 @@
 import { FiPlus } from "react-icons/fi";
-import { AdminBadge, AdminAlert, AdminEmptyState, AdminSpinner, AdminBtn, AdminSkeleton } from "../../../admin/components";
+import { Badge, Alert, EmptyState, Spinner, Button, Skeleton } from "../../../design-system/components";
 import { DSPageHeading, DSGroup, DSTile, DSStage, DSChecklist } from "../dsPrimitives";
 
 /**
@@ -20,21 +20,21 @@ export default function FeedbackSection() {
       <DSGroup title="Badges" status="live" description="Small, semantic status labels for lists and tables.">
         <DSTile>
           <DSStage>
-            <AdminBadge status="resolved" />
-            <AdminBadge status="warning" />
-            <AdminBadge status="fail" />
-            <AdminBadge status="info" />
-            <AdminBadge status="open" />
-            <AdminBadge status="in_progress" />
+            <Badge status="resolved" />
+            <Badge status="warning" />
+            <Badge status="fail" />
+            <Badge status="info" />
+            <Badge status="open" />
+            <Badge status="in_progress" />
           </DSStage>
         </DSTile>
       </DSGroup>
 
       <DSGroup title="Alerts" status="live" description="Inline message blocks with tone + title.">
         <div className="space-y-3">
-          <AdminAlert tone="success" title="Publish complete">18 athletes can now open the updated play sheet.</AdminAlert>
-          <AdminAlert tone="warning" title="Needs attention">One modal still uses a custom button stack outside the shared admin primitives.</AdminAlert>
-          <AdminAlert tone="info" title="Heads up">New reusable admin UI should appear in this design system before it spreads to multiple pages.</AdminAlert>
+          <Alert tone="success" title="Publish complete">18 athletes can now open the updated play sheet.</Alert>
+          <Alert tone="warning" title="Needs attention">One modal still uses a custom button stack outside the shared admin primitives.</Alert>
+          <Alert tone="info" title="Heads up">New reusable admin UI should appear in this design system before it spreads to multiple pages.</Alert>
         </div>
       </DSGroup>
 
@@ -71,7 +71,7 @@ export default function FeedbackSection() {
         <DSChecklist
           columns={3}
           items={[
-            { label: "Online / offline / away / busy", note: "AdminAvatar status dot.", status: "live" },
+            { label: "Online / offline / away / busy", note: "Avatar status dot.", status: "live" },
             { label: "Draft / published / archived", note: "Play status badges.", status: "inApp" },
             { label: "Pending / approved / rejected", note: "Join requests, invites.", status: "inApp" },
             { label: "Processing / synced", status: "spec" },
@@ -81,24 +81,24 @@ export default function FeedbackSection() {
         />
       </DSGroup>
 
-      <DSGroup title="Loading states" status="live" description="AdminSpinner and the shared AdminSkeleton (text / circle / block variants).">
+      <DSGroup title="Loading states" status="live" description="Spinner and the shared Skeleton (text / circle / block variants).">
         <div className="grid gap-4 md:grid-cols-2">
           <DSTile title="Spinner + skeleton lines">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>Syncing play activity</p>
-              <AdminSpinner size={22} />
+              <Spinner size={22} />
             </div>
             <div className="mt-4">
-              <AdminSkeleton variant="text" lines={3} />
+              <Skeleton variant="text" lines={3} />
             </div>
           </DSTile>
           <DSTile title="Skeleton card (avatar + block)">
             <div className="flex items-center gap-3">
-              <AdminSkeleton variant="circle" width={40} />
-              <div className="flex-1"><AdminSkeleton variant="text" lines={2} /></div>
+              <Skeleton variant="circle" width={40} />
+              <div className="flex-1"><Skeleton variant="text" lines={2} /></div>
             </div>
             <div className="mt-4">
-              <AdminSkeleton variant="block" height={96} />
+              <Skeleton variant="block" height={96} />
             </div>
           </DSTile>
         </div>
@@ -106,11 +106,11 @@ export default function FeedbackSection() {
 
       <DSGroup title="Empty states" status="live">
         <DSTile>
-          <AdminEmptyState
+          <EmptyState
             className="py-8"
             title="No saved filters"
             subtitle="Create a few standard views here so the table stays consistent across teams."
-            action={<AdminBtn variant="secondary" size="sm"><FiPlus /> Create filter</AdminBtn>}
+            action={<Button variant="secondary" size="sm"><FiPlus /> Create filter</Button>}
           />
         </DSTile>
         <DSChecklist

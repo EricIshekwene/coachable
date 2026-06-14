@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useAdmin } from "../admin/AdminContext";
 import { adminPath } from "../admin/adminNav";
-import { AdminShell, AdminHeader, AdminPage, AdminBtn, AdminSpinner } from "../admin/components";
+import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
+import { Button, Spinner } from "../design-system/components";
 import { formatFailedTestsReport } from "../testing/formatFailedTestsReport";
 
 const SUITE_NAMES = [
@@ -260,17 +261,17 @@ export default function AdminTests() {
         backLabel="Dashboard"
         backTo={adminPath(basePath, "")}
         actions={
-          <AdminBtn
+          <Button
             variant="primary"
             onClick={runSelected}
             disabled={running || enabledSuites.size === 0 || !allSuites}
           >
             {running ? (
-              <span className="flex items-center gap-2"><AdminSpinner size={12} /> Running...</span>
+              <span className="flex items-center gap-2"><Spinner size={12} /> Running...</span>
             ) : !allSuites ? "Loading suites..."
               : enabledSuites.size === SUITE_NAMES.length ? "Run All Tests"
               : `Run ${enabledSuites.size} Suite${enabledSuites.size !== 1 ? "s" : ""}`}
-          </AdminBtn>
+          </Button>
         }
       />
 
@@ -296,9 +297,9 @@ export default function AdminTests() {
             </div>
             {stats.failed > 0 && failedTestsReport && (
               <div className="mb-5 flex justify-end">
-                <AdminBtn variant="danger" size="sm" onClick={() => copyToClipboard(failedTestsReport, "all-failed-tests")}>
+                <Button variant="danger" size="sm" onClick={() => copyToClipboard(failedTestsReport, "all-failed-tests")}>
                   {copied === "all-failed-tests" ? "Copied!" : "Copy Failed Tests"}
-                </AdminBtn>
+                </Button>
               </div>
             )}
 
@@ -431,17 +432,17 @@ export default function AdminTests() {
                 <span style={{ color: "var(--adm-border2)" }}>|</span>
                 <button onClick={selectNone} className="transition" style={{ color: "var(--adm-muted)" }}>Select None</button>
               </div>
-              <AdminBtn variant="primary" onClick={runSelected} disabled={enabledSuites.size === 0}>
+              <Button variant="primary" onClick={runSelected} disabled={enabledSuites.size === 0}>
                 {enabledSuites.size === SUITE_NAMES.length
                   ? `Run All ${totalRegistered} Tests`
                   : enabledSuites.size === 0 ? "Select suites to run"
                   : `Run ${selectedTestCount} Tests (${enabledSuites.size} suite${enabledSuites.size !== 1 ? "s" : ""})`}
-              </AdminBtn>
+              </Button>
             </div>
           </div>
         ) : (
           <div className="mt-20 flex flex-col items-center">
-            <AdminSpinner size={48} />
+            <Spinner size={48} />
             <p className="mt-5 font-Manrope text-sm font-semibold" style={{ color: "var(--adm-text)" }}>Running {selectedTestCount} tests across {enabledSuites.size} suite{enabledSuites.size !== 1 ? "s" : ""}...</p>
             <p className="mt-1 text-xs" style={{ color: "var(--adm-muted)" }}>This usually takes less than a second</p>
           </div>

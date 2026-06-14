@@ -1,10 +1,8 @@
 import { Link, Navigate } from "react-router-dom";
 import { useAdmin } from "../admin/AdminContext";
 import AnalyticsDashboard from "../admin/analytics/AnalyticsDashboard";
-import AdminShell from "../admin/components/AdminShell";
-import AdminHeader from "../admin/components/AdminHeader";
-import AdminPage from "../admin/components/AdminPage";
-import AdminEmptyState from "../admin/components/AdminEmptyState";
+import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
+import { EmptyState } from "../design-system/components";
 
 /**
  * Dashboard page rendered at /staff (and shown to owners testing the
@@ -57,7 +55,7 @@ export default function StaffDashboard() {
       <AdminShell>
         <AdminHeader />
         <AdminPage>
-          <AdminEmptyState
+          <EmptyState
             title="No permissions granted"
             message="The workspace owner hasn't granted you any access yet. Contact them to request the sections you need."
           />

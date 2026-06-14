@@ -1,5 +1,5 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import AdminSpinner from "../components/AdminSpinner";
+import { Spinner } from "../../design-system/components";
 
 const SPORT_COLORS = [
   "var(--adm-accent)",       // orange — primary
@@ -25,7 +25,7 @@ function fmtSport(s) {
  * @param {{ data: Array<{ sport: string, teams: number }>|null, height?: number }} props
  */
 export default function SportMixChart({ data, height = 180 }) {
-  if (!data) return <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center" }}><AdminSpinner /></div>;
+  if (!data) return <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center" }}><Spinner /></div>;
   if (!data.length) return <p style={{ color: "var(--adm-muted)", fontSize: 13, textAlign: "center", paddingTop: 60 }}>No teams yet</p>;
 
   const chartData = data.map((d) => ({ ...d, name: fmtSport(d.sport) }));

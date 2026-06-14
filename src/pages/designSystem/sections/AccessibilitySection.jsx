@@ -37,7 +37,7 @@ export default function AccessibilitySection() {
             { label: "Logical focus order", status: "spec" },
             { label: "Screen-reader / ARIA labels", note: "Icon buttons use aria-label.", status: "live" },
             { label: "Form error announcements", status: "spec" },
-            { label: "Modal focus trap + Escape", note: "AdminModal closes on Escape.", status: "live" },
+            { label: "Modal focus trap + Escape", note: "Modal closes on Escape.", status: "live" },
             { label: "Skip-to-content link", status: "planned" },
             { label: "Reduced motion", status: "spec" },
             { label: "High contrast mode", status: "planned" },

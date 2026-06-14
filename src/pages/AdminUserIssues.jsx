@@ -6,14 +6,11 @@
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
-import ConfirmModal from "../components/subcomponents/ConfirmModal";
 import { useAdmin } from "../admin/AdminContext";
 import { adminPath } from "../admin/adminNav";
 import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
-import {
-  AdminShell, AdminHeader, AdminPage, AdminCard, AdminSection,
-  AdminBtn, AdminSelect, AdminBadge, AdminEmptyState, AdminSpinner,
-} from "../admin/components";
+import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
+import { Card, Section, Button, Select, Badge, EmptyState, Spinner, ConfirmDialog } from "../design-system/components";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -143,10 +140,10 @@ export default function AdminUserIssues() {
   if (!authed) {
     return (
       <AdminShell className="flex items-center justify-center">
-        <AdminCard>
+        <Card>
           <p className="mb-3 text-sm" style={{ color: "var(--adm-muted)" }}>Admin session required</p>
           <Link to={adminPath(basePath, "")} className="text-sm transition-opacity hover:opacity-70" style={{ color: "var(--adm-accent)" }}>Go to Admin Login</Link>
-        </AdminCard>
+        </Card>
       </AdminShell>
     );
   }
@@ -155,12 +152,12 @@ export default function AdminUserIssues() {
 
   return (
     <AdminShell>
-      <ConfirmModal
+      <ConfirmDialog
         open={confirmModal.open}
-        message={confirmModal.message}
-        subtitle={confirmModal.subtitle}
+        title={confirmModal.message}
+        description={confirmModal.subtitle}
         confirmLabel={confirmModal.confirmLabel}
-        danger={confirmModal.danger}
+        tone={confirmModal.danger ? "danger" : "default"}
         onConfirm={handleConfirmOk}
         onCancel={handleConfirmCancel}
       />
@@ -169,13 +166,13 @@ export default function AdminUserIssues() {
         backLabel="Dashboard"
         backTo={adminPath(basePath, "")}
         actions={
-          <AdminBtn variant="secondary" size="sm" onClick={fetchIssues} disabled={loading}>
-            {loading ? <AdminSpinner size={12} /> : "Refresh"}
-          </AdminBtn>
+          <Button variant="secondary" size="sm" onClick={fetchIssues} disabled={loading}>
+            {loading ? <Spinner size={12} /> : "Refresh"}
+          </Button>
         }
       />
       <AdminPage>
-        <AdminSection
+        <Section
           title="User-Reported Issues"
           subtitle={`${total} total issue${total !== 1 ? "s" : ""} from beta testers`}
         >
@@ -184,18 +181,18 @@ export default function AdminUserIssues() {
           )}
 
           {issues.length === 0 && !loading ? (
-            <AdminEmptyState title="No reported issues" subtitle="Issues submitted by beta testers will appear here" />
+            <EmptyState title="No reported issues" subtitle="Issues submitted by beta testers will appear here" />
           ) : (
             <div className="max-h-[70vh] space-y-2 overflow-y-auto pr-1">
               {issues.map((issue) => {
                 const isExpanded = expanded === issue.id;
                 return (
-                  <AdminCard key={issue.id} padding={false} className="overflow-hidden">
+                  <Card key={issue.id} padding={false} className="overflow-hidden">
                     <button
                       onClick={() => setExpanded(isExpanded ? null : issue.id)}
                       className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition-opacity hover:opacity-90"
                     >
-                      <AdminBadge status={issue.status} className="mt-0.5 shrink-0" />
+                      <Badge status={issue.status} className="mt-0.5 shrink-0" />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>{issue.title}</p>
                         <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]" style={{ color: "var(--adm-muted)" }}>
@@ -216,16 +213,16 @@ export default function AdminUserIssues() {
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-[10px] font-semibold uppercase" style={{ color: "var(--adm-muted)" }}>Status:</span>
                             {canResolveIssues ? (
-                              <AdminSelect
+                              <Select
                                 value={issue.status}
                                 onChange={(e) => handleStatusChange(issue, e.target.value)}
                               >
                                 <option value="open">Open</option>
                                 <option value="in_progress">In Progress</option>
                                 <option value="resolved">Resolved</option>
-                              </AdminSelect>
+                              </Select>
                             ) : (
-                              <AdminBadge status={issue.status}>{issue.status.replace("_", " ")}</AdminBadge>
+                              <Badge status={issue.status}>{issue.status.replace("_", " ")}</Badge>
                             )}
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
@@ -233,13 +230,13 @@ export default function AdminUserIssues() {
                               {new Date(issue.created_at).toLocaleString()}
                             </span>
                             {isOwner && (
-                              <AdminBtn variant="danger" size="sm" onClick={() => handleDelete(issue.id)}>Delete</AdminBtn>
+                              <Button variant="danger" size="sm" onClick={() => handleDelete(issue.id)}>Delete</Button>
                             )}
                           </div>
                         </div>
                       </div>
                     )}
-                  </AdminCard>
+                  </Card>
                 );
               })}
             </div>
@@ -247,12 +244,12 @@ export default function AdminUserIssues() {
 
           {totalPages > 1 && (
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-              <AdminBtn variant="secondary" size="sm" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}>Previous</AdminBtn>
+              <Button variant="secondary" size="sm" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}>Previous</Button>
               <span className="text-xs" style={{ color: "var(--adm-muted)" }}>Page {page + 1} of {totalPages}</span>
-              <AdminBtn variant="secondary" size="sm" onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}>Next</AdminBtn>
+              <Button variant="secondary" size="sm" onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}>Next</Button>
             </div>
           )}
-        </AdminSection>
+        </Section>
       </AdminPage>
     </AdminShell>
   );

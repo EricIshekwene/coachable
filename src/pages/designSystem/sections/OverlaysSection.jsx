@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { FiZap, FiInfo } from "react-icons/fi";
-import { AdminModal, AdminBtn, AdminInput, AdminTextarea, AdminTooltip } from "../../../admin/components";
+import { Modal, Button, Input, Textarea, Tooltip } from "../../../design-system/components";
 import { Tooltip as SlateTooltip } from "../../../components/subcomponents/Popovers";
 import { DSPageHeading, DSGroup, DSTile, DSStage, DSChecklist, DSAnatomy } from "../dsPrimitives";
 
 /**
- * Overlays: modals, drawers, popovers, and tooltips. Live AdminModal and the
+ * Overlays: modals, drawers, popovers, and tooltips. Live Modal and the
  * Slate tooltip primitive, plus documented coverage for drawers and popovers.
  *
  * @returns {JSX.Element}
@@ -18,7 +18,7 @@ export default function OverlaysSection() {
       <DSPageHeading
         eyebrow="Components"
         title="Modals, drawers & overlays"
-        lead="Overlays share one scrim, radius, padding, and footer-action treatment. AdminModal is the shared dialog; drawers and popovers follow the same surface language. Action hierarchy stays simple — one primary, one secondary, aligned bottom-right."
+        lead="Overlays share one scrim, radius, padding, and footer-action treatment. Modal is the shared dialog; drawers and popovers follow the same surface language. Action hierarchy stays simple — one primary, one secondary, aligned bottom-right."
       />
 
       <DSGroup title="Modal" status="live" description="Escape-to-close, click-scrim-to-close, blurred backdrop, sticky-able footer.">
@@ -30,23 +30,23 @@ export default function OverlaysSection() {
                 <div className="rounded-[var(--adm-radius-md)] px-3 py-2 text-sm" style={{ backgroundColor: "var(--adm-surface)", border: "1px solid var(--adm-border)" }}>Title + short explainer</div>
                 <div className="rounded-[var(--adm-radius-md)] px-3 py-8 text-sm" style={{ backgroundColor: "var(--adm-surface)", border: "1px dashed var(--adm-border2)", color: "var(--adm-text3)" }}>Scrollable content area</div>
                 <div className="flex justify-end gap-2">
-                  <AdminBtn variant="ghost" size="sm">Cancel</AdminBtn>
-                  <AdminBtn variant="primary" size="sm">Confirm</AdminBtn>
+                  <Button variant="ghost" size="sm">Cancel</Button>
+                  <Button variant="primary" size="sm">Confirm</Button>
                 </div>
               </div>
             </div>
-            <AdminBtn variant="primary" onClick={() => setOpen(true)}>Open modal example</AdminBtn>
+            <Button variant="primary" onClick={() => setOpen(true)}>Open modal example</Button>
           </div>
         </DSTile>
       </DSGroup>
 
-      <DSGroup title="Tooltip & popover" status="live" description="Shared AdminTooltip handles admin-themed helper text (hover + keyboard focus); the Slate tooltip is the editor-canvas variant; rich popovers add structured content.">
+      <DSGroup title="Tooltip & popover" status="live" description="Shared Tooltip handles admin-themed helper text (hover + keyboard focus); the Slate tooltip is the editor-canvas variant; rich popovers add structured content.">
         <div className="grid gap-4 md:grid-cols-2">
           <DSTile title="Tooltip">
             <DSStage>
-              <AdminTooltip label="Shared admin tooltip — hover or focus me">
-                <AdminBtn variant="secondary" size="sm">Admin tooltip</AdminBtn>
-              </AdminTooltip>
+              <Tooltip label="Shared admin tooltip — hover or focus me">
+                <Button variant="secondary" size="sm">Admin tooltip</Button>
+              </Tooltip>
             </DSStage>
             <DSStage dark className="mt-3">
               <div className="relative inline-flex">
@@ -94,17 +94,17 @@ export default function OverlaysSection() {
         />
       </DSGroup>
 
-      <AdminModal open={open} onClose={() => setOpen(false)} title="Share updated design rules" width="max-w-lg">
+      <Modal open={open} onClose={() => setOpen(false)} title="Share updated design rules" width="max-w-lg">
         <div className="space-y-4">
           <p className="text-sm leading-6" style={{ color: "var(--adm-text2)" }}>Use the shared modal pattern for approvals, confirmations, and dense settings blocks. Keep the action hierarchy simple and align the button stack bottom-right.</p>
-          <AdminInput label="Audience" value="All staff" onChange={() => {}} />
-          <AdminTextarea label="Message" value="The design system now documents shared overlays, fields, and patterns." onChange={() => {}} />
+          <Input label="Audience" value="All staff" onChange={() => {}} />
+          <Textarea label="Message" value="The design system now documents shared overlays, fields, and patterns." onChange={() => {}} />
           <div className="flex justify-end gap-2 pt-2">
-            <AdminBtn variant="ghost" onClick={() => setOpen(false)}>Cancel</AdminBtn>
-            <AdminBtn variant="primary"><FiZap /> Send update</AdminBtn>
+            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button variant="primary"><FiZap /> Send update</Button>
           </div>
         </div>
-      </AdminModal>
+      </Modal>
     </div>
   );
 }

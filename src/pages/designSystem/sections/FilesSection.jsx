@@ -1,5 +1,5 @@
 import { FiUploadCloud, FiFile, FiCheckCircle, FiAlertTriangle, FiRotateCw, FiX } from "react-icons/fi";
-import { AdminProgress } from "../../../admin/components";
+import { Progress } from "../../../design-system/components";
 import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSRef, DSMeta, DSDoDont } from "../dsPrimitives";
 
 /**
@@ -30,7 +30,7 @@ export default function FilesSection() {
               <div className="flex h-10 w-10 items-center justify-center rounded-[var(--adm-radius-md)]" style={{ backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }}><FiFile /></div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold" style={{ color: "var(--adm-text)" }}>nickel-pressure.mp4</p>
-                <div className="mt-1.5"><AdminProgress value={64} size="sm" /></div>
+                <div className="mt-1.5"><Progress value={64} size="sm" /></div>
                 <p className="mt-1 text-[11px]" style={{ color: "var(--adm-text3)" }}>64% · 12.4 MB of 19.3 MB</p>
               </div>
             </div>

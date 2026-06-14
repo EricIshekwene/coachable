@@ -1,6 +1,6 @@
 import { useId } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ResponsiveContainer, LabelList } from "recharts";
-import AdminSpinner from "../components/AdminSpinner";
+import { Spinner } from "../../design-system/components";
 
 function FunnelHoverCursor({ x, y, width, height, gradientId }) {
   return (
@@ -34,7 +34,7 @@ function FunnelHoverCursor({ x, y, width, height, gradientId }) {
  */
 export default function OnboardingFunnel({ data, height = 180 }) {
   const hoverGradientId = `funnelHover${useId().replace(/:/g, "")}`;
-  if (!data) return <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center" }}><AdminSpinner /></div>;
+  if (!data) return <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center" }}><Spinner /></div>;
 
   const total = data.registered || 1;
 

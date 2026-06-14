@@ -1,5 +1,5 @@
 import { FiFilter, FiUsers, FiBarChart2, FiAlertCircle } from "react-icons/fi";
-import { AdminBtn, AdminFilterBar, AdminBulkBar, AdminStatCard } from "../../../admin/components";
+import { Button, FilterBar, BulkBar, StatCard } from "../../../design-system/components";
 import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSRef } from "../dsPrimitives";
 
 /**
@@ -16,26 +16,26 @@ export default function DashboardSection() {
         lead="App pages share a consistent skeleton: page header with title + actions, an optional filter bar, then the content (KPI cards, charts, tables, or feeds). Filters, search, and bulk actions all reuse the same chip and toolbar language."
       />
 
-      <DSGroup title="Stat cards" status="live" description="AdminStatCard: label, value, delta percentage, and tone variants for at-a-glance KPIs.">
+      <DSGroup title="Stat cards" status="live" description="StatCard: label, value, delta percentage, and tone variants for at-a-glance KPIs.">
         <DSTile>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <AdminStatCard label="Total users" value="1,284" delta={{ value: 12, label: "vs last month" }} icon={<FiUsers />} />
-            <AdminStatCard label="Active plays" value="847" delta={{ value: 5, label: "vs last month" }} tone="success" icon={<FiBarChart2 />} />
-            <AdminStatCard label="Churn rate" value="3.2%" delta={{ value: -1, label: "vs last month" }} tone="warning" />
-            <AdminStatCard label="Errors" value="14" delta={{ value: 8, label: "vs last month" }} tone="danger" icon={<FiAlertCircle />} />
+            <StatCard label="Total users" value="1,284" delta={{ value: 12, label: "vs last month" }} icon={<FiUsers />} />
+            <StatCard label="Active plays" value="847" delta={{ value: 5, label: "vs last month" }} tone="success" icon={<FiBarChart2 />} />
+            <StatCard label="Churn rate" value="3.2%" delta={{ value: -1, label: "vs last month" }} tone="warning" />
+            <StatCard label="Errors" value="14" delta={{ value: 8, label: "vs last month" }} tone="danger" icon={<FiAlertCircle />} />
           </div>
         </DSTile>
         <DSTile title="Loading state">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <AdminStatCard label="Total users" value={0} loading />
-            <AdminStatCard label="Active plays" value={0} loading tone="success" />
+            <StatCard label="Total users" value={0} loading />
+            <StatCard label="Active plays" value={0} loading tone="success" />
           </div>
         </DSTile>
       </DSGroup>
 
       <DSGroup title="Filter bar" status="live" description="Search left, filter button + active filter chips, sort/view toggles right.">
         <DSTile>
-          <AdminFilterBar
+          <FilterBar
             search={{ value: "", onChange: () => {}, placeholder: "Search plays…" }}
             chips={[
               { label: "Football", onRemove: () => {} },
@@ -43,7 +43,7 @@ export default function DashboardSection() {
             ]}
             actions={
               <>
-                <AdminBtn variant="outline" size="sm"><FiFilter /> Filters</AdminBtn>
+                <Button variant="outline" size="sm"><FiFilter /> Filters</Button>
               </>
             }
           />
@@ -52,14 +52,14 @@ export default function DashboardSection() {
 
       <DSGroup title="Bulk action bar" status="live" description="Appears when rows are selected.">
         <DSTile>
-          <AdminBulkBar
+          <BulkBar
             count={3}
             onClearSelect={() => {}}
             actions={
               <>
-                <AdminBtn variant="ghost" size="sm">Archive</AdminBtn>
-                <AdminBtn variant="ghost" size="sm">Export</AdminBtn>
-                <AdminBtn variant="danger" size="sm">Delete</AdminBtn>
+                <Button variant="ghost" size="sm">Archive</Button>
+                <Button variant="ghost" size="sm">Export</Button>
+                <Button variant="danger" size="sm">Delete</Button>
               </>
             }
           />
@@ -85,7 +85,7 @@ export default function DashboardSection() {
           columns={3}
           items={[
             { label: "Page / global search", status: "inApp" },
-            { label: "Filter button + chips", note: "AdminChip.", status: "live" },
+            { label: "Filter button + chips", note: "Chip.", status: "live" },
             { label: "Active / clear filters", status: "live" },
             { label: "Saved filters", status: "planned" },
             { label: "Sort dropdown / view toggle", status: "spec" },

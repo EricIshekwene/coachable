@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../utils/api";
-import ConfirmModal from "../components/subcomponents/ConfirmModal";
+import { ConfirmDialog } from "../design-system/components";
 import { formatFailedTestsReport } from "../testing/formatFailedTestsReport";
 import {
   isAdminElevated,
@@ -18,18 +18,20 @@ import {
   AdminShell,
   AdminHeader,
   AdminPage,
-  AdminCard,
-  AdminSection,
-  AdminBtn,
-  AdminInput,
-  AdminSelect,
-  AdminCheckbox,
-  AdminModal,
-  AdminBadge,
-  AdminEmptyState,
-  AdminSpinner,
-  AdminDataTable,
 } from "../admin/components";
+import {
+  Card,
+  Section,
+  Button,
+  Input,
+  Select,
+  Checkbox,
+  Modal,
+  Badge,
+  EmptyState,
+  Spinner,
+  DataTable,
+} from "../design-system/components";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -199,11 +201,11 @@ function RecentActivitySection({ session }) {
   if (loading && !data) {
     return (
       <section id="recent-activity" style={{ scrollMarginTop: "4rem" }}>
-        <AdminSection title="Recent Activity">
+        <Section title="Recent Activity">
           <div style={{ display: "flex", justifyContent: "center", padding: "40px 20px" }}>
-            <AdminSpinner />
+            <Spinner />
           </div>
-        </AdminSection>
+        </Section>
       </section>
     );
   }
@@ -211,28 +213,28 @@ function RecentActivitySection({ session }) {
   if (error) {
     return (
       <section id="recent-activity" style={{ scrollMarginTop: "4rem" }}>
-        <AdminSection title="Recent Activity">
+        <Section title="Recent Activity">
           <div style={{ color: "var(--adm-danger)", fontSize: 13 }}>
             Failed to load recent activity: {error}
           </div>
-        </AdminSection>
+        </Section>
       </section>
     );
   }
 
   return (
     <section id="recent-activity" style={{ scrollMarginTop: "4rem" }}>
-      <AdminSection title="Recent Activity">
+      <Section title="Recent Activity">
         {data && (
-          <AdminCard>
+          <Card>
             <ActivityFeed
               users={data.recentUsers}
               errors={data.recentErrors}
               issues={data.recentIssues}
             />
-          </AdminCard>
+          </Card>
         )}
-      </AdminSection>
+      </Section>
     </section>
   );
 }
@@ -1090,7 +1092,7 @@ export default function Admin() {
               </p>
               {!u.onboarded_at && (
                 <div className="mt-2 flex gap-1 overflow-hidden">
-                  <AdminBadge status="warning">Needs onboarding</AdminBadge>
+                  <Badge status="warning">Needs onboarding</Badge>
                 </div>
               )}
             </div>
@@ -1151,9 +1153,9 @@ export default function Admin() {
       width: "96px",
       render: (u) => (
         <div className="flex flex-col gap-1">
-          <AdminBadge status={u.email_verified_at ? "resolved" : undefined}>
+          <Badge status={u.email_verified_at ? "resolved" : undefined}>
             {u.email_verified_at ? "Verified" : "Unverified"}
-          </AdminBadge>
+          </Badge>
           <button
             onClick={(e) => { e.stopPropagation(); handleToggleBetaTester(u); }}
             title={u.is_beta_tester ? "Remove beta tester" : "Make beta tester"}
@@ -1246,7 +1248,7 @@ export default function Admin() {
               paddingBottom: "calc(2rem + env(safe-area-inset-bottom) + var(--app-keyboard-inset))",
             }}
           >
-            <AdminSpinner size={24} />
+            <Spinner size={24} />
           </div>
         </AdminShell>
       );
@@ -1262,13 +1264,13 @@ export default function Admin() {
             scrollPaddingBottom: "calc(8rem + var(--app-keyboard-inset))",
           }}
         >
-          <AdminCard className="w-full max-w-sm" style={{ boxShadow: "var(--adm-shadow)" }}>
+          <Card className="w-full max-w-sm" style={{ boxShadow: "var(--adm-shadow)" }}>
           <div className="mb-6 text-center">
             <p className="font-Manrope text-sm font-normal" style={{ color: "var(--adm-text)" }}>Admin Panel</p>
             <p className="mt-0.5 text-xs" style={{ color: "var(--adm-muted)" }}>Restricted access</p>
           </div>
           <form onSubmit={handleLogin} className="flex flex-col gap-3">
-            <AdminInput
+            <Input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -1276,11 +1278,11 @@ export default function Admin() {
               autoFocus
             />
             {loginError && <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{loginError}</p>}
-            <AdminBtn variant="primary" type="submit" disabled={logging || !password} className="w-full justify-center py-2.5">
+            <Button variant="primary" type="submit" disabled={logging || !password} className="w-full justify-center py-2.5">
               {logging ? "Authenticating…" : "Sign in"}
-            </AdminBtn>
+            </Button>
           </form>
-          </AdminCard>
+          </Card>
         </div>
       </AdminShell>
     );
@@ -1298,23 +1300,23 @@ export default function Admin() {
 
   return (
     <AdminShell>
-      <ConfirmModal
+      <ConfirmDialog
         open={confirmModal.open}
-        message={confirmModal.message}
-        subtitle={confirmModal.subtitle}
+        title={confirmModal.message}
+        description={confirmModal.subtitle}
         confirmLabel={confirmModal.confirmLabel}
-        danger={confirmModal.danger}
+        tone={confirmModal.danger ? "danger" : "default"}
         onConfirm={handleConfirmOk}
         onCancel={handleConfirmCancel}
       />
 
       {/* Danger Mode elevation modal — Step 1: password */}
-      <AdminModal open={elevateModal && elevateStep === "password"} onClose={handleElevateCancel} title="Danger Mode Required" width="max-w-sm" hideClose>
+      <Modal open={elevateModal && elevateStep === "password"} onClose={handleElevateCancel} title="Danger Mode Required" width="max-w-sm" hideClose>
         <p className="mb-4 text-xs" style={{ color: "var(--adm-danger)" }}>
           Re-enter your admin password. A verification code will be sent to your security email.
         </p>
         <form onSubmit={handleElevateRequestCode} className="flex flex-col gap-3">
-          <AdminInput
+          <Input
             type="password"
             value={elevatePassword}
             onChange={(e) => setElevatePassword(e.target.value)}
@@ -1323,22 +1325,22 @@ export default function Admin() {
           />
           {elevateError && <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{elevateError}</p>}
           <div className="flex gap-2">
-            <AdminBtn variant="secondary" type="button" onClick={handleElevateCancel} className="flex-1 justify-center">Cancel</AdminBtn>
-            <AdminBtn variant="danger" type="submit" disabled={elevating || !elevatePassword} className="flex-1 justify-center">
+            <Button variant="secondary" type="button" onClick={handleElevateCancel} className="flex-1 justify-center">Cancel</Button>
+            <Button variant="danger" type="submit" disabled={elevating || !elevatePassword} className="flex-1 justify-center">
               {elevating ? "Sending…" : "Send Code"}
-            </AdminBtn>
+            </Button>
           </div>
         </form>
-      </AdminModal>
+      </Modal>
 
       {/* Danger Mode elevation modal — Step 2: OTP code */}
-      <AdminModal open={elevateModal && elevateStep === "code"} onClose={handleElevateCancel} title="Check Your Email" width="max-w-sm" hideClose>
+      <Modal open={elevateModal && elevateStep === "code"} onClose={handleElevateCancel} title="Check Your Email" width="max-w-sm" hideClose>
         <p className="mb-1 text-xs" style={{ color: "var(--adm-text2)" }}>
           A 6-digit verification code was sent to:
         </p>
         <p className="mb-4 text-sm font-semibold" style={{ color: "var(--adm-text)" }}>{elevateMaskedEmail}</p>
         <form onSubmit={handleElevateConfirmCode} className="flex flex-col gap-3">
-          <AdminInput
+          <Input
             type="text"
             inputMode="numeric"
             maxLength={6}
@@ -1349,13 +1351,13 @@ export default function Admin() {
           />
           {elevateError && <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{elevateError}</p>}
           <div className="flex gap-2">
-            <AdminBtn variant="secondary" type="button" onClick={() => { setElevateStep("password"); setElevateCode(""); setElevateError(""); }} className="flex-1 justify-center">Back</AdminBtn>
-            <AdminBtn variant="danger" type="submit" disabled={elevating || elevateCode.length !== 6} className="flex-1 justify-center">
+            <Button variant="secondary" type="button" onClick={() => { setElevateStep("password"); setElevateCode(""); setElevateError(""); }} className="flex-1 justify-center">Back</Button>
+            <Button variant="danger" type="submit" disabled={elevating || elevateCode.length !== 6} className="flex-1 justify-center">
               {elevating ? "Verifying…" : "Unlock"}
-            </AdminBtn>
+            </Button>
           </div>
         </form>
-      </AdminModal>
+      </Modal>
 
       <AdminHeader
         title="Dashboard"
@@ -1366,36 +1368,36 @@ export default function Admin() {
                 Danger · {dangerMinsDisplay}
               </span>
             )}
-            <AdminBtn variant="secondary" size="sm" onClick={handleRefresh} disabled={anyLoading}>
-              {anyLoading ? <AdminSpinner size={12} /> : (
+            <Button variant="secondary" size="sm" onClick={handleRefresh} disabled={anyLoading}>
+              {anyLoading ? <Spinner size={12} /> : (
                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               )}
               Refresh
-            </AdminBtn>
-            <AdminBtn variant="ghost" size="sm" onClick={handleLogout}>Logout</AdminBtn>
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleLogout}>Logout</Button>
           </>
         }
       />
       <AdminPage className="space-y-10">
         {/* Analytics dashboard */}
         <section>
-          <AdminSection title="Analytics" className="mb-4" />
+          <Section title="Analytics" className="mb-4" />
           <AnalyticsDashboard session={session} />
           <div className="mt-4 flex justify-end">
-            <AdminBtn variant="secondary" size="sm" onClick={() => navigate(adminPath(basePath, "/one-page"))}>
+            <Button variant="secondary" size="sm" onClick={() => navigate(adminPath(basePath, "/one-page"))}>
               View One Pager
-            </AdminBtn>
+            </Button>
           </div>
         </section>
 
         {/* USERS TABLE */}
         <section id="users" style={{ scrollMarginTop: "4rem" }}>
-          <AdminSection
+          <Section
             title="Users Table"
             actions={
-              <AdminBtn variant="primary" size="sm" onClick={() => setShowCreate(true)}>Create Account</AdminBtn>
+              <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>Create Account</Button>
             }
           >
           {usersError && (
@@ -1403,7 +1405,7 @@ export default function Admin() {
           )}
 
           {/* Users table */}
-          <AdminCard padding={false} className="overflow-hidden" style={{ border: "none" }}>
+          <Card padding={false} className="overflow-hidden" style={{ border: "none" }}>
             <div
               className="px-4 py-4 sm:px-5"
               style={{
@@ -1444,9 +1446,9 @@ export default function Admin() {
                   {filteredUsers.length === users.length ? "Full directory" : "Filtered view"}
                 </span>
                 <div className="relative shrink-0" ref={hideDropdownRef}>
-                  <AdminBtn variant="secondary" size="sm" onClick={() => setHideDropdownOpen((o) => !o)}>
+                  <Button variant="secondary" size="sm" onClick={() => setHideDropdownOpen((o) => !o)}>
                     Hide {hideOptions.size > 0 && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-white leading-none" style={{ backgroundColor: "var(--adm-accent)" }}>{hideOptions.size}</span>}
-                  </AdminBtn>
+                  </Button>
                   {hideDropdownOpen && (
                     <div className="absolute left-0 top-full z-50 mt-1 min-w-[180px] rounded-[var(--adm-radius)] py-1 shadow-xl" style={{ backgroundColor: "var(--adm-surface)", border: "1px solid var(--adm-border2)" }}>
                       {[
@@ -1461,47 +1463,47 @@ export default function Admin() {
                         { key: "standard", label: "Standard" },
                       ].map(({ key, label }) => (
                         <div key={key} className="px-3 py-1.5">
-                          <AdminCheckbox checked={hideOptions.has(key)} onChange={() => toggleHideOption(key)} label={label} />
+                          <Checkbox checked={hideOptions.has(key)} onChange={() => toggleHideOption(key)} label={label} />
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2 xl:ml-auto xl:justify-end">
-                  <AdminBtn variant="secondary" size="sm" onClick={() => handleCopyEmails("outlook")} title="Semicolon-separated emails">
+                  <Button variant="secondary" size="sm" onClick={() => handleCopyEmails("outlook")} title="Semicolon-separated emails">
                     {emailCopied === "outlook" ? "Copied!" : "Copy · Outlook"}
-                  </AdminBtn>
-                  <AdminBtn variant="secondary" size="sm" onClick={() => handleCopyEmails("gmail")} title="Comma-separated emails">
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => handleCopyEmails("gmail")} title="Comma-separated emails">
                     {emailCopied === "gmail" ? "Copied!" : "Copy · Gmail"}
-                  </AdminBtn>
+                  </Button>
                 </div>
               </div>
               {/* Row 2: filters */}
               <div className="flex flex-wrap items-center gap-2">
-                <AdminSelect value={filterRole} onChange={(e) => setFilterRole(e.target.value)} className="w-36">
+                <Select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} className="w-36">
                   <option value="">All roles</option>
                   <option value="owner">Owner</option>
                   <option value="coach">Coach</option>
                   <option value="assistant_coach">Asst. Coach</option>
                   <option value="player">Player</option>
-                </AdminSelect>
-                <AdminSelect value={filterVerified} onChange={(e) => setFilterVerified(e.target.value)} className="w-36">
+                </Select>
+                <Select value={filterVerified} onChange={(e) => setFilterVerified(e.target.value)} className="w-36">
                   <option value="">Any verified</option>
                   <option value="verified">Verified</option>
                   <option value="unverified">Unverified</option>
-                </AdminSelect>
-                <AdminSelect value={filterOnboarded} onChange={(e) => setFilterOnboarded(e.target.value)} className="w-36">
+                </Select>
+                <Select value={filterOnboarded} onChange={(e) => setFilterOnboarded(e.target.value)} className="w-36">
                   <option value="">Any onboarded</option>
                   <option value="yes">Onboarded</option>
                   <option value="no">Not onboarded</option>
-                </AdminSelect>
+                </Select>
                 <div className="flex items-center gap-1">
-                  <AdminSelect value={filterPlaysOp} onChange={(e) => setFilterPlaysOp(e.target.value)} className="w-14">
+                  <Select value={filterPlaysOp} onChange={(e) => setFilterPlaysOp(e.target.value)} className="w-14">
                     <option value=">">&gt;</option>
                     <option value="<">&lt;</option>
                     <option value="=">=</option>
-                  </AdminSelect>
-                  <AdminInput
+                  </Select>
+                  <Input
                     type="number"
                     min={0}
                     value={filterPlays}
@@ -1510,7 +1512,7 @@ export default function Admin() {
                     className="w-24"
                   />
                 </div>
-                <AdminSelect value={filterSport} onChange={(e) => setFilterSport(e.target.value)} className="w-36">
+                <Select value={filterSport} onChange={(e) => setFilterSport(e.target.value)} className="w-36">
                   <option value="">All sports</option>
                   <option value="rugby">Rugby</option>
                   <option value="football">Football</option>
@@ -1520,38 +1522,38 @@ export default function Admin() {
                   <option value="soccer">Soccer</option>
                   <option value="field hockey">Field Hockey</option>
                   <option value="ice hockey">Ice Hockey</option>
-                </AdminSelect>
+                </Select>
                 <div className="flex items-center gap-1">
                   <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--adm-muted)" }}>Joined</span>
-                  <AdminSelect value={filterJoinedOp} onChange={(e) => setFilterJoinedOp(e.target.value)} className="w-14">
+                  <Select value={filterJoinedOp} onChange={(e) => setFilterJoinedOp(e.target.value)} className="w-14">
                     <option value=">">&gt;</option>
                     <option value="<">&lt;</option>
                     <option value="=">=</option>
-                  </AdminSelect>
-                  <AdminSelect value={filterJoinedAge} onChange={(e) => setFilterJoinedAge(e.target.value)} className="w-28">
+                  </Select>
+                  <Select value={filterJoinedAge} onChange={(e) => setFilterJoinedAge(e.target.value)} className="w-28">
                     <option value="">Any time</option>
                     {TIME_AGE_OPTIONS.map(({ value, label }) => (
                       <option key={value} value={value}>{label}</option>
                     ))}
-                  </AdminSelect>
+                  </Select>
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--adm-muted)" }}>Active</span>
-                  <AdminSelect value={filterActivityOp} onChange={(e) => setFilterActivityOp(e.target.value)} className="w-14">
+                  <Select value={filterActivityOp} onChange={(e) => setFilterActivityOp(e.target.value)} className="w-14">
                     <option value=">">&gt;</option>
                     <option value="<">&lt;</option>
                     <option value="=">=</option>
-                  </AdminSelect>
-                  <AdminSelect value={filterActivityAge} onChange={(e) => setFilterActivityAge(e.target.value)} className="w-28">
+                  </Select>
+                  <Select value={filterActivityAge} onChange={(e) => setFilterActivityAge(e.target.value)} className="w-28">
                     <option value="">Any time</option>
                     {TIME_AGE_OPTIONS.map(({ value, label }) => (
                       <option key={value} value={value}>{label}</option>
                     ))}
-                  </AdminSelect>
+                  </Select>
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--adm-muted)" }}>Sort</span>
-                  <AdminSelect
+                  <Select
                     value={sortKey}
                     onChange={(e) => {
                       const next = e.target.value;
@@ -1568,7 +1570,7 @@ export default function Admin() {
                     <option value="sport">Sport</option>
                     <option value="plays">Plays</option>
                     <option value="joined">Joined</option>
-                  </AdminSelect>
+                  </Select>
                   <button
                     type="button"
                     onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
@@ -1602,7 +1604,7 @@ export default function Admin() {
               className="hide-scroll overflow-auto"
               style={{ maxHeight: `${usersTableMaxHeight}px`, backgroundColor: "var(--adm-bg)" }}
             >
-              <AdminDataTable
+              <DataTable
                 columns={userTableColumns}
                 data={sortedFilteredUsers}
                 keyField="id"
@@ -1610,7 +1612,7 @@ export default function Admin() {
                 minWidth="980px"
                 loading={usersLoading}
                 empty={
-                  <AdminEmptyState
+                  <EmptyState
                     title={users.length === 0 ? "No users found" : "No users match your search"}
                     subtitle={users.length === 0 ? "Users will appear here once accounts exist." : "Try a different search term."}
                   />
@@ -1631,35 +1633,35 @@ export default function Admin() {
               </div>
               <label className="flex items-center gap-2 text-xs" style={{ color: "var(--adm-muted)" }}>
                 <span>Visible rows</span>
-                <AdminSelect value={usersPerPage} onChange={(e) => setUsersPerPage(Number(e.target.value))} className="w-24">
+                <Select value={usersPerPage} onChange={(e) => setUsersPerPage(Number(e.target.value))} className="w-24">
                   {USER_PAGE_SIZE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-                </AdminSelect>
+                </Select>
               </label>
               <span className="text-[11px] sm:hidden" style={{ color: "var(--adm-muted)" }}>
                 Horizontal scroll keeps the full table usable on mobile.
               </span>
             </div>
-          </AdminCard>
-          </AdminSection>
+          </Card>
+          </Section>
         </section>
 
         {/* TESTS */}
         <section id="tests" style={{ scrollMarginTop: "4rem" }}>
-          <AdminSection
+          <Section
             title="Tests"
             subtitle={allSuites ? `${totalTestCount} tests across ${SUITE_NAMES.length} suites` : "Loading suites…"}
             actions={
-              <AdminBtn variant="secondary" size="sm" onClick={runTests} disabled={testRunning || enabledSuites.size === 0}>
-                {testRunning ? <><AdminSpinner size={12} />Running…</> : <>
+              <Button variant="secondary" size="sm" onClick={runTests} disabled={testRunning || enabledSuites.size === 0}>
+                {testRunning ? <><Spinner size={12} />Running…</> : <>
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" /></svg>
                   {enabledSuites.size === SUITE_NAMES.length ? "Run All" : `Run ${selectedTestCount}`}
                 </>}
-              </AdminBtn>
+              </Button>
             }
           >
             {/* Result summary */}
             {testResults && (
-              <AdminCard padding={false} className="flex items-center gap-4 px-5 py-3">
+              <Card padding={false} className="flex items-center gap-4 px-5 py-3">
                 <div className="flex items-center gap-2 font-Manrope text-sm font-normal" style={{ color: testStats.failed === 0 ? "var(--adm-success)" : "var(--adm-danger)" }}>
                   {testStats.failed === 0
                     ? <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
@@ -1669,12 +1671,12 @@ export default function Admin() {
                 </div>
                 <span className="text-xs" style={{ color: "var(--adm-muted)" }}>{testStats.passed}/{testStats.total} passed</span>
                 {testStats.failed > 0 && failedTestsReport && (
-                  <AdminBtn variant="danger" size="sm" onClick={() => copyToClipboard(failedTestsReport, "all-failed-tests")}>
+                  <Button variant="danger" size="sm" onClick={() => copyToClipboard(failedTestsReport, "all-failed-tests")}>
                     {copied === "all-failed-tests" ? "Copied!" : "Copy Failed"}
-                  </AdminBtn>
+                  </Button>
                 )}
                 <span className="ml-auto font-mono text-xs" style={{ color: "var(--adm-muted)" }}>{testTotalMs.toFixed(0)}ms</span>
-              </AdminCard>
+              </Card>
             )}
 
             {/* Suite cards */}
@@ -1719,7 +1721,7 @@ export default function Admin() {
                   const isCollapsed = collapsedSuites.has(suite.name);
                   const suiteFail = suite.results.filter((r) => r.status === "fail").length;
                   return (
-                    <AdminCard key={suite.name} padding={false} className="overflow-hidden">
+                    <Card key={suite.name} padding={false} className="overflow-hidden">
                       <button
                         onClick={() => setCollapsedSuites((prev) => { const n = new Set(prev); n.has(suite.name) ? n.delete(suite.name) : n.add(suite.name); return n; })}
                         className="flex w-full items-center justify-between px-4 py-3 transition-opacity hover:opacity-80"
@@ -1763,32 +1765,32 @@ export default function Admin() {
                           })}
                         </div>
                       )}
-                    </AdminCard>
+                    </Card>
                   );
                 })}
               </div>
             )}
-          </AdminSection>
+          </Section>
         </section>
 
         {/* ERROR REPORTS */}
         <section id="errors" style={{ scrollMarginTop: "4rem" }}>
-          <AdminSection
+          <Section
             title="Error Reports"
             subtitle={errorTotal > 0 ? `${errorTotal} reports` : "No reports"}
             actions={errors.length > 0 && (
               <div className="flex gap-2">
-                <AdminBtn variant="secondary" size="sm" onClick={() => copyToClipboard(errors.map(formatReportText).join("\n\n---\n\n"), "all-errors")}>
+                <Button variant="secondary" size="sm" onClick={() => copyToClipboard(errors.map(formatReportText).join("\n\n---\n\n"), "all-errors")}>
                   {copied === "all-errors" ? "Copied!" : "Copy All"}
-                </AdminBtn>
-                <AdminBtn variant="danger" size="sm" onClick={handleClearErrors}>Clear All</AdminBtn>
+                </Button>
+                <Button variant="danger" size="sm" onClick={handleClearErrors}>Clear All</Button>
               </div>
             )}
           >
             {errorsError && <div className="rounded-[var(--adm-radius-sm)] px-4 py-2 text-sm" style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}>{errorsError}</div>}
-            {errorsLoading && errors.length === 0 && <AdminEmptyState title="Loading…" icon={<AdminSpinner />} />}
+            {errorsLoading && errors.length === 0 && <EmptyState title="Loading…" icon={<Spinner />} />}
             {!errorsLoading && errors.length === 0 && (
-              <AdminEmptyState
+              <EmptyState
                 title="No error reports"
                 subtitle="Errors from users will appear here"
                 icon={<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
@@ -1805,7 +1807,7 @@ export default function Admin() {
                     : r.component === "global" ? { bg: "var(--adm-danger-dim)", color: "var(--adm-danger)" }
                     : { bg: "var(--adm-surface3)", color: "var(--adm-muted)" };
                   return (
-                    <AdminCard key={r.id} padding={false} className="overflow-hidden">
+                    <Card key={r.id} padding={false} className="overflow-hidden">
                       <button onClick={() => setExpandedError(isExpanded ? null : r.id)} className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition-opacity hover:opacity-90">
                         <span className="mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase" style={compColor}>{r.component || "unknown"}</span>
                         <div className="min-w-0 flex-1">
@@ -1831,35 +1833,35 @@ export default function Admin() {
                           <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <span className="text-[10px]" style={{ color: "var(--adm-muted)" }}>{new Date(r.created_at).toLocaleString()}</span>
                             <div className="flex flex-wrap gap-2">
-                              <AdminBtn variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); copyToClipboard(r.error_message + "\n" + (r.error_stack || ""), r.id); }}>{copied === r.id ? "Copied!" : "Copy"}</AdminBtn>
-                              <AdminBtn variant="danger" size="sm" onClick={(e) => { e.stopPropagation(); handleDeleteError(r.id); }}>Delete</AdminBtn>
+                              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); copyToClipboard(r.error_message + "\n" + (r.error_stack || ""), r.id); }}>{copied === r.id ? "Copied!" : "Copy"}</Button>
+                              <Button variant="danger" size="sm" onClick={(e) => { e.stopPropagation(); handleDeleteError(r.id); }}>Delete</Button>
                             </div>
                           </div>
                         </div>
                       )}
-                    </AdminCard>
+                    </Card>
                   );
                 })}
               </div>
             )}
-          </AdminSection>
+          </Section>
         </section>
 
         {/* REPORTED ISSUES */}
         <section id="reported-issues" style={{ scrollMarginTop: "4rem" }}>
-          <AdminSection title="Reported Issues" subtitle={userIssueTotal > 0 ? `${userIssueTotal} open` : "None"}>
+          <Section title="Reported Issues" subtitle={userIssueTotal > 0 ? `${userIssueTotal} open` : "None"}>
             {userIssuesError && <div className="rounded-[var(--adm-radius-sm)] px-4 py-2 text-sm" style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}>{userIssuesError}</div>}
-            {userIssuesLoading && userIssues.length === 0 && <AdminEmptyState title="Loading…" icon={<AdminSpinner />} />}
-            {!userIssuesLoading && userIssues.length === 0 && <AdminEmptyState title="No reported issues" subtitle="Issues submitted by beta testers will appear here" />}
+            {userIssuesLoading && userIssues.length === 0 && <EmptyState title="Loading…" icon={<Spinner />} />}
+            {!userIssuesLoading && userIssues.length === 0 && <EmptyState title="No reported issues" subtitle="Issues submitted by beta testers will appear here" />}
             {userIssues.length > 0 && (
               <div className="hide-scroll max-h-[60vh] space-y-2 overflow-y-auto pr-1">
                 {userIssues.map((issue) => {
                   const isExpanded = expandedIssue === issue.id;
                   const meta = issueStatusMeta(issue.status);
                   return (
-                    <AdminCard key={issue.id} padding={false} className="overflow-hidden">
+                    <Card key={issue.id} padding={false} className="overflow-hidden">
                       <button onClick={() => setExpandedIssue(isExpanded ? null : issue.id)} className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition-opacity hover:opacity-90">
-                        <AdminBadge status={meta.status} className="mt-0.5 shrink-0 uppercase">{meta.label}</AdminBadge>
+                        <Badge status={meta.status} className="mt-0.5 shrink-0 uppercase">{meta.label}</Badge>
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-normal" style={{ color: "var(--adm-text)" }}>{issue.title}</p>
                           <div className="mt-1 flex flex-wrap gap-x-3 text-[11px]" style={{ color: "var(--adm-muted)" }}>
@@ -1876,31 +1878,31 @@ export default function Admin() {
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <div className="flex items-center gap-2">
                               <span className="text-[10px] font-normal uppercase" style={{ color: "var(--adm-muted)" }}>Status:</span>
-                              <AdminSelect value={issue.status} onChange={(e) => handleIssueStatusChange(issue, e.target.value)}>
+                              <Select value={issue.status} onChange={(e) => handleIssueStatusChange(issue, e.target.value)}>
                                 <option value="open">Open</option>
                                 <option value="in_progress">In Progress</option>
                                 <option value="resolved">Resolved</option>
-                              </AdminSelect>
+                              </Select>
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="text-[10px]" style={{ color: "var(--adm-muted)" }}>{new Date(issue.created_at).toLocaleString()}</span>
-                              <AdminBtn variant="danger" size="sm" onClick={() => handleDeleteIssue(issue.id)}>Delete</AdminBtn>
+                              <Button variant="danger" size="sm" onClick={() => handleDeleteIssue(issue.id)}>Delete</Button>
                             </div>
                           </div>
                         </div>
                       )}
-                    </AdminCard>
+                    </Card>
                   );
                 })}
               </div>
             )}
-          </AdminSection>
+          </Section>
         </section>
 
         {/* ADMIN SETTINGS */}
         <section id="admin-settings" style={{ scrollMarginTop: "4rem" }}>
-          <AdminSection title="Admin Settings" subtitle="Security configuration">
-            <AdminCard>
+          <Section title="Admin Settings" subtitle="Security configuration">
+            <Card>
               <div className="flex flex-col gap-1">
                 <p className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>Danger Mode security email</p>
                 <p className="text-xs" style={{ color: "var(--adm-muted)" }}>
@@ -1912,19 +1914,19 @@ export default function Admin() {
                   <div className="flex items-center gap-3">
                     {securityEmailConfigured ? (
                       <>
-                        <AdminBadge status="resolved">Configured</AdminBadge>
+                        <Badge status="resolved">Configured</Badge>
                         <span className="text-sm font-mono" style={{ color: "var(--adm-text2)" }}>{securityEmail}</span>
                       </>
                     ) : (
-                      <AdminBadge status={undefined}>Not set</AdminBadge>
+                      <Badge status={undefined}>Not set</Badge>
                     )}
-                    <AdminBtn variant="secondary" size="sm" onClick={() => { setSecurityEmailEditing(true); setSecurityEmailInput(""); setSecurityEmailCode(""); setSecurityEmailStep("input"); setSecurityEmailError(""); setSecurityEmailSuccess(""); }}>
+                    <Button variant="secondary" size="sm" onClick={() => { setSecurityEmailEditing(true); setSecurityEmailInput(""); setSecurityEmailCode(""); setSecurityEmailStep("input"); setSecurityEmailError(""); setSecurityEmailSuccess(""); }}>
                       {securityEmailConfigured ? "Change" : "Set Email"}
-                    </AdminBtn>
+                    </Button>
                   </div>
                 ) : securityEmailStep === "input" ? (
                   <form onSubmit={handleSaveSecurityEmail} className="flex flex-col gap-3 max-w-sm">
-                    <AdminInput
+                    <Input
                       type="email"
                       value={securityEmailInput}
                       onChange={(e) => setSecurityEmailInput(e.target.value)}
@@ -1933,12 +1935,12 @@ export default function Admin() {
                     />
                     {securityEmailError && <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{securityEmailError}</p>}
                     <div className="flex gap-2">
-                      <AdminBtn variant="secondary" type="button" size="sm" onClick={() => { setSecurityEmailEditing(false); setSecurityEmailStep("input"); setSecurityEmailError(""); }}>Cancel</AdminBtn>
-                      <AdminBtn variant="primary" type="submit" size="sm" disabled={securityEmailSaving || !securityEmailInput}>
+                      <Button variant="secondary" type="button" size="sm" onClick={() => { setSecurityEmailEditing(false); setSecurityEmailStep("input"); setSecurityEmailError(""); }}>Cancel</Button>
+                      <Button variant="primary" type="submit" size="sm" disabled={securityEmailSaving || !securityEmailInput}>
                         {securityEmailSaving ? "Sending…" : "Save"}
-                      </AdminBtn>
+                      </Button>
                       {securityEmailConfigured && (
-                        <AdminBtn variant="danger" type="button" size="sm" disabled={securityEmailSaving} onClick={async () => {
+                        <Button variant="danger" type="button" size="sm" disabled={securityEmailSaving} onClick={async () => {
                           setSecurityEmailError("");
                           setSecurityEmailSuccess("");
                           setSecurityEmailSaving(true);
@@ -1964,7 +1966,7 @@ export default function Admin() {
                           }
                         }}>
                           Clear
-                        </AdminBtn>
+                        </Button>
                       )}
                     </div>
                   </form>
@@ -1973,7 +1975,7 @@ export default function Admin() {
                     <p className="text-sm" style={{ color: "var(--adm-muted)" }}>
                       A verification code was sent to {securityEmailMasked}. Enter it to confirm the change.
                     </p>
-                    <AdminInput
+                    <Input
                       type="text"
                       value={securityEmailCode}
                       onChange={(e) => setSecurityEmailCode(e.target.value)}
@@ -1982,17 +1984,17 @@ export default function Admin() {
                     />
                     {securityEmailError && <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{securityEmailError}</p>}
                     <div className="flex gap-2">
-                      <AdminBtn variant="secondary" type="button" size="sm" onClick={() => { setSecurityEmailEditing(false); setSecurityEmailStep("input"); setSecurityEmailError(""); }}>Cancel</AdminBtn>
-                      <AdminBtn variant="primary" type="submit" size="sm" disabled={securityEmailSaving || !securityEmailCode}>
+                      <Button variant="secondary" type="button" size="sm" onClick={() => { setSecurityEmailEditing(false); setSecurityEmailStep("input"); setSecurityEmailError(""); }}>Cancel</Button>
+                      <Button variant="primary" type="submit" size="sm" disabled={securityEmailSaving || !securityEmailCode}>
                         {securityEmailSaving ? "Verifying…" : "Confirm"}
-                      </AdminBtn>
+                      </Button>
                     </div>
                   </form>
                 )}
                 {securityEmailSuccess && <p className="mt-2 text-xs" style={{ color: "var(--adm-success, #22c55e)" }}>{securityEmailSuccess}</p>}
               </div>
-            </AdminCard>
-          </AdminSection>
+            </Card>
+          </Section>
         </section>
 
         {/* RECENT ACTIVITY */}
@@ -2002,26 +2004,26 @@ export default function Admin() {
       </AdminPage>
 
       {/* Create Account Modal */}
-      <AdminModal open={showCreate} onClose={() => setShowCreate(false)} title="Create Account">
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Create Account">
         <p className="mb-4 text-xs" style={{ color: "var(--adm-muted)" }}>No email verification required</p>
         <form onSubmit={handleCreateAccount} className="flex flex-col gap-3">
-          <AdminInput type="text" value={createForm.name} onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} placeholder="Full name *" required />
-          <AdminInput type="email" value={createForm.email} onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))} placeholder="Email address *" required />
-          <AdminInput type="text" value={createForm.password} onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))} placeholder="Password * (min 6 chars)" required minLength={6} />
+          <Input type="text" value={createForm.name} onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} placeholder="Full name *" required />
+          <Input type="email" value={createForm.email} onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))} placeholder="Email address *" required />
+          <Input type="text" value={createForm.password} onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))} placeholder="Password * (min 6 chars)" required minLength={6} />
           <div className="pt-3" style={{ borderTop: "1px solid var(--adm-border)" }}>
             <p className="mb-2.5 text-xs" style={{ color: "var(--adm-muted)" }}>Optional — create a team (auto-onboards user)</p>
             <div className="flex gap-2">
-              <AdminInput className="flex-1" type="text" value={createForm.teamName} onChange={(e) => setCreateForm((f) => ({ ...f, teamName: e.target.value }))} placeholder="Team name" />
-              <AdminInput className="w-28" type="text" value={createForm.sport} onChange={(e) => setCreateForm((f) => ({ ...f, sport: e.target.value }))} placeholder="Sport" />
+              <Input className="flex-1" type="text" value={createForm.teamName} onChange={(e) => setCreateForm((f) => ({ ...f, teamName: e.target.value }))} placeholder="Team name" />
+              <Input className="w-28" type="text" value={createForm.sport} onChange={(e) => setCreateForm((f) => ({ ...f, sport: e.target.value }))} placeholder="Sport" />
             </div>
           </div>
           {usersError && <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{usersError}</p>}
           <div className="flex justify-end gap-2 pt-1">
-            <AdminBtn variant="secondary" type="button" onClick={() => setShowCreate(false)}>Cancel</AdminBtn>
-            <AdminBtn variant="primary" type="submit" disabled={creating}>{creating ? "Creating…" : "Create Account"}</AdminBtn>
+            <Button variant="secondary" type="button" onClick={() => setShowCreate(false)}>Cancel</Button>
+            <Button variant="primary" type="submit" disabled={creating}>{creating ? "Creating…" : "Create Account"}</Button>
           </div>
         </form>
-      </AdminModal>
+      </Modal>
     </AdminShell>
   );
 }

@@ -1,6 +1,6 @@
 /**
  * Rounded surface card for the main app, using the `--color-Brand*` palette.
- * Mirrors the admin `AdminCard`. Matches the existing app card styling
+ * Rounded surface card for the main app, using the `--color-Brand*` palette. Matches the existing app card styling
  * (`rounded-xl border border-BrandGray2/20 bg-BrandBlack2/30`) so migrated pages
  * render identically.
  *

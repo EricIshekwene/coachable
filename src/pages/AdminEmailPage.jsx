@@ -13,18 +13,8 @@ import { useAdmin } from "../admin/AdminContext";
 import { adminApi } from "../admin/adminTransport";
 import AdminFlagGate from "../admin/AdminFlagGate";
 import Slate from "../features/slate/Slate";
-import {
-  AdminBtn,
-  AdminCard,
-  AdminHeader,
-  AdminInput,
-  AdminPage,
-  AdminSection,
-  AdminSelect,
-  AdminShell,
-  AdminSpinner,
-} from "../admin/components";
-import ConfirmModal from "../components/subcomponents/ConfirmModal";
+import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
+import { Button, Card, Input, Section, Select, Spinner, ConfirmDialog } from "../design-system/components";
 import { SUPPORTED_FIELD_TYPES } from "../features/slate/hooks/useAdvancedSettings";
 import {
   buildBroadcastEmailHtml,
@@ -1011,10 +1001,10 @@ export default function AdminEmailPage() {
         title="Email Composer"
         sticky
         actions={
-          <AdminBtn onClick={() => navigate("/admin/email/recurring")}>
+          <Button onClick={() => navigate("/admin/email/recurring")}>
             <FiClock className="text-sm" />
             Manage recurring
-          </AdminBtn>
+          </Button>
         }
       />
 
@@ -1023,11 +1013,11 @@ export default function AdminEmailPage() {
           <div className="flex flex-col gap-6">
 
             {/* Audience */}
-            <AdminSection
+            <Section
               title="Audience"
               subtitle="Add specific recipients and/or filter groups. All groups are unioned together."
             >
-              <AdminCard>
+              <Card>
                 <div className="flex flex-col gap-5">
                   {/* Outlook-style individual recipient picker */}
                   <RecipientPicker
@@ -1068,22 +1058,22 @@ export default function AdminEmailPage() {
 
                           {/* Dropdowns */}
                           <div className="flex flex-wrap items-end gap-3">
-                            <AdminSelect
+                            <Select
                               label="User type"
                               value={group.userType}
                               onChange={(e) => updateFilterGroup(idx, "userType", e.target.value)}
                               className="min-w-[150px]"
                             >
                               {USER_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                            </AdminSelect>
-                            <AdminSelect
+                            </Select>
+                            <Select
                               label="Sport"
                               value={group.sport}
                               onChange={(e) => updateFilterGroup(idx, "sport", e.target.value)}
                               className="min-w-[130px]"
                             >
                               {SPORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                            </AdminSelect>
+                            </Select>
                           </div>
 
                           {/* Role checkboxes */}
@@ -1143,13 +1133,13 @@ export default function AdminEmailPage() {
                       Add filter group
                     </button>
 
-                    <AdminBtn
+                    <Button
                       onClick={handlePreviewAudience}
                       disabled={loadingAudience || (filterGroups.length === 0 && extraRecipients.length === 0)}
                     >
-                      {loadingAudience ? <AdminSpinner size={14} /> : <FiUsers className="text-sm" />}
+                      {loadingAudience ? <Spinner size={14} /> : <FiUsers className="text-sm" />}
                       {loadingAudience ? "Loading..." : "Preview recipients"}
-                    </AdminBtn>
+                    </Button>
                   </div>
 
                   {audienceError && <p className="text-xs" style={{ color: "var(--adm-danger)" }}>{audienceError}</p>}
@@ -1176,15 +1166,15 @@ export default function AdminEmailPage() {
                     </div>
                   )}
                 </div>
-              </AdminCard>
-            </AdminSection>
+              </Card>
+            </Section>
 
             {/* Compose */}
-            <AdminSection title="Compose">
-              <AdminCard>
+            <Section title="Compose">
+              <Card>
                 <div className="flex flex-col gap-5">
-                  <AdminInput label="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Email subject..." />
-                  <AdminInput label="Subheader (optional)" value={subheader} onChange={(e) => setSubheader(e.target.value)} placeholder="Short line above the main body..." />
+                  <Input label="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Email subject..." />
+                  <Input label="Subheader (optional)" value={subheader} onChange={(e) => setSubheader(e.target.value)} placeholder="Short line above the main body..." />
 
                   {/* Body */}
                   <div className="flex flex-col gap-2">
@@ -1271,7 +1261,7 @@ export default function AdminEmailPage() {
                         }}
                       >
                         <span className="flex items-center gap-1">
-                          {imageUploading ? <AdminSpinner size={10} /> : <FiImage className="text-xs" />}
+                          {imageUploading ? <Spinner size={10} /> : <FiImage className="text-xs" />}
                           {imageUploading ? "Uploading…" : "+ Image"}
                         </span>
                       </button>
@@ -1349,7 +1339,7 @@ export default function AdminEmailPage() {
                       <div className="flex flex-col gap-1.5">
                         <div className="flex items-center justify-between text-xs" style={{ color: "var(--adm-muted)" }}>
                           <span className="flex items-center gap-1.5">
-                            <AdminSpinner size={12} />
+                            <Spinner size={12} />
                             {gifPhase === "mounting" ? "Loading play…"
                               : gifPhase === "generating" ? "Generating GIF…"
                               : "Uploading…"}
@@ -1399,15 +1389,15 @@ export default function AdminEmailPage() {
                   </div>
 
                 </div>
-              </AdminCard>
-            </AdminSection>
+              </Card>
+            </Section>
 
             {/* Send */}
-            <AdminSection title="Send">
-              <AdminCard>
+            <Section title="Send">
+              <Card>
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-wrap items-end gap-3">
-                    <AdminInput
+                    <Input
                       label="Test email address"
                       value={testEmail}
                       onChange={(e) => setTestEmail(e.target.value)}
@@ -1415,10 +1405,10 @@ export default function AdminEmailPage() {
                       type="email"
                       className="min-w-[220px]"
                     />
-                    <AdminBtn onClick={handleSendTest} disabled={!canCompose || sending} className="self-end">
-                      {sending ? <AdminSpinner size={14} /> : <FiMail className="text-sm" />}
+                    <Button onClick={handleSendTest} disabled={!canCompose || sending} className="self-end">
+                      {sending ? <Spinner size={14} /> : <FiMail className="text-sm" />}
                       Send test
-                    </AdminBtn>
+                    </Button>
                   </div>
 
                   <div style={{ borderTop: "1px solid var(--adm-border)" }} />
@@ -1494,19 +1484,19 @@ export default function AdminEmailPage() {
                         Preview recipients first to enable broadcast.
                       </p>
                     )}
-                    <AdminBtn
+                    <Button
                       variant="primary"
                       onClick={() => setConfirmOpen(true)}
                       disabled={!canSend || sending}
                       className="ml-auto"
                     >
-                      {sending ? <AdminSpinner size={14} /> : <FiSend className="text-sm" />}
+                      {sending ? <Spinner size={14} /> : <FiSend className="text-sm" />}
                       Send to {audienceData ? audienceData.count : filterGroups.length === 0 ? extraRecipients.length : "?"} recipient{((audienceData?.count ?? (filterGroups.length === 0 ? extraRecipients.length : 0)) !== 1) ? "s" : ""}
-                    </AdminBtn>
+                    </Button>
                   </div>
                 </div>
-              </AdminCard>
-            </AdminSection>
+              </Card>
+            </Section>
           </div>
 
           {/* Preview panel */}
@@ -1590,10 +1580,10 @@ export default function AdminEmailPage() {
         </div>
       </AdminPage>
 
-      <ConfirmModal
+      <ConfirmDialog
         open={confirmOpen}
-        message={`Send "${subject}" to ${audienceData ? audienceData.count : extraRecipients.length} recipient${((audienceData?.count ?? extraRecipients.length) !== 1) ? "s" : ""}?`}
-        subtitle={filterGroups.length === 0
+        title={`Send "${subject}" to ${audienceData ? audienceData.count : extraRecipients.length} recipient${((audienceData?.count ?? extraRecipients.length) !== 1) ? "s" : ""}?`}
+        description={filterGroups.length === 0
           ? "This will send to the specific recipients listed above only."
           : "This will send the email immediately to all matching users. This cannot be undone."
         }

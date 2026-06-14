@@ -13,11 +13,10 @@ import {
 import { useAdmin } from "../admin/AdminContext";
 import { adminApi } from "../admin/adminTransport";
 import AdminFlagGate from "../admin/AdminFlagGate";
+import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
 import {
-  AdminBtn, AdminCard, AdminHeader, AdminInput, AdminPage,
-  AdminSection, AdminSelect, AdminShell, AdminSpinner,
-} from "../admin/components";
-import ConfirmModal from "../components/subcomponents/ConfirmModal";
+  Button, Card, Input, Section, Select, Spinner, ConfirmDialog,
+} from "../design-system/components";
 import PlayPickerModal from "../components/PlayPickerModal";
 import Slate from "../features/slate/Slate";
 import { SUPPORTED_FIELD_TYPES } from "../features/slate/hooks/useAdvancedSettings";
@@ -401,7 +400,7 @@ function RichBodyEditor({ value, onChange, playEmbed, onPlayEmbedChange, onInser
           }}
         >
           <span className="flex items-center gap-1">
-            {imageUploading ? <AdminSpinner size={10} /> : <FiImage className="text-xs" />}
+            {imageUploading ? <Spinner size={10} /> : <FiImage className="text-xs" />}
             {imageUploading ? "Uploading…" : "+ Image"}
           </span>
         </button>
@@ -710,7 +709,7 @@ function CampaignModal({ campaign, plays, folders, playsLoading, playsError, onC
           <span className="flex-1 text-base font-semibold" style={{ color: "var(--adm-text)" }}>
             {campaign ? "Edit Campaign" : "New Recurring Campaign"}
           </span>
-          <AdminBtn onClick={onClose} variant="ghost" className="!p-2"><FiX /></AdminBtn>
+          <Button onClick={onClose} variant="ghost" className="!p-2"><FiX /></Button>
         </div>
 
         {/* Modal body */}
@@ -718,10 +717,10 @@ function CampaignModal({ campaign, plays, folders, playsLoading, playsError, onC
           {/* Left: form */}
           <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-5">
 
-            <AdminSection title="Campaign settings">
-              <AdminCard>
+            <Section title="Campaign settings">
+              <Card>
                 <div className="flex flex-col gap-4">
-                  <AdminInput
+                  <Input
                     label="Campaign name"
                     value={form.name}
                     onChange={(e) => set("name", e.target.value)}
@@ -757,24 +756,24 @@ function CampaignModal({ campaign, plays, folders, playsLoading, playsError, onC
 
                   <div className="flex flex-wrap gap-3">
                     {form.frequencyType === "weekly" && (
-                      <AdminSelect
+                      <Select
                         label="Day of week"
                         value={form.frequencyDayOfWeek}
                         onChange={(e) => set("frequencyDayOfWeek", e.target.value)}
                         className="min-w-[140px]"
                       >
                         {DAYS_OF_WEEK.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
-                      </AdminSelect>
+                      </Select>
                     )}
                     {form.frequencyType === "monthly" && (
-                      <AdminSelect
+                      <Select
                         label="Day of month"
                         value={form.frequencyDayOfMonth}
                         onChange={(e) => set("frequencyDayOfMonth", e.target.value)}
                         className="min-w-[120px]"
                       >
                         {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => <option key={d} value={d}>{d}</option>)}
-                      </AdminSelect>
+                      </Select>
                     )}
                     {form.frequencyType === "custom" && (
                       <div className="flex flex-col gap-1">
@@ -790,14 +789,14 @@ function CampaignModal({ campaign, plays, folders, playsLoading, playsError, onC
                         />
                       </div>
                     )}
-                    <AdminSelect
+                    <Select
                       label="Send time"
                       value={form.frequencyHour}
                       onChange={(e) => set("frequencyHour", e.target.value)}
                       className="min-w-[130px]"
                     >
                       {HOURS.map((h) => <option key={h.value} value={h.value}>{h.label}</option>)}
-                    </AdminSelect>
+                    </Select>
                   </div>
 
                   <div className="flex items-center gap-3">
@@ -819,29 +818,29 @@ function CampaignModal({ campaign, plays, folders, playsLoading, playsError, onC
                     </span>
                   </div>
                 </div>
-              </AdminCard>
-            </AdminSection>
+              </Card>
+            </Section>
 
-            <AdminSection title="Audience">
-              <AdminCard>
+            <Section title="Audience">
+              <Card>
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-wrap gap-3">
-                    <AdminSelect
+                    <Select
                       label="User type"
                       value={form.audienceUserType}
                       onChange={(e) => set("audienceUserType", e.target.value)}
                       className="min-w-[160px]"
                     >
                       {USER_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </AdminSelect>
-                    <AdminSelect
+                    </Select>
+                    <Select
                       label="Sport"
                       value={form.audienceSport}
                       onChange={(e) => set("audienceSport", e.target.value)}
                       className="min-w-[140px]"
                     >
                       {SPORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </AdminSelect>
+                    </Select>
                   </div>
                   {/* Role checkboxes */}
                   <div className="flex flex-col gap-1.5">
@@ -873,19 +872,19 @@ function CampaignModal({ campaign, plays, folders, playsLoading, playsError, onC
                     </div>
                   </div>
                 </div>
-              </AdminCard>
-            </AdminSection>
+              </Card>
+            </Section>
 
-            <AdminSection title="Compose">
-              <AdminCard>
+            <Section title="Compose">
+              <Card>
                 <div className="flex flex-col gap-4">
-                  <AdminInput
+                  <Input
                     label="Subject"
                     value={form.subject}
                     onChange={(e) => set("subject", e.target.value)}
                     placeholder="Email subject…"
                   />
-                  <AdminInput
+                  <Input
                     label="Subheader (optional)"
                     value={form.subheader}
                     onChange={(e) => set("subheader", e.target.value)}
@@ -935,7 +934,7 @@ function CampaignModal({ campaign, plays, folders, playsLoading, playsError, onC
                     <div className="flex flex-col gap-1.5">
                       <div className="flex items-center justify-between text-xs" style={{ color: "var(--adm-muted)" }}>
                         <span className="flex items-center gap-1.5">
-                          <AdminSpinner size={12} />
+                          <Spinner size={12} />
                           {gifPhase === "mounting" ? "Loading play…"
                             : gifPhase === "generating" ? "Generating GIF…"
                             : "Uploading…"}
@@ -967,7 +966,7 @@ function CampaignModal({ campaign, plays, folders, playsLoading, playsError, onC
                     </div>
                   )}
 
-                  <AdminInput
+                  <Input
                     label="YouTube URL (optional)"
                     value={form.youtubeUrl}
                     onChange={(e) => set("youtubeUrl", e.target.value)}
@@ -982,7 +981,7 @@ function CampaignModal({ campaign, plays, folders, playsLoading, playsError, onC
                     />
                   )}
 
-                  <AdminInput
+                  <Input
                     label="GIF URL (optional)"
                     value={form.gifUrl}
                     onChange={(e) => set("gifUrl", e.target.value)}
@@ -998,8 +997,8 @@ function CampaignModal({ campaign, plays, folders, playsLoading, playsError, onC
                     />
                   )}
                 </div>
-              </AdminCard>
-            </AdminSection>
+              </Card>
+            </Section>
 
             {error && <p className="text-sm" style={{ color: "var(--adm-danger)" }}>{error}</p>}
           </div>
@@ -1032,11 +1031,11 @@ function CampaignModal({ campaign, plays, folders, playsLoading, playsError, onC
           className="flex shrink-0 items-center justify-end gap-3 px-5 py-3"
           style={{ borderTop: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface)" }}
         >
-          <AdminBtn onClick={onClose} disabled={saving}>Cancel</AdminBtn>
-          <AdminBtn variant="primary" onClick={handleSave} disabled={!canSave || saving}>
-            {saving ? <AdminSpinner size={14} /> : <FiMail className="text-sm" />}
+          <Button onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button variant="primary" onClick={handleSave} disabled={!canSave || saving}>
+            {saving ? <Spinner size={14} /> : <FiMail className="text-sm" />}
             {saving ? "Saving…" : campaign ? "Save changes" : "Create campaign"}
-          </AdminBtn>
+          </Button>
         </div>
       </div>
 
@@ -1099,7 +1098,7 @@ function CampaignCard({ campaign, onEdit, onDelete, onSendNow, onToggleActive })
   }, [campaign.audience_user_type, campaign.audience_sport]);
 
   return (
-    <AdminCard>
+    <Card>
       <div className="flex flex-col gap-4">
         <div className="flex items-start gap-3">
           <div className="flex flex-1 flex-col gap-1 min-w-0">
@@ -1197,10 +1196,10 @@ function CampaignCard({ campaign, onEdit, onDelete, onSendNow, onToggleActive })
         </div>
 
         <div className="flex items-center gap-3">
-          <AdminBtn onClick={handleSendNow} disabled={sendingNow} className="text-xs">
-            {sendingNow ? <AdminSpinner size={12} /> : <FiSend className="text-xs" />}
+          <Button onClick={handleSendNow} disabled={sendingNow} className="text-xs">
+            {sendingNow ? <Spinner size={12} /> : <FiSend className="text-xs" />}
             {sendingNow ? "Sending…" : "Send now"}
-          </AdminBtn>
+          </Button>
           {sendResult && (
             <span className="text-xs font-semibold" style={{ color: "var(--adm-badge-green-text)" }}>
               Sent to {sendResult.sent} recipient{sendResult.sent !== 1 ? "s" : ""}
@@ -1208,7 +1207,7 @@ function CampaignCard({ campaign, onEdit, onDelete, onSendNow, onToggleActive })
           )}
         </div>
       </div>
-    </AdminCard>
+    </Card>
   );
 }
 
@@ -1363,14 +1362,14 @@ export default function AdminRecurringEmailPage() {
         sticky
         actions={
           <div className="flex items-center gap-3">
-            <AdminBtn onClick={() => navigate("/admin/email")}>
+            <Button onClick={() => navigate("/admin/email")}>
               <FiArrowLeft className="text-sm" />
               One-time email
-            </AdminBtn>
-            <AdminBtn variant="primary" onClick={handleOpenNew}>
+            </Button>
+            <Button variant="primary" onClick={handleOpenNew}>
               <FiPlus className="text-sm" />
               New campaign
-            </AdminBtn>
+            </Button>
           </div>
         }
       />
@@ -1390,7 +1389,7 @@ export default function AdminRecurringEmailPage() {
 
           {loading && (
             <div className="flex items-center gap-2 py-6">
-              <AdminSpinner size={16} />
+              <Spinner size={16} />
               <span className="text-sm" style={{ color: "var(--adm-muted)" }}>Loading campaigns…</span>
             </div>
           )}
@@ -1405,10 +1404,10 @@ export default function AdminRecurringEmailPage() {
                   Create your first campaign to start sending scheduled emails automatically.
                 </span>
               </div>
-              <AdminBtn variant="primary" onClick={handleOpenNew}>
+              <Button variant="primary" onClick={handleOpenNew}>
                 <FiPlus className="text-sm" />
                 New campaign
-              </AdminBtn>
+              </Button>
             </div>
           )}
 
@@ -1437,12 +1436,13 @@ export default function AdminRecurringEmailPage() {
         />
       )}
 
-      <ConfirmModal
+      <ConfirmDialog
         open={Boolean(confirmDelete)}
-        message={`Delete "${confirmDelete?.name}"?`}
-        subtitle="This campaign will stop sending and cannot be recovered."
+        title={`Delete "${confirmDelete?.name}"?`}
+        description="This campaign will stop sending and cannot be recovered."
         confirmLabel={deleting ? "Deleting…" : "Delete"}
         cancelLabel="Cancel"
+        tone="danger"
         onConfirm={handleDeleteConfirm}
         onCancel={() => setConfirmDelete(null)}
       />

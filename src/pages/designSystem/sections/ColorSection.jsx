@@ -108,7 +108,7 @@ export default function ColorSection() {
         <div className="grid gap-3 sm:grid-cols-2">
           <DSTile title="Primary action gradient" status="live">
             <div className="h-16 rounded-[var(--adm-radius)]" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--adm-accent) 96%, white 4%) 0%, var(--adm-accent) 100%)" }} />
-            <p className="mt-2 font-mono text-[10px]" style={{ color: "var(--adm-text3)" }}>used by AdminBtn / primary CTAs</p>
+            <p className="mt-2 font-mono text-[10px]" style={{ color: "var(--adm-text3)" }}>used by Button / primary CTAs</p>
           </DSTile>
           <DSTile title="Scrollbar / accent gradient" status="live">
             <div className="h-16 rounded-[var(--adm-radius)]" style={{ background: "linear-gradient(180deg, #FF7A18 0%, #ff8d3d 100%)" }} />

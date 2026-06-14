@@ -3,16 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useAdmin } from "../admin/AdminContext";
 import { adminPath } from "../admin/adminNav";
 import { adminApi } from "../admin/adminTransport";
-import {
-  AdminShell,
-  AdminHeader,
-  AdminPage,
-  AdminSection,
-  AdminCard,
-  AdminBadge,
-  AdminEmptyState,
-  AdminDataTable,
-} from "../admin/components";
+import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
+import { Section, Card, Badge, EmptyState, DataTable } from "../design-system/components";
 
 const ROLE_PRIORITY = {
   owner: 0,
@@ -158,7 +150,7 @@ export default function AdminUsersPage() {
               </p>
               {!user.onboarded_at && (
                 <div className="mt-2 flex gap-1 overflow-hidden">
-                  <AdminBadge status="warning">Needs onboarding</AdminBadge>
+                  <Badge status="warning">Needs onboarding</Badge>
                 </div>
               )}
             </div>
@@ -232,9 +224,9 @@ export default function AdminUsersPage() {
       width: "96px",
       render: (user) => (
         <div className="flex flex-col gap-1">
-          <AdminBadge status={user.email_verified_at ? "resolved" : undefined}>
+          <Badge status={user.email_verified_at ? "resolved" : undefined}>
             {user.email_verified_at ? "Verified" : "Unverified"}
-          </AdminBadge>
+          </Badge>
           {canEditStatus && (
             <button
               type="button"
@@ -288,18 +280,18 @@ export default function AdminUsersPage() {
       <AdminHeader title="Users" backLabel="Dashboard" backTo={adminPath(basePath, "")} />
       <AdminPage>
         <section className="mx-auto max-w-6xl">
-          <AdminSection
+          <Section
             title="User Directory"
             subtitle="Browse Coachable users and open each person's activity detail."
           >
             {error && (
               <p className="mb-3 text-sm" style={{ color: "var(--ui-danger)" }}>{error}</p>
             )}
-            <AdminCard padding={false} className="overflow-hidden" style={{ border: "none" }}>
+            <Card padding={false} className="overflow-hidden" style={{ border: "none" }}>
               <div className="px-4 py-2 text-[11px] sm:hidden" style={{ backgroundColor: "var(--ui-surface)", color: "var(--ui-text-muted)", borderBottom: "1px solid var(--ui-border)" }}>
                 Swipe sideways to view all columns.
               </div>
-              <AdminDataTable
+              <DataTable
                 columns={columns}
                 data={filteredUsers}
                 keyField="id"
@@ -312,7 +304,7 @@ export default function AdminUsersPage() {
                 }}
                 loading={loading}
                 empty={
-                  <AdminEmptyState
+                  <EmptyState
                     title={users.length === 0 ? "No users found" : "No matching users"}
                     subtitle={users.length === 0 ? "Users will appear here once accounts exist." : "Try a different search term."}
                   />
@@ -321,8 +313,8 @@ export default function AdminUsersPage() {
                 stickyHeader
                 minWidth="980px"
               />
-            </AdminCard>
-          </AdminSection>
+            </Card>
+          </Section>
         </section>
       </AdminPage>
     </AdminShell>

@@ -1,4 +1,4 @@
-import { Alert, Avatar, Button, Card, Divider, Input, Section, Select } from "../../design-system/components";
+import { Alert, Avatar, Button, Card, ConfirmDialog, Divider, Input, Section, Select } from "../../design-system/components";
 import { useMemo, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -11,7 +11,6 @@ import {
   FiUsers,
   FiXCircle,
 } from "react-icons/fi";
-import ConfirmModal from "../../components/subcomponents/ConfirmModal";
 import { AppShell } from "../../components/layout";
 
 export default function Profile() {
@@ -126,12 +125,12 @@ export default function Profile() {
 
   return (
     <AppShell title="Profile" maxWidth="2xl">
-      <ConfirmModal
+      <ConfirmDialog
         open={confirmModal.open}
-        message={confirmModal.message}
-        subtitle={confirmModal.subtitle}
+        title={confirmModal.message}
+        description={confirmModal.subtitle}
         confirmLabel={confirmModal.confirmLabel}
-        danger={confirmModal.danger}
+        tone={confirmModal.danger ? "danger" : "default"}
         onConfirm={handleConfirmOk}
         onCancel={handleConfirmCancel}
       />

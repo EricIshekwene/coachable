@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { adminPath } from "../adminNav";
 import { useAdmin } from "../AdminContext";
-import AdminBadge from "../components/AdminBadge";
+import { Badge } from "../../design-system/components";
 
 function formatTime(ts) {
   const d = new Date(ts);
@@ -98,7 +98,7 @@ function IssueRow({ issue, basePath }) {
       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-        <AdminBadge status={issue.status} />
+        <Badge status={issue.status} />
         <span style={{ fontSize: 13, fontWeight: 400, color: "var(--adm-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {issue.title}
         </span>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FiCheck } from "react-icons/fi";
-import { AdminBtn, AdminBadge } from "../../../admin/components";
+import { Button, Badge } from "../../../design-system/components";
 import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSMeta } from "../dsPrimitives";
 
 /** Plan definitions for the live pricing demo. */
@@ -13,7 +13,7 @@ const PLANS = [
 /**
  * Commerce, billing & pricing patterns. Coachable does not ship billing yet, so
  * this is a forward spec — but the pricing card is a live, designed-from-
- * existing-patterns reference (admin card + accent + AdminBtn) so it lands
+ * existing-patterns reference (admin card + accent + Button) so it lands
  * consistently when billing arrives.
  *
  * @returns {JSX.Element}
@@ -26,7 +26,7 @@ export default function CommerceSection() {
       <DSPageHeading
         eyebrow="Patterns & templates"
         title="Commerce, billing & pricing"
-        lead="No billing surface ships yet, so most of this is a forward spec. The pricing card below is a live reference built only from existing primitives (admin card, accent ring, AdminBtn, AdminBadge) — the featured plan gets the accent border + badge, and destructive flows (cancel) get the danger zone."
+        lead="No billing surface ships yet, so most of this is a forward spec. The pricing card below is a live reference built only from existing primitives (admin card, accent ring, Button, Badge) — the featured plan gets the accent border + badge, and destructive flows (cancel) get the danger zone."
       />
 
       <DSGroup title="Pricing cards" status="spec" description="Designed from existing patterns. Toggle billing period to see the price swap.">
@@ -44,7 +44,7 @@ export default function CommerceSection() {
               <span className="absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all" style={{ left: yearly ? "1.375rem" : "0.125rem" }} />
             </button>
             <span className="text-sm" style={{ color: yearly ? "var(--adm-text)" : "var(--adm-text3)" }}>
-              Yearly <AdminBadge status="resolved">Save 16%</AdminBadge>
+              Yearly <Badge status="resolved">Save 16%</Badge>
             </span>
           </div>
 
@@ -63,7 +63,7 @@ export default function CommerceSection() {
                 >
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>{plan.name}</h3>
-                    {plan.featured ? <AdminBadge status="info">Popular</AdminBadge> : null}
+                    {plan.featured ? <Badge status="info">Popular</Badge> : null}
                   </div>
                   <p className="mt-1 text-xs leading-5" style={{ color: "var(--adm-text3)" }}>{plan.blurb}</p>
                   <div className="mt-4 flex items-end gap-1">
@@ -84,9 +84,9 @@ export default function CommerceSection() {
                     ))}
                   </ul>
                   <div className="mt-5">
-                    <AdminBtn variant={plan.featured ? "primary" : "outline"} className="w-full" disabled={plan.cta === "Current plan"}>
+                    <Button variant={plan.featured ? "primary" : "outline"} className="w-full" disabled={plan.cta === "Current plan"}>
                       {plan.cta}
-                    </AdminBtn>
+                    </Button>
                   </div>
                 </div>
               );

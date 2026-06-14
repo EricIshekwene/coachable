@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { FiGrid, FiUsers, FiBarChart2, FiSliders, FiAlertCircle } from "react-icons/fi";
-import { AdminBadge, AdminTabs, AdminPagination, AdminBreadcrumbs, AdminSidebarNavItem } from "../../../admin/components";
+import { Badge, Tabs, Pagination, Breadcrumbs } from "../../../design-system/components";
+import { AdminSidebarNavItem } from "../../../admin/components";
 import { DSPageHeading, DSGroup, DSTile, DSChecklist } from "../dsPrimitives";
 
 /**
  * Navigation patterns: sidebar, tabs, breadcrumbs, pagination, and the wider
  * navigation catalog from the checklist. Tabs, pagination, and breadcrumbs now
- * use the shared AdminTabs / AdminPagination / AdminBreadcrumbs primitives.
+ * use the shared Tabs / Pagination / Breadcrumbs primitives.
  *
  * @returns {JSX.Element}
  */
@@ -31,22 +32,22 @@ export default function NavigationSection() {
                 <span className="text-xs font-semibold" style={{ color: "var(--adm-text)" }}>Coachable Admin</span>
               </div>
               <AdminSidebarNavItem label="Dashboard" icon={<FiBarChart2 />} active={false} />
-              <AdminSidebarNavItem label="Plays" icon={<FiGrid />} active={false} badge={<AdminBadge status="info">3</AdminBadge>} />
+              <AdminSidebarNavItem label="Plays" icon={<FiGrid />} active={false} badge={<Badge status="info">3</Badge>} />
               <AdminSidebarNavItem label="Users" icon={<FiUsers />} active={false} />
               <AdminSidebarNavItem label="Design System" icon={<FiSliders />} active={true} />
               <AdminSidebarNavItem label="Errors" icon={<FiAlertCircle />} active={false} />
             </aside>
             <div className="flex flex-col gap-3 p-4" style={{ backgroundColor: "var(--adm-bg)" }}>
-              <AdminBreadcrumbs items={[{ label: "Admin" }, { label: "Design System" }, { label: "Navigation" }]} />
+              <Breadcrumbs items={[{ label: "Admin" }, { label: "Design System" }, { label: "Navigation" }]} />
               <p className="text-sm" style={{ color: "var(--adm-text2)" }}>Breadcrumbs sit above the page title; the back link is the compact variant.</p>
             </div>
           </div>
         </DSTile>
       </DSGroup>
 
-      <DSGroup title="Tabs" status="live" description="Shared AdminTabs — controlled, accent fill on the active tab.">
+      <DSGroup title="Tabs" status="live" description="Shared Tabs — controlled, accent fill on the active tab.">
         <DSTile>
-          <AdminTabs
+          <Tabs
             value={tab}
             onChange={setTab}
             tabs={[{ value: "overview", label: "Overview" }, { value: "activity", label: "Activity" }, { value: "sharing", label: "Sharing" }]}
@@ -54,19 +55,19 @@ export default function NavigationSection() {
         </DSTile>
       </DSGroup>
 
-      <DSGroup title="Breadcrumbs" status="live" description="Shared AdminBreadcrumbs — last item is the current page.">
+      <DSGroup title="Breadcrumbs" status="live" description="Shared Breadcrumbs — last item is the current page.">
         <DSTile>
-          <AdminBreadcrumbs items={[{ label: "Admin", to: "/admin" }, { label: "Users", to: "/admin/users" }, { label: "Maya Jordan" }]} />
+          <Breadcrumbs items={[{ label: "Admin", to: "/admin" }, { label: "Users", to: "/admin/users" }, { label: "Maya Jordan" }]} />
         </DSTile>
       </DSGroup>
 
-      <DSGroup title="Pagination" status="live" description="Shared AdminPagination — first/last anchoring with ellipses for long ranges.">
+      <DSGroup title="Pagination" status="live" description="Shared Pagination — first/last anchoring with ellipses for long ranges.">
         <div className="grid gap-4 md:grid-cols-2">
           <DSTile title="Short range">
-            <AdminPagination page={page} pageCount={5} onChange={setPage} />
+            <Pagination page={page} pageCount={5} onChange={setPage} />
           </DSTile>
           <DSTile title="Long range (ellipses)">
-            <AdminPagination page={page} pageCount={24} onChange={setPage} />
+            <Pagination page={page} pageCount={24} onChange={setPage} />
           </DSTile>
         </div>
       </DSGroup>
@@ -79,10 +80,10 @@ export default function NavigationSection() {
             { label: "Nested items & section labels", status: "spec" },
             { label: "Badge / count on item", status: "live" },
             { label: "Team / workspace switcher", note: "TeamSwitcher.", status: "inApp" },
-            { label: "Breadcrumbs", note: "AdminBreadcrumbs.", status: "live" },
-            { label: "Tabs / pills / segmented", note: "AdminTabs.", status: "live" },
+            { label: "Breadcrumbs", note: "Breadcrumbs.", status: "live" },
+            { label: "Tabs / pills / segmented", note: "Tabs.", status: "live" },
             { label: "Stepper", status: "planned" },
-            { label: "Pagination", note: "AdminPagination.", status: "live" },
+            { label: "Pagination", note: "Pagination.", status: "live" },
             { label: "Cursor / infinite scroll", note: "Infinite scroll in lists.", status: "spec" },
             { label: "Command menu / quick switcher", status: "planned" },
             { label: "Table of contents / anchor links", status: "spec" },

@@ -5,7 +5,8 @@ import { FiDownload, FiLayers, FiPlay, FiShare2, FiUsers } from "react-icons/fi"
 import { useAdmin } from "../admin/AdminContext";
 import { adminPath } from "../admin/adminNav";
 import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
-import { AdminShell, AdminHeader, AdminPage, AdminCard } from "../admin/components";
+import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
+import { Card } from "../design-system/components";
 import PlayPreviewCard from "../components/PlayPreviewCard";
 import ericPhoto from "../assets/pictures/faces/IMG_7356 (5).jpg";
 import coachableLogo from "../assets/logos/full_Coachable_logo.png";
@@ -144,7 +145,7 @@ export default function AdminOnePage() {
   if (!authed) {
     return (
       <AdminShell className="flex items-center justify-center">
-        <AdminCard>
+        <Card>
           <p className="mb-3 text-sm" style={{ color: "var(--adm-muted)" }}>Admin session required</p>
           <Link
             to={adminPath(basePath, "")}
@@ -153,7 +154,7 @@ export default function AdminOnePage() {
           >
             Go to Admin Login
           </Link>
-        </AdminCard>
+        </Card>
       </AdminShell>
     );
   }

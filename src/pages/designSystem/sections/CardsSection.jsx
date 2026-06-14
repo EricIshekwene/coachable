@@ -1,5 +1,5 @@
 import { FiMoreHorizontal, FiCircle } from "react-icons/fi";
-import { AdminCard, AdminAvatar, AdminBadge, AdminBtn } from "../../../admin/components";
+import { Card, Avatar, Badge, Button } from "../../../design-system/components";
 import PlayPreviewCard from "../../../components/PlayPreviewCard";
 import { prefabToPreviewPlayData } from "../../../utils/sportPrefabPresets";
 import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSAnatomy } from "../dsPrimitives";
@@ -80,14 +80,14 @@ export default function CardsSection() {
       <DSPageHeading
         eyebrow="Components"
         title="Cards"
-        lead="Cards group related content on a layered surface. AdminCard is the base; product cards (play, user, team, metric) layer specific anatomy on top. Keep density consistent and reserve hover/elevation for clickable cards."
+        lead="Cards group related content on a layered surface. Card is the base; product cards (play, user, team, metric) layer specific anatomy on top. Keep density consistent and reserve hover/elevation for clickable cards."
       />
 
       <DSGroup title="Base card" status="live">
         <div className="grid gap-4 md:grid-cols-3">
-          <AdminCard><p className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>Basic card</p><p className="mt-2 text-xs" style={{ color: "var(--adm-text3)" }}>Surface + soft border + padding.</p></AdminCard>
-          <AdminCard className="cursor-pointer transition hover:-translate-y-0.5"><p className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>Clickable card</p><p className="mt-2 text-xs" style={{ color: "var(--adm-text3)" }}>Lifts on hover.</p></AdminCard>
-          <AdminCard style={{ borderColor: "color-mix(in srgb, var(--adm-accent) 40%, transparent)", boxShadow: "0 0 0 1px var(--adm-accent-dim)" }}><p className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>Selected card</p><p className="mt-2 text-xs" style={{ color: "var(--adm-text3)" }}>Accent border + glow.</p></AdminCard>
+          <Card><p className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>Basic card</p><p className="mt-2 text-xs" style={{ color: "var(--adm-text3)" }}>Surface + soft border + padding.</p></Card>
+          <Card className="cursor-pointer transition hover:-translate-y-0.5"><p className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>Clickable card</p><p className="mt-2 text-xs" style={{ color: "var(--adm-text3)" }}>Lifts on hover.</p></Card>
+          <Card style={{ borderColor: "color-mix(in srgb, var(--adm-accent) 40%, transparent)", boxShadow: "0 0 0 1px var(--adm-accent-dim)" }}><p className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>Selected card</p><p className="mt-2 text-xs" style={{ color: "var(--adm-text3)" }}>Accent border + glow.</p></Card>
         </div>
       </DSGroup>
 
@@ -96,12 +96,12 @@ export default function CardsSection() {
           {USERS.map((user) => (
             <div key={user.name} className="rounded-[var(--adm-radius)] p-4" style={{ backgroundColor: "var(--adm-surface2)", border: "1px solid var(--adm-border)" }}>
               <div className="flex items-center gap-3">
-                <AdminAvatar name={user.name} size="lg" status={user.status} />
+                <Avatar name={user.name} size="lg" status={user.status} />
                 <div><p className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>{user.name}</p><p className="text-xs" style={{ color: "var(--adm-text3)" }}>{user.role} · {user.team}</p></div>
               </div>
               <div className="mt-4 flex items-center justify-between">
-                <AdminBadge status="resolved">Verified</AdminBadge>
-                <AdminBtn variant="ghost" size="sm">View profile</AdminBtn>
+                <Badge status="resolved">Verified</Badge>
+                <Button variant="ghost" size="sm">View profile</Button>
               </div>
             </div>
           ))}

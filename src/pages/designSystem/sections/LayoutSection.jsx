@@ -1,6 +1,6 @@
 import { FiGrid } from "react-icons/fi";
 import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSRef } from "../dsPrimitives";
-import { AdminBadge } from "../../../admin/components";
+import { Badge } from "../../../design-system/components";
 
 /**
  * Layout & grid system: page structure, container widths, responsive behavior,
@@ -80,9 +80,9 @@ export default function LayoutSection() {
 
       <DSGroup title="Page-level states" description="Every page should define its loading, empty, and error appearance.">
         <div className="grid gap-3 sm:grid-cols-3">
-          <DSTile title="Loading page"><AdminBadge status="in_progress">Skeleton + spinner</AdminBadge></DSTile>
-          <DSTile title="Empty page"><AdminBadge status="info">Empty state + CTA</AdminBadge></DSTile>
-          <DSTile title="Error page"><AdminBadge status="fail">Recovery action</AdminBadge></DSTile>
+          <DSTile title="Loading page"><Badge status="in_progress">Skeleton + spinner</Badge></DSTile>
+          <DSTile title="Empty page"><Badge status="info">Empty state + CTA</Badge></DSTile>
+          <DSTile title="Error page"><Badge status="fail">Recovery action</Badge></DSTile>
         </div>
         <p className="text-xs" style={{ color: "var(--adm-text3)" }}>
           Real implementations: <DSRef>src/pages/NotFound.jsx</DSRef> <DSRef>src/pages/MaintenancePage.jsx</DSRef>

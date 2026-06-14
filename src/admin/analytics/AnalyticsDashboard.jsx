@@ -1,6 +1,5 @@
 import { useState } from "react";
-import AdminBtn from "../components/AdminBtn";
-import AdminSpinner from "../components/AdminSpinner";
+import { Button, Spinner } from "../../design-system/components";
 import KpiStrip from "./KpiStrip";
 import OnboardingFunnel from "./OnboardingFunnel";
 import PlayActivityChart from "./PlayActivityChart";
@@ -229,27 +228,27 @@ export default function AnalyticsDashboard({ session }) {
               Period
             </span>
             {PERIODS.map((p) => (
-              <AdminBtn
+              <Button
                 key={p.key}
                 variant={period === p.key ? "primary" : "ghost"}
                 size="sm"
                 onClick={() => setPeriod(p.key)}
               >
                 {p.label}
-              </AdminBtn>
+              </Button>
             ))}
             <div
               className="mx-1 hidden h-6 w-px sm:block"
               style={{ backgroundColor: "var(--adm-border2)" }}
             />
-            <AdminBtn
+            <Button
               variant="secondary"
               size="sm"
               onClick={refetch}
               disabled={loading}
             >
               {loading ? "Loading..." : "Refresh"}
-            </AdminBtn>
+            </Button>
           </div>
         </div>
       </div>
@@ -275,7 +274,7 @@ export default function AnalyticsDashboard({ session }) {
             border: "1px solid var(--adm-border)",
           }}
         >
-          <AdminSpinner />
+          <Spinner />
         </div>
       ) : (
         <>

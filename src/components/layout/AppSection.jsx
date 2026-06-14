@@ -2,11 +2,11 @@
  * Titled content block for a main-app page. Renders an uppercase micro-label
  * heading (matching the existing app convention used on Profile/Settings), an
  * optional leading icon, an optional subtitle, an optional right-aligned actions
- * slot, and its children below. Mirrors the admin `AdminSection`.
+ * slot, and its children below. Mirrors the admin `Section`.
  *
  * Canonical composition (per the layout system): `AppSection` wraps an `AppCard`,
  * so the section label sits above the surface — matching how admin lays out
- * `AdminSection > AdminCard`.
+ * `Section > Card`.
  *
  * @param {object} props
  * @param {string} [props.title] - Section heading (rendered uppercase).

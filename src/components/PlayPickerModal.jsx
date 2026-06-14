@@ -4,7 +4,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FiCheck, FiFilm, FiFolder, FiSearch, FiX } from "react-icons/fi";
-import { AdminBtn, AdminSpinner } from "../admin/components";
+import { Button, Spinner } from "../design-system/components";
 
 /**
  * @param {{ plays: Array, folders: Array, loading: boolean, error: string,
@@ -118,7 +118,7 @@ export default function PlayPickerModal({ plays, folders, loading, error, onSele
           <div className="flex flex-1 flex-col overflow-y-auto">
             {loading ? (
               <div className="flex flex-1 items-center justify-center p-8 gap-2 text-xs" style={{ color: "var(--adm-muted)" }}>
-                <AdminSpinner size={14} /> Loading plays…
+                <Spinner size={14} /> Loading plays…
               </div>
             ) : error ? (
               <div className="flex flex-1 flex-col items-center justify-center p-8 gap-1 text-xs" style={{ color: "var(--adm-danger)" }}>
@@ -164,11 +164,11 @@ export default function PlayPickerModal({ plays, folders, loading, error, onSele
             {selectedPlay ? `Selected: ${selectedPlay.title}` : "Select a play to insert"}
           </span>
           <div className="flex gap-2">
-            <AdminBtn onClick={onClose}>Cancel</AdminBtn>
-            <AdminBtn variant="primary" onClick={handleConfirm} disabled={!selectedPlay}>
+            <Button onClick={onClose}>Cancel</Button>
+            <Button variant="primary" onClick={handleConfirm} disabled={!selectedPlay}>
               <FiFilm className="text-sm" />
               Generate &amp; Insert GIF
-            </AdminBtn>
+            </Button>
           </div>
         </div>
       </div>

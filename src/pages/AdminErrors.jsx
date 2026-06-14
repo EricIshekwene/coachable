@@ -6,14 +6,11 @@
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
-import ConfirmModal from "../components/subcomponents/ConfirmModal";
 import { useAdmin } from "../admin/AdminContext";
 import { adminPath } from "../admin/adminNav";
 import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
-import {
-  AdminShell, AdminHeader, AdminPage, AdminCard, AdminSection,
-  AdminBtn, AdminSelect, AdminBadge, AdminEmptyState, AdminSpinner,
-} from "../admin/components";
+import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
+import { Card, Section, Button, Select, Badge, EmptyState, Spinner, ConfirmDialog } from "../design-system/components";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -211,10 +208,10 @@ export default function AdminErrors() {
   if (!authed) {
     return (
       <AdminShell className="flex items-center justify-center">
-        <AdminCard>
+        <Card>
           <p className="mb-3 text-sm" style={{ color: "var(--adm-muted)" }}>Admin session required</p>
           <Link to={adminPath(basePath, "")} className="text-sm transition-opacity hover:opacity-70" style={{ color: "var(--adm-accent)" }}>Go to Admin Login</Link>
-        </AdminCard>
+        </Card>
       </AdminShell>
     );
   }
@@ -242,40 +239,40 @@ export default function AdminErrors() {
 
   return (
     <AdminShell>
-      <ConfirmModal open={confirmModal.open} message={confirmModal.message} subtitle={confirmModal.subtitle} confirmLabel={confirmModal.confirmLabel} danger={confirmModal.danger} onConfirm={handleConfirmOk} onCancel={handleConfirmCancel} />
+      <ConfirmDialog open={confirmModal.open} title={confirmModal.message} description={confirmModal.subtitle} confirmLabel={confirmModal.confirmLabel} tone={confirmModal.danger ? "danger" : "default"} onConfirm={handleConfirmOk} onCancel={handleConfirmCancel} />
       <AdminHeader
         title="Error Reports"
         backLabel="Dashboard"
         backTo={adminPath(basePath, "")}
         actions={
           <div className="flex gap-2">
-            <AdminBtn variant="secondary" size="sm" onClick={handleCopyAll} disabled={reports.length === 0}>{copied === "all" ? "Copied!" : "Copy All"}</AdminBtn>
-            {isOwner && <AdminBtn variant="danger" size="sm" onClick={handleClearAll}>Clear All</AdminBtn>}
+            <Button variant="secondary" size="sm" onClick={handleCopyAll} disabled={reports.length === 0}>{copied === "all" ? "Copied!" : "Copy All"}</Button>
+            {isOwner && <Button variant="danger" size="sm" onClick={handleClearAll}>Clear All</Button>}
           </div>
         }
       />
       <AdminPage>
-        <AdminSection
+        <Section
           title="Error Reports"
           subtitle={`${total} total report${total !== 1 ? "s" : ""}`}
           actions={
             <div className="flex gap-2">
-              <AdminSelect value={filter} onChange={(e) => { setFilter(e.target.value); setPage(0); }}>
+              <Select value={filter} onChange={(e) => { setFilter(e.target.value); setPage(0); }}>
                 <option value="">All components</option>
                 <option value="api">API / Backend</option>
                 <option value="videoExport">Video Export</option>
                 <option value="global">Global (uncaught)</option>
-              </AdminSelect>
-              <AdminBtn variant="secondary" size="sm" onClick={fetchReports} disabled={loading}>{loading ? <AdminSpinner size={12} /> : "Refresh"}</AdminBtn>
+              </Select>
+              <Button variant="secondary" size="sm" onClick={fetchReports} disabled={loading}>{loading ? <Spinner size={12} /> : "Refresh"}</Button>
             </div>
           }
         >
           {error && <div className="rounded-[var(--adm-radius-sm)] px-4 py-2 text-sm" style={{ backgroundColor: "var(--adm-danger-dim)", color: "var(--adm-danger)" }}>{error}</div>}
 
           {reports.length === 0 && !loading
-            ? <AdminEmptyState title="No error reports" subtitle="Errors from users will appear here" />
+            ? <EmptyState title="No error reports" subtitle="Errors from users will appear here" />
             : loading && reports.length === 0
-            ? <AdminEmptyState title="Loading…" icon={<AdminSpinner />} />
+            ? <EmptyState title="Loading…" icon={<Spinner />} />
             : (
               <div className="max-h-[70vh] space-y-2 overflow-y-auto pr-1">
                 {reports.map((r) => {
@@ -287,7 +284,7 @@ export default function AdminErrors() {
                     : r.component === "global" ? { bg: "var(--adm-danger-dim)", color: "var(--adm-danger)" }
                     : { bg: "var(--adm-surface3)", color: "var(--adm-muted)" };
                   return (
-                    <AdminCard key={r.id} padding={false} className="overflow-hidden">
+                    <Card key={r.id} padding={false} className="overflow-hidden">
                       <button onClick={() => setExpanded(isExpanded ? null : r.id)} className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition-opacity hover:opacity-90">
                         <span className="mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase" style={compStyle}>{r.component || "unknown"}</span>
                         <div className="min-w-0 flex-1">
@@ -314,15 +311,15 @@ export default function AdminErrors() {
                           <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <span className="text-[10px]" style={{ color: "var(--adm-muted)" }}>{new Date(r.created_at).toLocaleString()}</span>
                             <div className="flex flex-wrap gap-2">
-                              <AdminBtn variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleCopyOne(r); }}>{copied === r.id ? "Copied!" : "Copy"}</AdminBtn>
+                              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleCopyOne(r); }}>{copied === r.id ? "Copied!" : "Copy"}</Button>
                               {isOwner && (
-                                <AdminBtn variant="danger" size="sm" onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }}>Delete</AdminBtn>
+                                <Button variant="danger" size="sm" onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }}>Delete</Button>
                               )}
                             </div>
                           </div>
                         </div>
                       )}
-                    </AdminCard>
+                    </Card>
                   );
                 })}
               </div>
@@ -331,12 +328,12 @@ export default function AdminErrors() {
 
           {totalPages > 1 && (
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-              <AdminBtn variant="secondary" size="sm" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}>Previous</AdminBtn>
+              <Button variant="secondary" size="sm" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}>Previous</Button>
               <span className="text-xs" style={{ color: "var(--adm-muted)" }}>Page {page + 1} of {totalPages}</span>
-              <AdminBtn variant="secondary" size="sm" onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}>Next</AdminBtn>
+              <Button variant="secondary" size="sm" onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}>Next</Button>
             </div>
           )}
-        </AdminSection>
+        </Section>
       </AdminPage>
     </AdminShell>
   );

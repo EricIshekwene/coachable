@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FiSearch } from "react-icons/fi";
-import { AdminInput, AdminSelect, AdminTextarea, AdminCheckbox, AdminToggle, AdminRadioGroup, AdminBtn } from "../../../admin/components";
+import { Input, Select, Textarea, Checkbox, Toggle, RadioGroup, Button } from "../../../design-system/components";
 import { DSPageHeading, DSGroup, DSTile, DSChecklist } from "../dsPrimitives";
 
 /**
@@ -42,28 +42,28 @@ export default function FormsSection() {
       <DSPageHeading
         eyebrow="Components"
         title="Forms & inputs"
-        lead="Field heights, label sizing, radius, and focus treatment are aligned across every entry point. AdminInput / AdminSelect / AdminTextarea / AdminCheckbox / AdminToggle / AdminRadioGroup are the shared primitives."
+        lead="Field heights, label sizing, radius, and focus treatment are aligned across every entry point. Input / Select / Textarea / Checkbox / Toggle / RadioGroup are the shared primitives."
       />
 
       <DSGroup title="Text inputs, select & textarea" status="live">
         <DSTile>
           <div className="grid gap-3 md:grid-cols-2">
-            <AdminInput label="Text input" value={form.search} onChange={(e) => setForm((p) => ({ ...p, search: e.target.value }))} />
-            <AdminInput label="Email input" type="email" value="coach@austinarrows.com" onChange={() => {}} />
-            <AdminInput label="Password input" type="password" value="secretpass" onChange={() => {}} />
+            <Input label="Text input" value={form.search} onChange={(e) => setForm((p) => ({ ...p, search: e.target.value }))} />
+            <Input label="Email input" type="email" value="coach@austinarrows.com" onChange={() => {}} />
+            <Input label="Password input" type="password" value="secretpass" onChange={() => {}} />
             <div className="relative">
               <FiSearch className="pointer-events-none absolute left-3.5 top-[2.35rem] text-sm" style={{ color: "var(--adm-text3)" }} />
-              <AdminInput label="Search input" value={form.search} onChange={(e) => setForm((p) => ({ ...p, search: e.target.value }))} inputClassName="pl-9" />
+              <Input label="Search input" value={form.search} onChange={(e) => setForm((p) => ({ ...p, search: e.target.value }))} inputClassName="pl-9" />
             </div>
-            <AdminSelect label="Select / dropdown" value={form.role} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))}>
+            <Select label="Select / dropdown" value={form.role} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))}>
               <option value="coach">Coach</option>
               <option value="analyst">Analyst</option>
               <option value="admin">Admin</option>
-            </AdminSelect>
-            <AdminInput label="Disabled field" value="Archived roster" disabled onChange={() => {}} />
+            </Select>
+            <Input label="Disabled field" value="Archived roster" disabled onChange={() => {}} />
           </div>
           <div className="mt-3">
-            <AdminTextarea label="Textarea" value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} hint="Same radius, spacing, and helper-text style as other fields." />
+            <Textarea label="Textarea" value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} hint="Same radius, spacing, and helper-text style as other fields." />
           </div>
         </DSTile>
       </DSGroup>
@@ -83,14 +83,14 @@ export default function FormsSection() {
         <div className="grid gap-4 md:grid-cols-2">
           <DSTile title="Checkboxes & toggles">
             <div className="space-y-3">
-              <AdminCheckbox checked={form.alerts} onChange={() => setForm((p) => ({ ...p, alerts: !p.alerts }))} label="Include issue alerts" description="Show priority bugs in the daily report." />
-              <AdminCheckbox checked={form.owners} onChange={() => setForm((p) => ({ ...p, owners: !p.owners }))} label="Limit to owners" />
-              <AdminCheckbox checked label="Locked sample" disabled />
-              <AdminToggle checked={form.live} onChange={(next) => setForm((p) => ({ ...p, live: next }))} label="Live updates" description="Push edits into open dashboards without refresh." />
+              <Checkbox checked={form.alerts} onChange={() => setForm((p) => ({ ...p, alerts: !p.alerts }))} label="Include issue alerts" description="Show priority bugs in the daily report." />
+              <Checkbox checked={form.owners} onChange={() => setForm((p) => ({ ...p, owners: !p.owners }))} label="Limit to owners" />
+              <Checkbox checked label="Locked sample" disabled />
+              <Toggle checked={form.live} onChange={(next) => setForm((p) => ({ ...p, live: next }))} label="Live updates" description="Push edits into open dashboards without refresh." />
             </div>
           </DSTile>
           <DSTile title="Radio group">
-            <AdminRadioGroup
+            <RadioGroup
               label="Visibility"
               value={form.visibility}
               onChange={(v) => setForm((p) => ({ ...p, visibility: v }))}

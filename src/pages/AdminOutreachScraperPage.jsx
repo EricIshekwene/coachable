@@ -12,11 +12,11 @@ import { Link } from "react-router-dom";
 import { useAdmin } from "../admin/AdminContext";
 import { adminPath } from "../admin/adminNav";
 import { adminApi, adminUrl, adminFetchOptions, readAdminSession } from "../admin/adminTransport";
+import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
 import {
-  AdminShell, AdminHeader, AdminPage, AdminCard, AdminSection,
-  AdminBtn, AdminInput, AdminSelect, AdminCheckbox, AdminBadge,
-  AdminEmptyState, AdminSpinner, AdminModal, AdminDataTable,
-} from "../admin/components";
+  Card, Section, Button, Input, Select, Checkbox, Badge,
+  EmptyState, Spinner, Modal, DataTable,
+} from "../design-system/components";
 
 const ROLE_OPTIONS = [
   "head_coach", "offensive_coordinator", "defensive_coordinator",
@@ -31,7 +31,7 @@ function humanize(slug) {
   return slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-/** Map a platform slug to an AdminBadge status tone. */
+/** Map a platform slug to an Badge status tone. */
 function platformBadgeStatus(platform) {
   if (platform === "sidearm_nextgen" || platform === "sidearm_legacy") return "resolved";
   if (platform === "unknown") return "warning";
@@ -242,10 +242,10 @@ export default function AdminOutreachScraperPage() {
   if (!authed) {
     return (
       <AdminShell className="flex items-center justify-center">
-        <AdminCard>
+        <Card>
           <p className="mb-3 text-sm" style={{ color: "var(--adm-muted)" }}>Admin session required</p>
           <Link to={adminPath(basePath, "")} className="text-sm" style={{ color: "var(--adm-accent)" }}>Go to Admin Login</Link>
-        </AdminCard>
+        </Card>
       </AdminShell>
     );
   }
@@ -255,7 +255,7 @@ export default function AdminOutreachScraperPage() {
       <AdminShell>
         <AdminHeader title="Outreach Scraper" backLabel="Dashboard" backTo={adminPath(basePath, "")} />
         <AdminPage>
-          <AdminEmptyState title="Owner only" subtitle="The outreach scraper is restricted to the account owner." />
+          <EmptyState title="Owner only" subtitle="The outreach scraper is restricted to the account owner." />
         </AdminPage>
       </AdminShell>
     );
@@ -270,9 +270,9 @@ export default function AdminOutreachScraperPage() {
         backLabel="Dashboard"
         backTo={adminPath(basePath, "")}
         actions={
-          <AdminBtn variant="primary" size="sm" onClick={handleScrapeAll} disabled={scrapingId !== null}>
-            {scrapingId === "all" ? <AdminSpinner size={12} /> : "Scrape All"}
-          </AdminBtn>
+          <Button variant="primary" size="sm" onClick={handleScrapeAll} disabled={scrapingId !== null}>
+            {scrapingId === "all" ? <Spinner size={12} /> : "Scrape All"}
+          </Button>
         }
       />
       <AdminPage wide>
@@ -285,12 +285,12 @@ export default function AdminOutreachScraperPage() {
 
         <div className="space-y-8">
         {/* ---------- Schools panel ---------- */}
-        <AdminSection title="Schools" subtitle={`${schools.length} seeded`}>
+        <Section title="Schools" subtitle={`${schools.length} seeded`}>
           {loadingSchools ? (
-            <AdminSpinner />
+            <Spinner />
           ) : (
             <div className="max-h-[42vh] overflow-y-auto pr-1">
-              <AdminDataTable
+              <DataTable
                 columns={[
                   {
                     key: "canonical_name",
@@ -314,7 +314,7 @@ export default function AdminOutreachScraperPage() {
                     label: "Platform",
                     render: (s) => (
                       <>
-                        <AdminBadge status={platformBadgeStatus(s.platform)}>{s.platform.replace(/_/g, " ")}</AdminBadge>
+                        <Badge status={platformBadgeStatus(s.platform)}>{s.platform.replace(/_/g, " ")}</Badge>
                         {!s.scrapeable && <span className="ml-1 text-[10px]" style={{ color: "var(--adm-muted)" }}>manual</span>}
                       </>
                     ),
@@ -334,11 +334,11 @@ export default function AdminOutreachScraperPage() {
                     label: "",
                     align: "right",
                     render: (s) => s.scrapeable ? (
-                      <AdminBtn variant="secondary" size="sm" onClick={() => handleScrapeOne(s)} disabled={scrapingId !== null}>
-                        {scrapingId === s.id ? <AdminSpinner size={12} /> : "Scrape"}
-                      </AdminBtn>
+                      <Button variant="secondary" size="sm" onClick={() => handleScrapeOne(s)} disabled={scrapingId !== null}>
+                        {scrapingId === s.id ? <Spinner size={12} /> : "Scrape"}
+                      </Button>
                     ) : (
-                      <AdminBtn variant="secondary" size="sm" onClick={() => setManualFor(s)}>Add staff</AdminBtn>
+                      <Button variant="secondary" size="sm" onClick={() => setManualFor(s)}>Add staff</Button>
                     ),
                   },
                 ]}
@@ -349,51 +349,51 @@ export default function AdminOutreachScraperPage() {
               />
             </div>
           )}
-        </AdminSection>
+        </Section>
 
         {/* ---------- Filters ---------- */}
-        <AdminSection title="Filters">
+        <Section title="Filters">
           <div className="flex flex-wrap items-end gap-4">
-            <AdminSelect label="Sport" value={fSport} onChange={(e) => setFSport(e.target.value)}>
+            <Select label="Sport" value={fSport} onChange={(e) => setFSport(e.target.value)}>
               <option value="">All sports</option>
               {sportOptions.map((sp) => <option key={sp} value={sp}>{humanize(sp)}</option>)}
-            </AdminSelect>
-            <AdminSelect label="School" value={fSchool} onChange={(e) => setFSchool(e.target.value)}>
+            </Select>
+            <Select label="School" value={fSchool} onChange={(e) => setFSchool(e.target.value)}>
               <option value="">All schools</option>
               {schools.map((s) => <option key={s.id} value={s.id}>{s.canonical_name}</option>)}
-            </AdminSelect>
+            </Select>
             <div className="pb-1">
-              <AdminCheckbox label="Has email" checked={fHasEmail} onChange={(e) => setFHasEmail(e.target.checked)} />
+              <Checkbox label="Has email" checked={fHasEmail} onChange={(e) => setFHasEmail(e.target.checked)} />
             </div>
           </div>
           <div className="mt-3">
             <p className="mb-1.5 text-xs font-semibold" style={{ color: "var(--adm-muted)" }}>Roles</p>
             <div className="flex flex-wrap gap-x-4 gap-y-1.5">
               {ROLE_OPTIONS.map((role) => (
-                <AdminCheckbox key={role} label={humanize(role)} checked={fRoles.includes(role)} onChange={() => toggleRole(role)} />
+                <Checkbox key={role} label={humanize(role)} checked={fRoles.includes(role)} onChange={() => toggleRole(role)} />
               ))}
             </div>
           </div>
-        </AdminSection>
+        </Section>
 
         {/* ---------- Results ---------- */}
-        <AdminSection
+        <Section
           title="Contacts"
           subtitle={`${staff.length} result${staff.length !== 1 ? "s" : ""}${selected.size ? ` · ${selected.size} selected` : ""}`}
           actions={
             <div className="flex gap-2">
-              <AdminBtn variant="secondary" size="sm" onClick={() => handleExport(false)} disabled={!staff.length}>Export Filtered → CSV</AdminBtn>
-              <AdminBtn variant="primary" size="sm" onClick={() => handleExport(true)} disabled={!selected.size}>Export Selected → CSV</AdminBtn>
+              <Button variant="secondary" size="sm" onClick={() => handleExport(false)} disabled={!staff.length}>Export Filtered → CSV</Button>
+              <Button variant="primary" size="sm" onClick={() => handleExport(true)} disabled={!selected.size}>Export Selected → CSV</Button>
             </div>
           }
         >
           {loadingStaff ? (
-            <AdminSpinner />
+            <Spinner />
           ) : staff.length === 0 ? (
-            <AdminEmptyState title="No contacts" subtitle="Scrape a school or adjust the filters." />
+            <EmptyState title="No contacts" subtitle="Scrape a school or adjust the filters." />
           ) : (
             <div className="max-h-[55vh] overflow-y-auto pr-1">
-              <AdminDataTable
+              <DataTable
                 columns={[
                   {
                     key: "select",
@@ -465,25 +465,25 @@ export default function AdminOutreachScraperPage() {
               />
             </div>
           )}
-        </AdminSection>
+        </Section>
         </div>
       </AdminPage>
 
       {/* ---------- Manual-add modal ---------- */}
-      <AdminModal open={Boolean(manualFor)} onClose={() => setManualFor(null)} title={manualFor ? `Add staff — ${manualFor.canonical_name}` : ""}>
+      <Modal open={Boolean(manualFor)} onClose={() => setManualFor(null)} title={manualFor ? `Add staff — ${manualFor.canonical_name}` : ""}>
         <div className="flex flex-col gap-3">
-          <AdminInput label="Name" value={manualForm.name} onChange={(e) => setManualForm({ ...manualForm, name: e.target.value })} />
-          <AdminInput label="Title" value={manualForm.title} onChange={(e) => setManualForm({ ...manualForm, title: e.target.value })} />
-          <AdminInput label="Sport (slug, optional)" value={manualForm.sport} onChange={(e) => setManualForm({ ...manualForm, sport: e.target.value })} hint="e.g. football, womens_lacrosse" />
-          <AdminInput label="Role tags (comma-separated)" value={manualForm.roleTags} onChange={(e) => setManualForm({ ...manualForm, roleTags: e.target.value })} hint="e.g. head_coach, recruiting_coordinator" />
-          <AdminInput label="Email" value={manualForm.email} onChange={(e) => setManualForm({ ...manualForm, email: e.target.value })} />
-          <AdminInput label="Phone" value={manualForm.phone} onChange={(e) => setManualForm({ ...manualForm, phone: e.target.value })} />
+          <Input label="Name" value={manualForm.name} onChange={(e) => setManualForm({ ...manualForm, name: e.target.value })} />
+          <Input label="Title" value={manualForm.title} onChange={(e) => setManualForm({ ...manualForm, title: e.target.value })} />
+          <Input label="Sport (slug, optional)" value={manualForm.sport} onChange={(e) => setManualForm({ ...manualForm, sport: e.target.value })} hint="e.g. football, womens_lacrosse" />
+          <Input label="Role tags (comma-separated)" value={manualForm.roleTags} onChange={(e) => setManualForm({ ...manualForm, roleTags: e.target.value })} hint="e.g. head_coach, recruiting_coordinator" />
+          <Input label="Email" value={manualForm.email} onChange={(e) => setManualForm({ ...manualForm, email: e.target.value })} />
+          <Input label="Phone" value={manualForm.phone} onChange={(e) => setManualForm({ ...manualForm, phone: e.target.value })} />
           <div className="mt-2 flex justify-end gap-2">
-            <AdminBtn variant="secondary" size="sm" onClick={() => setManualFor(null)}>Cancel</AdminBtn>
-            <AdminBtn variant="primary" size="sm" onClick={handleManualAdd} disabled={!manualForm.name && !manualForm.email}>Add</AdminBtn>
+            <Button variant="secondary" size="sm" onClick={() => setManualFor(null)}>Cancel</Button>
+            <Button variant="primary" size="sm" onClick={handleManualAdd} disabled={!manualForm.name && !manualForm.email}>Add</Button>
           </div>
         </div>
-      </AdminModal>
+      </Modal>
     </AdminShell>
   );
 }

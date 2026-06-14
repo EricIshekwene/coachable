@@ -1,5 +1,5 @@
 import { FiPlus } from "react-icons/fi";
-import { AdminEmptyState, AdminBtn, AdminSpinner } from "../../../admin/components";
+import { EmptyState, Button, Spinner } from "../../../design-system/components";
 import KpiStrip from "../../../admin/analytics/KpiStrip";
 import UserGrowthChart from "../../../admin/analytics/UserGrowthChart";
 import PlayActivityChart from "../../../admin/analytics/PlayActivityChart";
@@ -100,14 +100,14 @@ export default function DataVizSection() {
           <Panel tone="amber" eyebrow="Loading state" title="Module loading" subtitle="Containers keep their panel framing while fetching." stat="Syncing" statLabel="Status">
             <div className="flex items-center justify-between">
               <p className="text-xs" style={{ color: "var(--adm-text3)" }}>Refreshing dashboard metrics</p>
-              <AdminSpinner size={20} />
+              <Spinner size={20} />
             </div>
             <div className="mt-4 flex h-28 items-end gap-2">
               {[42, 76, 58, 88, 54, 64, 40].map((h, i) => <div key={i} className="animate-pulse rounded-t-[8px]" style={{ height: h, flex: 1, backgroundColor: "var(--adm-surface3)" }} />)}
             </div>
           </Panel>
           <Panel tone="blue" eyebrow="Empty state" title="No analytics source" subtitle="Empty modules still render as real panels." stat="0" statLabel="Sources">
-            <AdminEmptyState className="py-6" title="Connect an analytics source" subtitle="Use the standard empty-state treatment instead of leaving charts blank." action={<AdminBtn variant="secondary" size="sm"><FiPlus /> Connect source</AdminBtn>} />
+            <EmptyState className="py-6" title="Connect an analytics source" subtitle="Use the standard empty-state treatment instead of leaving charts blank." action={<Button variant="secondary" size="sm"><FiPlus /> Connect source</Button>} />
           </Panel>
         </div>
       </DSGroup>

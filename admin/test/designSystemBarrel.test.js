@@ -55,27 +55,27 @@ describe("design-system barrel", () => {
   });
 });
 
-describe("admin compatibility barrel", () => {
-  const aliases = [
-    ["AdminBtn", Button], ["AdminInput", Input], ["AdminTextarea", Textarea],
-    ["AdminSelect", Select], ["AdminCheckbox", Checkbox], ["AdminToggle", Toggle],
-    ["AdminRadioGroup", RadioGroup], ["AdminCard", Card], ["AdminSection", Section],
-    ["AdminModal", Modal], ["AdminAlert", Alert], ["AdminSpinner", Spinner],
-    ["AdminSkeleton", Skeleton], ["AdminProgress", Progress],
-    ["AdminEmptyState", EmptyState], ["AdminBadge", Badge], ["AdminChip", Chip],
-    ["AdminAvatar", Avatar], ["AdminTabs", Tabs], ["AdminBreadcrumbs", Breadcrumbs],
-    ["AdminPagination", Pagination], ["AdminTooltip", Tooltip],
-    // Session 5 — tables & lists
-    ["AdminDataTable", DataTable], ["AdminTh", Th], ["AdminTd", Td],
-    ["AdminTableSearchHeader", TableSearchHeader], ["AdminListItem", ListItem],
-    // Session 6 — search, filter & settings patterns
-    ["AdminSearchInput", SearchInput], ["AdminSettingsRow", SettingsRow],
-    ["AdminFilterBar", FilterBar], ["AdminBulkBar", BulkBar], ["AdminDangerZone", DangerZone],
-    // Session 7 — dashboard & stat tiles
-    ["AdminStatCard", StatCard],
+describe("admin barrel — purge guard (Q4 Session 1)", () => {
+  const purgedAliases = [
+    "AdminBtn", "AdminInput", "AdminTextarea", "AdminSelect", "AdminCheckbox", "AdminToggle",
+    "AdminRadioGroup", "AdminCard", "AdminSection", "AdminModal", "AdminAlert", "AdminSpinner",
+    "AdminSkeleton", "AdminProgress", "AdminEmptyState", "AdminBadge", "AdminChip",
+    "AdminAvatar", "AdminTabs", "AdminBreadcrumbs", "AdminPagination", "AdminTooltip",
+    "AdminDataTable", "AdminTh", "AdminTd", "AdminTableSearchHeader", "AdminListItem",
+    "AdminSearchInput", "AdminSettingsRow", "AdminFilterBar", "AdminBulkBar", "AdminDangerZone",
+    "AdminStatCard",
   ];
 
-  test.each(aliases)("%s is the canonical component reference", (name, canonical) => {
-    expect(Admin[name]).toBe(canonical);
+  test.each(purgedAliases)("%s is no longer exported from the admin barrel", (name) => {
+    expect(Admin[name]).toBeUndefined();
+  });
+
+  test("admin barrel still exports non-alias shell components", () => {
+    expect(Admin.AdminShell).toBeDefined();
+    expect(Admin.AdminPage).toBeDefined();
+    expect(Admin.AdminSidebar).toBeDefined();
+    expect(Admin.AdminPlayCard).toBeDefined();
+    expect(Admin.AdminFolderCard).toBeDefined();
+    expect(Admin.AdminSectionRow).toBeDefined();
   });
 });

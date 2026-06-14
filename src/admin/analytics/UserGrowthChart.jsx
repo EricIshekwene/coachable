@@ -7,7 +7,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import AdminSpinner from "../components/AdminSpinner";
+import { Spinner } from "../../design-system/components";
 
 /** Format "2025-04-05" → "Apr 5" for axis labels. */
 function fmtDate(str) {
@@ -21,7 +21,7 @@ function fmtDate(str) {
  * @param {{ data: Array<{ date: string, count: number }>|null, height?: number }} props
  */
 export default function UserGrowthChart({ data, height = 180 }) {
-  if (!data) return <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center" }}><AdminSpinner /></div>;
+  if (!data) return <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center" }}><Spinner /></div>;
   if (!data.length) return <p style={{ color: "var(--adm-muted)", fontSize: 13, textAlign: "center", paddingTop: 60 }}>No registrations in this period</p>;
 
   const accent = "var(--adm-accent)";

@@ -2,11 +2,11 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { FiEdit2, FiPlus, FiTrash2, FiEye, FiEyeOff, FiCopy, FiDownload, FiUpload } from "react-icons/fi";
 import PlayPreviewCard from "../components/PlayPreviewCard";
-import ConfirmModal from "../components/subcomponents/ConfirmModal";
 import { useAdmin } from "../admin/AdminContext";
 import { adminPath } from "../admin/adminNav";
 import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
-import { AdminShell, AdminHeader, AdminPage, AdminBtn, AdminEmptyState, AdminSpinner } from "../admin/components";
+import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
+import { Button, EmptyState, Spinner, ConfirmDialog } from "../design-system/components";
 import {
   buildSportPresetBundle,
   parseSportPresetBundle,
@@ -351,10 +351,10 @@ export default function AdminSportPresetsPage() {
   return (
     <AdminShell sidebar={false}>
       {confirmModal && (
-        <ConfirmModal
+        <ConfirmDialog
           open
           title={confirmModal.title}
-          message={confirmModal.message}
+          description={confirmModal.message}
           onConfirm={() => { confirmModal.resolve(true); setConfirmModal(null); }}
           onCancel={() => { confirmModal.resolve(false); setConfirmModal(null); }}
         />
@@ -377,7 +377,7 @@ export default function AdminSportPresetsPage() {
                   className="hidden"
                   onChange={handleImportFileChange}
                 />
-                <AdminBtn
+                <Button
                   variant="secondary"
                   size="sm"
                   onClick={handleDownloadBundle}
@@ -385,25 +385,25 @@ export default function AdminSportPresetsPage() {
                   title={`Download all ${decodedSport} presets as JSON`}
                 >
                   <FiDownload className="text-[11px]" /> Download Play Data
-                </AdminBtn>
+                </Button>
                 {canCreatePresets && (
-                  <AdminBtn
+                  <Button
                     variant="secondary"
                     size="sm"
                     onClick={() => importInputRef.current?.click()}
                     disabled={loading || importing}
                     title={`Import ${decodedSport} presets from JSON`}
                   >
-                    {importing ? <AdminSpinner size={12} /> : <FiUpload className="text-[11px]" />}
+                    {importing ? <Spinner size={12} /> : <FiUpload className="text-[11px]" />}
                     {importing ? "Importing..." : "Import Presets"}
-                  </AdminBtn>
+                  </Button>
                 )}
               </>
             )}
             {canCreatePresets && (
-              <AdminBtn variant="primary" size="sm" onClick={() => navigate(`${adminPath(basePath, "/presets")}/${encodeURIComponent(decodedSport)}/new/edit`)}>
+              <Button variant="primary" size="sm" onClick={() => navigate(`${adminPath(basePath, "/presets")}/${encodeURIComponent(decodedSport)}/new/edit`)}>
                 <FiPlus className="mr-1 inline" /> New Preset
-              </AdminBtn>
+              </Button>
             )}
           </div>
         }
@@ -429,15 +429,15 @@ export default function AdminSportPresetsPage() {
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-24"><AdminSpinner size={32} /></div>
+          <div className="flex items-center justify-center py-24"><Spinner size={32} /></div>
         ) : presets.length === 0 ? (
-          <AdminEmptyState
+          <EmptyState
             title={`No presets for ${decodedSport}`}
             subtitle="Create the first preset to give users a starting canvas"
             action={canCreatePresets ? (
-              <AdminBtn variant="primary" onClick={() => navigate(`${adminPath(basePath, "/presets")}/${encodeURIComponent(decodedSport)}/new/edit`)}>
+              <Button variant="primary" onClick={() => navigate(`${adminPath(basePath, "/presets")}/${encodeURIComponent(decodedSport)}/new/edit`)}>
                 <FiPlus className="mr-1 inline" /> Create First Preset
-              </AdminBtn>
+              </Button>
             ) : undefined}
           />
         ) : (
@@ -503,7 +503,7 @@ export default function AdminSportPresetsPage() {
                         style={{ border: "1px solid var(--adm-border)", color: "var(--adm-muted)" }}
                         title="Duplicate"
                       >
-                        {duplicatingId === preset.id ? <AdminSpinner size={12} /> : <FiCopy className="text-[10px]" />}
+                        {duplicatingId === preset.id ? <Spinner size={12} /> : <FiCopy className="text-[10px]" />}
                       </button>
                     )}
                     {canEditPresets && (
@@ -514,7 +514,7 @@ export default function AdminSportPresetsPage() {
                         style={{ border: "1px solid var(--adm-border)", color: "var(--adm-muted)" }}
                         title={preset.isHidden ? "Publish" : "Hide"}
                       >
-                        {togglingId === preset.id ? <AdminSpinner size={12} /> : preset.isHidden ? <FiEye className="text-[10px]" /> : <FiEyeOff className="text-[10px]" />}
+                        {togglingId === preset.id ? <Spinner size={12} /> : preset.isHidden ? <FiEye className="text-[10px]" /> : <FiEyeOff className="text-[10px]" />}
                       </button>
                     )}
                     {isOwner && (
@@ -525,7 +525,7 @@ export default function AdminSportPresetsPage() {
                         style={{ border: "1px solid var(--adm-border)", color: "var(--adm-danger)" }}
                         title="Delete"
                       >
-                        {deletingId === preset.id ? <AdminSpinner size={12} /> : <FiTrash2 className="text-[10px]" />}
+                        {deletingId === preset.id ? <Spinner size={12} /> : <FiTrash2 className="text-[10px]" />}
                       </button>
                     )}
                   </div>

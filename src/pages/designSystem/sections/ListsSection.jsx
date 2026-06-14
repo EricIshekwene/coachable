@@ -1,5 +1,4 @@
-import { AdminAvatar, AdminChip, AdminListItem } from "../../../admin/components";
-import { Badge, Button } from "../../../design-system/components";
+import { Badge, Button, Avatar, Chip, ListItem } from "../../../design-system/components";
 import { DSPageHeading, DSGroup, DSTile, DSStage, DSChecklist, DSAnatomy } from "../dsPrimitives";
 
 const LIST_MEMBERS = [
@@ -26,9 +25,9 @@ export default function ListsSection() {
       <DSGroup title="Media list" status="live" description="Avatar + title + subtitle + trailing action — using ListItem.">
         <DSTile>
           {LIST_MEMBERS.map((u) => (
-            <AdminListItem
+            <ListItem
               key={u.name}
-              leading={<AdminAvatar name={u.name} size="md" status={u.status} />}
+              leading={<Avatar name={u.name} size="md" status={u.status} />}
               title={u.name}
               subtitle={u.sub}
               trailing={
@@ -45,14 +44,14 @@ export default function ListsSection() {
         </DSTile>
       </DSGroup>
 
-      <DSGroup title="Chips & tags" status="live" description="Shared AdminChip — tones, removable, selectable, and disabled.">
+      <DSGroup title="Chips & tags" status="live" description="Shared Chip — tones, removable, selectable, and disabled.">
         <DSTile>
           <DSStage>
-            <AdminChip tone="accent" onRemove={() => {}}>Filter chip</AdminChip>
-            <AdminChip>red zone</AdminChip>
-            <AdminChip>shot play</AdminChip>
-            <AdminChip tone="success" selected>selected</AdminChip>
-            <AdminChip disabled>disabled</AdminChip>
+            <Chip tone="accent" onRemove={() => {}}>Filter chip</Chip>
+            <Chip>red zone</Chip>
+            <Chip>shot play</Chip>
+            <Chip tone="success" selected>selected</Chip>
+            <Chip disabled>disabled</Chip>
           </DSStage>
         </DSTile>
       </DSGroup>

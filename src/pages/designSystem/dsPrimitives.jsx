@@ -15,7 +15,7 @@
  *  - "planned"   → from the company-wide checklist but not built in this repo yet
  */
 
-import { AdminBadge } from "../../admin/components";
+import { Badge } from "../../design-system/components";
 
 /* ────────────────────────────────────────────────────────────────────────── *
  * Status tag
@@ -36,7 +36,7 @@ const STATUS_META = {
  */
 export function DSStatus({ status = "spec", children }) {
   const meta = STATUS_META[status] ?? STATUS_META.spec;
-  return <AdminBadge status={meta.status}>{children ?? meta.label}</AdminBadge>;
+  return <Badge status={meta.status}>{children ?? meta.label}</Badge>;
 }
 
 /* ────────────────────────────────────────────────────────────────────────── *
