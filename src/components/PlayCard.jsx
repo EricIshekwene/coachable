@@ -114,14 +114,14 @@ export default function PlayCard({
       className={`group relative flex cursor-grab flex-col overflow-hidden rounded-2xl border transition active:cursor-grabbing ${
         bulkMode && selected
           ? "border-BrandOrange/50 bg-BrandOrange/6 shadow-[0_0_0_1px_rgba(255,122,24,0.16)]"
-          : "border-BrandGray2/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0)),rgba(24,26,31,0.96)] hover:border-BrandOrange/25 hover:shadow-[0_4px_16px_rgba(0,0,0,0.14)]"
+          : "border-[color:var(--ui-border)] hover:border-BrandOrange/25 hover:shadow-[0_4px_16px_rgba(0,0,0,0.14)]"
       }`}
       onClick={bulkMode ? () => onToggleSelect(play.id) : undefined}
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
       {bulkMode && (
         <div className="absolute top-3 left-3 z-10">
-          {selected ? <FiCheckSquare className="text-lg text-BrandOrange" /> : <FiSquare className="text-lg text-BrandGray2" />}
+          {selected ? <FiCheckSquare className="text-lg text-BrandOrange" /> : <FiSquare className="text-lg" style={{ color: "var(--ui-text-subtle)" }} />}
         </div>
       )}
       <div
@@ -146,7 +146,7 @@ export default function PlayCard({
           <div className="flex items-start gap-2">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
-                {play.hiddenFromPlayers && isCoach && <FiEyeOff className="shrink-0 text-sm text-BrandGray2" title="Hidden from players" />}
+                {play.hiddenFromPlayers && isCoach && <FiEyeOff className="shrink-0 text-sm" style={{ color: "var(--ui-text-subtle)" }} title="Hidden from players" />}
                 {play.favorited && <FiStar className="shrink-0 fill-BrandOrange text-sm text-BrandOrange" />}
                 {renaming ? (
                   <input
@@ -159,10 +159,10 @@ export default function PlayCard({
                     className="min-w-0 flex-1 rounded bg-transparent px-1 font-Manrope text-sm font-semibold outline-none ring-1 ring-BrandOrange"
                   />
                 ) : (
-                  <h3 className="min-w-0 flex-1 truncate font-Manrope text-sm font-semibold text-BrandText">{play.title}</h3>
+                  <h3 className="min-w-0 flex-1 truncate font-Manrope text-sm font-semibold" style={{ color: "var(--ui-text)" }}>{play.title}</h3>
                 )}
               </div>
-              <p className="mt-1 text-[11px] text-BrandGray2">
+              <p className="mt-1 text-[11px]" style={{ color: "var(--ui-text-subtle)" }}>
                 {inFolder ? "Stored in this folder" : "Play preview and details"}
               </p>
             </div>
@@ -172,7 +172,7 @@ export default function PlayCard({
                 <button
                   ref={menuBtnRef}
                   onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}
-                  className="rounded-lg p-1.5 text-BrandGray2 opacity-100 transition hover:bg-BrandBlack2 hover:text-BrandText md:opacity-0 group-hover:opacity-100"
+                  className="rounded-lg p-1.5 text-[color:var(--ui-text-subtle)] opacity-100 transition hover:bg-[color:var(--ui-surface-2)] hover:text-[color:var(--ui-text)] md:opacity-0 group-hover:opacity-100"
                 >
                   <FiMoreHorizontal className="text-sm" />
                 </button>
@@ -215,7 +215,7 @@ export default function PlayCard({
           {(play.tags || []).length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
               {play.tags.map((tag) => (
-                <span key={tag} className="inline-flex items-center gap-1 rounded-full border border-BrandGray2/15 bg-BrandBlack/35 px-2.5 py-1 text-[10px] text-BrandGray">
+                <span key={tag} className="inline-flex items-center gap-1 rounded-full border border-[color:var(--ui-border)] px-2.5 py-1 text-[10px]" style={{ backgroundColor: "var(--ui-surface-2)", color: "var(--ui-text-muted)" }}>
                   <FiTag className="text-[8px]" />
                   {tag}
                 </span>
@@ -224,14 +224,15 @@ export default function PlayCard({
           )}
 
           <div className="mt-auto flex items-center justify-between gap-3 pt-4">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-BrandGray2/15 bg-BrandBlack/35 px-2.5 py-1 text-[11px] text-BrandGray2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--ui-border)] px-2.5 py-1 text-[11px]" style={{ backgroundColor: "var(--ui-surface-2)", color: "var(--ui-text-subtle)" }}>
               <FiClock className="text-[10px]" />
               {formatRelativeTime(play.updatedAt || play.createdAt)}
             </span>
             {canEdit && (
               <button
                 onClick={(e) => { e.stopPropagation(); onEdit(play.id); }}
-                className="flex items-center gap-1 rounded-full border border-BrandGray2/20 bg-BrandBlack/35 px-3 py-1.5 text-[11px] text-BrandGray transition hover:border-BrandOrange/30 hover:text-BrandOrange"
+                className="flex items-center gap-1 rounded-full border border-[color:var(--ui-border)] px-3 py-1.5 text-[11px] text-[color:var(--ui-text-muted)] transition hover:border-BrandOrange/30 hover:text-BrandOrange"
+                style={{ backgroundColor: "var(--ui-surface-2)" }}
               >
                 <FiEdit2 className="text-[10px]" />
                 Edit

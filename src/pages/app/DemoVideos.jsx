@@ -118,18 +118,18 @@ function FAQItem({ q, a, linkedVideo, onPlayVideo }) {
   const videoReady = linkedVideo?.done && ytId;
 
   return (
-    <div className="border-b border-BrandGray2/15 last:border-b-0">
+    <div className="border-b border-[color:var(--ui-border)] last:border-b-0">
       <Button variant="ghost"
         onClick={() => setOpen((s) => !s)}
         className="flex w-full items-start justify-between gap-4 py-4 text-left"
       >
-        <span className={`text-sm font-semibold leading-snug transition-colors ${open ? "text-BrandText" : "text-BrandGray"}`}>
+        <span className={`text-sm font-semibold leading-snug transition-colors ${open ? "text-[color:var(--ui-text)]" : "text-[color:var(--ui-text-muted)]"}`}>
           {q}
         </span>
         <FiChevronDown className={`mt-0.5 shrink-0 text-BrandOrange transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </Button>
       <div className={`overflow-hidden transition-all duration-200 ${open ? "max-h-72 pb-4" : "max-h-0"}`}>
-        <p className="text-sm leading-relaxed text-BrandGray2">{a}</p>
+        <p className="text-sm leading-relaxed" style={{ color: "var(--ui-text-subtle)" }}>{a}</p>
         {videoReady && (
           <Button variant="ghost"
             onClick={() => onPlayVideo(ytId)}
@@ -140,7 +140,7 @@ function FAQItem({ q, a, linkedVideo, onPlayVideo }) {
           </Button>
         )}
         {linkedVideo && !videoReady && (
-          <p className="mt-2 text-xs italic text-BrandGray2/60">Video coming soon</p>
+          <p className="mt-2 text-xs italic opacity-50" style={{ color: "var(--ui-text-subtle)" }}>Video coming soon</p>
         )}
       </div>
     </div>
@@ -163,12 +163,12 @@ function VideoCard({ video, onPlay }) {
       interactive={isReady}
       className={`group relative overflow-hidden rounded-2xl border transition ${
         isReady
-          ? "cursor-pointer border-BrandGray2/20 hover:border-BrandOrange/60"
-          : "cursor-default border-BrandGray2/10 opacity-60"
+          ? "cursor-pointer border-[color:var(--ui-border)] hover:border-BrandOrange/60"
+          : "cursor-default border-[color:var(--ui-border)] opacity-60"
       }`}
       onClick={() => isReady && onPlay(ytId)}
     >
-      <div className="relative aspect-video w-full overflow-hidden bg-BrandBlack2">
+      <div className="relative aspect-video w-full overflow-hidden" style={{ backgroundColor: "var(--ui-surface)" }}>
         {ytId ? (
           <img
             src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`}
@@ -177,7 +177,7 @@ function VideoCard({ video, onPlay }) {
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
-            <FiClock className="text-3xl text-BrandGray2/30" />
+            <FiClock className="text-3xl opacity-30" style={{ color: "var(--ui-text-subtle)" }} />
           </div>
         )}
         {isReady && (
@@ -194,7 +194,7 @@ function VideoCard({ video, onPlay }) {
         )}
       </div>
       <div className="px-3 py-2.5">
-        <p className={`text-sm font-medium leading-snug ${isReady ? "text-BrandText" : "text-BrandGray"}`}>
+        <p className="text-sm font-medium leading-snug" style={{ color: isReady ? "var(--ui-text)" : "var(--ui-text-muted)" }}>
           {video.title}
         </p>
       </div>
@@ -278,7 +278,7 @@ export default function DemoVideos() {
         </div>
         <Divider />
         <div className="flex justify-end px-4 py-2" style={{ backgroundColor: "#1a1a1a" }}>
-          <Button variant="ghost" onClick={() => setActiveYtId(null)} className="text-xs text-BrandGray transition hover:text-white">
+          <Button variant="ghost" onClick={() => setActiveYtId(null)} className="text-xs text-[color:var(--ui-text-muted)] transition hover:text-white">
             Close
           </Button>
         </div>
@@ -287,23 +287,24 @@ export default function DemoVideos() {
       {/* Header */}
       <div className="mb-5">
         <h1 className="font-Manrope text-2xl font-bold">How To</h1>
-        <p className="mt-1 text-sm text-BrandGray">Guides and videos to help you get the most out of Coachable</p>
+        <p className="mt-1 text-sm" style={{ color: "var(--ui-text-muted)" }}>Guides and videos to help you get the most out of Coachable</p>
       </div>
 
       {/* Search */}
       <div className="relative mb-8 max-w-md">
-        <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-BrandGray2" />
+        <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--ui-text-subtle)" }} />
         <Input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search guides and videos…"
-          className="w-full rounded-xl border border-BrandGray2/20 bg-BrandBlack2 py-2.5 pl-9 pr-9 text-sm text-BrandText outline-none transition focus:border-BrandOrange placeholder:text-BrandGray2"
+          className="w-full rounded-xl border border-[color:var(--ui-border)] py-2.5 pl-9 pr-9 text-sm outline-none transition focus:border-BrandOrange"
+          style={{ backgroundColor: "var(--ui-surface)", color: "var(--ui-text)" }}
         />
         {search && (
           <Button variant="ghost"
             onClick={() => setSearch("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-BrandGray2 transition hover:text-BrandText"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--ui-text-subtle)] transition hover:text-[color:var(--ui-text)]"
           >
             <FiX className="text-sm" />
           </Button>
@@ -331,8 +332,8 @@ export default function DemoVideos() {
       )}
 
       {!loading && !search && videos.length === 0 && (
-        <div className="rounded-xl border border-BrandGray2/10 py-12 text-center">
-          <p className="text-BrandGray2">No videos yet — check back soon</p>
+        <div className="rounded-xl border border-[color:var(--ui-border)] py-12 text-center">
+          <p style={{ color: "var(--ui-text-subtle)" }}>No videos yet — check back soon</p>
         </div>
       )}
 

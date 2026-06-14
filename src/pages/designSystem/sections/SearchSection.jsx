@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { FiSearch, FiCommand, FiCornerDownLeft, FiX } from "react-icons/fi";
+import { FiSearch, FiCommand, FiCornerDownLeft } from "react-icons/fi";
+import { AdminSearchInput } from "../../../admin/components";
 import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSMeta, DSDoDont, DSRef } from "../dsPrimitives";
 
 /** Sample rows for the live local-search demo. */
@@ -78,11 +79,12 @@ export default function SearchSection() {
       <DSGroup title="Local search" status="live" description="Filters on-screen rows live and highlights the matched span. Type below.">
         <DSTile>
           <div className="mx-auto max-w-sm">
-            <div className="flex items-center gap-2 rounded-[var(--adm-radius-md)] px-3 py-2" style={{ backgroundColor: "var(--adm-surface)", border: "1px solid var(--adm-border2)" }}>
-              <FiSearch className="text-sm" style={{ color: "var(--adm-text3)" }} />
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter plays…" className="min-w-0 flex-1 bg-transparent text-sm outline-none" style={{ color: "var(--adm-text)" }} />
-              {q ? <button type="button" onClick={() => setQ("")} aria-label="Clear"><FiX className="text-sm" style={{ color: "var(--adm-text3)" }} /></button> : null}
-            </div>
+            <AdminSearchInput
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onClear={q ? () => setQ("") : undefined}
+              placeholder="Filter plays…"
+            />
             <div className="mt-2 flex flex-col gap-0.5">
               {matches.length === 0 ? (
                 <p className="px-3 py-6 text-center text-sm" style={{ color: "var(--adm-text3)" }}>No plays match “{q}”.</p>

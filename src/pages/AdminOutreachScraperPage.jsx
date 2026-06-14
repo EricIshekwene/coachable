@@ -15,7 +15,7 @@ import { adminApi, adminUrl, adminFetchOptions, readAdminSession } from "../admi
 import {
   AdminShell, AdminHeader, AdminPage, AdminCard, AdminSection,
   AdminBtn, AdminInput, AdminSelect, AdminCheckbox, AdminBadge,
-  AdminEmptyState, AdminSpinner, AdminModal,
+  AdminEmptyState, AdminSpinner, AdminModal, AdminDataTable,
 } from "../admin/components";
 
 const ROLE_OPTIONS = [
@@ -290,46 +290,63 @@ export default function AdminOutreachScraperPage() {
             <AdminSpinner />
           ) : (
             <div className="max-h-[42vh] overflow-y-auto pr-1">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ color: "var(--adm-muted)" }} className="text-left text-[11px] uppercase">
-                    <th className="px-2 py-1.5">School</th>
-                    <th className="px-2 py-1.5">Div</th>
-                    <th className="px-2 py-1.5">Platform</th>
-                    <th className="px-2 py-1.5">Last scraped</th>
-                    <th className="px-2 py-1.5">Staff</th>
-                    <th className="px-2 py-1.5"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {schools.map((s) => (
-                    <tr key={s.id} style={{ borderTop: "1px solid var(--adm-border)" }}>
-                      <td className="px-2 py-1.5" style={{ color: "var(--adm-text)" }}>
+              <AdminDataTable
+                columns={[
+                  {
+                    key: "canonical_name",
+                    label: "School",
+                    render: (s) => (
+                      <span style={{ color: "var(--adm-text)" }}>
                         {s.canonical_name}
                         {s.last_scrape_error && (
                           <span className="ml-2 text-[10px]" style={{ color: "var(--adm-danger)" }} title={s.last_scrape_error}>⚠</span>
                         )}
-                      </td>
-                      <td className="px-2 py-1.5" style={{ color: "var(--adm-muted)" }}>{s.division}</td>
-                      <td className="px-2 py-1.5">
+                      </span>
+                    ),
+                  },
+                  {
+                    key: "division",
+                    label: "Div",
+                    render: (s) => <span style={{ color: "var(--adm-muted)" }}>{s.division}</span>,
+                  },
+                  {
+                    key: "platform",
+                    label: "Platform",
+                    render: (s) => (
+                      <>
                         <AdminBadge status={platformBadgeStatus(s.platform)}>{s.platform.replace(/_/g, " ")}</AdminBadge>
                         {!s.scrapeable && <span className="ml-1 text-[10px]" style={{ color: "var(--adm-muted)" }}>manual</span>}
-                      </td>
-                      <td className="px-2 py-1.5" style={{ color: "var(--adm-muted)" }}>{formatTime(s.last_scraped_at)}</td>
-                      <td className="px-2 py-1.5" style={{ color: "var(--adm-text2)" }}>{s.staff_count}</td>
-                      <td className="px-2 py-1.5 text-right">
-                        {s.scrapeable ? (
-                          <AdminBtn variant="secondary" size="sm" onClick={() => handleScrapeOne(s)} disabled={scrapingId !== null}>
-                            {scrapingId === s.id ? <AdminSpinner size={12} /> : "Scrape"}
-                          </AdminBtn>
-                        ) : (
-                          <AdminBtn variant="secondary" size="sm" onClick={() => setManualFor(s)}>Add staff</AdminBtn>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </>
+                    ),
+                  },
+                  {
+                    key: "last_scraped_at",
+                    label: "Last scraped",
+                    render: (s) => <span style={{ color: "var(--adm-muted)" }}>{formatTime(s.last_scraped_at)}</span>,
+                  },
+                  {
+                    key: "staff_count",
+                    label: "Staff",
+                    render: (s) => <span style={{ color: "var(--adm-text2)" }}>{s.staff_count}</span>,
+                  },
+                  {
+                    key: "action",
+                    label: "",
+                    align: "right",
+                    render: (s) => s.scrapeable ? (
+                      <AdminBtn variant="secondary" size="sm" onClick={() => handleScrapeOne(s)} disabled={scrapingId !== null}>
+                        {scrapingId === s.id ? <AdminSpinner size={12} /> : "Scrape"}
+                      </AdminBtn>
+                    ) : (
+                      <AdminBtn variant="secondary" size="sm" onClick={() => setManualFor(s)}>Add staff</AdminBtn>
+                    ),
+                  },
+                ]}
+                data={schools}
+                keyField="id"
+                size="xs"
+                minWidth="560px"
+              />
             </div>
           )}
         </AdminSection>
@@ -376,51 +393,76 @@ export default function AdminOutreachScraperPage() {
             <AdminEmptyState title="No contacts" subtitle="Scrape a school or adjust the filters." />
           ) : (
             <div className="max-h-[55vh] overflow-y-auto pr-1">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ color: "var(--adm-muted)" }} className="text-left text-[11px] uppercase">
-                    <th className="px-2 py-1.5">
+              <AdminDataTable
+                columns={[
+                  {
+                    key: "select",
+                    label: (
                       <input
                         type="checkbox"
                         checked={allChecked}
                         onChange={() => setSelected(allChecked ? new Set() : new Set(staff.map((s) => s.id)))}
                       />
-                    </th>
-                    <th className="px-2 py-1.5">School</th>
-                    <th className="px-2 py-1.5">Name</th>
-                    <th className="px-2 py-1.5">Title</th>
-                    <th className="px-2 py-1.5">Sport</th>
-                    <th className="px-2 py-1.5">Roles</th>
-                    <th className="px-2 py-1.5">Email</th>
-                    <th className="px-2 py-1.5">Phone</th>
-                    <th className="px-2 py-1.5"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {staff.map((r) => (
-                    <tr key={r.id} style={{ borderTop: "1px solid var(--adm-border)" }}>
-                      <td className="px-2 py-1.5">
-                        <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSelected(r.id)} />
-                      </td>
-                      <td className="px-2 py-1.5" style={{ color: "var(--adm-muted)" }}>{r.school_name}</td>
-                      <td className="px-2 py-1.5" style={{ color: "var(--adm-text)" }}>
+                    ),
+                    width: "32px",
+                    render: (r) => <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSelected(r.id)} />,
+                  },
+                  {
+                    key: "school_name",
+                    label: "School",
+                    render: (r) => <span style={{ color: "var(--adm-muted)" }}>{r.school_name}</span>,
+                  },
+                  {
+                    key: "name",
+                    label: "Name",
+                    render: (r) => (
+                      <span style={{ color: "var(--adm-text)" }}>
                         {r.name}
                         {r.source === "manual" && <span className="ml-1 text-[10px]" style={{ color: "var(--adm-muted)" }}>(manual)</span>}
-                      </td>
-                      <td className="px-2 py-1.5" style={{ color: "var(--adm-text2)" }}>{r.title}</td>
-                      <td className="px-2 py-1.5" style={{ color: "var(--adm-muted)" }}>{r.sport ? humanize(r.sport) : "—"}</td>
-                      <td className="px-2 py-1.5" style={{ color: "var(--adm-muted)" }}>{(r.role_tags || []).map(humanize).join(", ") || "—"}</td>
-                      <td className="px-2 py-1.5" style={{ color: "var(--adm-text2)" }}>
-                        {r.email ? <a href={`mailto:${r.email}`} style={{ color: "var(--adm-accent)" }}>{r.email}</a> : "—"}
-                      </td>
-                      <td className="px-2 py-1.5" style={{ color: "var(--adm-muted)" }}>{r.phone || "—"}</td>
-                      <td className="px-2 py-1.5 text-right">
-                        <button onClick={() => handleDeleteStaff(r.id)} className="text-[11px]" style={{ color: "var(--adm-danger)" }}>Delete</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </span>
+                    ),
+                  },
+                  {
+                    key: "title",
+                    label: "Title",
+                    render: (r) => <span style={{ color: "var(--adm-text2)" }}>{r.title}</span>,
+                  },
+                  {
+                    key: "sport",
+                    label: "Sport",
+                    render: (r) => <span style={{ color: "var(--adm-muted)" }}>{r.sport ? humanize(r.sport) : "—"}</span>,
+                  },
+                  {
+                    key: "role_tags",
+                    label: "Roles",
+                    render: (r) => <span style={{ color: "var(--adm-muted)" }}>{(r.role_tags || []).map(humanize).join(", ") || "—"}</span>,
+                  },
+                  {
+                    key: "email",
+                    label: "Email",
+                    render: (r) => r.email
+                      ? <a href={`mailto:${r.email}`} style={{ color: "var(--adm-accent)" }}>{r.email}</a>
+                      : <span style={{ color: "var(--adm-text2)" }}>—</span>,
+                  },
+                  {
+                    key: "phone",
+                    label: "Phone",
+                    render: (r) => <span style={{ color: "var(--adm-muted)" }}>{r.phone || "—"}</span>,
+                  },
+                  {
+                    key: "action",
+                    label: "",
+                    align: "right",
+                    render: (r) => (
+                      <button onClick={() => handleDeleteStaff(r.id)} className="text-[11px]" style={{ color: "var(--adm-danger)" }}>Delete</button>
+                    ),
+                  },
+                ]}
+                data={staff}
+                keyField="id"
+                size="xs"
+                minWidth="760px"
+              />
             </div>
           )}
         </AdminSection>

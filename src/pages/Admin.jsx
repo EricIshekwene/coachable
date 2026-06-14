@@ -28,6 +28,7 @@ import {
   AdminBadge,
   AdminEmptyState,
   AdminSpinner,
+  AdminDataTable,
 } from "../admin/components";
 
 const SESSION_KEY = "coachable_admin_session";
@@ -1055,6 +1056,144 @@ export default function Admin() {
     coaching: filteredUsers.filter((u) => u.can_view_activity).length,
   }), [filteredUsers]);
 
+  const userTableColumns = useMemo(() => [
+    {
+      key: "user",
+      label: "User",
+      width: "25%",
+      render: (u) => {
+        const memberships = getSortedMemberships(u.memberships);
+        const hasCoachingRole = Boolean(u.can_view_activity);
+        return (
+          <div className="flex items-start gap-3">
+            <div
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+              style={hasCoachingRole
+                ? { backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }
+                : { backgroundColor: "var(--adm-surface3)", color: "var(--adm-text2)" }}
+            >
+              {getUserInitials(u.name, u.email)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); handleOpenUserActivity(u.id); }}
+                className="block truncate text-sm font-semibold transition-colors w-full p-0 text-left"
+                style={{ color: "var(--adm-text)" }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--adm-accent)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--adm-text)"; }}
+              >
+                {u.name}
+              </button>
+              <p className="mt-1 text-xs truncate" style={{ color: "var(--adm-muted)" }}>
+                {memberships.length > 0 ? `${memberships.length} ${memberships.length === 1 ? "team role" : "team roles"}` : "No team memberships"}
+              </p>
+              {!u.onboarded_at && (
+                <div className="mt-2 flex gap-1 overflow-hidden">
+                  <AdminBadge status="warning">Needs onboarding</AdminBadge>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: "email",
+      label: "Email",
+      width: "25%",
+      render: (u) => (
+        <div className="truncate text-xs leading-relaxed" style={{ color: "var(--adm-text2)" }}>{u.email}</div>
+      ),
+    },
+    {
+      key: "teams",
+      label: "Teams",
+      width: "25%",
+      render: (u) => {
+        const memberships = getSortedMemberships(u.memberships);
+        if (memberships.length === 0) return <span style={{ color: "var(--adm-muted)" }}>—</span>;
+        return (
+          <div className="flex gap-1 overflow-hidden">
+            {memberships.slice(0, 1).map((m) => (
+              <span key={`${u.id}-${m.teamId}-${m.role}`} className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold truncate" style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-text2)" }}>
+                {m.teamName} <span className="ml-1 shrink-0" style={{ color: "var(--adm-muted)" }}>{formatRole(m.role)}</span>
+              </span>
+            ))}
+            {memberships.length > 1 && (
+              <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap" style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-muted)" }}>
+                +{memberships.length - 1}
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: "plays",
+      label: "Plays",
+      width: "64px",
+      align: "center",
+      render: (u) => {
+        const memberships = getSortedMemberships(u.memberships);
+        const isPlayerOnly = memberships.length > 0 && memberships.every((m) => m.role === "player");
+        if (isPlayerOnly) return <span className="text-xs" style={{ color: "var(--adm-muted)" }}>—</span>;
+        return (
+          <span className="inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }}>
+            {u.plays_created ?? 0}
+          </span>
+        );
+      },
+    },
+    {
+      key: "status",
+      label: "Status",
+      width: "96px",
+      render: (u) => (
+        <div className="flex flex-col gap-1">
+          <AdminBadge status={u.email_verified_at ? "resolved" : undefined}>
+            {u.email_verified_at ? "Verified" : "Unverified"}
+          </AdminBadge>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleToggleBetaTester(u); }}
+            title={u.is_beta_tester ? "Remove beta tester" : "Make beta tester"}
+            className="inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold transition-opacity hover:opacity-80"
+            style={u.is_beta_tester
+              ? { backgroundColor: "var(--adm-badge-purple-bg)", borderColor: "transparent", color: "var(--adm-badge-purple-text)" }
+              : { backgroundColor: "var(--adm-surface3)", borderColor: "var(--adm-border)", color: "var(--adm-muted)" }}
+          >
+            {u.is_beta_tester ? "Beta" : "Standard"}
+          </button>
+        </div>
+      ),
+    },
+    {
+      key: "joined",
+      label: "Joined",
+      width: "80px",
+      render: (u) => <span className="text-xs" style={{ color: "var(--adm-text2)" }}>{formatAdminDate(u.created_at)}</span>,
+    },
+    {
+      key: "roles",
+      label: "Roles",
+      width: "112px",
+      render: (u) => {
+        const memberships = getSortedMemberships(u.memberships);
+        const uniqueRoles = Array.from(new Set(memberships.map((m) => m.role)));
+        if (uniqueRoles.length === 0) return <span className="text-xs" style={{ color: "var(--adm-muted)" }}>—</span>;
+        return (
+          <div className="flex flex-wrap gap-1">
+            {uniqueRoles.map((role) => (
+              <span key={role} className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap" style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-text2)" }}>
+                {formatRole(role)}
+              </span>
+            ))}
+          </div>
+        );
+      },
+    },
+  ], [handleOpenUserActivity, handleToggleBetaTester]);
+
   /** Copy filtered user emails to clipboard in the given separator format. */
   function handleCopyEmails(format) {
     const sep = format === "outlook" ? "; " : ", ";
@@ -1463,140 +1602,21 @@ export default function Admin() {
               className="hide-scroll overflow-auto"
               style={{ maxHeight: `${usersTableMaxHeight}px`, backgroundColor: "var(--adm-bg)" }}
             >
-              <table className="h-full min-w-[980px] w-full table-fixed border-separate border-spacing-0 text-left text-sm">
-              <thead>
-                <tr>
-                  <th className="sticky top-0 z-10 w-1/4 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>User</th>
-                  <th className="sticky top-0 z-10 w-1/4 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Email</th>
-                  <th className="sticky top-0 z-10 w-1/4 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Teams</th>
-                  <th className="sticky top-0 z-10 w-16 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Plays</th>
-                  <th className="sticky top-0 z-10 w-24 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Status</th>
-                  <th className="sticky top-0 z-10 w-20 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Joined</th>
-                  <th className="sticky top-0 z-10 w-28 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ backgroundColor: "var(--adm-surface)", borderBottom: "1px solid var(--adm-border)", color: "var(--adm-muted)", backdropFilter: "blur(12px)" }}>Roles</th>
-                </tr>
-              </thead>
-              <tbody>
-                {usersLoading && users.length === 0 && (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center text-xs" style={{ color: "var(--adm-muted)" }}><AdminSpinner className="mx-auto" /></td></tr>
-                )}
-                {!usersLoading && users.length === 0 && (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center text-xs" style={{ color: "var(--adm-muted)" }}>No users found</td></tr>
-                )}
-                {!usersLoading && users.length > 0 && filteredUsers.length === 0 && (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center text-xs" style={{ color: "var(--adm-muted)" }}>No users match your search</td></tr>
-                )}
-                {sortedFilteredUsers.map((u) => {
-                  const memberships = getSortedMemberships(u.memberships);
-                  const hasCoachingRole = Boolean(u.can_view_activity);
-                  const isPlayerOnly = memberships.length > 0 && memberships.every((m) => m.role === "player");
-                  const uniqueRoles = Array.from(new Set(memberships.map((m) => m.role)));
-                  const rowBaseStyle = {
-                    backgroundColor: "var(--adm-surface)",
-                    borderBottom: "1px solid var(--adm-border)",
-                  };
-                  return (
-                    <tr
-                      key={u.id}
-                      className={!u.onboarded_at ? "opacity-80" : ""}
-                      onMouseEnter={(e) => {
-                        Array.from(e.currentTarget.children).forEach((cell) => {
-                          cell.style.backgroundColor = "var(--adm-surface2)";
-                        });
-                      }}
-                      onMouseLeave={(e) => {
-                        Array.from(e.currentTarget.children).forEach((cell) => {
-                          cell.style.backgroundColor = "var(--adm-surface)";
-                        });
-                      }}
-                    >
-                      <td className="px-4 py-4 align-top overflow-hidden" style={rowBaseStyle}>
-                        <div className="flex items-start gap-3">
-                          <div
-                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
-                            style={hasCoachingRole
-                              ? { backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }
-                              : { backgroundColor: "var(--adm-surface3)", color: "var(--adm-text2)" }}
-                          >
-                            {getUserInitials(u.name, u.email)}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenUserActivity(u.id)}
-                              className="block truncate text-sm font-semibold transition-colors w-full p-0 text-left"
-                              style={{ color: "var(--adm-text)" }}
-                              onMouseEnter={(e) => { e.currentTarget.style.color = "var(--adm-accent)"; }}
-                              onMouseLeave={(e) => { e.currentTarget.style.color = "var(--adm-text)"; }}
-                            >
-                              {u.name}
-                            </button>
-                            <p className="mt-1 text-xs truncate" style={{ color: "var(--adm-muted)" }}>
-                              {memberships.length > 0 ? `${memberships.length} ${memberships.length === 1 ? "team role" : "team roles"}` : "No team memberships"}
-                            </p>
-                            {!u.onboarded_at && (
-                              <div className="mt-2 flex gap-1 overflow-hidden">
-                                <AdminBadge status="warning">Needs onboarding</AdminBadge>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 align-top text-xs overflow-hidden" style={{ ...rowBaseStyle, color: "var(--adm-text2)" }}>
-                        <div className="truncate leading-relaxed">{u.email}</div>
-                      </td>
-                      <td className="px-4 py-4 align-top overflow-hidden" style={rowBaseStyle}>
-                        {memberships.length > 0 ? (
-                          <div className="flex gap-1 overflow-hidden">
-                            {memberships.slice(0, 1).map((m) => (
-                              <span key={`${u.id}-${m.teamId}-${m.role}`} className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold truncate" style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-text2)" }}>
-                                {m.teamName} <span className="ml-1 shrink-0" style={{ color: "var(--adm-muted)" }}>{formatRole(m.role)}</span>
-                              </span>
-                            ))}
-                            {memberships.length > 1 && <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap" style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-muted)" }}>+{memberships.length - 1}</span>}
-                          </div>
-                        ) : <span style={{ color: "var(--adm-muted)" }}>—</span>}
-                      </td>
-                      <td className="px-4 py-4 align-top text-center" style={rowBaseStyle}>
-                        {isPlayerOnly ? (
-                          <span className="text-xs" style={{ color: "var(--adm-muted)" }}>—</span>
-                        ) : (
-                          <span className="inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }}>
-                            {u.plays_created ?? 0}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 align-top overflow-hidden" style={rowBaseStyle}>
-                        <div className="flex flex-col gap-1">
-                          <AdminBadge status={u.email_verified_at ? "resolved" : undefined}>{u.email_verified_at ? "Verified" : "Unverified"}</AdminBadge>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleToggleBetaTester(u); }}
-                            title={u.is_beta_tester ? "Remove beta tester" : "Make beta tester"}
-                            className="inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold transition-opacity hover:opacity-80"
-                            style={u.is_beta_tester ? { backgroundColor: "var(--adm-badge-purple-bg)", borderColor: "transparent", color: "var(--adm-badge-purple-text)" } : { backgroundColor: "var(--adm-surface3)", borderColor: "var(--adm-border)", color: "var(--adm-muted)" }}
-                          >
-                            {u.is_beta_tester ? "Beta" : "Standard"}
-                          </button>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 align-top text-xs" style={{ ...rowBaseStyle, color: "var(--adm-text2)" }}>{formatAdminDate(u.created_at)}</td>
-                      <td className="px-4 py-4 align-top" style={rowBaseStyle}>
-                        {uniqueRoles.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {uniqueRoles.map((role) => (
-                              <span key={role} className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap" style={{ backgroundColor: "var(--adm-surface3)", color: "var(--adm-text2)" }}>
-                                {formatRole(role)}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-xs" style={{ color: "var(--adm-muted)" }}>—</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              </table>
+              <AdminDataTable
+                columns={userTableColumns}
+                data={sortedFilteredUsers}
+                keyField="id"
+                stickyHeader
+                minWidth="980px"
+                loading={usersLoading}
+                empty={
+                  <AdminEmptyState
+                    title={users.length === 0 ? "No users found" : "No users match your search"}
+                    subtitle={users.length === 0 ? "Users will appear here once accounts exist." : "Try a different search term."}
+                  />
+                }
+                onRowClick={(u) => handleOpenUserActivity(u.id)}
+              />
             </div>
             <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5" style={{ backgroundColor: "var(--adm-surface)" }}>
               <div className="flex flex-wrap items-center gap-2 text-xs">

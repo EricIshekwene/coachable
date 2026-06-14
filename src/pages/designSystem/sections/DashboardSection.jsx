@@ -1,6 +1,6 @@
-import { FiFilter, FiSearch } from "react-icons/fi";
-import { AdminBtn, AdminChip } from "../../../admin/components";
-import { DSPageHeading, DSGroup, DSTile, DSStage, DSChecklist, DSRef } from "../dsPrimitives";
+import { FiFilter, FiUsers, FiBarChart2, FiAlertCircle } from "react-icons/fi";
+import { AdminBtn, AdminFilterBar, AdminBulkBar, AdminStatCard } from "../../../admin/components";
+import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSRef } from "../dsPrimitives";
 
 /**
  * Dashboard / app patterns: page layout, filters & search, and bulk actions.
@@ -16,31 +16,53 @@ export default function DashboardSection() {
         lead="App pages share a consistent skeleton: page header with title + actions, an optional filter bar, then the content (KPI cards, charts, tables, or feeds). Filters, search, and bulk actions all reuse the same chip and toolbar language."
       />
 
-      <DSGroup title="Filter bar" status="spec" description="Search left, filter button + active filter chips, sort/view toggles right.">
+      <DSGroup title="Stat cards" status="live" description="AdminStatCard: label, value, delta percentage, and tone variants for at-a-glance KPIs.">
         <DSTile>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative">
-              <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: "var(--adm-text3)" }} />
-              <input placeholder="Search plays" className="rounded-[var(--adm-radius-md)] py-2 pl-9 pr-3 text-sm outline-none" style={{ backgroundColor: "var(--adm-surface)", border: "1px solid var(--adm-border2)", color: "var(--adm-text)" }} />
-            </div>
-            <AdminBtn variant="outline" size="sm"><FiFilter /> Filters</AdminBtn>
-            <AdminChip tone="accent" onRemove={() => {}}>Football</AdminChip>
-            <AdminChip tone="accent" onRemove={() => {}}>Published</AdminChip>
-            <button className="text-xs font-semibold" style={{ color: "var(--adm-text3)" }}>Clear all</button>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <AdminStatCard label="Total users" value="1,284" delta={{ value: 12, label: "vs last month" }} icon={<FiUsers />} />
+            <AdminStatCard label="Active plays" value="847" delta={{ value: 5, label: "vs last month" }} tone="success" icon={<FiBarChart2 />} />
+            <AdminStatCard label="Churn rate" value="3.2%" delta={{ value: -1, label: "vs last month" }} tone="warning" />
+            <AdminStatCard label="Errors" value="14" delta={{ value: 8, label: "vs last month" }} tone="danger" icon={<FiAlertCircle />} />
+          </div>
+        </DSTile>
+        <DSTile title="Loading state">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <AdminStatCard label="Total users" value={0} loading />
+            <AdminStatCard label="Active plays" value={0} loading tone="success" />
           </div>
         </DSTile>
       </DSGroup>
 
-      <DSGroup title="Bulk action bar" status="spec" description="Appears when rows are selected.">
+      <DSGroup title="Filter bar" status="live" description="Search left, filter button + active filter chips, sort/view toggles right.">
         <DSTile>
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--adm-radius)] px-4 py-3" style={{ backgroundColor: "var(--adm-surface2)", border: "1px solid var(--adm-border2)" }}>
-            <span className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>3 selected</span>
-            <DSStage className="!border-0 !bg-transparent !p-0">
-              <AdminBtn variant="ghost" size="sm">Archive</AdminBtn>
-              <AdminBtn variant="ghost" size="sm">Export</AdminBtn>
-              <AdminBtn variant="danger" size="sm">Delete</AdminBtn>
-            </DSStage>
-          </div>
+          <AdminFilterBar
+            search={{ value: "", onChange: () => {}, placeholder: "Search plays…" }}
+            chips={[
+              { label: "Football", onRemove: () => {} },
+              { label: "Published", onRemove: () => {} },
+            ]}
+            actions={
+              <>
+                <AdminBtn variant="outline" size="sm"><FiFilter /> Filters</AdminBtn>
+              </>
+            }
+          />
+        </DSTile>
+      </DSGroup>
+
+      <DSGroup title="Bulk action bar" status="live" description="Appears when rows are selected.">
+        <DSTile>
+          <AdminBulkBar
+            count={3}
+            onClearSelect={() => {}}
+            actions={
+              <>
+                <AdminBtn variant="ghost" size="sm">Archive</AdminBtn>
+                <AdminBtn variant="ghost" size="sm">Export</AdminBtn>
+                <AdminBtn variant="danger" size="sm">Delete</AdminBtn>
+              </>
+            }
+          />
         </DSTile>
       </DSGroup>
 
@@ -64,12 +86,12 @@ export default function DashboardSection() {
           items={[
             { label: "Page / global search", status: "inApp" },
             { label: "Filter button + chips", note: "AdminChip.", status: "live" },
-            { label: "Active / clear filters", status: "spec" },
+            { label: "Active / clear filters", status: "live" },
             { label: "Saved filters", status: "planned" },
             { label: "Sort dropdown / view toggle", status: "spec" },
             { label: "Date / status / user filters", status: "spec" },
             { label: "Select all / row selection", status: "spec" },
-            { label: "Bulk delete / archive / export", status: "spec" },
+            { label: "Bulk delete / archive / export", status: "live" },
             { label: "Bulk confirmation modal", status: "spec" },
           ]}
         />

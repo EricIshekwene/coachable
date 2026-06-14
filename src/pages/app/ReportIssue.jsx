@@ -83,7 +83,7 @@ export default function ReportIssue() {
               <h1 className="font-Manrope text-lg font-bold">Report an Issue</h1>
               <Badge tone="info" size="xs">Beta</Badge>
             </div>
-            <p className="text-xs text-BrandGray2">Found something broken? Let us know.</p>
+            <p className="text-xs" style={{ color: "var(--ui-text-subtle)" }}>Found something broken? Let us know.</p>
           </div>
         </div>
 
@@ -98,7 +98,8 @@ export default function ReportIssue() {
               onChange={(e) => setTitle(e.target.value.slice(0, MAX_TITLE))}
               placeholder="e.g. Play editor crashes when dragging players"
               maxLength={MAX_TITLE}
-              className="w-full rounded-xl border border-BrandGray2/30 bg-BrandBlack2/30 px-4 py-3 text-sm text-BrandText outline-none placeholder:text-BrandGray2/50 focus:border-BrandOrange transition"
+              className="w-full rounded-xl border border-[color:var(--ui-border)] px-4 py-3 text-sm text-[color:var(--ui-text)] outline-none placeholder:text-[color:var(--ui-text-subtle)] focus:border-BrandOrange transition"
+              style={{ backgroundColor: "var(--ui-surface-2)" }}
               required
               disabled={submitting}
             />
@@ -114,7 +115,8 @@ export default function ReportIssue() {
               placeholder="Describe what happened, what you expected, and any steps to reproduce the issue..."
               rows={8}
               maxLength={MAX_DESC}
-              className="w-full resize-none rounded-xl border border-BrandGray2/30 bg-BrandBlack2/30 px-4 py-3 text-sm text-BrandText outline-none placeholder:text-BrandGray2/50 focus:border-BrandOrange transition"
+              className="w-full resize-none rounded-xl border border-[color:var(--ui-border)] px-4 py-3 text-sm text-[color:var(--ui-text)] outline-none placeholder:text-[color:var(--ui-text-subtle)] focus:border-BrandOrange transition"
+              style={{ backgroundColor: "var(--ui-surface-2)" }}
               required
               disabled={submitting}
             />

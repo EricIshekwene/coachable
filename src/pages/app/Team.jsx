@@ -27,26 +27,26 @@ function InviteCodeSection({ role, code, copiedRole, onCopy, onRotate, onSendInv
   };
 
   return (
-    <Card padding="sm" className="bg-BrandBlack2/20">
-      <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-BrandGray">
+    <Card padding="sm" style={{ backgroundColor: "var(--ui-surface-2)" }}>
+      <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--ui-text-muted)" }}>
         <Icon className="text-[10px]" /> {label}
       </p>
 
       {/* Code + actions row */}
       <div className="flex items-center gap-2">
-        <div className="flex-1 rounded-lg border border-BrandGray2/30 bg-BrandBlack px-3.5 py-2.5 font-mono text-sm tracking-wider text-BrandOrange">
+        <div className="flex-1 rounded-lg border border-[color:var(--ui-border)] bg-BrandBlack px-3.5 py-2.5 font-mono text-sm tracking-wider text-BrandOrange">
           {code}
         </div>
         <Button variant="outline"
           onClick={() => onCopy(role)}
-          className="flex items-center gap-1.5 rounded-lg border border-BrandGray2/30 px-3 py-2.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
+          className="flex items-center gap-1.5 rounded-lg border border-[color:var(--ui-border)] px-3 py-2.5 text-xs text-[color:var(--ui-text-muted)] transition hover:border-[color:var(--ui-border-strong)] hover:text-[color:var(--ui-text)]"
           title={`Copy ${role} code`}
         >
           {copiedRole === role ? <FiCheck className="text-BrandGreen" /> : <FiCopy />}
         </Button>
         <Button variant="outline"
           onClick={() => onRotate(role)}
-          className="flex items-center gap-1.5 rounded-lg border border-BrandGray2/30 px-3 py-2.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
+          className="flex items-center gap-1.5 rounded-lg border border-[color:var(--ui-border)] px-3 py-2.5 text-xs text-[color:var(--ui-text-muted)] transition hover:border-[color:var(--ui-border-strong)] hover:text-[color:var(--ui-text)]"
           title={`Generate new ${role} code`}
         >
           <FiRefreshCw />
@@ -54,7 +54,7 @@ function InviteCodeSection({ role, code, copiedRole, onCopy, onRotate, onSendInv
       </div>
 
       {isCoachCode && (
-        <p className="mt-1.5 text-[11px] text-BrandGray2">
+        <p className="mt-1.5 text-[11px]" style={{ color: "var(--ui-text-subtle)" }}>
           Only share the coach code with people you trust.
         </p>
       )}
@@ -62,7 +62,7 @@ function InviteCodeSection({ role, code, copiedRole, onCopy, onRotate, onSendInv
       {/* Inline email invite */}
       <div className="mt-3 flex items-center gap-2">
         <div className="relative flex-1">
-          <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-BrandGray2" />
+          <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: "var(--ui-text-subtle)" }} />
           <Input
             type="email"
             value={email}
@@ -71,7 +71,8 @@ function InviteCodeSection({ role, code, copiedRole, onCopy, onRotate, onSendInv
             placeholder={isCoachCode ? "coach@example.com" : "player@example.com"}
             maxLength={254}
             autoComplete="email"
-            className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 py-2 pl-8 pr-3 text-xs text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+            className="w-full rounded-lg border border-[color:var(--ui-border)] py-2 pl-8 pr-3 text-xs outline-none transition hover:border-[color:var(--ui-border-strong)] focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+            style={{ backgroundColor: "var(--ui-surface-2)", color: "var(--ui-text)" }}
           />
         </div>
         <Button variant="primary"
@@ -215,10 +216,10 @@ export default function Team() {
       <h1 className="font-Manrope text-xl font-bold tracking-tight">Team</h1>
 
       {/* Team info card */}
-      <Card className="mt-6 bg-BrandBlack2/30">
+      <Card className="mt-6" style={{ backgroundColor: "var(--ui-surface-2)" }}>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[10px] uppercase tracking-widest text-BrandGray2">Team name</p>
+            <p className="text-[10px] uppercase tracking-widest" style={{ color: "var(--ui-text-subtle)" }}>Team name</p>
             <p className="mt-1 font-Manrope text-base font-semibold">
               {user?.teamName || "My Team"}
             </p>
@@ -231,7 +232,7 @@ export default function Team() {
 
       {/* Invite section (coach only) */}
       {isCoach && (
-        <Card className="mt-6 bg-BrandBlack2/30">
+        <Card className="mt-6" style={{ backgroundColor: "var(--ui-surface-2)" }}>
           <Section title="Invite codes" subtitle="Share the right code based on the person's role, or send an invite email directly." variant="compact">
 
           <div className="flex flex-col gap-3">
@@ -279,30 +280,31 @@ export default function Team() {
 
         {/* Search */}
         <div className="relative mt-3">
-          <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-BrandGray2" />
+          <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: "var(--ui-text-subtle)" }} />
           <Input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search members..."
             maxLength={100}
-            className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 py-2.5 pl-9 pr-3.5 text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+            className="w-full rounded-lg border border-[color:var(--ui-border)] py-2.5 pl-9 pr-3.5 text-sm outline-none transition hover:border-[color:var(--ui-border-strong)] focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+            style={{ backgroundColor: "var(--ui-surface-2)", color: "var(--ui-text)" }}
           />
         </div>
 
         <div className="mt-3 flex flex-col gap-1">
           {filteredMembers.length === 0 && (
-            <p className="py-6 text-center text-sm text-BrandGray2">No members found</p>
+            <p className="py-6 text-center text-sm" style={{ color: "var(--ui-text-subtle)" }}>No members found</p>
           )}
           {filteredMembers.map((member) => (
             <div
               key={member.id}
-              className="flex items-center gap-3 rounded-lg px-3 py-3 transition hover:bg-BrandBlack2/50"
+              className="flex items-center gap-3 rounded-lg px-3 py-3 transition hover:bg-[color:var(--ui-surface)]"
             >
               <Avatar name={member.name} size="sm" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">{member.name}</p>
-                <p className="truncate text-[11px] text-BrandGray2">{member.email}</p>
+                <p className="truncate text-[11px]" style={{ color: "var(--ui-text-subtle)" }}>{member.email}</p>
               </div>
               <Badge tone={member.role === "coach" ? "warning" : "default"} size="xs" dot>
                 {member.role}
@@ -314,7 +316,7 @@ export default function Team() {
                 <Button variant="danger"
                   onClick={() => setConfirmRemove(member)}
                   disabled={removingId === member.id}
-                  className="rounded-md p-1.5 text-BrandGray2 transition hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40"
+                  className="rounded-md p-1.5 text-[color:var(--ui-text-subtle)] transition hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40"
                   title={`Remove ${member.name}`}
                 >
                   <FiUserMinus className="text-sm" />

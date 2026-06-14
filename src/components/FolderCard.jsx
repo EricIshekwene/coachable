@@ -68,7 +68,7 @@ export default function FolderCard({
       className={`group relative cursor-pointer overflow-hidden rounded-2xl border transition ${
         isDragOver
           ? "border-BrandOrange/60 bg-BrandOrange/8 shadow-[0_0_0_2px_rgba(255,122,24,0.18)]"
-          : "border-BrandGray2/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0)),rgba(24,26,31,0.96)] hover:border-BrandOrange/25 hover:bg-[linear-gradient(180deg,rgba(255,122,24,0.05),rgba(255,255,255,0.02)),rgba(24,26,31,0.98)]"
+          : "border-[color:var(--ui-border)] hover:border-BrandOrange/25"
       }`}
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
@@ -76,9 +76,9 @@ export default function FolderCard({
         <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border transition ${
           isDragOver
             ? "border-BrandOrange/35 bg-BrandOrange/14"
-            : "border-white/6 bg-white/[0.04]"
+            : "border-[color:var(--ui-border)] bg-[color:var(--ui-surface-2)]"
         }`}>
-          <FiFolder className={`text-lg ${isDragOver ? "text-BrandOrange" : "text-BrandText"}`} />
+          <FiFolder className={`text-lg ${isDragOver ? "text-BrandOrange" : "text-[color:var(--ui-text)]"}`} />
         </div>
 
         <div className="min-w-0 flex-1">
@@ -96,9 +96,9 @@ export default function FolderCard({
                   className="w-full rounded bg-transparent px-1 text-sm font-semibold outline-none ring-1 ring-BrandOrange"
                 />
               ) : (
-                <p className="truncate font-Manrope text-sm font-semibold text-BrandText">{folder.name}</p>
+                <p className="truncate font-Manrope text-sm font-semibold" style={{ color: "var(--ui-text)" }}>{folder.name}</p>
               )}
-              <p className="mt-1 text-[11px] text-BrandGray2">
+              <p className="mt-1 text-[11px]" style={{ color: "var(--ui-text-subtle)" }}>
                 {folder.playIds.length} play{folder.playIds.length !== 1 ? "s" : ""}
                 {subFolderCount > 0 && ` · ${subFolderCount} subfolder${subFolderCount !== 1 ? "s" : ""}`}
               </p>
@@ -109,7 +109,7 @@ export default function FolderCard({
                 <button
                   ref={menuBtnRef}
                   onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}
-                  className="rounded-lg p-1.5 text-BrandGray2 opacity-100 transition hover:bg-BrandBlack2 hover:text-BrandText md:opacity-0 group-hover:opacity-100"
+                  className="rounded-lg p-1.5 text-[color:var(--ui-text-subtle)] opacity-100 transition hover:bg-[color:var(--ui-surface-2)] hover:text-[color:var(--ui-text)] md:opacity-0 group-hover:opacity-100"
                 >
                   <FiMoreHorizontal className="text-sm" />
                 </button>
@@ -131,7 +131,7 @@ export default function FolderCard({
 
           <div className="mt-3 flex items-center justify-between gap-3">
             <div className="flex flex-wrap gap-2">
-              <span className="rounded-full border border-BrandGray2/20 bg-BrandBlack/40 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-BrandGray2">
+              <span className="rounded-full border border-[color:var(--ui-border)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ backgroundColor: "var(--ui-surface-2)", color: "var(--ui-text-subtle)" }}>
                 Folder
               </span>
               {isDragOver && (
@@ -140,7 +140,7 @@ export default function FolderCard({
                 </span>
               )}
             </div>
-            <div className="flex h-8 w-8 items-center justify-center rounded-full border border-BrandGray2/20 bg-BrandBlack/40 text-BrandGray transition group-hover:border-BrandOrange/30 group-hover:text-BrandOrange">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[color:var(--ui-border)] text-[color:var(--ui-text-muted)] transition group-hover:border-BrandOrange/30 group-hover:text-BrandOrange" style={{ backgroundColor: "var(--ui-surface-2)" }}>
               <FiChevronRight className="text-sm" />
             </div>
           </div>

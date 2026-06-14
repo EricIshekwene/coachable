@@ -140,7 +140,7 @@ export default function Profile() {
         <Avatar name={user?.name || "Guest"} size="lg" />
         <div>
           <p className="font-Manrope text-base font-semibold">{user?.name || "Guest"}</p>
-          <p className="text-xs capitalize text-BrandGray2">{isPlayerView ? "player" : (user?.role || "No role")}</p>
+          <p className="text-xs capitalize" style={{ color: "var(--ui-text-subtle)" }}>{isPlayerView ? "player" : (user?.role || "No role")}</p>
         </div>
       </div>
 
@@ -156,7 +156,8 @@ export default function Profile() {
                 onChange={(e) => setNameInput(e.target.value)}
                 maxLength={80}
                 autoComplete="name"
-                className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+                className="w-full rounded-lg border border-[color:var(--ui-border)] px-3.5 py-2.5 text-sm text-[color:var(--ui-text)] outline-none transition placeholder:text-[color:var(--ui-text-subtle)] hover:border-[color:var(--ui-border-strong)] focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+                style={{ backgroundColor: "var(--ui-surface-2)" }}
                 placeholder="Your name"
               />
               <Button variant="primary"
@@ -189,7 +190,8 @@ export default function Profile() {
                 }}
                 maxLength={254}
                 autoComplete="email"
-                className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+                className="w-full rounded-lg border border-[color:var(--ui-border)] px-3.5 py-2.5 text-sm text-[color:var(--ui-text)] outline-none transition placeholder:text-[color:var(--ui-text-subtle)] hover:border-[color:var(--ui-border-strong)] focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+                style={{ backgroundColor: "var(--ui-surface-2)" }}
                 placeholder="name@example.com"
               />
               <Button variant="primary"
@@ -202,18 +204,18 @@ export default function Profile() {
               </Button>
             </div>
             {pendingEmailChange?.nextEmail && (
-              <p className="text-xs text-BrandGray2">
-                Verification pending for <span className="font-semibold text-BrandText">{pendingEmailChange.nextEmail}</span>.
+              <p className="text-xs" style={{ color: "var(--ui-text-subtle)" }}>
+                Verification pending for <span className="font-semibold" style={{ color: "var(--ui-text)" }}>{pendingEmailChange.nextEmail}</span>.
               </p>
             )}
           </div>
 
-          <div className="flex items-center gap-3 rounded-lg border border-BrandGray2/20 bg-BrandBlack2/20 px-3 py-3 md:col-span-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-BrandGray2/15 text-BrandGray">
+          <div className="flex items-center gap-3 rounded-lg border border-[color:var(--ui-border)] px-3 py-3 md:col-span-2" style={{ backgroundColor: "var(--ui-surface-2)" }}>
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg text-[color:var(--ui-text-muted)]" style={{ backgroundColor: "var(--ui-surface-3)" }}>
               <FiShield className="text-sm" />
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-BrandGray2">Role</p>
+              <p className="text-[10px] uppercase tracking-widest" style={{ color: "var(--ui-text-subtle)" }}>Role</p>
               <p className="text-sm font-semibold capitalize">{isPlayerView ? "player" : (user?.role || "No role")}</p>
             </div>
           </div>
@@ -224,8 +226,8 @@ export default function Profile() {
       {!isPlayerView && (
       <Section title="Ownership" icon={<FiUsers />}>
         <Card>
-          <p className="text-sm text-BrandGray2">
-            Current team owner: <span className="font-semibold text-BrandText">{owner?.name || "Unknown"}</span>
+          <p className="text-sm" style={{ color: "var(--ui-text-subtle)" }}>
+            Current team owner: <span className="font-semibold" style={{ color: "var(--ui-text)" }}>{owner?.name || "Unknown"}</span>
           </p>
 
           {(user?.role === "coach" || user?.role === "owner") && isTeamOwner ? (
@@ -235,7 +237,8 @@ export default function Profile() {
                   label="Transfer ownership to"
                   value={selectedOwnerId}
                   onChange={(e) => setSelectedOwnerId(e.target.value)}
-                  className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none transition hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+                  className="w-full rounded-lg border border-[color:var(--ui-border)] px-3.5 py-2.5 text-sm text-[color:var(--ui-text)] outline-none transition hover:border-[color:var(--ui-border-strong)] focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+                  style={{ backgroundColor: "var(--ui-surface-2)" }}
                 >
                   {transferCandidates.length === 0 && <option value="">No eligible members</option>}
                   {transferCandidates.map((member) => (
@@ -264,7 +267,7 @@ export default function Profile() {
               )}
             </>
           ) : (
-            <p className="mt-3 text-xs text-BrandGray2">
+            <p className="mt-3 text-xs" style={{ color: "var(--ui-text-subtle)" }}>
               Only the current team owner can transfer ownership.
             </p>
           )}
@@ -277,20 +280,20 @@ export default function Profile() {
       <Section title="Team" icon={<FiUsers />}>
         <Card>
           {user?.teamName && (
-            <div className="mt-3 flex items-center gap-3 rounded-lg border border-BrandGray2/20 bg-BrandBlack2/20 px-3 py-3">
+            <div className="mt-3 flex items-center gap-3 rounded-lg border border-[color:var(--ui-border)] px-3 py-3" style={{ backgroundColor: "var(--ui-surface-2)" }}>
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-BrandOrange/15 text-sm font-bold text-BrandOrange">
                 {user.teamName[0]}
               </div>
               <div>
                 <p className="text-sm font-semibold">{user.teamName}</p>
-                <p className="text-[11px] text-BrandGray2 capitalize">{user.sport || "No sport set"}</p>
+                <p className="text-[11px] capitalize" style={{ color: "var(--ui-text-subtle)" }}>{user.sport || "No sport set"}</p>
               </div>
             </div>
           )}
 
           {/* Join another team */}
           <div className="mt-4">
-            <p className="mt-0.5 text-[11px] text-BrandGray2">Enter the team invite code from your coach.</p>
+            <p className="mt-0.5 text-[11px]" style={{ color: "var(--ui-text-subtle)" }}>Enter the team invite code from your coach.</p>
             <div className="mt-2 flex gap-2">
               <Input
                 label="Join another team"
@@ -299,7 +302,8 @@ export default function Profile() {
                 onChange={(e) => setTeamCode(e.target.value.toUpperCase())}
                 placeholder="XXXX-XXXX-XXXX"
                 maxLength={12}
-                className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 font-mono text-sm tracking-wider text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+                className="w-full rounded-lg border border-[color:var(--ui-border)] px-3.5 py-2.5 font-mono text-sm tracking-wider text-[color:var(--ui-text)] outline-none transition placeholder:text-[color:var(--ui-text-subtle)] hover:border-[color:var(--ui-border-strong)] focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+                style={{ backgroundColor: "var(--ui-surface-2)" }}
               />
               <Button variant="primary"
                 type="button"
@@ -357,7 +361,7 @@ export default function Profile() {
                     <Button variant="outline"
                       type="button"
                       onClick={() => setShowLeaveConfirm(false)}
-                      className="rounded-lg border border-BrandGray2/30 px-4 py-2 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
+                      className="rounded-lg border border-[color:var(--ui-border)] px-4 py-2 text-xs text-[color:var(--ui-text-muted)] transition hover:border-[color:var(--ui-border-strong)] hover:text-[color:var(--ui-text)]"
                     >
                       Cancel
                     </Button>

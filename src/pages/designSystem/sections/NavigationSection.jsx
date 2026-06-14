@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { FiGrid } from "react-icons/fi";
-import { AdminBadge, AdminTabs, AdminPagination, AdminBreadcrumbs } from "../../../admin/components";
+import { FiGrid, FiUsers, FiBarChart2, FiSliders, FiAlertCircle } from "react-icons/fi";
+import { AdminBadge, AdminTabs, AdminPagination, AdminBreadcrumbs, AdminSidebarNavItem } from "../../../admin/components";
 import { DSPageHeading, DSGroup, DSTile, DSChecklist } from "../dsPrimitives";
 
 /**
@@ -25,23 +25,16 @@ export default function NavigationSection() {
       <DSGroup title="Sidebar (active item treatment)" status="live" description="The real AdminSidebar pattern: accent-dim fill + accent text + inset ring for the active route.">
         <DSTile>
           <div className="grid min-h-[220px] overflow-hidden rounded-[var(--adm-radius-lg)] md:grid-cols-[200px_minmax(0,1fr)]" style={{ border: "1px solid var(--adm-border)" }}>
-            <aside className="flex flex-col gap-1.5 p-3" style={{ backgroundColor: "var(--adm-surface)", borderRight: "1px solid var(--adm-border)" }}>
+            <aside className="flex flex-col gap-1 p-3" style={{ backgroundColor: "var(--adm-surface)", borderRight: "1px solid var(--adm-border)" }}>
               <div className="mb-1 flex items-center gap-2 rounded-[var(--adm-radius)] px-3 py-2.5" style={{ backgroundColor: "var(--adm-surface2)" }}>
                 <FiGrid className="text-sm" style={{ color: "var(--adm-accent)" }} />
                 <span className="text-xs font-semibold" style={{ color: "var(--adm-text)" }}>Coachable Admin</span>
               </div>
-              {["Dashboard", "Plays", "Users", "Design System", "Errors"].map((label, i) => {
-                const active = i === 3;
-                return (
-                  <div key={label} className="flex items-center justify-between gap-2 rounded-[var(--adm-radius-md)] px-3 py-2 text-xs font-semibold"
-                    style={active
-                      ? { backgroundColor: "color-mix(in srgb, var(--adm-accent-dim) 85%, var(--adm-surface2))", color: "var(--adm-accent)", boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--adm-accent) 22%, transparent)" }
-                      : { color: "var(--adm-text2)" }}>
-                    <span>{label}</span>
-                    {i === 1 ? <AdminBadge status="info">3</AdminBadge> : null}
-                  </div>
-                );
-              })}
+              <AdminSidebarNavItem label="Dashboard" icon={<FiBarChart2 />} active={false} />
+              <AdminSidebarNavItem label="Plays" icon={<FiGrid />} active={false} badge={<AdminBadge status="info">3</AdminBadge>} />
+              <AdminSidebarNavItem label="Users" icon={<FiUsers />} active={false} />
+              <AdminSidebarNavItem label="Design System" icon={<FiSliders />} active={true} />
+              <AdminSidebarNavItem label="Errors" icon={<FiAlertCircle />} active={false} />
             </aside>
             <div className="flex flex-col gap-3 p-4" style={{ backgroundColor: "var(--adm-bg)" }}>
               <AdminBreadcrumbs items={[{ label: "Admin" }, { label: "Design System" }, { label: "Navigation" }]} />

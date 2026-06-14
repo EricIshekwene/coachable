@@ -1,8 +1,16 @@
-import { AdminAvatar, AdminChip } from "../../../admin/components";
+import { AdminAvatar, AdminChip, AdminListItem } from "../../../admin/components";
+import { Badge, Button } from "../../../design-system/components";
 import { DSPageHeading, DSGroup, DSTile, DSStage, DSChecklist, DSAnatomy } from "../dsPrimitives";
 
+const LIST_MEMBERS = [
+  { name: "Maya Jordan",  sub: "Head Coach · Austin Arrows",  status: "online" },
+  { name: "Nick Porter",  sub: "Assistant Coach · Boston Blaze", status: "busy" },
+  { name: "Lena Cho",     sub: "Video Analyst · Seattle Tide", status: "offline" },
+];
+
 /**
- * Lists, chips & tags: list types and item anatomy, plus the chip catalog.
+ * Lists, chips & tags: the ListItem component demonstrated with a media-list
+ * pattern, plus the chip catalog.
  *
  * @returns {JSX.Element}
  */
@@ -15,24 +23,25 @@ export default function ListsSection() {
         lead="Lists are the backbone of activity feeds, member rosters, and file views. Each row follows the same leading-element / title / metadata / trailing-action rhythm. Chips are compact, removable, and semantic."
       />
 
-      <DSGroup title="Media list" status="live" description="Avatar + title + subtitle + trailing action.">
+      <DSGroup title="Media list" status="live" description="Avatar + title + subtitle + trailing action — using ListItem.">
         <DSTile>
-          <div className="divide-y" style={{ borderColor: "var(--adm-border)" }}>
-            {[
-              { name: "Maya Jordan", sub: "Head Coach · Austin Arrows", status: "online" },
-              { name: "Nick Porter", sub: "Assistant Coach · Boston Blaze", status: "busy" },
-              { name: "Lena Cho", sub: "Video Analyst · Seattle Tide", status: "offline" },
-            ].map((u, i) => (
-              <div key={u.name} className="flex items-center gap-3 py-3" style={{ borderTop: i === 0 ? "none" : "1px solid var(--adm-border)" }}>
-                <AdminAvatar name={u.name} size="md" status={u.status} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold" style={{ color: "var(--adm-text)" }}>{u.name}</p>
-                  <p className="truncate text-xs" style={{ color: "var(--adm-text3)" }}>{u.sub}</p>
-                </div>
-                <button className="rounded-md px-2.5 py-1 text-[11px] font-semibold" style={{ border: "1px solid var(--adm-border2)", color: "var(--adm-text2)" }}>View</button>
-              </div>
-            ))}
-          </div>
+          {LIST_MEMBERS.map((u) => (
+            <AdminListItem
+              key={u.name}
+              leading={<AdminAvatar name={u.name} size="md" status={u.status} />}
+              title={u.name}
+              subtitle={u.sub}
+              trailing={
+                <button
+                  className="rounded-md px-2.5 py-1 text-[11px] font-semibold"
+                  style={{ border: "1px solid var(--ui-border)", color: "var(--ui-text-muted)" }}
+                >
+                  View
+                </button>
+              }
+              onClick={() => {}}
+            />
+          ))}
         </DSTile>
       </DSGroup>
 

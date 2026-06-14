@@ -135,7 +135,8 @@ const Button = forwardRef(function Button({
           e.currentTarget.style.transform = "";
           e.currentTarget.style.filter = "";
         } else {
-          e.currentTarget.style.backgroundColor = variantStyle.backgroundColor ?? "";
+          // Restore the caller's backgroundColor if they provided one; otherwise fall back to the variant default.
+          e.currentTarget.style.backgroundColor = style?.backgroundColor ?? variantStyle.backgroundColor ?? "";
           if (variant === "outline") {
             e.currentTarget.style.borderColor = "var(--ui-border-strong)";
           }

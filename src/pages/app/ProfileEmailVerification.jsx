@@ -118,21 +118,21 @@ export default function ProfileEmailVerification() {
       <Button variant="ghost"
         type="button"
         onClick={handleBack}
-        className="mb-6 inline-flex items-center gap-2 text-sm text-BrandGray transition hover:text-BrandText"
+        className="mb-6 inline-flex items-center gap-2 text-sm text-[color:var(--ui-text-muted)] transition hover:text-[color:var(--ui-text)]"
       >
         <FiArrowLeft className="text-sm" />
         Back to Profile
       </Button>
 
-      <Card padding="lg" className="bg-BrandBlack2/30">
+      <Card padding="lg" style={{ backgroundColor: "var(--ui-surface-2)" }}>
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-BrandOrange/15 text-BrandOrange">
           <FiMail className="text-lg" />
         </div>
 
         <h1 className="mt-4 font-Manrope text-xl font-bold tracking-tight">Verify your new email</h1>
-        <p className="mt-2 text-sm text-BrandGray2">
+        <p className="mt-2 text-sm" style={{ color: "var(--ui-text-subtle)" }}>
           We sent a 6-digit code to{" "}
-          <span className="font-semibold text-BrandText">{pendingEmailChange?.nextEmail}</span>.
+          <span className="font-semibold" style={{ color: "var(--ui-text)" }}>{pendingEmailChange?.nextEmail}</span>.
           Enter it below to confirm your email change.
         </p>
 
@@ -149,7 +149,8 @@ export default function ProfileEmailVerification() {
                 onChange={(e) => handleChange(i, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(i, e)}
                 onPaste={i === 0 ? handlePaste : undefined}
-                className="h-14 w-12 rounded-lg border-2 border-BrandGray2/30 bg-BrandBlack2/50 text-center font-Manrope text-2xl font-bold text-BrandText outline-none transition hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)] sm:h-16 sm:w-14"
+                className="h-14 w-12 rounded-lg border-2 border-[color:var(--ui-border)] text-center font-Manrope text-2xl font-bold text-[color:var(--ui-text)] outline-none transition hover:border-[color:var(--ui-border-strong)] focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)] sm:h-16 sm:w-14"
+                style={{ backgroundColor: "var(--ui-surface-2)" }}
                 disabled={submitting}
               />
             ))}
@@ -176,7 +177,7 @@ export default function ProfileEmailVerification() {
         </form>
 
         <div className="mt-4 text-center">
-          <p className="text-sm text-BrandGray2">
+          <p className="text-sm" style={{ color: "var(--ui-text-subtle)" }}>
             Didn't get the code?{" "}
             <Button variant="ghost"
               onClick={handleResend}

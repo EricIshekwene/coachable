@@ -29,6 +29,23 @@ export { default as Pagination }    from "./Pagination";
 export { default as Tooltip }       from "./Tooltip";
 export { default as Divider }       from "./Divider";
 
+// Tables & lists
+export { default as DataTable }         from "./DataTable";
+export { default as Th }                from "./Th";
+export { default as Td }                from "./Td";
+export { default as TableSearchHeader } from "./TableSearchHeader";
+export { default as ListItem }          from "./ListItem";
+
+// Search, filter & settings patterns
+export { default as SearchInput }  from "./SearchInput";
+export { default as SettingsRow }  from "./SettingsRow";
+export { default as FilterBar }    from "./FilterBar";
+export { default as BulkBar }      from "./BulkBar";
+export { default as DangerZone }   from "./DangerZone";
+
+// Dashboard & stat tiles
+export { default as StatCard }     from "./StatCard";
+
 // Layout (re-export only; files stay at src/components/layout/)
 export { default as PageShell }  from "../../components/layout/AppShell";
 export { default as Page }       from "../../components/layout/AppPage";

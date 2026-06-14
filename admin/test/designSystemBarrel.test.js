@@ -8,6 +8,9 @@ import {
   Alert, Avatar, Badge, Breadcrumbs, Button, Card, Checkbox, Chip, Divider, EmptyState, Field,
   Input, Modal, Pagination, Progress, RadioGroup, Section, Select, Skeleton,
   Spinner, Tabs, Textarea, Toggle, Tooltip,
+  DataTable, Th, Td, TableSearchHeader, ListItem,
+  SearchInput, SettingsRow, FilterBar, BulkBar, DangerZone,
+  StatCard,
 } from "../../src/design-system/components";
 
 /** Returns true for function components, class components, forwardRef, and memo wrappers. */
@@ -26,6 +29,12 @@ describe("design-system barrel", () => {
     "Alert", "Spinner", "Skeleton", "Progress",
     "EmptyState", "Badge", "Chip", "Avatar", "Tabs", "Breadcrumbs", "Pagination",
     "Tooltip", "Divider", "PageShell", "Page", "PageHeader",
+    // Session 5 — tables & lists
+    "DataTable", "Th", "Td", "TableSearchHeader", "ListItem",
+    // Session 6 — search, filter & settings patterns
+    "SearchInput", "SettingsRow", "FilterBar", "BulkBar", "DangerZone",
+    // Session 7 — dashboard & stat tiles
+    "StatCard",
   ];
 
   test.each(canonical)("%s is exported as a React component type", (name) => {
@@ -56,6 +65,14 @@ describe("admin compatibility barrel", () => {
     ["AdminEmptyState", EmptyState], ["AdminBadge", Badge], ["AdminChip", Chip],
     ["AdminAvatar", Avatar], ["AdminTabs", Tabs], ["AdminBreadcrumbs", Breadcrumbs],
     ["AdminPagination", Pagination], ["AdminTooltip", Tooltip],
+    // Session 5 — tables & lists
+    ["AdminDataTable", DataTable], ["AdminTh", Th], ["AdminTd", Td],
+    ["AdminTableSearchHeader", TableSearchHeader], ["AdminListItem", ListItem],
+    // Session 6 — search, filter & settings patterns
+    ["AdminSearchInput", SearchInput], ["AdminSettingsRow", SettingsRow],
+    ["AdminFilterBar", FilterBar], ["AdminBulkBar", BulkBar], ["AdminDangerZone", DangerZone],
+    // Session 7 — dashboard & stat tiles
+    ["AdminStatCard", StatCard],
   ];
 
   test.each(aliases)("%s is the canonical component reference", (name, canonical) => {

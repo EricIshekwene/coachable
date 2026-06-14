@@ -67,12 +67,12 @@ body {
 
     /* Shared semantic UI tokens */
     --ui-bg:               var(--color-BrandBlack);
-    --ui-surface:          color-mix(in srgb, var(--color-BrandBlack) 96%, white 4%);
-    --ui-surface-2:        color-mix(in srgb, var(--color-BrandBlack) 90%, white 10%);
-    --ui-surface-3:        color-mix(in srgb, var(--color-BrandBlack) 84%, white 16%);
-    --ui-surface-elevated: color-mix(in srgb, var(--color-BrandBlack) 78%, white 22%);
-    --ui-border:           color-mix(in srgb, white 12%, transparent);
-    --ui-border-strong:    color-mix(in srgb, white 24%, transparent);
+    --ui-surface:          var(--color-BrandBlack);                                     /* same as bg — no tint; border defines the card */
+    --ui-surface-2:        color-mix(in srgb, var(--color-BrandBlack) 96%, white 4%);   /* subtle lift */
+    --ui-surface-3:        color-mix(in srgb, var(--color-BrandBlack) 90%, white 10%);
+    --ui-surface-elevated: color-mix(in srgb, var(--color-BrandBlack) 84%, white 16%);
+    --ui-border:           color-mix(in srgb, white 16%, transparent);                  /* stronger to compensate for surface=bg */
+    --ui-border-strong:    color-mix(in srgb, white 28%, transparent);
     --ui-text:             var(--color-BrandWhite);
     --ui-text-muted:       color-mix(in srgb, var(--color-BrandWhite) 70%, transparent);
     --ui-text-subtle:      color-mix(in srgb, var(--color-BrandWhite) 45%, transparent);
@@ -132,17 +132,18 @@ body {
 
 [data-theme="light"] .app-themed,
 [data-admin-theme="light"] {
-    --ui-bg:               var(--color-BrandWhite);
-    --ui-surface:          color-mix(in srgb, var(--color-BrandWhite) 96%, black 4%);
-    --ui-surface-2:        color-mix(in srgb, var(--color-BrandWhite) 90%, black 10%);
-    --ui-surface-3:        color-mix(in srgb, var(--color-BrandWhite) 84%, black 16%);
-    --ui-surface-elevated: color-mix(in srgb, var(--color-BrandWhite) 78%, black 22%);
-    --ui-border:           color-mix(in srgb, black 12%, transparent);
-    --ui-border-strong:    color-mix(in srgb, black 24%, transparent);
-    --ui-text:             var(--color-BrandBlack);
-    --ui-text-muted:       color-mix(in srgb, var(--color-BrandBlack) 70%, transparent);
-    --ui-text-subtle:      color-mix(in srgb, var(--color-BrandBlack) 45%, transparent);
-    --ui-overlay:          color-mix(in srgb, var(--color-BrandWhite) 80%, transparent);
+    --ui-bg:               #ffffff;
+    --ui-surface:          #ffffff;
+    --ui-surface-2:        #f9fafb;   /* barely off-white — used only for subtle insets */
+    --ui-surface-3:        #f3f4f6;   /* very light for deepest nesting only */
+    --ui-surface-elevated: #ffffff;   /* modals/popovers are white; shadow provides elevation */
+    --ui-border:           color-mix(in srgb, black 10%, transparent);
+    --ui-border-strong:    color-mix(in srgb, black 20%, transparent);
+    /* BrandBlack = #ffffff in light mode, so use BrandText (#1a1a1a) for dark readable text */
+    --ui-text:             var(--color-BrandText);
+    --ui-text-muted:       color-mix(in srgb, var(--color-BrandText) 70%, transparent);
+    --ui-text-subtle:      color-mix(in srgb, var(--color-BrandText) 45%, transparent);
+    --ui-overlay:          color-mix(in srgb, #ffffff 80%, transparent);
 }
 
 

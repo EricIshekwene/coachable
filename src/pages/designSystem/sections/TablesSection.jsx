@@ -1,4 +1,5 @@
-import { AdminInput, AdminBadge } from "../../../admin/components";
+import { useState } from "react";
+import { AdminBadge, AdminDataTable, AdminAvatar } from "../../../admin/components";
 import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSAnatomy } from "../dsPrimitives";
 
 const ROWS = [
@@ -13,13 +14,50 @@ function initials(name) {
   return (parts[0]?.[0] ?? "?") + (parts[1]?.[0] ?? "");
 }
 
+const TABLE_COLUMNS = [
+  {
+    key: "name",
+    label: "User",
+    render: (row) => (
+      <div className="flex items-center gap-3">
+        <AdminAvatar name={row.name} size="sm" />
+        <span className="text-sm font-semibold" style={{ color: "var(--ui-text)" }}>{row.name}</span>
+      </div>
+    ),
+  },
+  { key: "email", label: "Email", render: (row) => <span className="text-xs" style={{ color: "var(--ui-text-muted)" }}>{row.email}</span> },
+  { key: "team",  label: "Team",  render: (row) => <span className="text-xs" style={{ color: "var(--ui-text-muted)" }}>{row.team}</span> },
+  {
+    key: "plays",
+    label: "Plays",
+    align: "center",
+    render: (row) => (
+      <span className="inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: "var(--ui-accent-muted)", color: "var(--ui-accent)" }}>
+        {row.plays}
+      </span>
+    ),
+  },
+  { key: "joined", label: "Joined", render: (row) => <span className="text-xs" style={{ color: "var(--ui-text-muted)" }}>{row.joined}</span> },
+  {
+    key: "verified",
+    label: "Status",
+    render: (row) => <AdminBadge status={row.verified ? "resolved" : "warning"}>{row.verified ? "Verified" : "Unverified"}</AdminBadge>,
+  },
+];
+
 /**
- * Tables & data display: the real user-directory table pattern plus the table
- * anatomy and data-component catalog.
+ * Tables & data display: the DataTable component demonstrated with the canonical
+ * directory table pattern.
  *
  * @returns {JSX.Element}
  */
 export default function TablesSection() {
+  const [search, setSearch] = useState("");
+
+  const filteredRows = search.trim()
+    ? ROWS.filter((r) => [r.name, r.email, r.team].some((v) => v.toLowerCase().includes(search.toLowerCase())))
+    : ROWS;
+
   return (
     <div className="flex flex-col gap-10">
       <DSPageHeading
@@ -28,44 +66,23 @@ export default function TablesSection() {
         lead="Admin tables are dense and utilitarian: search in the header, a count on the right, then a fixed-column table with a muted uppercase header row and 1px row dividers. Numeric cells use accent-tinted pills; status uses badges."
       />
 
-      <DSGroup title="Directory table" status="live" description="The production user-directory pattern.">
+      <DSGroup title="Directory table" status="live" description="DataTable with search, avatar cells, numeric pill, and status badge.">
         <DSTile padding={false} className="overflow-hidden p-0">
-          <div className="flex flex-col gap-3 px-5 py-5 sm:flex-row sm:items-center sm:justify-between" style={{ borderBottom: "1px solid var(--adm-border)" }}>
-            <div className="relative min-w-0 flex-1 sm:max-w-md"><AdminInput placeholder="Search by name, email, or team" className="w-full" /></div>
-            <div className="flex items-center gap-1 text-xs" style={{ color: "var(--adm-muted)" }}><span>{ROWS.length}</span><span>users</span></div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] border-separate border-spacing-0 text-left text-sm">
-              <thead>
-                <tr>
-                  {["User", "Email", "Team", "Plays", "Joined", "Status"].map((h) => (
-                    <th key={h} className="px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--adm-muted)", borderBottom: "1px solid var(--adm-border)" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {ROWS.map((u) => (
-                  <tr key={u.id}>
-                    <td className="px-5 py-4" style={{ borderBottom: "1px solid var(--adm-border)" }}>
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold" style={{ backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }}>{initials(u.name).toUpperCase()}</div>
-                        <span className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>{u.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 text-xs" style={{ color: "var(--adm-text2)", borderBottom: "1px solid var(--adm-border)" }}>{u.email}</td>
-                    <td className="px-5 py-4 text-xs" style={{ color: "var(--adm-text2)", borderBottom: "1px solid var(--adm-border)" }}>{u.team}</td>
-                    <td className="px-5 py-4" style={{ borderBottom: "1px solid var(--adm-border)" }}>
-                      <span className="inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: "var(--adm-accent-dim)", color: "var(--adm-accent)" }}>{u.plays}</span>
-                    </td>
-                    <td className="px-5 py-4 text-xs" style={{ color: "var(--adm-text2)", borderBottom: "1px solid var(--adm-border)" }}>{u.joined}</td>
-                    <td className="px-5 py-4" style={{ borderBottom: "1px solid var(--adm-border)" }}>
-                      <AdminBadge status={u.verified ? "resolved" : "warning"}>{u.verified ? "Verified" : "Unverified"}</AdminBadge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <AdminDataTable
+            columns={TABLE_COLUMNS}
+            data={filteredRows}
+            keyField="id"
+            search={{
+              value: search,
+              onChange: (e) => setSearch(e.target.value),
+              onClear: () => setSearch(""),
+              placeholder: "Search by name, email, or team",
+              countLabel: "users",
+            }}
+            onRowClick={(row) => {}}
+            stickyHeader
+            minWidth="720px"
+          />
         </DSTile>
       </DSGroup>
 

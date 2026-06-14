@@ -25,6 +25,7 @@ import {
 import {
   AdminBtn,
   AdminCard,
+  AdminDataTable,
   AdminHeader,
   AdminInput,
   AdminModal,
@@ -1967,88 +1968,56 @@ export default function AdminNotificationsPage() {
                   subtitle={searchQ ? "Try adjusting your search query." : "Compose and send your first notification above — it'll appear here with delivery and response analytics."}
                 />
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr style={{ borderBottom: "1px solid var(--adm-border)" }}>
-                        {["Notification", "Sent", "Recipients", "Opens", "Open rate", "Responses", ""].map((h) => (
-                          <th
-                            key={h}
-                            className="px-4 py-3 text-left text-xs font-semibold whitespace-nowrap"
-                            style={{ color: "var(--adm-muted)" }}
-                          >
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredPast.map((n, i) => (
-                        <tr
-                          key={n.id}
-                          style={{
-                            borderBottom: i < filteredPast.length - 1 ? "1px solid var(--adm-border)" : "none",
-                          }}
-                        >
-                          <td className="px-4 py-3">
-                            <div className="flex flex-col gap-0.5">
-                              <span className="font-semibold" style={{ color: "var(--adm-text)" }}>
-                                {n.title}
-                              </span>
-                              <span className="text-xs" style={{ color: "var(--adm-muted)" }}>
-                                {n.audienceLabel}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-xs" style={{ color: "var(--adm-text2)" }}>
-                            {fmtDateShort(n.sentAt)}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap tabular-nums" style={{ color: "var(--adm-text2)" }}>
-                            {n.recipientCount.toLocaleString()}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap tabular-nums" style={{ color: "var(--adm-text2)" }}>
-                            {n.openCount.toLocaleString()}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span
-                              className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold"
-                              style={{
-                                backgroundColor: parseFloat(pct(n.openCount, n.recipientCount)) > 50
-                                  ? "var(--adm-badge-green-bg)"
-                                  : "var(--adm-badge-amber-bg)",
-                                color: parseFloat(pct(n.openCount, n.recipientCount)) > 50
-                                  ? "var(--adm-badge-green-text)"
-                                  : "var(--adm-badge-amber-text)",
-                              }}
-                            >
-                              {pct(n.openCount, n.recipientCount)}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap tabular-nums" style={{ color: "var(--adm-text2)" }}>
-                            {n.responseCount > 0 ? (
-                              <span className="inline-flex items-center gap-1 font-semibold" style={{ color: "var(--adm-accent)" }}>
-                                <FiClipboard className="text-xs" />
-                                {n.responseCount.toLocaleString()}
-                              </span>
-                            ) : (
-                              <span style={{ color: "var(--adm-muted)" }}>—</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            <AdminBtn
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => openDetail(n.id)}
-                            >
-                              <FiBarChart2 />
-                              Details
-                            </AdminBtn>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <AdminDataTable
+                  columns={[
+                    {
+                      key: "title",
+                      label: "Notification",
+                      render: (n) => (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-semibold" style={{ color: "var(--ui-text)" }}>{n.title}</span>
+                          <span className="text-xs" style={{ color: "var(--ui-text-muted)" }}>{n.audienceLabel}</span>
+                        </div>
+                      ),
+                    },
+                    { key: "sentAt", label: "Sent", render: (n) => <span className="whitespace-nowrap text-xs" style={{ color: "var(--ui-text-muted)" }}>{fmtDateShort(n.sentAt)}</span> },
+                    { key: "recipientCount", label: "Recipients", render: (n) => <span className="whitespace-nowrap tabular-nums text-xs" style={{ color: "var(--ui-text-muted)" }}>{n.recipientCount.toLocaleString()}</span> },
+                    { key: "openCount", label: "Opens", render: (n) => <span className="whitespace-nowrap tabular-nums text-xs" style={{ color: "var(--ui-text-muted)" }}>{n.openCount.toLocaleString()}</span> },
+                    {
+                      key: "openRate",
+                      label: "Open rate",
+                      render: (n) => {
+                        const rate = pct(n.openCount, n.recipientCount);
+                        const high = parseFloat(rate) > 50;
+                        return (
+                          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold" style={{ backgroundColor: high ? "var(--adm-badge-green-bg)" : "var(--adm-badge-amber-bg)", color: high ? "var(--adm-badge-green-text)" : "var(--adm-badge-amber-text)" }}>{rate}</span>
+                        );
+                      },
+                    },
+                    {
+                      key: "responseCount",
+                      label: "Responses",
+                      render: (n) => n.responseCount > 0 ? (
+                        <span className="inline-flex items-center gap-1 whitespace-nowrap tabular-nums font-semibold" style={{ color: "var(--ui-accent)" }}>
+                          <FiClipboard className="text-xs" />{n.responseCount.toLocaleString()}
+                        </span>
+                      ) : <span style={{ color: "var(--ui-text-muted)" }}>—</span>,
+                    },
+                    {
+                      key: "actions",
+                      label: "",
+                      render: (n) => (
+                        <AdminBtn size="sm" variant="ghost" onClick={() => openDetail(n.id)}>
+                          <FiBarChart2 />
+                          Details
+                        </AdminBtn>
+                      ),
+                    },
+                  ]}
+                  data={filteredPast}
+                  keyField="id"
+                  size="sm"
+                />
               )}
             </AdminCard>
           </AdminSection>

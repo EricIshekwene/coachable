@@ -1,4 +1,4 @@
-import { Breadcrumbs, Button, Card, Chip, EmptyState, Input, Modal, Section, Spinner, Textarea, Select, Toast } from "../../design-system/components";
+import { Breadcrumbs, Button, Card, Chip, EmptyState, Input, Modal, Section, Spinner, Textarea, Toast, SearchInput, BulkBar } from "../../design-system/components";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -375,7 +375,7 @@ export default function Plays() {
           title="Trash"
           subtitle={`${trashedPlays.length} deleted play${trashedPlays.length !== 1 ? "s" : ""} · auto-deleted after 30 days`}
           actions={
-            <Button variant="outline" onClick={() => setShowTrash(false)} className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-3.5 py-2.5 text-sm text-BrandGray transition hover:border-BrandGray hover:text-BrandText">Back to Playbook</Button>
+            <Button variant="outline" onClick={() => setShowTrash(false)} className="flex items-center gap-2 rounded-lg border border-[color:var(--ui-border)] px-3.5 py-2.5 text-sm text-[color:var(--ui-text-muted)] transition hover:border-[color:var(--ui-border-strong)] hover:text-[color:var(--ui-text)]">Back to Playbook</Button>
           }
         />
         {trashedPlays.length === 0 ? (
@@ -383,12 +383,12 @@ export default function Plays() {
         ) : (
           <div className="mt-6 flex flex-col gap-2">
             {trashedPlays.map((play) => (
-              <Card key={play.id} padding="md" className="flex items-center gap-4 bg-BrandBlack2/30">
+              <Card key={play.id} padding="md" className="flex items-center gap-4" style={{ backgroundColor: "var(--ui-surface-2)" }}>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{play.title}</p>
-                  <p className="mt-0.5 text-[11px] text-BrandGray2">Deleted {formatRelativeTime(play.archivedAt)}</p>
+                  <p className="mt-0.5 text-[11px]" style={{ color: "var(--ui-text-subtle)" }}>Deleted {formatRelativeTime(play.archivedAt)}</p>
                 </div>
-                <Button variant="outline" onClick={() => handleRestorePlay(play.id)} className="flex items-center gap-1.5 rounded-lg border border-BrandGray2/30 px-3 py-2 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"><FiRotateCcw className="text-xs" />Restore</Button>
+                <Button variant="outline" onClick={() => handleRestorePlay(play.id)} className="flex items-center gap-1.5 rounded-lg border border-[color:var(--ui-border)] px-3 py-2 text-xs text-[color:var(--ui-text-muted)] transition hover:border-[color:var(--ui-border-strong)] hover:text-[color:var(--ui-text)]"><FiRotateCcw className="text-xs" />Restore</Button>
                 <Button variant="danger" onClick={() => handlePermanentDelete(play.id)} className="flex items-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-2 text-xs text-red-400 transition hover:bg-red-500/10"><FiTrash2 className="text-xs" />Delete Forever</Button>
               </Card>
             ))}
@@ -406,10 +406,10 @@ export default function Plays() {
         subtitle={currentFolderId ? `${visiblePlays.length} play${visiblePlays.length !== 1 ? "s" : ""} in folder` : `${plays.length} plays · ${visibleFolders.length} folders`}
         actions={
           <>
-            {isCoach && !bulkMode && (<Button variant="outline" onClick={() => setBulkMode(true)} className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-3 py-2.5 text-sm text-BrandGray transition hover:border-BrandGray hover:text-BrandText"><FiCheckSquare className="text-sm" /></Button>)}
+            {isCoach && !bulkMode && (<Button variant="outline" onClick={() => setBulkMode(true)} className="flex items-center gap-2 rounded-lg border border-[color:var(--ui-border)] px-3 py-2.5 text-sm text-[color:var(--ui-text-muted)] transition hover:border-[color:var(--ui-border-strong)] hover:text-[color:var(--ui-text)]"><FiCheckSquare className="text-sm" /></Button>)}
             {bulkMode && (<Button variant="primary" onClick={exitBulkMode} className="flex items-center gap-2 rounded-lg border border-BrandOrange/50 bg-BrandOrange/10 px-3.5 py-2.5 text-sm text-BrandOrange transition hover:bg-BrandOrange/20"><FiX className="text-sm" />Cancel</Button>)}
-            {isCoach && (<Button variant="outline" onClick={() => { setShowTrash(true); loadTrash(); }} className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-3 py-2.5 text-sm text-BrandGray transition hover:border-BrandGray hover:text-BrandText"><FiTrash2 className="text-sm" /></Button>)}
-            {isCoach && folderPath.length < 4 && (<Button variant="outline" onClick={() => setNewFolderMode(true)} className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-3.5 py-2.5 text-sm text-BrandGray transition hover:border-BrandGray hover:text-BrandText disabled:opacity-50 disabled:cursor-not-allowed" disabled={folderPath.length >= 4}><FiFolder className="text-sm" />New Folder</Button>)}
+            {isCoach && (<Button variant="outline" onClick={() => { setShowTrash(true); loadTrash(); }} className="flex items-center gap-2 rounded-lg border border-[color:var(--ui-border)] px-3 py-2.5 text-sm text-[color:var(--ui-text-muted)] transition hover:border-[color:var(--ui-border-strong)] hover:text-[color:var(--ui-text)]"><FiTrash2 className="text-sm" /></Button>)}
+            {isCoach && folderPath.length < 4 && (<Button variant="outline" onClick={() => setNewFolderMode(true)} className="flex items-center gap-2 rounded-lg border border-[color:var(--ui-border)] px-3.5 py-2.5 text-sm text-[color:var(--ui-text-muted)] transition hover:border-[color:var(--ui-border-strong)] hover:text-[color:var(--ui-text)] disabled:opacity-50 disabled:cursor-not-allowed" disabled={folderPath.length >= 4}><FiFolder className="text-sm" />New Folder</Button>)}
             {canCreatePlay && (
               <Button as={Link} to="/app/plays/new" variant="primary" startIcon={<FiPlus className="text-base" />}>
                 New Play
@@ -435,22 +435,13 @@ export default function Plays() {
       </AppHeader>
 
       {/* Search bar */}
-      <div className="relative mt-5">
-        <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-BrandGray2" />
-        <Input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search plays by name, tags, or notes..."
-          maxLength={200}
-          className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 py-2.5 pl-10 pr-10 text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
-        />
-        {search && (
-          <Button variant="ghost" onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-0.5 text-BrandGray2 transition hover:text-BrandText">
-            <FiX className="text-sm" />
-          </Button>
-        )}
-      </div>
+      <SearchInput
+        className="mt-5 w-full"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        onClear={search ? () => setSearch("") : undefined}
+        placeholder="Search plays by name, tags, or notes..."
+      />
 
       {/* Tag filter chips */}
       {allTags.length > 0 && (
@@ -466,7 +457,7 @@ export default function Plays() {
             </Chip>
           ))}
           {activeTag && (
-            <Button variant="ghost" onClick={() => setActiveTag(null)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-BrandGray2 transition hover:text-BrandText">
+            <Button variant="ghost" onClick={() => setActiveTag(null)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-[color:var(--ui-text-subtle)] transition hover:text-[color:var(--ui-text)]">
               <FiX className="text-[9px]" />
               Clear filter
             </Button>
@@ -476,22 +467,25 @@ export default function Plays() {
 
       {/* Bulk action bar */}
       {bulkMode && bulkSelected.size > 0 && (
-        <div className="mt-3 flex items-center gap-2 rounded-lg border border-BrandOrange/30 bg-BrandOrange/5 px-4 py-2.5">
-          <span className="text-sm font-semibold text-BrandOrange">{bulkSelected.size} selected</span>
-          <div className="ml-auto flex items-center gap-2">
-            {folders.length > 0 && (
-              <Button variant="outline" onClick={() => setBulkMoveOpen(true)} className="flex items-center gap-1.5 rounded-md border border-BrandGray2/30 px-3 py-1.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText">
-                <FiFolder className="text-xs" />Move
+        <BulkBar
+          className="mt-3"
+          count={bulkSelected.size}
+          actions={
+            <>
+              {folders.length > 0 && (
+                <Button variant="outline" onClick={() => setBulkMoveOpen(true)} className="flex items-center gap-1.5 rounded-md border border-[color:var(--ui-border)] px-3 py-1.5 text-xs text-[color:var(--ui-text-muted)] transition hover:border-[color:var(--ui-border-strong)] hover:text-[color:var(--ui-text)]">
+                  <FiFolder className="text-xs" />Move
+                </Button>
+              )}
+              <Button variant="outline" onClick={() => setBulkTagOpen(true)} className="flex items-center gap-1.5 rounded-md border border-[color:var(--ui-border)] px-3 py-1.5 text-xs text-[color:var(--ui-text-muted)] transition hover:border-[color:var(--ui-border-strong)] hover:text-[color:var(--ui-text)]">
+                <FiTag className="text-xs" />Tag
               </Button>
-            )}
-            <Button variant="outline" onClick={() => setBulkTagOpen(true)} className="flex items-center gap-1.5 rounded-md border border-BrandGray2/30 px-3 py-1.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText">
-              <FiTag className="text-xs" />Tag
-            </Button>
-            <Button variant="danger" onClick={handleBulkDelete} className="flex items-center gap-1.5 rounded-md border border-red-500/30 px-3 py-1.5 text-xs text-red-400 transition hover:bg-red-500/10">
-              <FiTrash2 className="text-xs" />Delete
-            </Button>
-          </div>
-        </div>
+              <Button variant="danger" onClick={handleBulkDelete} className="flex items-center gap-1.5 rounded-md border border-red-500/30 px-3 py-1.5 text-xs text-red-400 transition hover:bg-red-500/10">
+                <FiTrash2 className="text-xs" />Delete
+              </Button>
+            </>
+          }
+        />
       )}
 
       {/* Recently edited */}
@@ -502,12 +496,13 @@ export default function Plays() {
               <Button variant="outline"
                 key={play.id}
                 onClick={() => navigate(playerViewMode ? `/app/plays/${play.id}/view` : `/app/plays/${play.id}`)}
-                className="flex shrink-0 items-center gap-2.5 rounded-lg border border-BrandGray2/20 bg-BrandBlack2/30 px-3.5 py-2.5 text-left transition hover:border-BrandOrange/30 hover:bg-BrandBlack2/60"
+                className="flex shrink-0 items-center gap-2.5 rounded-lg border px-3.5 py-2.5 text-left transition hover:border-BrandOrange/30"
+                style={{ borderColor: "var(--ui-border)", backgroundColor: "var(--ui-surface-2)" }}
               >
-                <FiClock className="shrink-0 text-xs text-BrandGray2" />
+                <FiClock className="shrink-0 text-xs" style={{ color: "var(--ui-text-subtle)" }} />
                 <div className="min-w-0">
                   <p className="truncate text-xs font-semibold max-w-[160px]">{play.title}</p>
-                  <p className="text-[10px] text-BrandGray2">{formatRelativeTime(play.updatedAt || play.createdAt)}</p>
+                  <p className="text-[10px]" style={{ color: "var(--ui-text-subtle)" }}>{formatRelativeTime(play.updatedAt || play.createdAt)}</p>
                 </div>
               </Button>
             ))}
@@ -557,7 +552,7 @@ export default function Plays() {
                       onKeyDown={(e) => { if (e.key === "Enter") handleCreateFolder(); if (e.key === "Escape") setNewFolderMode(false); }}
                       placeholder="Folder name..."
                       maxLength={80}
-                      className="w-full bg-transparent text-sm font-semibold text-BrandText outline-none placeholder:text-BrandGray2"
+                      className="w-full bg-transparent text-sm font-semibold text-[color:var(--ui-text)] outline-none placeholder:text-[color:var(--ui-text-subtle)]"
                     />
                   </div>
                 </div>
@@ -571,16 +566,17 @@ export default function Plays() {
       <div className="mt-6">
         <div className="mb-3 flex items-center justify-between">
           {!currentFolderId && <Section title="Plays" variant="compact" />}
-          <Select
+          <select
             value={playSort}
             onChange={(e) => setPlaySort(e.target.value)}
-            className="ml-auto rounded-md border border-BrandGray2/30 bg-BrandBlack2 px-2.5 py-1 text-[11px] text-BrandGray outline-none focus:border-BrandOrange cursor-pointer"
+            className="ml-auto cursor-pointer appearance-none rounded-md border border-[color:var(--ui-border)] px-2.5 py-1 text-[11px] outline-none focus:border-BrandOrange"
+            style={{ backgroundColor: "var(--ui-surface-2)", color: "var(--ui-text-muted)" }}
           >
             <option value="updated">Recently Updated</option>
             <option value="created">Recently Created</option>
             <option value="az">Name A→Z</option>
             <option value="za">Name Z→A</option>
-          </Select>
+          </select>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {sortedVisiblePlays.map((play) => (
@@ -635,9 +631,9 @@ export default function Plays() {
             const alreadyIn = folder.playIds.includes(moveTarget);
             return (
               <Button variant="ghost" key={folder.id} disabled={alreadyIn} onClick={() => handleMovePlayToFolder(moveTarget, folder.id)}
-                className={`flex items-center gap-3 rounded-lg px-3.5 py-3 text-left text-sm transition ${alreadyIn ? "cursor-not-allowed text-BrandGray2/50" : "text-BrandGray hover:bg-BrandBlack2 hover:text-BrandText"}`}>
+                className={`flex items-center gap-3 rounded-lg px-3.5 py-3 text-left text-sm transition ${alreadyIn ? "cursor-not-allowed opacity-50" : "text-[color:var(--ui-text-muted)] hover:bg-[color:var(--ui-surface)] hover:text-[color:var(--ui-text)]"}`}>
                 <FiFolder className="text-base" />{folder.name}
-                {alreadyIn && <span className="ml-auto text-[10px] text-BrandGray2">Already in folder</span>}
+                {alreadyIn && <span className="ml-auto text-[10px]" style={{ color: "var(--ui-text-subtle)" }}>Already in folder</span>}
               </Button>
             );
           })}
@@ -649,7 +645,7 @@ export default function Plays() {
         <div className="flex flex-col gap-1">
           {folders.map((folder) => (
             <Button variant="ghost" key={folder.id} onClick={() => handleBulkMove(folder.id)}
-              className="flex items-center gap-3 rounded-lg px-3.5 py-3 text-left text-sm text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText">
+              className="flex items-center gap-3 rounded-lg px-3.5 py-3 text-left text-sm text-[color:var(--ui-text-muted)] transition hover:bg-[color:var(--ui-surface)] hover:text-[color:var(--ui-text)]">
               <FiFolder className="text-base" />{folder.name}
             </Button>
           ))}
@@ -667,12 +663,13 @@ export default function Plays() {
           onKeyDown={(e) => { if (e.key === "Enter") handleBulkTag(); if (e.key === "Escape") { setBulkTagOpen(false); setBulkTagInput(""); } }}
           placeholder="Tag name..."
           maxLength={40}
-          className="mb-3 w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none placeholder:text-BrandGray2 focus:border-BrandOrange"
+          className="mb-3 w-full rounded-lg border border-[color:var(--ui-border)] px-3.5 py-2.5 text-sm outline-none focus:border-BrandOrange"
+          style={{ backgroundColor: "var(--ui-surface-2)", color: "var(--ui-text)" }}
         />
         {allTags.length > 0 && (
           <div className="mb-4 flex flex-wrap gap-1.5">
             {allTags.filter((t) => !bulkTagInput || t.toLowerCase().includes(bulkTagInput.toLowerCase())).slice(0, 12).map((tag) => (
-              <Button variant="ghost" key={tag} onClick={() => setBulkTagInput(tag)} className="inline-flex items-center gap-1 rounded-md bg-BrandGray2/15 px-2 py-0.5 text-[10px] text-BrandGray transition hover:bg-BrandGray2/25 hover:text-BrandText">
+              <Button variant="ghost" key={tag} onClick={() => setBulkTagInput(tag)} className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] text-[color:var(--ui-text-muted)] transition hover:text-[color:var(--ui-text)]" style={{ backgroundColor: "var(--ui-surface-2)" }}>
                 <FiTag className="text-[8px]" />{tag}
               </Button>
             ))}

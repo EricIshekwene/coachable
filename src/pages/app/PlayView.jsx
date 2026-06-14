@@ -135,14 +135,14 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
         {showBackButton && (
           <Button variant="ghost"
             onClick={() => navigate(backTo)}
-            className="mb-8 flex items-center gap-2 text-sm text-BrandGray transition hover:text-BrandText"
+            className="mb-8 flex items-center gap-2 text-sm text-[color:var(--ui-text-muted)] transition hover:text-[color:var(--ui-text)]"
           >
             <FiArrowLeft />
             {backLabel}
           </Button>
         )}
         <h1 className="font-Manrope text-xl font-bold tracking-tight">Play not found</h1>
-        <p className="mt-2 text-sm text-BrandGray">The play you're looking for doesn't exist.</p>
+        <p className="mt-2 text-sm" style={{ color: "var(--ui-text-muted)" }}>The play you're looking for doesn't exist.</p>
       </div>
     );
   }
@@ -152,7 +152,7 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
       {showBackButton && (
         <Button variant="ghost"
           onClick={() => navigate(backTo)}
-          className="mb-8 flex items-center gap-2 text-sm text-BrandGray transition hover:text-BrandText"
+          className="mb-8 flex items-center gap-2 text-sm text-[color:var(--ui-text-muted)] transition hover:text-[color:var(--ui-text)]"
         >
           <FiArrowLeft />
           {backLabel}
@@ -162,7 +162,7 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="font-Manrope text-2xl font-bold tracking-tight">{play.title}</h1>
-          <div className="mt-2 flex items-center gap-3 text-xs text-BrandGray2">
+          <div className="mt-2 flex items-center gap-3 text-xs" style={{ color: "var(--ui-text-subtle)" }}>
             <span className="flex items-center gap-1.5">
               <FiClock className="text-[10px]" />
               {formatRelativeTime(play.updatedAt || play.createdAt)}
@@ -175,7 +175,7 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
               as={Link}
               variant="outline"
               to={`/app/plays/${playId}/view`}
-              className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-4 py-2 text-sm font-semibold text-BrandGray transition hover:border-BrandOrange/50 hover:text-BrandOrange"
+              className="flex items-center gap-2 rounded-lg border border-[color:var(--ui-border)] px-4 py-2 text-sm font-semibold text-[color:var(--ui-text-muted)] transition hover:border-BrandOrange/50 hover:text-BrandOrange"
             >
               <FiExternalLink className="text-sm" />
               View in Slate
@@ -212,7 +212,7 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
           <Button variant="outline"
             type="button"
             onClick={handleOpenNoteEditor}
-            className="rounded-lg border border-BrandGray2/30 px-3.5 py-2 text-xs font-semibold text-BrandGray transition hover:border-BrandOrange/50 hover:text-BrandOrange"
+            className="rounded-lg border border-[color:var(--ui-border)] px-3.5 py-2 text-xs font-semibold text-[color:var(--ui-text-muted)] transition hover:border-BrandOrange/50 hover:text-BrandOrange"
           >
             {hasNotes ? "Edit Note" : "Add Note"}
           </Button>
@@ -220,23 +220,24 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
       )}
 
       {canCoachEdit && editingNotes && (
-        <Card as="section" padding="md" className="mb-8 bg-BrandBlack2/30 sm:p-5">
+        <Card as="section" padding="md" className="mb-8 sm:p-5" style={{ backgroundColor: "var(--ui-surface-2)" }}>
           <Textarea
             ref={noteInputRef}
             label="Note"
             value={noteDraft}
             onChange={(e) => setNoteDraft(e.target.value)}
             placeholder="Write your note for this play..."
-            className="mt-2 h-32 w-full resize-none rounded-lg border border-BrandGray2/30 bg-BrandBlack2/60 px-3 py-2 text-sm text-BrandText outline-none transition focus:border-BrandOrange/60"
+            className="mt-2 h-32 w-full resize-none rounded-lg border border-[color:var(--ui-border)] px-3 py-2 text-sm outline-none transition focus:border-BrandOrange/60"
+            style={{ backgroundColor: "var(--ui-surface-3)", color: "var(--ui-text)" }}
             maxLength={500}
           />
           <div className="mt-2 flex items-center justify-between">
-            <span className="text-[11px] text-BrandGray2">{noteDraft.length}/500</span>
+            <span className="text-[11px]" style={{ color: "var(--ui-text-subtle)" }}>{noteDraft.length}/500</span>
             <div className="flex items-center gap-2">
               <Button variant="outline"
                 type="button"
                 onClick={handleCancelNoteEditor}
-                className="rounded-lg border border-BrandGray2/30 px-3 py-1.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
+                className="rounded-lg border border-[color:var(--ui-border)] px-3 py-1.5 text-xs text-[color:var(--ui-text-muted)] transition hover:border-[color:var(--ui-border-strong)] hover:text-[color:var(--ui-text)]"
               >
                 Cancel
               </Button>
@@ -265,14 +266,14 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
 
       {/* Notes */}
       {hasNotes && !editingNotes && (
-        <Card as="section" padding="md" className="mt-8 bg-BrandBlack2/30 sm:p-5">
+        <Card as="section" padding="md" className="mt-8 sm:p-5" style={{ backgroundColor: "var(--ui-surface-2)" }}>
           <div className="flex items-center justify-between gap-3">
             <Badge tone="info" dot>{noteAuthorName}</Badge>
             {noteDate && (
-              <span className="text-[11px] text-BrandGray2">{noteDate}</span>
+              <span className="text-[11px]" style={{ color: "var(--ui-text-subtle)" }}>{noteDate}</span>
             )}
           </div>
-          <p className="mt-3 whitespace-pre-wrap font-DmSans text-sm leading-6 text-BrandText">
+          <p className="mt-3 whitespace-pre-wrap font-DmSans text-sm leading-6" style={{ color: "var(--ui-text)" }}>
             {notesBody}
           </p>
         </Card>

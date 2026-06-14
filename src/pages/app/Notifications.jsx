@@ -13,7 +13,7 @@ function fmtDateTime(iso) {
 }
 
 const INPUT_CLASS =
-  "w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2 px-3 py-2 text-sm text-BrandText outline-none transition focus:border-BrandOrange";
+  "w-full rounded-lg border border-[color:var(--ui-border)] bg-[color:var(--ui-surface)] px-3 py-2 text-sm text-[color:var(--ui-text)] outline-none transition focus:border-BrandOrange";
 
 /**
  * Renders a single question block as an interactive (or read-only) field.
@@ -106,7 +106,7 @@ function QuestionField({ question, value, onChange, disabled }) {
             checked={arr.includes(opt)}
             disabled={disabled}
             onChange={() => toggle(opt)}
-            className="rounded-lg border border-BrandGray2/30 px-3 py-2"
+            className="rounded-lg border border-[color:var(--ui-border)] px-3 py-2"
           />
         ))}
       </div>
@@ -117,7 +117,7 @@ function QuestionField({ question, value, onChange, disabled }) {
     const max = q.scaleMax || 5;
     return (
       <div className="flex flex-wrap items-center gap-3">
-        {q.scaleMinLabel && <span className="text-xs text-BrandGray2">{q.scaleMinLabel}</span>}
+        {q.scaleMinLabel && <span className="text-xs" style={{ color: "var(--ui-text-subtle)" }}>{q.scaleMinLabel}</span>}
         <div className="flex gap-2">
           {Array.from({ length: max }, (_, i) => i + 1).map((n) => (
             <Button variant="primary"
@@ -128,14 +128,14 @@ function QuestionField({ question, value, onChange, disabled }) {
               className={`flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold transition disabled:opacity-70 ${
                 Number(value) === n
                   ? "border-BrandOrange bg-BrandOrange text-white"
-                  : "border-BrandGray2/30 text-BrandGray hover:border-BrandGray2/60"
+                  : "border-[color:var(--ui-border)] text-[color:var(--ui-text-muted)] hover:border-[color:var(--ui-border-strong)]"
               }`}
             >
               {n}
             </Button>
           ))}
         </div>
-        {q.scaleMaxLabel && <span className="text-xs text-BrandGray2">{q.scaleMaxLabel}</span>}
+        {q.scaleMaxLabel && <span className="text-xs" style={{ color: "var(--ui-text-subtle)" }}>{q.scaleMaxLabel}</span>}
       </div>
     );
   }
@@ -220,10 +220,10 @@ function NotificationDetail({ notif, onRespond }) {
         <div className="flex items-center gap-2">
           {notif.priority === "critical" && <FiAlertCircle className="text-red-400" />}
           {notif.priority === "high" && <FiAlertCircle className="text-amber-400" />}
-          <h1 className="text-xl font-bold text-BrandText">{notif.title}</h1>
+          <h1 className="text-xl font-bold" style={{ color: "var(--ui-text)" }}>{notif.title}</h1>
         </div>
-        {notif.subject && <p className="mt-1 text-sm text-BrandGray">{notif.subject}</p>}
-        <p className="mt-1 text-xs text-BrandGray2">{fmtDateTime(notif.sentAt)}</p>
+        {notif.subject && <p className="mt-1 text-sm" style={{ color: "var(--ui-text-muted)" }}>{notif.subject}</p>}
+        <p className="mt-1 text-xs" style={{ color: "var(--ui-text-subtle)" }}>{fmtDateTime(notif.sentAt)}</p>
       </div>
 
       {/* Blocks in order */}
@@ -233,7 +233,8 @@ function NotificationDetail({ notif, onRespond }) {
             return (
               <div
                 key={b.id}
-                className="notif-body text-sm leading-relaxed text-BrandGray"
+                className="notif-body text-sm leading-relaxed"
+                style={{ color: "var(--ui-text-muted)" }}
                 dangerouslySetInnerHTML={{ __html: b.html || "" }}
               />
             );
@@ -245,13 +246,13 @@ function NotificationDetail({ notif, onRespond }) {
             <Card
               key={b.id}
               padding="sm"
-              className="bg-BrandBlack2/40"
+              style={{ backgroundColor: "var(--ui-surface-2)" }}
             >
               <div className="mb-3 flex items-start gap-2">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-BrandOrange/15 text-xs font-bold text-BrandOrange">
                   {num}
                 </span>
-                <span className="text-sm font-semibold text-BrandText">
+                <span className="text-sm font-semibold" style={{ color: "var(--ui-text)" }}>
                   {b.label || "Untitled question"}
                   {b.required && <span className="ml-1 text-BrandOrange">*</span>}
                 </span>
@@ -334,8 +335,8 @@ export default function NotificationsPage() {
       <div className="mx-auto max-w-5xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-BrandText">Notifications</h1>
-            <p className="text-sm text-BrandGray2">
+            <h1 className="text-2xl font-bold" style={{ color: "var(--ui-text)" }}>Notifications</h1>
+            <p className="text-sm" style={{ color: "var(--ui-text-subtle)" }}>
               {unreadCount > 0 ? `${unreadCount} unread` : "You're all caught up"}
             </p>
           </div>
@@ -343,7 +344,7 @@ export default function NotificationsPage() {
             <Button variant="outline"
               type="button"
               onClick={markAllRead}
-              className="rounded-lg border border-BrandGray2/30 px-3 py-2 text-xs font-semibold text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"
+              className="rounded-lg border border-[color:var(--ui-border)] px-3 py-2 text-xs font-semibold text-[color:var(--ui-text-muted)] transition hover:bg-[color:var(--ui-surface)] hover:text-[color:var(--ui-text)]"
             >
               Mark all read
             </Button>
@@ -370,14 +371,14 @@ export default function NotificationsPage() {
               {notifications.map((n) => {
                 const active = n.id === selectedId;
                 return (
-                  <Button variant="primary"
+                  <button
                     key={n.id}
                     type="button"
                     onClick={() => handleSelect(n.id)}
-                    className={`flex items-start gap-3 rounded-xl border px-3.5 py-3 text-left transition ${
+                    className={`flex w-full items-start gap-3 rounded-xl border px-3.5 py-3 text-left transition ${
                       active
                         ? "border-BrandOrange bg-BrandOrange/10"
-                        : "border-BrandGray2/20 hover:border-BrandGray2/40 hover:bg-BrandBlack2"
+                        : "border-[color:var(--ui-border)] hover:border-[color:var(--ui-border-strong)] hover:bg-[color:var(--ui-surface-2)]"
                     }`}
                   >
                     <span className="mt-1.5 flex h-2 w-2 shrink-0 items-center justify-center">
@@ -387,12 +388,12 @@ export default function NotificationsPage() {
                       <div className="flex items-center gap-1.5">
                         {n.priority === "critical" && <FiAlertCircle className="shrink-0 text-xs text-red-400" />}
                         {n.priority === "high" && <FiAlertCircle className="shrink-0 text-xs text-amber-400" />}
-                        <span className={`truncate text-sm ${n.readAt ? "text-BrandGray" : "font-semibold text-BrandText"}`}>
+                        <span className={`truncate text-sm ${n.readAt ? "text-[color:var(--ui-text-muted)]" : "font-semibold text-[color:var(--ui-text)]"}`}>
                           {n.title}
                         </span>
                       </div>
-                      {n.subject && <p className="mt-0.5 truncate text-xs text-BrandGray2">{n.subject}</p>}
-                      <div className="mt-1 flex items-center gap-2 text-[10px] text-BrandGray2">
+                      {n.subject && <p className="mt-0.5 truncate text-xs" style={{ color: "var(--ui-text-subtle)" }}>{n.subject}</p>}
+                      <div className="mt-1 flex items-center gap-2 text-[10px]" style={{ color: "var(--ui-text-subtle)" }}>
                         <span>{fmtDateTime(n.sentAt)}</span>
                         {n.hasQuestions && !n.respondedAt && (
                           <Badge tone="warning" size="xs">Needs response</Badge>
@@ -400,7 +401,7 @@ export default function NotificationsPage() {
                         {n.respondedAt && <span className="text-green-400">✓ Responded</span>}
                       </div>
                     </div>
-                  </Button>
+                  </button>
                 );
               })}
             </div>

@@ -139,7 +139,7 @@ export default function Settings() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10 md:py-12">
       <h1 className="font-Manrope text-xl font-bold tracking-tight">Settings</h1>
-      <p className="mt-1.5 text-sm text-BrandGray2">
+      <p className="mt-1.5 text-sm" style={{ color: "var(--ui-text-subtle)" }}>
         {isPersonal
           ? "Manage your workspace settings and app appearance."
           : isPlayer
@@ -148,7 +148,7 @@ export default function Settings() {
       </p>
 
       {!isPersonal && (
-      <Card className="mt-8 bg-BrandBlack2/30">
+      <Card className="mt-8" >
         <Section title="Notification Preferences" icon={<FiBell />} variant="compact">
         <div className="flex flex-col gap-2">
           {isPlayer ? (
@@ -200,9 +200,9 @@ export default function Settings() {
       )}
 
       {!isPlayer && !isPersonal && (
-      <Card className="mt-6 bg-BrandBlack2/30">
+      <Card className="mt-6" >
         <Section title="Roles and Permissions" icon={<FiShield />} variant="compact">
-        <p className="mb-3 text-xs text-BrandGray2">Assistant coach permissions</p>
+        <p className="mb-3 text-xs" style={{ color: "var(--ui-text-subtle)" }}>Assistant coach permissions</p>
         <div className="flex flex-col gap-2">
           <Toggle
             label="Create, edit, and delete plays"
@@ -228,7 +228,7 @@ export default function Settings() {
       )}
 
       {!isPlayer && (
-      <Card className="mt-6 bg-BrandBlack2/30">
+      <Card className="mt-6" >
         <Section title={isPersonal ? "Workspace Settings" : "Team Defaults"} icon={<FiUsers />} variant="compact">
 
         <div className="grid gap-3 md:grid-cols-2">
@@ -239,7 +239,8 @@ export default function Settings() {
               value={teamDefaults.teamName}
               onChange={(e) => setTeamDefaults((prev) => ({ ...prev, teamName: e.target.value }))}
               maxLength={INPUT_LIMITS.NAME}
-              className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+              className="w-full rounded-lg border border-[color:var(--ui-border)] px-3.5 py-2.5 text-sm text-[color:var(--ui-text)] outline-none transition placeholder:text-[color:var(--ui-text-subtle)] hover:border-[color:var(--ui-border-strong)] focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+              style={{ backgroundColor: "var(--ui-surface-2)" }}
               placeholder={isPersonal ? "Personal Workspace" : "Riverside Rugby"}
             />
           </div>
@@ -249,7 +250,8 @@ export default function Settings() {
               label="Sport"
               value={teamDefaults.sport}
               onChange={(e) => setTeamDefaults((prev) => ({ ...prev, sport: e.target.value }))}
-              className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none transition hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+              className="w-full rounded-lg border border-[color:var(--ui-border)] px-3.5 py-2.5 text-sm text-[color:var(--ui-text)] outline-none transition hover:border-[color:var(--ui-border-strong)] focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+              style={{ backgroundColor: "var(--ui-surface-2)" }}
             >
               <option value="">Select sport</option>
               {SPORT_OPTIONS.map((s) => (
@@ -269,7 +271,8 @@ export default function Settings() {
               onChange={(e) => setTeamDefaults((prev) => ({ ...prev, seasonYear: e.target.value }))}
               placeholder="2026"
               maxLength={16}
-              className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+              className="w-full rounded-lg border border-[color:var(--ui-border)] px-3.5 py-2.5 text-sm text-[color:var(--ui-text)] outline-none transition placeholder:text-[color:var(--ui-text-subtle)] hover:border-[color:var(--ui-border-strong)] focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+              style={{ backgroundColor: "var(--ui-surface-2)" }}
             />
           </div>
           )}
@@ -280,9 +283,9 @@ export default function Settings() {
       )}
 
       {(user?.role === "coach" || user?.role === "owner") && !playerViewMode && !isPersonal && (
-        <Card className="mt-6 bg-BrandBlack2/30">
+        <Card className="mt-6" >
           <Section title="Player View" icon={<FiEye />} variant="compact">
-          <p className="text-xs text-BrandGray2">
+          <p className="text-xs" style={{ color: "var(--ui-text-subtle)" }}>
             Preview the app as a player sees it. You'll see read-only plays, limited navigation, and player-level account options.
           </p>
           <Button variant="primary"
@@ -300,27 +303,29 @@ export default function Settings() {
         </Card>
       )}
 
-      <Section title="Appearance" variant="compact" className="mt-6">
-        <Tabs
-          className="w-full [&>button]:flex-1"
-          variant="segmented"
-          value={selectedTheme}
-          onChange={setSelectedTheme}
-          items={THEME_OPTIONS.map((option) => {
-            const ThemeIcon = option.icon;
-            return {
-              value: option.value,
-              label: (
-                <span className="flex flex-col items-center gap-1">
-                  <ThemeIcon className="text-lg" />
-                  <span>{option.label}</span>
-                  <span className="text-[11px] font-normal opacity-70">{option.desc}</span>
-                </span>
-              ),
-            };
-          })}
-        />
-      </Section>
+      <Card className="mt-6">
+        <Section title="Appearance" variant="compact">
+          <Tabs
+            className="w-full [&>button]:flex-1"
+            variant="segmented"
+            value={selectedTheme}
+            onChange={setSelectedTheme}
+            items={THEME_OPTIONS.map((option) => {
+              const ThemeIcon = option.icon;
+              return {
+                value: option.value,
+                label: (
+                  <span className="flex flex-col items-center gap-1">
+                    <ThemeIcon className="text-lg" />
+                    <span>{option.label}</span>
+                    <span className="text-[11px] font-normal opacity-70">{option.desc}</span>
+                  </span>
+                ),
+              };
+            })}
+          />
+        </Section>
+      </Card>
 
       <div className="mt-8 flex items-center gap-3">
         <Button variant="primary"
@@ -343,7 +348,7 @@ export default function Settings() {
           <Button variant="outline"
             type="button"
             onClick={handleCancel}
-            className="rounded-lg border border-BrandGray2/30 px-4 py-2.5 text-sm text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
+            className="rounded-lg border border-[color:var(--ui-border)] px-4 py-2.5 text-sm text-[color:var(--ui-text-muted)] transition hover:border-[color:var(--ui-border-strong)] hover:text-[color:var(--ui-text)]"
           >
             Cancel
           </Button>
@@ -441,8 +446,8 @@ function DangerZone({
 
       {ownerMustTransfer ? (
         <div>
-          <p className="text-sm font-semibold text-BrandText">Leave {teamLabel}</p>
-          <p className="mt-1 text-xs text-BrandGray2">
+          <p className="text-sm font-semibold" style={{ color: "var(--ui-text)" }}>Leave {teamLabel}</p>
+          <p className="mt-1 text-xs" style={{ color: "var(--ui-text-subtle)" }}>
             You are the owner of this team. You must transfer ownership to another member before you can leave.
           </p>
           <Button
@@ -450,17 +455,17 @@ function DangerZone({
             variant="outline"
             size="sm"
             to="/app/profile"
-            className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-BrandGray2/30 px-4 py-2 text-xs font-semibold text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-[color:var(--ui-border)] px-4 py-2 text-xs font-semibold text-[color:var(--ui-text-muted)] transition hover:border-[color:var(--ui-border-strong)] hover:text-[color:var(--ui-text)]"
           >
             Go to Profile to Transfer Ownership
           </Button>
         </div>
       ) : (
         <div>
-          <p className="text-sm font-semibold text-BrandText">
+          <p className="text-sm font-semibold" style={{ color: "var(--ui-text)" }}>
             {isDeletingTeam ? `Delete ${teamLabel}` : isPersonal ? "Delete Personal Workspace" : `Leave ${teamLabel}`}
           </p>
-          <p className="mt-1 text-xs text-BrandGray2">
+          <p className="mt-1 text-xs" style={{ color: "var(--ui-text-subtle)" }}>
             {isDeletingTeam
               ? `You are the sole member. The team will be recoverable for 30 days via admin, then permanently deleted.`
               : isPersonal
@@ -483,7 +488,7 @@ function DangerZone({
               {buttonLabel}
             </Button>
           ) : (
-            <div className="mt-3 rounded-lg border border-red-500/30 bg-BrandBlack2/30 p-3">
+            <div className="mt-3 rounded-lg border border-red-500/30 p-3" >
               <p className="text-xs font-semibold text-red-300">
                 {isDeletingTeam
                   ? `Are you sure? Type the team name to confirm.`
@@ -492,8 +497,8 @@ function DangerZone({
 
               {isDeletingTeam && (
                 <div className="mt-2">
-                  <p className="mb-1.5 text-[11px] text-BrandGray2">
-                    Type <span className="font-semibold text-BrandGray">"{confirmTarget}"</span> to confirm
+                  <p className="mb-1.5 text-[11px]" style={{ color: "var(--ui-text-subtle)" }}>
+                    Type <span className="font-semibold" style={{ color: "var(--ui-text-muted)" }}>"{confirmTarget}"</span> to confirm
                   </p>
                   <Input
                     type="text"
@@ -501,7 +506,8 @@ function DangerZone({
                     onChange={(e) => setDeleteConfirmText(e.target.value)}
                     placeholder={confirmTarget}
                     maxLength={INPUT_LIMITS.NAME}
-                    className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3 py-2 text-xs text-BrandText placeholder-BrandGray2/50 outline-none focus:border-red-500/60"
+                    className="w-full rounded-lg border border-[color:var(--ui-border)] px-3 py-2 text-xs text-[color:var(--ui-text)] placeholder:text-[color:var(--ui-text-subtle)] outline-none focus:border-red-500/60"
+                    style={{ backgroundColor: "var(--ui-surface-2)" }}
                   />
                 </div>
               )}
@@ -511,7 +517,7 @@ function DangerZone({
                   variant="outline"
                   type="button"
                   onClick={handleCancelConfirm}
-                  className="flex-1 rounded-lg border border-BrandGray2/30 py-2 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText"
+                  className="flex-1 rounded-lg border border-[color:var(--ui-border)] py-2 text-xs text-[color:var(--ui-text-muted)] transition hover:border-[color:var(--ui-border-strong)] hover:text-[color:var(--ui-text)]"
                 >
                   Cancel
                 </Button>

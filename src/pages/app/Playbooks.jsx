@@ -109,7 +109,8 @@ function PlayGrid({ plays, isCoach, copiedIds, onCopyPlay, onPreview }) {
           padding="none"
           interactive
           onClick={() => onPreview(play)}
-          className="group flex cursor-pointer flex-col overflow-hidden rounded-3xl border border-BrandGray2/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0)),rgba(24,26,31,0.96)] transition hover:border-BrandOrange/25 hover:shadow-[0_18px_50px_rgba(0,0,0,0.24)]"
+          className="group flex cursor-pointer flex-col overflow-hidden rounded-3xl border border-[color:var(--ui-border)] transition hover:border-BrandOrange/25 hover:shadow-[0_18px_50px_rgba(0,0,0,0.24)]"
+          style={{ background: "linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0)),var(--ui-surface)" }}
         >
           <div className="relative block w-full text-left">
             <div className="border-b border-white/6 bg-BrandBlack/40 p-3">
@@ -126,8 +127,8 @@ function PlayGrid({ plays, isCoach, copiedIds, onCopyPlay, onPreview }) {
                   className="overflow-hidden rounded-2xl"
                 />
               ) : (
-                <div className="flex aspect-video w-full items-center justify-center rounded-2xl bg-BrandGray2/10">
-                  <FiLayout className="text-2xl text-BrandGray2/40" />
+                <div className="flex aspect-video w-full items-center justify-center rounded-2xl" style={{ backgroundColor: "var(--ui-surface-2)" }}>
+                  <FiLayout className="text-2xl opacity-40" style={{ color: "var(--ui-text-subtle)" }} />
                 </div>
               )}
               {play.tags?.length > 0 && (
@@ -141,17 +142,17 @@ function PlayGrid({ plays, isCoach, copiedIds, onCopyPlay, onPreview }) {
           <div className="flex flex-1 flex-col p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <h4 className="truncate font-Manrope text-sm font-bold text-BrandText">{play.title}</h4>
-                <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-BrandGray2">
+                <h4 className="truncate font-Manrope text-sm font-bold" style={{ color: "var(--ui-text)" }}>{play.title}</h4>
+                <p className="mt-1 text-[11px] uppercase tracking-[0.16em]" style={{ color: "var(--ui-text-subtle)" }}>
                   Play Preview
                 </p>
               </div>
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-BrandGray2/20 bg-BrandBlack/35 text-BrandGray transition group-hover:border-BrandOrange/30 group-hover:text-BrandOrange">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[color:var(--ui-border)] text-[color:var(--ui-text-muted)] transition group-hover:border-BrandOrange/30 group-hover:text-BrandOrange" style={{ backgroundColor: "rgba(0,0,0,0.35)" }}>
                 <FiChevronRight className="text-sm" />
               </div>
             </div>
             {play.description && (
-              <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-BrandGray">
+              <p className="mt-2 line-clamp-2 text-xs leading-relaxed" style={{ color: "var(--ui-text-muted)" }}>
                 {play.description}
               </p>
             )}
@@ -282,17 +283,17 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
   return (
     <div className="min-h-full">
       <div className="sticky top-0 z-10 bg-BrandBlack/95 backdrop-blur-sm">
-        <div className="border-b border-BrandGray2/20 px-6 py-4">
+        <div className="border-b border-[color:var(--ui-border)] px-6 py-4">
           <Button variant="ghost"
             onClick={onBack}
-            className="mb-1 flex items-center gap-1.5 text-xs text-BrandGray transition hover:text-BrandText"
+            className="mb-1 flex items-center gap-1.5 text-xs text-[color:var(--ui-text-muted)] transition hover:text-[color:var(--ui-text)]"
           >
             <FiChevronLeft className="text-xs" /> All Playbooks
           </Button>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="font-Manrope text-lg font-bold text-BrandText">{section?.name || "Playbook"}</h2>
-              <p className="text-xs text-BrandGray2">
+              <h2 className="font-Manrope text-lg font-bold" style={{ color: "var(--ui-text)" }}>{section?.name || "Playbook"}</h2>
+              <p className="text-xs" style={{ color: "var(--ui-text-subtle)" }}>
                 {hasActivePlayFilters
                   ? `${filteredPlays.length} of ${totalPlayCount} ${totalPlayCount === 1 ? "play" : "plays"}`
                   : `${totalPlayCount} ${totalPlayCount === 1 ? "play" : "plays"}`}
@@ -322,22 +323,23 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
         </div>
 
         {plays.length > 0 && (
-          <div className="border-b border-BrandGray2/15 px-6 py-3">
+          <div className="border-b border-[color:var(--ui-border)] px-6 py-3">
             <div className="flex flex-col gap-3 md:flex-row md:items-center">
               <div className="relative flex-1">
-                <FiSearch className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-BrandGray2" />
+                <FiSearch className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm" style={{ color: "var(--ui-text-subtle)" }} />
                 <Input
                   type="text"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search plays by title or tag..."
-                  className="w-full rounded-xl border border-BrandGray2/25 bg-BrandBlack2 py-2.5 pl-10 pr-10 text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2/40 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+                  className="w-full rounded-xl border border-[color:var(--ui-border)] py-2.5 pl-10 pr-10 text-sm outline-none transition hover:border-[color:var(--ui-border-strong)] focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+                  style={{ backgroundColor: "var(--ui-surface)", color: "var(--ui-text)" }}
                 />
                 {search && (
                   <Button variant="ghost"
                     type="button"
                     onClick={() => setSearch("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg p-1 text-BrandGray2 transition hover:bg-BrandBlack hover:text-BrandText"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg p-1 text-[color:var(--ui-text-subtle)] transition hover:text-[color:var(--ui-text)]"
                     aria-label="Clear search"
                   >
                     <FiX className="text-sm" />
@@ -353,7 +355,7 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
                   className={`flex min-w-[148px] items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition ${
                     filtersOpen || activeTags.length > 0
                       ? "border-BrandOrange/50 bg-BrandOrange/10 text-BrandOrange"
-                      : "border-BrandGray2/25 bg-BrandBlack2 text-BrandGray hover:border-BrandGray2/40 hover:text-BrandText"
+                      : "border-[color:var(--ui-border)] bg-[color:var(--ui-surface)] text-[color:var(--ui-text-muted)] hover:border-[color:var(--ui-border-strong)] hover:text-[color:var(--ui-text)]"
                   }`}
                 >
                   <FiFilter className="text-sm" />
@@ -373,21 +375,21 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
                 >
                   <div className="p-3">
                     <div className="mb-2 flex items-center justify-between gap-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-BrandGray2">
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--ui-text-subtle)" }}>
                         Section Tags
                       </p>
                       <Button variant="ghost"
                         type="button"
                         onClick={clearTagFilters}
                         disabled={activeTags.length === 0}
-                        className="text-xs font-semibold text-BrandGray transition hover:text-BrandOrange disabled:cursor-not-allowed disabled:text-BrandGray2/50"
+                        className="text-xs font-semibold text-[color:var(--ui-text-muted)] transition hover:text-BrandOrange disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         Clear all
                       </Button>
                     </div>
 
                     {sectionTags.length === 0 ? (
-                      <p className="rounded-xl border border-BrandGray2/15 bg-BrandBlack2/70 px-3 py-4 text-sm text-BrandGray2">
+                      <p className="rounded-xl border border-[color:var(--ui-border)] px-3 py-4 text-sm" style={{ backgroundColor: "var(--ui-surface-2)", color: "var(--ui-text-subtle)" }}>
                         No tags in this section yet.
                       </p>
                     ) : (
@@ -405,8 +407,8 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
                               onChange={() => toggleTagFilter(tag)}
                               className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 text-sm transition ${
                                 isActive
-                                  ? "border-BrandOrange/40 bg-BrandOrange/10 text-BrandText"
-                                  : "border-transparent bg-BrandBlack2/60 text-BrandGray hover:border-BrandGray2/20 hover:text-BrandText"
+                                  ? "border-BrandOrange/40 bg-BrandOrange/10 text-[color:var(--ui-text)]"
+                                  : "border-transparent bg-[color:var(--ui-surface-2)] text-[color:var(--ui-text-muted)] hover:border-[color:var(--ui-border)] hover:text-[color:var(--ui-text)]"
                               }`}
                             />
                           );
@@ -471,19 +473,20 @@ function BrowseTile({ title, description, playCount, onClick }) {
       padding="none"
       interactive
       onClick={onClick}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-BrandGray2/20 bg-BrandBlack2 text-left transition hover:border-BrandOrange/40 hover:shadow-lg hover:shadow-BrandOrange/5"
+      className="group flex flex-col overflow-hidden rounded-2xl border border-[color:var(--ui-border)] text-left transition hover:border-BrandOrange/40 hover:shadow-lg hover:shadow-BrandOrange/5"
+      style={{ backgroundColor: "var(--ui-surface)" }}
     >
       <div className="flex h-28 items-center justify-center bg-BrandOrange/5">
         <FiBookOpen className="text-4xl text-BrandOrange/40 transition group-hover:text-BrandOrange/70" />
       </div>
 
       <div className="flex flex-1 flex-col p-4">
-        <h3 className="truncate font-Manrope text-sm font-bold text-BrandText">{title}</h3>
+        <h3 className="truncate font-Manrope text-sm font-bold" style={{ color: "var(--ui-text)" }}>{title}</h3>
         {description && (
-          <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-BrandGray">{description}</p>
+          <p className="mt-1 line-clamp-2 text-xs leading-relaxed" style={{ color: "var(--ui-text-muted)" }}>{description}</p>
         )}
 
-        <p className="mt-auto pt-3 text-xs text-BrandGray2">
+        <p className="mt-auto pt-3 text-xs" style={{ color: "var(--ui-text-subtle)" }}>
           {playCount} {playCount === 1 ? "play" : "plays"}
         </p>
       </div>
@@ -572,8 +575,8 @@ export default function Playbooks() {
   return (
     <div className="overflow-y-auto min-h-full px-6 py-8">
       <div className="mb-2">
-        <h1 className="font-Manrope text-xl font-bold text-BrandText">Playbook Library</h1>
-        <p className="mt-1 text-sm text-BrandGray">
+        <h1 className="font-Manrope text-xl font-bold" style={{ color: "var(--ui-text)" }}>Playbook Library</h1>
+        <p className="mt-1 text-sm" style={{ color: "var(--ui-text-muted)" }}>
           {teamSport
             ? `Browse ${teamSport} play collections. Add plays to your team's playbook with one click.`
             : "Browse play collections. Add plays to your team's playbook with one click."
@@ -582,7 +585,7 @@ export default function Playbooks() {
       </div>
 
       {/* Tab selector — sits between header and content, below the nav */}
-      <div className="mb-6 border-b border-BrandGray2/15 pt-4">
+      <div className="mb-6 border-b border-[color:var(--ui-border)] pt-4">
         <PlaybookTabs activeTab={activeTab} onChange={setActiveTab} hasCommunity={communitySections.length > 0} />
       </div>
 

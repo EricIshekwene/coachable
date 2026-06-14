@@ -231,20 +231,21 @@ export default function PlayNew() {
   };
 
   const inputClass =
-    "w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-3.5 py-2.5 font-DmSans text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]";
+    "w-full rounded-lg border border-[color:var(--ui-border)] px-3.5 py-2.5 font-DmSans text-sm text-[color:var(--ui-text)] outline-none transition hover:border-[color:var(--ui-border-strong)] focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]";
+  const inputStyle = { backgroundColor: "var(--ui-surface-2)" };
 
   return (
     <div className="mx-auto max-w-lg px-6 py-8 md:px-10 md:py-16">
       <Button variant="ghost"
         onClick={() => navigate("/app/plays")}
-        className="mb-8 flex items-center gap-2 text-sm text-BrandGray transition hover:text-BrandText"
+        className="mb-8 flex items-center gap-2 text-sm text-[color:var(--ui-text-muted)] transition hover:text-[color:var(--ui-text)]"
       >
         <FiArrowLeft />
         Back to Playbook
       </Button>
 
       <h1 className="font-Manrope text-xl font-bold tracking-tight">Create New Play</h1>
-      <p className="mt-1.5 text-sm text-BrandGray">
+      <p className="mt-1.5 text-sm" style={{ color: "var(--ui-text-muted)" }}>
         Add some details, then open the editor.
       </p>
 
@@ -257,6 +258,7 @@ export default function PlayNew() {
             onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g. Inside Pass Loop"
             className={inputClass}
+            style={inputStyle}
             maxLength={MAX_TITLE_LENGTH}
             autoFocus
           />
@@ -269,14 +271,15 @@ export default function PlayNew() {
           {/* Search — only shown when there are more than 6 presets */}
           {allPresets.length > 6 && (
             <div className="relative">
-              <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-BrandGray2" />
+              <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: "var(--ui-text-subtle)" }} />
               <Input
                 type="text"
                 value={presetSearch}
                 onChange={(e) => setPresetSearch(e.target.value)}
                 placeholder="Search presets..."
                 maxLength={100}
-                className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 py-2 pl-8 pr-3 font-DmSans text-sm text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2/50 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+                className="w-full rounded-lg border border-[color:var(--ui-border)] py-2 pl-8 pr-3 font-DmSans text-sm text-[color:var(--ui-text)] outline-none transition hover:border-[color:var(--ui-border-strong)] focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+                style={{ backgroundColor: "var(--ui-surface-2)" }}
               />
             </div>
           )}
@@ -287,7 +290,7 @@ export default function PlayNew() {
             style={{ maxHeight: 304 }}
           >
             {filteredPresets.length === 0 ? (
-              <p className="py-8 text-center text-sm text-BrandGray2">No presets match your search.</p>
+              <p className="py-8 text-center text-sm" style={{ color: "var(--ui-text-subtle)" }}>No presets match your search.</p>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {filteredPresets.map(({ id, label, playData: tileData }) => {
@@ -304,7 +307,7 @@ export default function PlayNew() {
                       className={`group flex flex-col gap-1.5 rounded-xl border-2 p-1.5 text-left transition-all duration-200 focus:outline-none ${
                         isSelected
                           ? "border-BrandOrange shadow-[0_0_0_4px_rgba(255,122,24,0.12)] bg-BrandOrange/5"
-                          : "border-BrandGray2/20 bg-BrandBlack2/40 hover:border-BrandGray2/50 hover:bg-BrandBlack2/70"
+                          : "border-[color:var(--ui-border)] bg-[color:var(--ui-surface-2)] hover:border-[color:var(--ui-border-strong)] hover:bg-[color:var(--ui-surface-3)]"
                       }`}
                     >
                       <div className="overflow-hidden rounded-lg ring-1 ring-white/5" style={{ height: 90 }}>
@@ -320,7 +323,7 @@ export default function PlayNew() {
                         />
                       </div>
                       <div className="flex items-center justify-between px-0.5 pb-0.5">
-                        <span className={`truncate font-DmSans text-xs font-semibold transition-colors ${isSelected ? "text-BrandOrange" : "text-BrandGray group-hover:text-BrandText"}`}>
+                        <span className={`truncate font-DmSans text-xs font-semibold transition-colors ${isSelected ? "text-BrandOrange" : "text-[color:var(--ui-text-muted)] group-hover:text-[color:var(--ui-text)]"}`}>
                           {label}
                         </span>
                         {isSelected && (
@@ -350,12 +353,12 @@ export default function PlayNew() {
                 className={`flex flex-1 flex-col items-center gap-1 rounded-xl border-2 px-3 py-3 text-sm font-medium transition-all duration-200 focus:outline-none ${
                   editorMode === "drawing"
                     ? "border-BrandOrange bg-BrandOrange/5 text-BrandOrange shadow-[0_0_0_4px_rgba(255,122,24,0.12)]"
-                    : "border-BrandGray2/20 bg-BrandBlack2/40 text-BrandGray hover:border-BrandGray2/50 hover:bg-BrandBlack2/70 hover:text-BrandText"
+                    : "border-[color:var(--ui-border)] bg-[color:var(--ui-surface-2)] text-[color:var(--ui-text-muted)] hover:border-[color:var(--ui-border-strong)] hover:bg-[color:var(--ui-surface-3)] hover:text-[color:var(--ui-text)]"
                 }`}
               >
                 <span className="text-base">✏️</span>
                 Drawing
-                <span className={`text-xs font-normal ${editorMode === "drawing" ? "text-BrandOrange/70" : "text-BrandGray2"}`}>
+                <span className={`text-xs font-normal ${editorMode === "drawing" ? "text-BrandOrange/70" : "text-[color:var(--ui-text-subtle)]"}`}>
                   For simple routes
                 </span>
               </Button>
@@ -365,12 +368,12 @@ export default function PlayNew() {
                 className={`flex flex-1 flex-col items-center gap-1 rounded-xl border-2 px-3 py-3 text-sm font-medium transition-all duration-200 focus:outline-none ${
                   editorMode === "keyframe"
                     ? "border-BrandOrange bg-BrandOrange/5 text-BrandOrange shadow-[0_0_0_4px_rgba(255,122,24,0.12)]"
-                    : "border-BrandGray2/20 bg-BrandBlack2/40 text-BrandGray hover:border-BrandGray2/50 hover:bg-BrandBlack2/70 hover:text-BrandText"
+                    : "border-[color:var(--ui-border)] bg-[color:var(--ui-surface-2)] text-[color:var(--ui-text-muted)] hover:border-[color:var(--ui-border-strong)] hover:bg-[color:var(--ui-surface-3)] hover:text-[color:var(--ui-text)]"
                 }`}
               >
                 <span className="text-base">⏱</span>
                 Keyframe
-                <span className={`text-xs font-normal ${editorMode === "keyframe" ? "text-BrandOrange/70" : "text-BrandGray2"}`}>
+                <span className={`text-xs font-normal ${editorMode === "keyframe" ? "text-BrandOrange/70" : "text-[color:var(--ui-text-subtle)]"}`}>
                   For complex movement
                 </span>
               </Button>
@@ -380,13 +383,14 @@ export default function PlayNew() {
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold">
-            Tags <span className="font-normal text-BrandGray2">(optional)</span>
+            Tags <span className="font-normal" style={{ color: "var(--ui-text-subtle)" }}>(optional)</span>
           </label>
 
           {/* Tag chips + input */}
           <div
             ref={tagContainerRef}
-            className="flex min-h-10.5 flex-wrap items-center gap-1.5 rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-2.5 py-2 transition focus-within:border-BrandOrange focus-within:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+            className="flex min-h-10.5 flex-wrap items-center gap-1.5 rounded-lg border border-[color:var(--ui-border)] px-2.5 py-2 transition focus-within:border-BrandOrange focus-within:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+            style={{ backgroundColor: "var(--ui-surface-2)" }}
             onClick={() => inputRef.current?.focus()}
           >
             {tags.map((tag) => (
@@ -405,7 +409,8 @@ export default function PlayNew() {
               onKeyDown={handleTagKeyDown}
               placeholder={tags.length === 0 ? "Type to search tags..." : ""}
               maxLength={40}
-              className="min-w-30 flex-1 bg-transparent text-sm text-BrandText outline-none placeholder:text-BrandGray2"
+              className="min-w-30 flex-1 bg-transparent text-sm outline-none"
+              style={{ color: "var(--ui-text)" }}
             />
           </div>
 
@@ -418,9 +423,9 @@ export default function PlayNew() {
           >
             <div className="max-h-56 overflow-auto" style={{ minWidth: 220 }}>
               {isRecentSection && (
-                <div className="flex items-center gap-1.5 border-b border-BrandGray2/15 px-3.5 py-1.5">
-                  <FiClock className="text-[10px] text-BrandGray2" />
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-BrandGray2">Recent</span>
+                <div className="flex items-center gap-1.5 border-b px-3.5 py-1.5" style={{ borderColor: "var(--ui-border)" }}>
+                  <FiClock className="text-[10px]" style={{ color: "var(--ui-text-subtle)" }} />
+                  <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--ui-text-subtle)" }}>Recent</span>
                 </div>
               )}
               {suggestions.map((tag, i) => (
@@ -433,11 +438,11 @@ export default function PlayNew() {
                   className={`flex w-full items-center px-3.5 py-2.5 text-left text-sm transition ${
                     i === highlightedIndex
                       ? "bg-BrandOrange/10 text-BrandOrange"
-                      : "text-BrandGray hover:bg-BrandBlack2 hover:text-BrandText"
+                      : "text-[color:var(--ui-text-muted)] hover:bg-[color:var(--ui-surface)] hover:text-[color:var(--ui-text)]"
                   }`}
                 >
                   {tag}
-                  <span className="ml-auto text-[10px] text-BrandGray2">
+                  <span className="ml-auto text-[10px]" style={{ color: "var(--ui-text-subtle)" }}>
                     {i === highlightedIndex ? "Tab / Enter" : ""}
                   </span>
                 </Button>
