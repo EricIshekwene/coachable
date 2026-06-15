@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { FiChevronDown, FiArrowRight, FiPlay, FiClock } from "react-icons/fi";
-import SportAwarePublicNav from "../components/SportAwarePublicNav";
-import usePageMeta from "../hooks/usePageMeta";
+import SportAwarePublicNav from "../../components/SportAwarePublicNav";
+import usePageMeta from "../../hooks/usePageMeta";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 

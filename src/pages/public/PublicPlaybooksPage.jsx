@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import logo from "../assets/logos/White_Full_Coachable.png";
-import PlayPreviewCard from "../components/PlayPreviewCard";
+import logo from "../../assets/logos/White_Full_Coachable.png";
+import PlayPreviewCard from "../../components/PlayPreviewCard";
 import { FiArrowRight, FiChevronRight, FiLayout, FiTag, FiBookOpen } from "react-icons/fi";
-import SportAwarePublicNav from "../components/SportAwarePublicNav";
-import usePageMeta from "../hooks/usePageMeta";
-import { getPlaybooksMeta } from "../utils/sportSeo";
+import SportAwarePublicNav from "../../components/SportAwarePublicNav";
+import usePageMeta from "../../hooks/usePageMeta";
+import { getPlaybooksMeta } from "../../utils/sportSeo";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 

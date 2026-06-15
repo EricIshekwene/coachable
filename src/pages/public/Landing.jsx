@@ -1,21 +1,21 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import logo from "../assets/logos/White_Full_Coachable.png";
+import { useAuth } from "../../context/AuthContext";
+import logo from "../../assets/logos/White_Full_Coachable.png";
 const productVideo = "/product-demo.mp4";
-import videoSectionBg from "../assets/backgrounds/Gemini_Generated_Image_fet7z5fet7z5fet7.png";
+import videoSectionBg from "../../assets/backgrounds/Gemini_Generated_Image_fet7z5fet7z5fet7.png";
 import { FiArrowRight, FiPlay, FiUsers, FiLayers, FiPlus, FiCheck } from "react-icons/fi";
-import { createPlay } from "../api/apiPlays";
-import PlayPreviewCard from "../components/PlayPreviewCard";
-import SportAwarePublicNav from "../components/SportAwarePublicNav";
-import usePageMeta from "../hooks/usePageMeta";
-import { getLandingMeta } from "../utils/sportSeo";
+import { createPlay } from "../../api/apiPlays";
+import PlayPreviewCard from "../../components/PlayPreviewCard";
+import SportAwarePublicNav from "../../components/SportAwarePublicNav";
+import usePageMeta from "../../hooks/usePageMeta";
+import { getLandingMeta } from "../../utils/sportSeo";
 
 // Local photography assets
-import filmSessionLong from "../assets/pictures/film_session_long.png";
-import coachStudyingLong from "../assets/pictures/coach_studying_long.png";
-import coachesTogetherLong from "../assets/pictures/coaches_together_long.png";
-import oldWhiteboardLong from "../assets/pictures/old_whiteboard_long.png";
+import filmSessionLong from "../../assets/pictures/film_session_long.png";
+import coachStudyingLong from "../../assets/pictures/coach_studying_long.png";
+import coachesTogetherLong from "../../assets/pictures/coaches_together_long.png";
+import oldWhiteboardLong from "../../assets/pictures/old_whiteboard_long.png";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 

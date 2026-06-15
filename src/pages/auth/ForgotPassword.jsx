@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAppMessage } from "../context/AppMessageContext";
-import { apiFetch } from "../api/api";
-import { validateEmail, INPUT_LIMITS } from "../utils/inputValidation";
-import logo from "../assets/logos/full_Coachable_logo.png";
-import whiteLogo from "../assets/logos/White_Full_Coachable.png";
+import { useAppMessage } from "../../context/AppMessageContext";
+import { apiFetch } from "../../api/api";
+import { validateEmail, INPUT_LIMITS } from "../../utils/inputValidation";
+import logo from "../../assets/logos/full_Coachable_logo.png";
+import whiteLogo from "../../assets/logos/White_Full_Coachable.png";
 
 /**
  * Forgot password page — user enters their email to receive a 6-digit reset code.

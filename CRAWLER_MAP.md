@@ -223,16 +223,16 @@ All under [src/animation/](src/animation/), [src/canvas/](src/canvas/), [src/fea
 ### Public / marketing
 | Path | File |
 |---|---|
-| `/`, `/home`, `/rugby`, `/football`, etc. | [Landing.jsx](src/pages/Landing.jsx) |
-| `/rugby/playbooks`, etc. | [PublicPlaybooksPage.jsx](src/pages/PublicPlaybooksPage.jsx) |
-| `/resources` | [Resources.jsx](src/pages/Resources.jsx) |
-| `/enterprise` | [Enterprise.jsx](src/pages/Enterprise.jsx) |
-| `/signup` | [Signup.jsx](src/pages/Signup.jsx) |
-| `/login` | [Login.jsx](src/pages/Login.jsx) |
-| `/forgot-password` | [ForgotPassword.jsx](src/pages/ForgotPassword.jsx) |
-| `/reset-password` | [ResetPassword.jsx](src/pages/ResetPassword.jsx) |
+| `/`, `/home`, `/rugby`, `/football`, etc. | [Landing.jsx](src/pages/public/Landing.jsx) |
+| `/rugby/playbooks`, etc. | [PublicPlaybooksPage.jsx](src/pages/public/PublicPlaybooksPage.jsx) |
+| `/resources` | [Resources.jsx](src/pages/public/Resources.jsx) |
+| `/enterprise` | [Enterprise.jsx](src/pages/public/Enterprise.jsx) |
+| `/signup` | [Signup.jsx](src/pages/auth/Signup.jsx) |
+| `/login` | [Login.jsx](src/pages/auth/Login.jsx) |
+| `/forgot-password` | [ForgotPassword.jsx](src/pages/auth/ForgotPassword.jsx) |
+| `/reset-password` | [ResetPassword.jsx](src/pages/auth/ResetPassword.jsx) |
 | `/onboarding` | [Onboarding.jsx](src/pages/Onboarding.jsx) — two-step wizard for "Create Team": name → sport selection (required); see [SPORT_ONBOARDING_SELECTION.md](src/pages/SPORT_ONBOARDING_SELECTION.md) |
-| `/verify-email` | [VerifyEmail.jsx](src/pages/VerifyEmail.jsx) |
+| `/verify-email` | [VerifyEmail.jsx](src/pages/auth/VerifyEmail.jsx) |
 | `/no-team` | [NoTeam.jsx](src/pages/NoTeam.jsx) |
 | `/slate`, `/slate/:sport` | [SportPickerPage.jsx](src/pages/SportPickerPage.jsx) (picker) → SlateRoot wrapper in App.jsx |
 | `*` (404) | [NotFound.jsx](src/pages/NotFound.jsx) |
@@ -240,10 +240,10 @@ All under [src/animation/](src/animation/), [src/canvas/](src/canvas/), [src/fea
 ### Sharing
 | Path | File |
 |---|---|
-| `/shared/:token` | [SharedPlay.jsx](src/pages/SharedPlay.jsx) |
-| `/shared/:token/view` | [SharedPlayView.jsx](src/pages/SharedPlayView.jsx) |
-| `/shared/folder/:token` | [SharedFolder.jsx](src/pages/SharedFolder.jsx) |
-| `/platform-play/:playId` | [PlatformPlayView.jsx](src/pages/PlatformPlayView.jsx) |
+| `/shared/:token` | [SharedPlay.jsx](src/pages/public/SharedPlay.jsx) |
+| `/shared/:token/view` | [SharedPlayView.jsx](src/pages/public/SharedPlayView.jsx) |
+| `/shared/folder/:token` | [SharedFolder.jsx](src/pages/public/SharedFolder.jsx) |
+| `/platform-play/:playId` | [PlatformPlayView.jsx](src/pages/public/PlatformPlayView.jsx) |
 
 ### App shell (`/app/*`, behind auth+onboarded)
 | Path | File |
@@ -295,7 +295,7 @@ Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](.codex/STAFF_A
 
 | Path | File |
 |---|---|
-| `/staff/login` | [StaffLogin.jsx](src/pages/StaffLogin.jsx) |
+| `/staff/login` | [StaffLogin.jsx](src/pages/auth/StaffLogin.jsx) |
 | `/staff/accept-invite` | [StaffAcceptInvite.jsx](src/pages/StaffAcceptInvite.jsx) |
 | `/staff` (dashboard) | [StaffDashboard.jsx](src/pages/StaffDashboard.jsx) |
 | `/staff/app` | reuses [pages/admin/AdminPlaysPage.jsx](src/pages/admin/AdminPlaysPage.jsx) |

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { adminApi } from "../admin/adminTransport";
-import { validateEmail } from "../utils/inputValidation";
+import { useAuth } from "../../context/AuthContext";
+import { adminApi } from "../../admin/adminTransport";
+import { validateEmail } from "../../utils/inputValidation";
 
 /**
  * Login page for the scoped staff-admin area. Uses the standard /auth/login

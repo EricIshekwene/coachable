@@ -1,17 +1,17 @@
 import { Link, useSearchParams } from "react-router-dom";
-import logo from "../assets/logos/White_Full_Coachable.png";
-import SportAwarePublicNav from "../components/SportAwarePublicNav";
-import ericPhoto from "../assets/pictures/faces/IMG_7356 (5).jpg";
-import ericRugbyPhoto from "../assets/pictures/faces/Eric_Rugby.JPG";
-import rugbyHeroLong from "../assets/pictures/Rugby_staring_at_ipad_long.png";
-import rugbyCoachLong from "../assets/pictures/Rugby_coach_holding_ipad_long.png";
+import logo from "../../assets/logos/White_Full_Coachable.png";
+import SportAwarePublicNav from "../../components/SportAwarePublicNav";
+import ericPhoto from "../../assets/pictures/faces/IMG_7356 (5).jpg";
+import ericRugbyPhoto from "../../assets/pictures/faces/Eric_Rugby.JPG";
+import rugbyHeroLong from "../../assets/pictures/Rugby_staring_at_ipad_long.png";
+import rugbyCoachLong from "../../assets/pictures/Rugby_coach_holding_ipad_long.png";
 import {
   FiArrowRight,
   FiZap,
   FiLayers,
   FiShare2,
 } from "react-icons/fi";
-import usePageMeta from "../hooks/usePageMeta";
+import usePageMeta from "../../hooks/usePageMeta";
 
 const PROBLEMS = [
   {
