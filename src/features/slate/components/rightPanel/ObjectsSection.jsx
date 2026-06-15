@@ -2,7 +2,7 @@ import React from "react";
 import { FaFootballBall } from "react-icons/fa";
 import { MdDeleteOutline } from "react-icons/md";
 import { FiEye, FiEyeOff } from "react-icons/fi";
-import coneIcon from "../../assets/objects/cone.png";
+import coneIcon from "../../../../assets/objects/cone.png";
 
 export default function ObjectsSection({
   ballsById,

@@ -12,17 +12,17 @@ import {
   RequireOnboarded,
 } from "../../App";
 
-import Login from "../../pages/Login";
-import Signup from "../../pages/Signup";
+import Login from "../../pages/auth/Login";
+import Signup from "../../pages/auth/Signup";
 import Onboarding from "../../pages/Onboarding";
-import ForgotPassword from "../../pages/ForgotPassword";
-import ResetPassword from "../../pages/ResetPassword";
-import VerifyEmail from "../../pages/VerifyEmail";
+import ForgotPassword from "../../pages/auth/ForgotPassword";
+import ResetPassword from "../../pages/auth/ResetPassword";
+import VerifyEmail from "../../pages/auth/VerifyEmail";
 import NoTeam from "../../pages/NoTeam";
 import SportPickerPage from "../../pages/SportPickerPage";
-import PlatformPlayView from "../../pages/PlatformPlayView";
-import SharedPlay from "../../pages/SharedPlay";
-import SharedFolder from "../../pages/SharedFolder";
+import PlatformPlayView from "../../pages/public/PlatformPlayView";
+import SharedPlay from "../../pages/public/SharedPlay";
+import SharedFolder from "../../pages/public/SharedFolder";
 import SaveToPlaybookModal from "../../components/SaveToPlaybookModal";
 
 function jsonResponse(status, body) {

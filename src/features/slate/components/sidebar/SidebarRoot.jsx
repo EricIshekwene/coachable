@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import rugbyScrum from "../../assets/prefabIcons/Rugby Scrum.png";
-import rugbyLineout from "../../assets/prefabIcons/Rugby Lineout.png";
-import rugbyKickoff from "../../assets/prefabIcons/Rugby KickOff.png";
+import rugbyScrum from "../../../../assets/prefabIcons/Rugby Scrum.png";
+import rugbyLineout from "../../../../assets/prefabIcons/Rugby Lineout.png";
+import rugbyKickoff from "../../../../assets/prefabIcons/Rugby KickOff.png";
 
 import SelectToolSection from "./SelectToolSection";
 import PenToolSection from "./PenToolSection";

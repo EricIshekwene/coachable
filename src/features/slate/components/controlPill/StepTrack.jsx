@@ -1,5 +1,5 @@
 import { useRef, useCallback } from "react";
-import { getStepColor } from "../../utils/stepColor";
+import { getStepColor } from "../../../../utils/stepColor";
 import {
   TRACK_SNAP_THRESHOLD_PX,
   pxToMs,

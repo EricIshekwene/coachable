@@ -1,4 +1,4 @@
-import ConfirmDialog from "../../design-system/components/ConfirmDialog";
+import ConfirmDialog from "../../../../design-system/components/ConfirmDialog";
 
 /**
  * ConfirmModal — compatibility shim over ConfirmDialog.

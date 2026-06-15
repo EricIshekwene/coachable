@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
-import SelectedKeyframeIcon from "../../assets/keyframes/Selected Key Frame.png";
-import UnselectedKeyframeIcon from "../../assets/keyframes/Unselected Key Frame.png";
+import SelectedKeyframeIcon from "../../../../assets/keyframes/Selected Key Frame.png";
+import UnselectedKeyframeIcon from "../../../../assets/keyframes/Unselected Key Frame.png";
 
 /** Minimum gap (ms) between keyframes during drag — must match Slate.jsx constant. */
 const KEYFRAME_MIN_GAP_MS = 500;

@@ -4,7 +4,7 @@ import MessagePopup from "../../components/MessagePopup/MessagePopup";
 import { useMessagePopup } from "../../components/MessagePopup/useMessagePopup";
 import { useAdmin } from "../../admin/AdminContext";
 import useThemeColor from "../../hooks/useThemeColor";
-import MobileViewOnlyGate from "../../components/MobileViewOnlyGate";
+import MobileViewOnlyGate from "../../features/slate/components/MobileViewOnlyGate";
 import { GIF_PRESETS } from "../../utils/gifEncoder";
 import { getLogs as getGifLogs } from "../../utils/gifExportDebugLogger";
 

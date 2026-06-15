@@ -12,8 +12,8 @@ import {
 } from "react-icons/pi";
 import { TbFlipHorizontal, TbFlipVertical } from "react-icons/tb";
 import { MdAlignHorizontalLeft, MdAlignHorizontalCenter, MdAlignHorizontalRight } from "react-icons/md";
-import coneIcon from "../assets/objects/cone.png";
-import { SPORT_DEFAULTS } from "../features/slate/hooks/useAdvancedSettings";
+import coneIcon from "../../../assets/objects/cone.png";
+import { SPORT_DEFAULTS } from "../../hooks/useAdvancedSettings";
 import { Slider } from "@mui/material";
 import { BRAND_SLIDER_SX } from "./subcomponents/sliderStyles";
 import PitchSettingsSection from "./advancedSettings/PitchSettingsSection";

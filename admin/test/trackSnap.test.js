@@ -9,7 +9,7 @@ import {
   pxToMs,
   snapTimeMs,
   snapBodyStartMs,
-} from "../../src/components/controlPill/trackSnap.js";
+} from "../../src/features/slate/components/controlPill/trackSnap.js";
 
 describe("pxToMs", () => {
   it("converts a pixel distance to ms across the usable 94% span", () => {

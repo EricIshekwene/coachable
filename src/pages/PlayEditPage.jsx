@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useMessagePopup } from "../components/MessagePopup/useMessagePopup";
 import MessagePopup from "../components/MessagePopup/MessagePopup";
 import Slate from "../features/slate/Slate";
-import MobileViewOnlyGate from "../components/MobileViewOnlyGate";
+import MobileViewOnlyGate from "../features/slate/components/MobileViewOnlyGate";
 import { useAuth } from "../context/AuthContext";
 import { fetchPlay, updatePlay } from "../api/apiPlays";
 import useThemeColor from "../hooks/useThemeColor";

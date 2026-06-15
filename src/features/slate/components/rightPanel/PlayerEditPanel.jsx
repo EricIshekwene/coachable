@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { IoClose } from "react-icons/io5";
 import { POPUP_DENSE_INPUT_CLASS } from "../subcomponents/popupStyles";
-import { SPORT_DEFAULTS, SPORT_POSITION_PRESETS } from "../../features/slate/hooks/useAdvancedSettings";
+import { SPORT_DEFAULTS, SPORT_POSITION_PRESETS } from "../../../../hooks/useAdvancedSettings";
 
 const PLAYER_COLORS = [
   { value: "#ef4444", label: "Red" },

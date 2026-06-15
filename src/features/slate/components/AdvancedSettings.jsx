@@ -13,7 +13,7 @@ import LoggerSettingsSection from "./advancedSettings/LoggerSettingsSection";
 import PlayPreviewCard from "./PlayPreviewCard";
 import DebugPanel from "./rightPanel/DebugPanel";
 import RecordDebugPanel from "./advancedSettings/RecordDebugPanel";
-import { SPORT_DEFAULTS } from "../features/slate/hooks/useAdvancedSettings";
+import { SPORT_DEFAULTS } from "../../hooks/useAdvancedSettings";
 
 export default function AdvancedSettings({
     value,

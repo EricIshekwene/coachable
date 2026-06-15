@@ -18,7 +18,7 @@ A lookup table for finding code by feature or by file. Use this when the user sa
 | "field viewport", "BoardViewport" | [src/canvas/BoardViewport.jsx](src/canvas/BoardViewport.jsx) | Wrapper div/ref around the canvas |
 | "pan / zoom / camera" | [src/features/slate/hooks/useFieldViewport.js](src/features/slate/hooks/useFieldViewport.js) | Camera `{x, y, zoom}`, fieldRotation |
 | "mobile touch gestures", "two-finger pan/pinch math" | [src/canvas/touchGestures.js](src/canvas/touchGestures.js) | Pure helpers (distance/midpoint/pinch-zoom/pan-delta) used by KonvaCanvasRoot's touch handler |
-| "mobile editor", "mobile-view sandbox", "/admin/mobile-view" | [src/pages/AdminMobileView.jsx](src/pages/AdminMobileView.jsx) + [src/components/MobileEditorBar.jsx](src/components/MobileEditorBar.jsx) | Touch-first Slate layout (admin-only). See [src/pages/MOBILE_EDITOR.md](src/pages/MOBILE_EDITOR.md) |
+| "mobile editor", "mobile-view sandbox", "/admin/mobile-view" | [src/pages/AdminMobileView.jsx](src/pages/AdminMobileView.jsx) + [src/components/MobileEditorBar.jsx](src/features/slate/components/MobileEditorBar.jsx) | Touch-first Slate layout (admin-only). See [src/pages/MOBILE_EDITOR.md](src/pages/MOBILE_EDITOR.md) |
 | "snapping", "guidelines", "orange dashes" | [src/canvas/hooks/useCanvasSnapping.js](src/canvas/hooks/useCanvasSnapping.js) | Center-to-center, field/canvas center snapping math |
 | "marquee select" | [src/canvas/hooks/useCanvasMarquee.js](src/canvas/hooks/useCanvasMarquee.js) | |
 | "canvas pan" | [src/canvas/hooks/useCanvasPan.js](src/canvas/hooks/useCanvasPan.js) | |
@@ -37,12 +37,12 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 | "annotation/motion split", "drawing schema", "v2 → v3 migration" | [src/features/slate/utils/drawingSchema.js](src/features/slate/utils/drawingSchema.js) |
 | "annotation visibility window math" | [src/features/slate/utils/drawingTiming.js](src/features/slate/utils/drawingTiming.js) |
 | "drawing scope config", "what a scope is allowed to do" | [src/canvas/drawingScopeConfig.js](src/canvas/drawingScopeConfig.js) |
-| "draw tools pill" (annotation palette) | [src/components/DrawToolsPill.jsx](src/components/DrawToolsPill.jsx) |
-| "animation drawing tools" (motion palette) | [src/components/AnimationDrawingTools.jsx](src/components/AnimationDrawingTools.jsx) |
-| "floating tool pill shell" (shared palette container) | [src/components/toolPills/FloatingToolPillShell.jsx](src/components/toolPills/FloatingToolPillShell.jsx) |
-| "flip / reflect drawings" | [src/components/rightPanel/ReflectPlaySection.jsx](src/components/rightPanel/ReflectPlaySection.jsx) |
-| "drawing style" (color/width) | [src/components/rightPanel/DrawingStyleSection.jsx](src/components/rightPanel/DrawingStyleSection.jsx) |
-| "drawing objects list" | [src/components/rightPanel/DrawingObjectsList.jsx](src/components/rightPanel/DrawingObjectsList.jsx) |
+| "draw tools pill" (annotation palette) | [src/components/DrawToolsPill.jsx](src/features/slate/components/DrawToolsPill.jsx) |
+| "animation drawing tools" (motion palette) | [src/components/AnimationDrawingTools.jsx](src/features/slate/components/AnimationDrawingTools.jsx) |
+| "floating tool pill shell" (shared palette container) | [src/components/toolPills/FloatingToolPillShell.jsx](src/features/slate/components/toolPills/FloatingToolPillShell.jsx) |
+| "flip / reflect drawings" | [src/components/rightPanel/ReflectPlaySection.jsx](src/features/slate/components/rightPanel/ReflectPlaySection.jsx) |
+| "drawing style" (color/width) | [src/components/rightPanel/DrawingStyleSection.jsx](src/features/slate/components/rightPanel/DrawingStyleSection.jsx) |
+| "drawing objects list" | [src/components/rightPanel/DrawingObjectsList.jsx](src/features/slate/components/rightPanel/DrawingObjectsList.jsx) |
 
 ### Animation / playback
 | User says... | Primary file(s) |
@@ -57,83 +57,83 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 ### Keyframes / timeline
 | User says... | Primary file(s) |
 |---|---|
-| "control pill", "the bottom bar" | [src/components/controlPill/ControlPill.jsx](src/components/controlPill/ControlPill.jsx) |
-| "timeline", "time bar" | [src/components/controlPill/TimeBar.jsx](src/components/controlPill/TimeBar.jsx) |
-| "keyframe display", "the keyframe dots" | [src/components/controlPill/KeyframeDisplay.jsx](src/components/controlPill/KeyframeDisplay.jsx) |
-| "keyframe manager" | [src/components/controlPill/KeyframeManager.jsx](src/components/controlPill/KeyframeManager.jsx) |
-| "playback controls" (play/pause) | [src/components/controlPill/PlaybackControls.jsx](src/components/controlPill/PlaybackControls.jsx) |
-| "speed slider" | [src/components/controlPill/SpeedSlider.jsx](src/components/controlPill/SpeedSlider.jsx) |
-| "time pill" (current time chip) | [src/components/controlPill/TimePill.jsx](src/components/controlPill/TimePill.jsx) |
-| "step track" (motion steps) | [src/components/controlPill/StepTrack.jsx](src/components/controlPill/StepTrack.jsx) |
-| "annotation visibility track" (timeline window for annotations) | [src/components/controlPill/AnnotationVisibilityTrack.jsx](src/components/controlPill/AnnotationVisibilityTrack.jsx) |
-| "track snapping", "timeline snap", "capcut/vn style snap" | [src/components/controlPill/trackSnap.js](src/components/controlPill/trackSnap.js) — pure helpers (see [TRACK_SNAPPING.md](src/components/controlPill/TRACK_SNAPPING.md)) |
-| "control pill dropdown" | [src/components/controlPill/DropdownMenu.jsx](src/components/controlPill/DropdownMenu.jsx) |
-| "control pill debug overlay" | [src/components/controlPill/DebugOverlay.jsx](src/components/controlPill/DebugOverlay.jsx) |
+| "control pill", "the bottom bar" | [src/features/slate/components/controlPill/ControlPill.jsx](src/features/slate/components/controlPill/ControlPill.jsx) |
+| "timeline", "time bar" | [src/features/slate/components/controlPill/TimeBar.jsx](src/features/slate/components/controlPill/TimeBar.jsx) |
+| "keyframe display", "the keyframe dots" | [src/features/slate/components/controlPill/KeyframeDisplay.jsx](src/features/slate/components/controlPill/KeyframeDisplay.jsx) |
+| "keyframe manager" | [src/features/slate/components/controlPill/KeyframeManager.jsx](src/features/slate/components/controlPill/KeyframeManager.jsx) |
+| "playback controls" (play/pause) | [src/features/slate/components/controlPill/PlaybackControls.jsx](src/features/slate/components/controlPill/PlaybackControls.jsx) |
+| "speed slider" | [src/features/slate/components/controlPill/SpeedSlider.jsx](src/features/slate/components/controlPill/SpeedSlider.jsx) |
+| "time pill" (current time chip) | [src/features/slate/components/controlPill/TimePill.jsx](src/features/slate/components/controlPill/TimePill.jsx) |
+| "step track" (motion steps) | [src/features/slate/components/controlPill/StepTrack.jsx](src/features/slate/components/controlPill/StepTrack.jsx) |
+| "annotation visibility track" (timeline window for annotations) | [src/features/slate/components/controlPill/AnnotationVisibilityTrack.jsx](src/features/slate/components/controlPill/AnnotationVisibilityTrack.jsx) |
+| "track snapping", "timeline snap", "capcut/vn style snap" | [src/features/slate/components/controlPill/trackSnap.js](src/features/slate/components/controlPill/trackSnap.js) — pure helpers (see [TRACK_SNAPPING.md](src/features/slate/components/controlPill/trackSnap.js](src/features/slate/components/controlPill/trackSnap.js) — pure helpers (see [TRACK_SNAPPING.md) |
+| "control pill dropdown" | [src/features/slate/components/controlPill/DropdownMenu.jsx](src/features/slate/components/controlPill/DropdownMenu.jsx) |
+| "control pill debug overlay" | [src/features/slate/components/controlPill/DebugOverlay.jsx](src/features/slate/components/controlPill/DebugOverlay.jsx) |
 
 ### Sidebars / panels
 | User says... | Primary file(s) |
 |---|---|
-| "left sidebar", "wide sidebar" | [src/components/WideSidebar.jsx](src/components/WideSidebar.jsx) → [src/components/wideSidebar/WideSidebarRoot.jsx](src/components/wideSidebar/WideSidebarRoot.jsx) |
-| "sidebar sections" | [src/components/sidebar/SidebarRoot.jsx](src/components/sidebar/SidebarRoot.jsx) |
-| "add player section" | [src/components/sidebar/AddPlayerSection.jsx](src/components/sidebar/AddPlayerSection.jsx) |
-| "select tool section" | [src/components/sidebar/SelectToolSection.jsx](src/components/sidebar/SelectToolSection.jsx) |
-| "pen tool section" | [src/components/sidebar/PenToolSection.jsx](src/components/sidebar/PenToolSection.jsx) |
-| "eraser tool section" | [src/components/sidebar/EraserToolSection.jsx](src/components/sidebar/EraserToolSection.jsx) |
-| "player color section" | [src/components/sidebar/PlayerColorSection.jsx](src/components/sidebar/PlayerColorSection.jsx) |
-| "presets section" (left) | [src/components/sidebar/PresetSection.jsx](src/components/sidebar/PresetSection.jsx) |
-| "prefabs section" (left) | [src/components/sidebar/PrefabsSection.jsx](src/components/sidebar/PrefabsSection.jsx) |
-| "history actions" (undo/redo buttons) | [src/components/sidebar/HistoryActionsSection.jsx](src/components/sidebar/HistoryActionsSection.jsx) |
-| "right panel" | [src/components/RightPanel.jsx](src/components/RightPanel.jsx) |
-| "all players list" (right panel) | [src/components/rightPanel/AllPlayersSection.jsx](src/components/rightPanel/AllPlayersSection.jsx) |
-| "selected players" (right panel) | [src/components/rightPanel/SelectedPlayersSection.jsx](src/components/rightPanel/SelectedPlayersSection.jsx) |
-| "objects list" (right panel) | [src/components/rightPanel/ObjectsSection.jsx](src/components/rightPanel/ObjectsSection.jsx) |
-| "players section" (generic, right) | [src/components/rightPanel/PlayersSection.jsx](src/components/rightPanel/PlayersSection.jsx) |
-| "player row" | [src/components/rightPanel/PlayerRow.jsx](src/components/rightPanel/PlayerRow.jsx) |
-| "player edit panel" | [src/components/rightPanel/PlayerEditPanel.jsx](src/components/rightPanel/PlayerEditPanel.jsx) |
-| "player transform" (rotate/scale) | [src/components/rightPanel/PlayerTransformSection.jsx](src/components/rightPanel/PlayerTransformSection.jsx) |
-| "field settings" (right panel) | [src/components/rightPanel/FieldSettingsSection.jsx](src/components/rightPanel/FieldSettingsSection.jsx) |
-| "play name editor" | [src/components/rightPanel/PlayNameEditor.jsx](src/components/rightPanel/PlayNameEditor.jsx) |
-| "export actions" (right panel) | [src/components/rightPanel/ExportActions.jsx](src/components/rightPanel/ExportActions.jsx) |
-| "save prefab button" | [src/components/rightPanel/SavePrefabButton.jsx](src/components/rightPanel/SavePrefabButton.jsx) |
-| "advanced settings button" | [src/components/rightPanel/AdvancedSettingsButton.jsx](src/components/rightPanel/AdvancedSettingsButton.jsx) |
-| "recording mode toggle" (right panel) | [src/components/rightPanel/RecordingModeToggle.jsx](src/components/rightPanel/RecordingModeToggle.jsx) |
-| "recording player list" (right panel) | [src/components/rightPanel/RecordingPlayerList.jsx](src/components/rightPanel/RecordingPlayerList.jsx) |
-| "debug panel" (right panel) | [src/components/rightPanel/DebugPanel.jsx](src/components/rightPanel/DebugPanel.jsx) |
+| "left sidebar", "wide sidebar" | [src/components/WideSidebar.jsx](src/features/slate/components/WideSidebar.jsx) → [src/components/wideSidebar/WideSidebarRoot.jsx](src/features/slate/components/wideSidebar/WideSidebarRoot.jsx) |
+| "sidebar sections" | [src/components/sidebar/SidebarRoot.jsx](src/features/slate/components/sidebar/SidebarRoot.jsx) |
+| "add player section" | [src/components/sidebar/AddPlayerSection.jsx](src/features/slate/components/sidebar/AddPlayerSection.jsx) |
+| "select tool section" | [src/components/sidebar/SelectToolSection.jsx](src/features/slate/components/sidebar/SelectToolSection.jsx) |
+| "pen tool section" | [src/components/sidebar/PenToolSection.jsx](src/features/slate/components/sidebar/PenToolSection.jsx) |
+| "eraser tool section" | [src/components/sidebar/EraserToolSection.jsx](src/features/slate/components/sidebar/EraserToolSection.jsx) |
+| "player color section" | [src/components/sidebar/PlayerColorSection.jsx](src/features/slate/components/sidebar/PlayerColorSection.jsx) |
+| "presets section" (left) | [src/components/sidebar/PresetSection.jsx](src/features/slate/components/sidebar/PresetSection.jsx) |
+| "prefabs section" (left) | [src/components/sidebar/PrefabsSection.jsx](src/features/slate/components/sidebar/PrefabsSection.jsx) |
+| "history actions" (undo/redo buttons) | [src/components/sidebar/HistoryActionsSection.jsx](src/features/slate/components/sidebar/HistoryActionsSection.jsx) |
+| "right panel" | [src/components/RightPanel.jsx](src/features/slate/components/RightPanel.jsx) |
+| "all players list" (right panel) | [src/components/rightPanel/AllPlayersSection.jsx](src/features/slate/components/rightPanel/AllPlayersSection.jsx) |
+| "selected players" (right panel) | [src/components/rightPanel/SelectedPlayersSection.jsx](src/features/slate/components/rightPanel/SelectedPlayersSection.jsx) |
+| "objects list" (right panel) | [src/components/rightPanel/ObjectsSection.jsx](src/features/slate/components/rightPanel/ObjectsSection.jsx) |
+| "players section" (generic, right) | [src/components/rightPanel/PlayersSection.jsx](src/features/slate/components/rightPanel/PlayersSection.jsx) |
+| "player row" | [src/components/rightPanel/PlayerRow.jsx](src/features/slate/components/rightPanel/PlayerRow.jsx) |
+| "player edit panel" | [src/components/rightPanel/PlayerEditPanel.jsx](src/features/slate/components/rightPanel/PlayerEditPanel.jsx) |
+| "player transform" (rotate/scale) | [src/components/rightPanel/PlayerTransformSection.jsx](src/features/slate/components/rightPanel/PlayerTransformSection.jsx) |
+| "field settings" (right panel) | [src/components/rightPanel/FieldSettingsSection.jsx](src/features/slate/components/rightPanel/FieldSettingsSection.jsx) |
+| "play name editor" | [src/components/rightPanel/PlayNameEditor.jsx](src/features/slate/components/rightPanel/PlayNameEditor.jsx) |
+| "export actions" (right panel) | [src/components/rightPanel/ExportActions.jsx](src/features/slate/components/rightPanel/ExportActions.jsx) |
+| "save prefab button" | [src/components/rightPanel/SavePrefabButton.jsx](src/features/slate/components/rightPanel/SavePrefabButton.jsx) |
+| "advanced settings button" | [src/components/rightPanel/AdvancedSettingsButton.jsx](src/features/slate/components/rightPanel/AdvancedSettingsButton.jsx) |
+| "recording mode toggle" (right panel) | [src/components/rightPanel/RecordingModeToggle.jsx](src/features/slate/components/rightPanel/RecordingModeToggle.jsx) |
+| "recording player list" (right panel) | [src/components/rightPanel/RecordingPlayerList.jsx](src/features/slate/components/rightPanel/RecordingPlayerList.jsx) |
+| "debug panel" (right panel) | [src/components/rightPanel/DebugPanel.jsx](src/features/slate/components/rightPanel/DebugPanel.jsx) |
 | "notification bell" (app shell nav) | [src/components/NotificationBell.jsx](src/components/NotificationBell.jsx) |
-| "mobile editor bar" | [src/components/MobileEditorBar.jsx](src/components/MobileEditorBar.jsx) |
-| "view-only controls" | [src/components/ViewOnlyControls.jsx](src/components/ViewOnlyControls.jsx) |
+| "mobile editor bar" | [src/components/MobileEditorBar.jsx](src/features/slate/components/MobileEditorBar.jsx) |
+| "view-only controls" | [src/components/ViewOnlyControls.jsx](src/features/slate/components/ViewOnlyControls.jsx) |
 
 ### Modals / popovers
 | User says... | Primary file(s) |
 |---|---|
-| "advanced settings modal" | [src/components/AdvancedSettings.jsx](src/components/AdvancedSettings.jsx) + [src/components/advancedSettings/](src/components/advancedSettings/) |
-| "animation settings" (in modal) | [src/components/advancedSettings/AnimationSettingsSection.jsx](src/components/advancedSettings/AnimationSettingsSection.jsx) |
-| "player settings" (in modal) | [src/components/advancedSettings/PlayerSettingsSection.jsx](src/components/advancedSettings/PlayerSettingsSection.jsx) |
-| "ball settings" (in modal) | [src/components/advancedSettings/BallSettingsSection.jsx](src/components/advancedSettings/BallSettingsSection.jsx) |
-| "pitch settings" (in modal) | [src/components/advancedSettings/PitchSettingsSection.jsx](src/components/advancedSettings/PitchSettingsSection.jsx) |
-| "logger settings" (in modal) | [src/components/advancedSettings/LoggerSettingsSection.jsx](src/components/advancedSettings/LoggerSettingsSection.jsx) |
-| "export video settings" (in modal) | [src/components/advancedSettings/ExportVideoSettingsSection.jsx](src/components/advancedSettings/ExportVideoSettingsSection.jsx) |
-| "record debug panel" (in modal) | [src/components/advancedSettings/RecordDebugPanel.jsx](src/components/advancedSettings/RecordDebugPanel.jsx) |
-| "export modal" | [src/components/ExportModal.jsx](src/components/ExportModal.jsx) |
-| "export overlay" (progress) | [src/components/ExportOverlay.jsx](src/components/ExportOverlay.jsx) |
-| "save prefab modal" | [src/components/SavePrefabModal.jsx](src/components/SavePrefabModal.jsx) |
+| "advanced settings modal" | [src/components/AdvancedSettings.jsx](src/features/slate/components/AdvancedSettings.jsx) + [src/components/advancedSettings/](src/features/slate/components/advancedSettings/) |
+| "animation settings" (in modal) | [src/components/advancedSettings/AnimationSettingsSection.jsx](src/features/slate/components/advancedSettings/AnimationSettingsSection.jsx) |
+| "player settings" (in modal) | [src/components/advancedSettings/PlayerSettingsSection.jsx](src/features/slate/components/advancedSettings/PlayerSettingsSection.jsx) |
+| "ball settings" (in modal) | [src/components/advancedSettings/BallSettingsSection.jsx](src/features/slate/components/advancedSettings/BallSettingsSection.jsx) |
+| "pitch settings" (in modal) | [src/components/advancedSettings/PitchSettingsSection.jsx](src/features/slate/components/advancedSettings/PitchSettingsSection.jsx) |
+| "logger settings" (in modal) | [src/components/advancedSettings/LoggerSettingsSection.jsx](src/features/slate/components/advancedSettings/LoggerSettingsSection.jsx) |
+| "export video settings" (in modal) | [src/components/advancedSettings/ExportVideoSettingsSection.jsx](src/features/slate/components/advancedSettings/ExportVideoSettingsSection.jsx) |
+| "record debug panel" (in modal) | [src/components/advancedSettings/RecordDebugPanel.jsx](src/features/slate/components/advancedSettings/RecordDebugPanel.jsx) |
+| "export modal" | [src/components/ExportModal.jsx](src/features/slate/components/ExportModal.jsx) |
+| "export overlay" (progress) | [src/components/ExportOverlay.jsx](src/features/slate/components/ExportOverlay.jsx) |
+| "save prefab modal" | [src/components/SavePrefabModal.jsx](src/features/slate/components/SavePrefabModal.jsx) |
 | "save to playbook modal" | [src/components/SaveToPlaybookModal.jsx](src/components/SaveToPlaybookModal.jsx) |
 | "auth prompt modal" | [src/components/AuthPromptModal.jsx](src/components/AuthPromptModal.jsx) |
-| "confirm modal" | [src/components/subcomponents/ConfirmModal.jsx](src/components/subcomponents/ConfirmModal.jsx) — compatibility shim over `ConfirmDialog` (Session 4); new code should use `ConfirmDialog` from the design-system barrel |
-| "color picker popover" | [src/components/subcomponents/ColorPickerPopover.jsx](src/components/subcomponents/ColorPickerPopover.jsx) |
-| "prefabs popover" | [src/components/subcomponents/PrefabsPopover.jsx](src/components/subcomponents/PrefabsPopover.jsx) |
-| "generic popovers" | [src/components/subcomponents/Popovers.jsx](src/components/subcomponents/Popovers.jsx) |
-| "screenshot confirm bar" | [src/components/ScreenshotConfirmBar.jsx](src/components/ScreenshotConfirmBar.jsx) |
+| "confirm modal" | [src/components/subcomponents/ConfirmModal.jsx](src/features/slate/components/subcomponents/ConfirmModal.jsx) — compatibility shim over `ConfirmDialog` (Session 4); new code should use `ConfirmDialog` from the design-system barrel |
+| "color picker popover" | [src/components/subcomponents/ColorPickerPopover.jsx](src/features/slate/components/subcomponents/ColorPickerPopover.jsx) |
+| "prefabs popover" | [src/components/subcomponents/PrefabsPopover.jsx](src/features/slate/components/subcomponents/PrefabsPopover.jsx) |
+| "generic popovers" | [src/components/subcomponents/Popovers.jsx](src/features/slate/components/subcomponents/Popovers.jsx) |
+| "screenshot confirm bar" | [src/components/ScreenshotConfirmBar.jsx](src/features/slate/components/ScreenshotConfirmBar.jsx) |
 | "message popup", "toast / notifications" | [src/components/MessagePopup/MessagePopup.jsx](src/components/MessagePopup/MessagePopup.jsx) + [src/components/MessagePopup/useMessagePopup.js](src/components/MessagePopup/useMessagePopup.js) (barrel: [index.js](src/components/MessagePopup/index.js)) |
-| "mobile view-only gate" | [src/components/MobileViewOnlyGate.jsx](src/components/MobileViewOnlyGate.jsx) |
+| "mobile view-only gate" | [src/components/MobileViewOnlyGate.jsx](src/features/slate/components/MobileViewOnlyGate.jsx) |
 
 ### Recording mode
 | User says... | Primary file(s) |
 |---|---|
 | "recording state / hook" | [src/features/slate/hooks/useRecordingMode.js](src/features/slate/hooks/useRecordingMode.js) |
-| "recording control bar" (replaces ControlPill) | [src/components/RecordingControlBar.jsx](src/components/RecordingControlBar.jsx) |
-| "recording countdown" | [src/components/RecordingCountdown.jsx](src/components/RecordingCountdown.jsx) |
-| "recording timeline pill" | [src/components/RecordingTimelinePill.jsx](src/components/RecordingTimelinePill.jsx) |
+| "recording control bar" (replaces ControlPill) | [src/components/RecordingControlBar.jsx](src/features/slate/components/RecordingControlBar.jsx) |
+| "recording countdown" | [src/components/RecordingCountdown.jsx](src/features/slate/components/RecordingCountdown.jsx) |
+| "recording timeline pill" | [src/components/RecordingTimelinePill.jsx](src/features/slate/components/RecordingTimelinePill.jsx) |
 
 ### Slate state hubs (in `src/features/slate/hooks/`)
 | User says... | Primary file(s) |
@@ -425,7 +425,7 @@ Suites used by the admin test runner: [src/testing/suites/](src/testing/suites/)
 - [src/features/slate/KEYFRAME_HIGHLIGHT_EDIT_FIX.md](src/features/slate/KEYFRAME_HIGHLIGHT_EDIT_FIX.md)
 - [src/features/slate/LOCALSTORAGE_AUTOSAVE.md](src/features/slate/LOCALSTORAGE_AUTOSAVE.md)
 - [src/canvas/canvas.md](src/canvas/canvas.md), [src/canvas/object-snapping.md](src/canvas/object-snapping.md)
-- [src/components/controlPill/TRACK_SNAPPING.md](src/components/controlPill/TRACK_SNAPPING.md) — CapCut/VN-style timeline snapping for motion + annotation track bars
+- [src/features/slate/components/controlPill/TRACK_SNAPPING.md](src/features/slate/components/controlPill/TRACK_SNAPPING.md) — CapCut/VN-style timeline snapping for motion + annotation track bars
 - [src/components/PLAY_PREVIEW_DRAWING_MODE.md](src/components/PLAY_PREVIEW_DRAWING_MODE.md), [src/components/PLAY_PREVIEW_PLAYER.md](src/components/PLAY_PREVIEW_PLAYER.md)
 - [server/routes/DEMO_VIDEOS.md](server/routes/DEMO_VIDEOS.md), [server/routes/FORGOT_PASSWORD.md](server/routes/FORGOT_PASSWORD.md), [server/routes/PLAY_COPY_ANALYTICS_FIX.md](server/routes/PLAY_COPY_ANALYTICS_FIX.md)
 - [server/PLAYBOOK_SECTIONS.md](server/PLAYBOOK_SECTIONS.md), [server/ONBOARDING_SEED_PLAY.md](server/ONBOARDING_SEED_PLAY.md), [server/lib/ACCOUNT_DELETED_EMAIL.md](server/lib/ACCOUNT_DELETED_EMAIL.md)

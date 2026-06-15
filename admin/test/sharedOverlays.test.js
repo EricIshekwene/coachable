@@ -33,7 +33,7 @@ describe("ConfirmDialog prop contract", () => {
     const { resolve, dirname } = await import("node:path");
     const { fileURLToPath } = await import("node:url");
     const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
-    const source = readFileSync(`${ROOT}/src/components/subcomponents/ConfirmModal.jsx`, "utf8");
+    const source = readFileSync(`${ROOT}/src/features/slate/components/subcomponents/ConfirmModal.jsx`, "utf8");
     expect(source).toMatch(/title.*message/);
     expect(source).toMatch(/description.*subtitle/);
     expect(source).toMatch(/tone.*danger.*"danger".*"default"/);

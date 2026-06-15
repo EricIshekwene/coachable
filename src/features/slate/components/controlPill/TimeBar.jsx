@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import KeyframeDisplay from "./KeyframeDisplay";
-import { log as logAnimDebug } from "../../animation/debugLogger";
+import { log as logAnimDebug } from "../../../../animation/debugLogger";
 
 const TRACK_VISUAL_START_PERCENT = 3;
 const TRACK_VISUAL_SPAN_PERCENT = 94;

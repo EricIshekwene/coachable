@@ -1,6 +1,6 @@
 import React from "react";
 import { FaCircle, FaCheck, FaPlay, FaPause, FaTrash, FaFootballBall } from "react-icons/fa";
-import coneIcon from "../../assets/objects/cone.png";
+import coneIcon from "../../../../assets/objects/cone.png";
 
 /**
  * Right panel section shown in recording mode.

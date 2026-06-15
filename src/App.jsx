@@ -63,7 +63,7 @@ import ReportIssue from "./pages/app/ReportIssue";
 import Notifications from "./pages/app/Notifications";
 import Playbooks from "./pages/app/Playbooks";
 import DemoVideos from "./pages/app/DemoVideos";
-import MobileViewOnlyGate from "./components/MobileViewOnlyGate";
+import MobileViewOnlyGate from "./features/slate/components/MobileViewOnlyGate";
 import SharedPlay from "./pages/public/SharedPlay";
 import SharedPlayView from "./pages/public/SharedPlayView";
 import SharedFolder from "./pages/public/SharedFolder";
