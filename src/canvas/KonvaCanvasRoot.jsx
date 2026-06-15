@@ -24,7 +24,7 @@ import {
   computePinchZoom,
   computeMidpointPan,
 } from "./touchGestures";
-import { log as logKeyToolDebug } from "./keyboardToolDebugLogger";
+import { log as logKeyToolDebug } from "./debug/keyboardToolDebugLogger";
 import RugbyField from "../assets/objects/Field Vectors/Rugby_Field.png";
 import SoccerField from "../assets/objects/Field Vectors/Soccer_Field.png";
 import FootballField from "../assets/objects/Field Vectors/Football_Field.png";

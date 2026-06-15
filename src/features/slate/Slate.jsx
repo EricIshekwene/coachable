@@ -40,8 +40,8 @@ import {
   upsertKeyframe,
 } from "../../animation";
 import { getLogs as getAnimDebugLogs, log as logAnimDebug } from "../../animation/debugLogger";
-import { getLogs as getDrawDebugLogs, log as logDrawDebug } from "../../canvas/drawDebugLogger";
-import { getLogs as getKeyToolDebugLogs, log as logKeyToolDebug } from "../../canvas/keyboardToolDebugLogger";
+import { getLogs as getDrawDebugLogs, log as logDrawDebug } from "../../canvas/debug/drawDebugLogger";
+import { getLogs as getKeyToolDebugLogs, log as logKeyToolDebug } from "../../canvas/debug/keyboardToolDebugLogger";
 import { getLogs as getVideoExportDebugLogs, log as logVideoExport } from "../../utils/videoExportDebugLogger";
 import { getLogs as getGifExportDebugLogs, log as logGifExport } from "../../utils/gifExportDebugLogger";
 import { supportsWebCodecsMP4, createMP4Encoder, isIOSDevice, convertWebMToMP4 } from "../../utils/videoEncoder";
@@ -49,10 +49,10 @@ import { encodeCanvasFramesToGIF, GIF_PRESETS } from "../../utils/gifEncoder";
 import { samplePathAtT } from "../../canvas/drawingGeometry";
 import { getStepColor } from "../../utils/stepColor";
 import { reportError } from "../../utils/errorReporter";
-import { getLogs as getPlaceBallDebugLogs, log as logPlaceBallDebug } from "./placeBallDebugLogger";
-import { getLogs as getRecordingDebugLogs, log as logRecordingDebug } from "./recordingDebugLogger";
-import { getLogs as getRotationDebugLogs, log as logRotationDebug } from "./rotationDebugLogger";
-import { getLogs as getPrefabDebugLogs, log as logPrefabDebug } from "./prefabDebugLogger";
+import { getLogs as getPlaceBallDebugLogs, log as logPlaceBallDebug } from "./debug/placeBallDebugLogger";
+import { getLogs as getRecordingDebugLogs, log as logRecordingDebug } from "./debug/recordingDebugLogger";
+import { getLogs as getRotationDebugLogs, log as logRotationDebug } from "./debug/rotationDebugLogger";
+import { getLogs as getPrefabDebugLogs, log as logPrefabDebug } from "./debug/prefabDebugLogger";
 import { getLogs as getKfMoveDebugLogs, log as logKfMoveDebug } from "../../animation/keyframeMoveDebugLogger";
 import {
   getLogs as getPersistenceDebugLogs,

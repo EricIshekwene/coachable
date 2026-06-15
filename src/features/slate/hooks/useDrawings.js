@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { log as logDrawDebug } from "../../../canvas/drawDebugLogger";
+import { log as logDrawDebug } from "../../../canvas/debug/drawDebugLogger";
 import { flipDrawing } from "../../../canvas/drawingGeometry";
 
 /**

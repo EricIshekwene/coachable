@@ -212,8 +212,8 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 ### Debug loggers (toggled in advanced-settings logger section)
 All under [src/animation/](src/animation/), [src/canvas/](src/canvas/), [src/features/slate/](src/features/slate/), [src/utils/](src/utils/):
 - `debugLogger.js` (animation), `keyframeMoveDebugLogger.js` (animation)
-- `drawDebugLogger.js`, `keyboardToolDebugLogger.js` (canvas)
-- `placeBallDebugLogger.js`, `recordingDebugLogger.js`, `rotationDebugLogger.js`, `prefabDebugLogger.js` (slate)
+- `debug/drawDebugLogger.js`, `debug/keyboardToolDebugLogger.js` (canvas/debug/)
+- `debug/placeBallDebugLogger.js`, `debug/recordingDebugLogger.js`, `debug/rotationDebugLogger.js`, `debug/prefabDebugLogger.js` (slate/debug/)
 - `videoExportDebugLogger.js`, `playPersistenceDebugLogger.js` (utils)
 
 ---

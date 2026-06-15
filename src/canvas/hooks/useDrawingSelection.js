@@ -16,7 +16,7 @@ import {
   hitTestEndpointHandle,
   HANDLE_CURSORS,
 } from "../drawingGeometry";
-import { log as logDrawDebug } from "../drawDebugLogger";
+import { log as logDrawDebug } from "../debug/drawDebugLogger";
 import {
   isAnnotationDrawing,
   isMotionDrawing,

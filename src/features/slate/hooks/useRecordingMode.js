@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { log as logRecordingDebug } from "../recordingDebugLogger";
+import { log as logRecordingDebug } from "../debug/recordingDebugLogger";
 import { smoothTrack } from "../../../utils/smoothTrack";
 
 /**

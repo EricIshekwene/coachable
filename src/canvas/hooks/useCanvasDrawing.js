@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback } from "react";
-import { log as logDrawDebug } from "../drawDebugLogger";
+import { log as logDrawDebug } from "../debug/drawDebugLogger";
 import { hitTestDrawings } from "../drawingGeometry";
 
 // Re-export for backward compatibility
