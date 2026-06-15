@@ -389,7 +389,7 @@ All run via Vitest. One file per feature; create new ones here when adding tests
 - Misc: `videoEncoder.test.js`, `errorReporter.test.js`, `demoVideos.test.js`, `adminNotifications.test.js` (notification audience SQL + response aggregation), `notificationsRetry.test.js` (NotificationsContext retry-on-failure logic — jsdom env), `outreachScraper.test.js` (sidearm parsers + sport/role normalization + CSV escaping; fixtures in `test-harness/test/fixtures/`), `mobileTouchGestures.test.js` (two-finger pan/pinch math for the mobile editor canvas — `src/canvas/touchGestures.js`)
 
 In-source unit suite for canvas geometry: [src/canvas/__tests__/drawingGeometry.test.js](src/canvas/__tests__/drawingGeometry.test.js).
-Suites used by the admin test runner: [src/testing/suites/](src/testing/suites/) (animationSchema, drawingGeometry, importExport, interpolate) and [src/testing/testRunner.js](src/testing/testRunner.js).
+Suites used by the admin test runner: [src/test-runner/suites/](src/test-runner/suites/) (animationSchema, drawingGeometry, importExport, interpolate) and [src/test-runner/testRunner.js](src/test-runner/testRunner.js).
 
 **RTL / virtual-DOM rendering tests** (`src/test/` — jsdom env, Phase 3):
 - `AppPage.test.jsx` — overflow-y-auto invariant, maxWidth token mapping, data-component attr (9 tests)

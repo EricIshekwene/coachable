@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../../api/api";
 import { ConfirmDialog } from "../../design-system/components";
-import { formatFailedTestsReport } from "../../testing/formatFailedTestsReport";
+import { formatFailedTestsReport } from "../../test-runner/formatFailedTestsReport";
 import {
   isAdminElevated,
   getAdminElevatedUntil,
@@ -783,12 +783,12 @@ export default function Admin() {
   // ── Lazy-load test suites (avoids circular dep: Admin → routes.suite → Admin) ──
   useEffect(() => {
     Promise.all([
-      import("../../testing/testRunner"),
-      import("../../testing/suites/drawingGeometry.suite"),
-      import("../../testing/suites/interpolate.suite"),
-      import("../../testing/suites/importExport.suite"),
-      import("../../testing/suites/animationSchema.suite"),
-      import("../../testing/suites/routes.suite"),
+      import("../../test-runner/testRunner"),
+      import("../../test-runner/suites/drawingGeometry.suite"),
+      import("../../test-runner/suites/interpolate.suite"),
+      import("../../test-runner/suites/importExport.suite"),
+      import("../../test-runner/suites/animationSchema.suite"),
+      import("../../test-runner/suites/routes.suite"),
     ]).then(([runner, dg, interp, ie, as, routes]) => {
       runAllSuitesRef.current = runner.runAllSuites;
       setAllSuites({

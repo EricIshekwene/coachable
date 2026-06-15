@@ -4,8 +4,8 @@
  * so contract regressions surface in CI as well as in the admin UI.
  */
 import { describe, it, expect } from "vitest";
-import apiRoutesSuite from "../../src/testing/suites/apiRoutes.suite.js";
-import { runTests } from "../../src/testing/testRunner.js";
+import apiRoutesSuite from "../../src/test-runner/suites/apiRoutes.suite.js";
+import { runTests } from "../../src/test-runner/testRunner.js";
 
 describe("API Routes in-app suite", () => {
   it("runs every test in the suite and they all pass", async () => {
