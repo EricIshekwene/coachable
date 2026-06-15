@@ -10,23 +10,23 @@ import {
   FiArrowLeft, FiCheck, FiClock, FiEdit2, FiFilm, FiImage, FiMail,
   FiPause, FiPlay, FiPlus, FiSend, FiTrash2, FiX,
 } from "react-icons/fi";
-import { useAdmin } from "../admin/AdminContext";
-import { adminApi } from "../admin/adminTransport";
-import AdminFlagGate from "../admin/AdminFlagGate";
-import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
+import { useAdmin } from "../../admin/AdminContext";
+import { adminApi } from "../../admin/adminTransport";
+import AdminFlagGate from "../../admin/AdminFlagGate";
+import { AdminShell, AdminHeader, AdminPage } from "../../admin/components";
 import {
   Button, Card, Input, Section, Select, Spinner, ConfirmDialog,
-} from "../design-system/components";
-import PlayPickerModal from "../components/PlayPickerModal";
-import Slate from "../features/slate/Slate";
-import { SUPPORTED_FIELD_TYPES } from "../features/slate/hooks/useAdvancedSettings";
+} from "../../design-system/components";
+import PlayPickerModal from "../../components/PlayPickerModal";
+import Slate from "../../features/slate/Slate";
+import { SUPPORTED_FIELD_TYPES } from "../../features/slate/hooks/useAdvancedSettings";
 import {
   buildBroadcastEmailHtml,
   extractYouTubeId,
   getBroadcastBodyText,
   sanitizeBroadcastBodyMarkup,
-} from "../../shared/broadcastEmailTemplate.js";
-import { getLogs as getGifExportDebugLogs, log as logGifExport } from "../utils/gifExportDebugLogger";
+} from "../../../shared/broadcastEmailTemplate.js";
+import { getLogs as getGifExportDebugLogs, log as logGifExport } from "../../utils/gifExportDebugLogger";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

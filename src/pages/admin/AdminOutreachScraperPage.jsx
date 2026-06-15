@@ -9,14 +9,14 @@
  */
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { useAdmin } from "../admin/AdminContext";
-import { adminPath } from "../admin/adminNav";
-import { adminApi, adminUrl, adminFetchOptions, readAdminSession } from "../admin/adminTransport";
-import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
+import { useAdmin } from "../../admin/AdminContext";
+import { adminPath } from "../../admin/adminNav";
+import { adminApi, adminUrl, adminFetchOptions, readAdminSession } from "../../admin/adminTransport";
+import { AdminShell, AdminHeader, AdminPage } from "../../admin/components";
 import {
   Card, Section, Button, Input, Select, Checkbox, Badge,
   EmptyState, Spinner, Modal, DataTable,
-} from "../design-system/components";
+} from "../../design-system/components";
 
 const ROLE_OPTIONS = [
   "head_coach", "offensive_coordinator", "defensive_coordinator",

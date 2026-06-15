@@ -1,17 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { FiEdit2, FiPlus, FiTrash2, FiEye, FiEyeOff, FiCopy, FiDownload, FiUpload } from "react-icons/fi";
-import PlayPreviewCard from "../components/PlayPreviewCard";
-import { useAdmin } from "../admin/AdminContext";
-import { adminPath } from "../admin/adminNav";
-import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
-import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
-import { Button, EmptyState, Spinner, ConfirmDialog } from "../design-system/components";
+import PlayPreviewCard from "../../components/PlayPreviewCard";
+import { useAdmin } from "../../admin/AdminContext";
+import { adminPath } from "../../admin/adminNav";
+import { adminFetchOptions, readAdminSession } from "../../admin/adminTransport";
+import { AdminShell, AdminHeader, AdminPage } from "../../admin/components";
+import { Button, EmptyState, Spinner, ConfirmDialog } from "../../design-system/components";
 import {
   buildSportPresetBundle,
   parseSportPresetBundle,
   supportsSportPresetBundles,
-} from "../utils/sportPresetBundles";
+} from "../../utils/sportPresetBundles";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";

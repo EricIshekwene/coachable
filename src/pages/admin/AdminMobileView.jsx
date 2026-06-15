@@ -1,8 +1,8 @@
-import Slate from "../features/slate/Slate";
-import MessagePopup from "../components/MessagePopup/MessagePopup";
-import { useMessagePopup } from "../components/MessagePopup/useMessagePopup";
-import { useAdmin } from "../admin/AdminContext";
-import useThemeColor from "../hooks/useThemeColor";
+import Slate from "../../features/slate/Slate";
+import MessagePopup from "../../components/MessagePopup/MessagePopup";
+import { useMessagePopup } from "../../components/MessagePopup/useMessagePopup";
+import { useAdmin } from "../../admin/AdminContext";
+import useThemeColor from "../../hooks/useThemeColor";
 
 /**
  * Admin-only mobile editor sandbox at /admin/mobile-view.

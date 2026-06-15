@@ -1,24 +1,24 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiFetch } from "../api/api";
-import { ConfirmDialog } from "../design-system/components";
-import { formatFailedTestsReport } from "../testing/formatFailedTestsReport";
+import { apiFetch } from "../../api/api";
+import { ConfirmDialog } from "../../design-system/components";
+import { formatFailedTestsReport } from "../../testing/formatFailedTestsReport";
 import {
   isAdminElevated,
   getAdminElevatedUntil,
   setAdminElevated,
   clearAdminElevated,
-} from "../api/adminElevation";
-import { useAdmin } from "../admin/AdminContext";
-import { adminPath } from "../admin/adminNav";
-import AnalyticsDashboard from "../admin/analytics/AnalyticsDashboard";
-import ActivityFeed from "../admin/analytics/ActivityFeed";
-import { useDashboardAnalytics } from "../admin/analytics/useDashboardAnalytics";
+} from "../../api/adminElevation";
+import { useAdmin } from "../../admin/AdminContext";
+import { adminPath } from "../../admin/adminNav";
+import AnalyticsDashboard from "../../admin/analytics/AnalyticsDashboard";
+import ActivityFeed from "../../admin/analytics/ActivityFeed";
+import { useDashboardAnalytics } from "../../admin/analytics/useDashboardAnalytics";
 import {
   AdminShell,
   AdminHeader,
   AdminPage,
-} from "../admin/components";
+} from "../../admin/components";
 import {
   Card,
   Section,
@@ -33,7 +33,7 @@ import {
   SearchInput,
   Spinner,
   DataTable,
-} from "../design-system/components";
+} from "../../design-system/components";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -783,12 +783,12 @@ export default function Admin() {
   // ── Lazy-load test suites (avoids circular dep: Admin → routes.suite → Admin) ──
   useEffect(() => {
     Promise.all([
-      import("../testing/testRunner"),
-      import("../testing/suites/drawingGeometry.suite"),
-      import("../testing/suites/interpolate.suite"),
-      import("../testing/suites/importExport.suite"),
-      import("../testing/suites/animationSchema.suite"),
-      import("../testing/suites/routes.suite"),
+      import("../../testing/testRunner"),
+      import("../../testing/suites/drawingGeometry.suite"),
+      import("../../testing/suites/interpolate.suite"),
+      import("../../testing/suites/importExport.suite"),
+      import("../../testing/suites/animationSchema.suite"),
+      import("../../testing/suites/routes.suite"),
     ]).then(([runner, dg, interp, ie, as, routes]) => {
       runAllSuitesRef.current = runner.runAllSuites;
       setAllSuites({

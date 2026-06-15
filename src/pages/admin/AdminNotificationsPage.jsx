@@ -22,7 +22,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, PieChart, Pie, Cell, AreaChart, Area,
 } from "recharts";
-import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
+import { AdminShell, AdminHeader, AdminPage } from "../../admin/components";
 import {
   Button,
   Card,
@@ -36,9 +36,9 @@ import {
   Alert,
   EmptyState,
   Textarea,
-} from "../design-system/components";
-import { useAdmin } from "../admin/AdminContext";
-import { adminApi } from "../admin/adminTransport";
+} from "../../design-system/components";
+import { useAdmin } from "../../admin/AdminContext";
+import { adminApi } from "../../admin/adminTransport";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 

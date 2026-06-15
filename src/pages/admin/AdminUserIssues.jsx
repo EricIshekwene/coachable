@@ -6,11 +6,11 @@
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
-import { useAdmin } from "../admin/AdminContext";
-import { adminPath } from "../admin/adminNav";
-import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
-import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
-import { Card, Section, Button, Select, Badge, EmptyState, Spinner, ConfirmDialog } from "../design-system/components";
+import { useAdmin } from "../../admin/AdminContext";
+import { adminPath } from "../../admin/adminNav";
+import { adminFetchOptions, readAdminSession } from "../../admin/adminTransport";
+import { AdminShell, AdminHeader, AdminPage } from "../../admin/components";
+import { Card, Section, Button, Select, Badge, EmptyState, Spinner, ConfirmDialog } from "../../design-system/components";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";

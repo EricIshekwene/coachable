@@ -1,6 +1,6 @@
-import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
-import StaffAdminManager from "../admin/StaffAdminManager";
-import RequirePerm from "../admin/RequirePerm";
+import { AdminShell, AdminHeader, AdminPage } from "../../admin/components";
+import StaffAdminManager from "../../admin/StaffAdminManager";
+import RequirePerm from "../../admin/RequirePerm";
 
 /**
  * Owner-only page for managing scoped staff admins. Mounted at /admin/staff.

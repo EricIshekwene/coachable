@@ -1,25 +1,25 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useAdmin } from "../admin/AdminContext";
-import darkLogo from "../assets/logos/full_Coachable_logo.png";
-import whiteLogo from "../assets/logos/White_Full_Coachable.png";
-import { adminPath } from "../admin/adminNav";
-import { AdminShell, AdminPlayCard, AdminFolderCard, AdminSectionRow } from "../admin/components";
-import { Modal, Button, Input, Select, Spinner, ConfirmDialog } from "../design-system/components";
-import { PANEL_STYLE, INSET_STYLE, MENU_STYLE, MENU_DIVIDER_STYLE } from "../admin/components/adminPlayStyles";
+import { useAdmin } from "../../admin/AdminContext";
+import darkLogo from "../../assets/logos/full_Coachable_logo.png";
+import whiteLogo from "../../assets/logos/White_Full_Coachable.png";
+import { adminPath } from "../../admin/adminNav";
+import { AdminShell, AdminPlayCard, AdminFolderCard, AdminSectionRow } from "../../admin/components";
+import { Modal, Button, Input, Select, Spinner, ConfirmDialog } from "../../design-system/components";
+import { PANEL_STYLE, INSET_STYLE, MENU_STYLE, MENU_DIVIDER_STYLE } from "../../admin/components/adminPlayStyles";
 import {
   FiPlus, FiTrash2, FiFolder, FiFolderPlus,
   FiChevronRight, FiX, FiEdit3, FiLayout, FiSearch, FiCopy,
   FiBookOpen, FiEye, FiEyeOff, FiSliders,
 } from "react-icons/fi";
-import PlayPreviewCard from "../components/PlayPreviewCard";
+import PlayPreviewCard from "../../components/PlayPreviewCard";
 import {
   isAdminElevated,
   getAdminElevatedUntil,
   setAdminElevated,
   clearAdminElevated,
-} from "../api/adminElevation";
-import { SUPPORTED_FIELD_TYPES } from "../features/slate/hooks/useAdvancedSettings";
+} from "../../api/adminElevation";
+import { SUPPORTED_FIELD_TYPES } from "../../features/slate/hooks/useAdvancedSettings";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";

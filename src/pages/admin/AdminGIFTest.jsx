@@ -1,12 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import Slate from "../features/slate/Slate";
-import MessagePopup from "../components/MessagePopup/MessagePopup";
-import { useMessagePopup } from "../components/MessagePopup/useMessagePopup";
-import { useAdmin } from "../admin/AdminContext";
-import useThemeColor from "../hooks/useThemeColor";
-import MobileViewOnlyGate from "../components/MobileViewOnlyGate";
-import { GIF_PRESETS } from "../utils/gifEncoder";
-import { getLogs as getGifLogs } from "../utils/gifExportDebugLogger";
+import Slate from "../../features/slate/Slate";
+import MessagePopup from "../../components/MessagePopup/MessagePopup";
+import { useMessagePopup } from "../../components/MessagePopup/useMessagePopup";
+import { useAdmin } from "../../admin/AdminContext";
+import useThemeColor from "../../hooks/useThemeColor";
+import MobileViewOnlyGate from "../../components/MobileViewOnlyGate";
+import { GIF_PRESETS } from "../../utils/gifEncoder";
+import { getLogs as getGifLogs } from "../../utils/gifExportDebugLogger";
 
 const DURATIONS = [5, 10, 20, 30];
 

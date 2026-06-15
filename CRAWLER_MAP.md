@@ -265,30 +265,30 @@ All under [src/animation/](src/animation/), [src/canvas/](src/canvas/), [src/fea
 ### Admin (`/admin/*`)
 | Path | File |
 |---|---|
-| `/admin` (login) | [Admin.jsx](src/pages/Admin.jsx) |
-| `/admin/tests` | [AdminTests.jsx](src/pages/AdminTests.jsx) |
-| `/admin/errors` | [AdminErrors.jsx](src/pages/AdminErrors.jsx) |
+| `/admin` (login) | [pages/admin/Admin.jsx](src/pages/admin/Admin.jsx) |
+| `/admin/tests` | [pages/admin/AdminTests.jsx](src/pages/admin/AdminTests.jsx) |
+| `/admin/errors` | [pages/admin/AdminErrors.jsx](src/pages/admin/AdminErrors.jsx) |
 | `/admin/slate` | SlateRoot (in App.jsx) → [features/slate/Slate.jsx](src/features/slate/Slate.jsx) |
 | `/admin/record` | SlateRecordRoot → [features/slate/SlateRecord.jsx](src/features/slate/SlateRecord.jsx) |
 | `/admin/drawing` | SlateDrawingRoot → [features/slate/SlateDrawing.jsx](src/features/slate/SlateDrawing.jsx) |
-| `/admin/app` | [AdminPlaysPage.jsx](src/pages/AdminPlaysPage.jsx) |
-| `/admin/plays/:playId/edit` | [AdminPlayEditPage.jsx](src/pages/AdminPlayEditPage.jsx) |
-| `/admin/presets/:sport` | [AdminSportPresetsPage.jsx](src/pages/AdminSportPresetsPage.jsx) |
-| `/admin/presets/:sport/:presetId/edit` | [AdminPresetEditPage.jsx](src/pages/AdminPresetEditPage.jsx) |
-| `/admin/prefab-presets/:sport` | [AdminSportPrefabPresetsPage.jsx](src/pages/AdminSportPrefabPresetsPage.jsx) |
-| `/admin/prefab-presets/:sport/:prefabPresetId/edit` | [AdminPrefabPresetEditPage.jsx](src/pages/AdminPrefabPresetEditPage.jsx) |
-| `/admin/users/:userId` | [AdminUserActivity.jsx](src/pages/AdminUserActivity.jsx) |
-| `/admin/user-issues` | [AdminUserIssues.jsx](src/pages/AdminUserIssues.jsx) |
-| `/admin/mobile-view` | [AdminMobileView.jsx](src/pages/AdminMobileView.jsx) |
-| `/admin/test` | [AdminTestSlate.jsx](src/pages/AdminTestSlate.jsx) |
-| `/admin/gif-test` | [AdminGIFTest.jsx](src/pages/AdminGIFTest.jsx) |
-| `/admin/demo-videos` | [AdminDemoVideos.jsx](src/pages/AdminDemoVideos.jsx) |
-| `/admin/one-page` | [AdminOnePage.jsx](src/pages/AdminOnePage.jsx) |
+| `/admin/app` | [pages/admin/AdminPlaysPage.jsx](src/pages/admin/AdminPlaysPage.jsx) |
+| `/admin/plays/:playId/edit` | [pages/admin/AdminPlayEditPage.jsx](src/pages/admin/AdminPlayEditPage.jsx) |
+| `/admin/presets/:sport` | [pages/admin/AdminSportPresetsPage.jsx](src/pages/admin/AdminSportPresetsPage.jsx) |
+| `/admin/presets/:sport/:presetId/edit` | [pages/admin/AdminPresetEditPage.jsx](src/pages/admin/AdminPresetEditPage.jsx) |
+| `/admin/prefab-presets/:sport` | [pages/admin/AdminSportPrefabPresetsPage.jsx](src/pages/admin/AdminSportPrefabPresetsPage.jsx) |
+| `/admin/prefab-presets/:sport/:prefabPresetId/edit` | [pages/admin/AdminPrefabPresetEditPage.jsx](src/pages/admin/AdminPrefabPresetEditPage.jsx) |
+| `/admin/users/:userId` | [pages/admin/AdminUserActivity.jsx](src/pages/admin/AdminUserActivity.jsx) |
+| `/admin/user-issues` | [pages/admin/AdminUserIssues.jsx](src/pages/admin/AdminUserIssues.jsx) |
+| `/admin/mobile-view` | [pages/admin/AdminMobileView.jsx](src/pages/admin/AdminMobileView.jsx) |
+| `/admin/test` | [pages/admin/AdminTestSlate.jsx](src/pages/admin/AdminTestSlate.jsx) |
+| `/admin/gif-test` | [pages/admin/AdminGIFTest.jsx](src/pages/admin/AdminGIFTest.jsx) |
+| `/admin/demo-videos` | [pages/admin/AdminDemoVideos.jsx](src/pages/admin/AdminDemoVideos.jsx) |
+| `/admin/one-page` | [pages/admin/AdminOnePage.jsx](src/pages/admin/AdminOnePage.jsx) |
 | `/admin/design-rules` (+`/:section`, admin-only) — **Design System** | [designSystem/DesignSystemPage.jsx](src/pages/designSystem/DesignSystemPage.jsx) — multi-page design system (foundations, tokens, components, patterns, templates, cross-cutting rules, Slate UI); see [DESIGN_SYSTEM.md](src/pages/designSystem/DESIGN_SYSTEM.md). Nav metadata in [designSystemNav.js](src/pages/designSystem/designSystemNav.js), slug→component map in [designSystemSections.js](src/pages/designSystem/designSystemSections.js), shared primitives in [dsPrimitives.jsx](src/pages/designSystem/dsPrimitives.jsx), one file per section in [sections/](src/pages/designSystem/sections/) |
 
 **Design tokens / theming (single source of truth):** the product brand palette lives in [src/index.css](src/index.css) (`@theme --color-Brand*`, used app-wide via Tailwind classes like `bg-BrandBlack`; light neutrals via `[data-theme="light"] .app-themed` + `[data-admin-theme="light"]`). The admin/design-system `--adm-*` tokens in [src/admin/admin.css](src/admin/admin.css) **alias and `color-mix`-derive from** those brand tokens (scoped to `[data-admin-theme="dark"|"light"]`, set by [AdminShell.jsx](src/admin/components/AdminShell.jsx)) — change a `--color-Brand*` value once and it ripples through app + admin + design system. Guarded by `designTokenUnification.test.js`. **Not yet migrated:** the Slate editor + main `src/components`/`src/canvas` still use hardcoded hex / Tailwind color classes.
-| `/admin/notifications` (owner-only) | [AdminNotificationsPage.jsx](src/pages/AdminNotificationsPage.jsx) — see [NOTIFICATIONS_PAGE.md](src/pages/NOTIFICATIONS_PAGE.md) |
-| `/admin/outreach-scraper` (owner-only) | [AdminOutreachScraperPage.jsx](src/pages/AdminOutreachScraperPage.jsx) — scrape college athletic staff directories → filter → CSV; see [OUTREACH_SCRAPER.md](server/lib/outreachScraper/OUTREACH_SCRAPER.md) |
+| `/admin/notifications` (owner-only) | [pages/admin/AdminNotificationsPage.jsx](src/pages/admin/AdminNotificationsPage.jsx) — see [NOTIFICATIONS_PAGE.md](src/pages/NOTIFICATIONS_PAGE.md) |
+| `/admin/outreach-scraper` (owner-only) | [pages/admin/AdminOutreachScraperPage.jsx](src/pages/admin/AdminOutreachScraperPage.jsx) — scrape college athletic staff directories → filter → CSV; see [OUTREACH_SCRAPER.md](server/lib/outreachScraper/OUTREACH_SCRAPER.md) |
 
 ### Staff admin (`/staff/*`)
 Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](.codex/STAFF_ADMIN_PLAN.md). Pages reuse the existing Admin* components with `basePath="/staff"` and `mode="staff"` on `<AdminProvider>`.
@@ -298,16 +298,16 @@ Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](.codex/STAFF_A
 | `/staff/login` | [StaffLogin.jsx](src/pages/StaffLogin.jsx) |
 | `/staff/accept-invite` | [StaffAcceptInvite.jsx](src/pages/StaffAcceptInvite.jsx) |
 | `/staff` (dashboard) | [StaffDashboard.jsx](src/pages/StaffDashboard.jsx) |
-| `/staff/app` | reuses [AdminPlaysPage.jsx](src/pages/AdminPlaysPage.jsx) |
-| `/staff/plays/:playId/edit` | reuses [AdminPlayEditPage.jsx](src/pages/AdminPlayEditPage.jsx) |
-| `/staff/presets/:sport[/:presetId/edit]` | reuses [AdminSportPresetsPage.jsx](src/pages/AdminSportPresetsPage.jsx) / [AdminPresetEditPage.jsx](src/pages/AdminPresetEditPage.jsx) |
-| `/staff/prefab-presets/:sport[/:prefabPresetId/edit]` | reuses [AdminSportPrefabPresetsPage.jsx](src/pages/AdminSportPrefabPresetsPage.jsx) / [AdminPrefabPresetEditPage.jsx](src/pages/AdminPrefabPresetEditPage.jsx) |
-| `/staff/users/:userId` | reuses [AdminUserActivity.jsx](src/pages/AdminUserActivity.jsx) |
-| `/staff/user-issues` | reuses [AdminUserIssues.jsx](src/pages/AdminUserIssues.jsx) |
-| `/staff/errors` | reuses [AdminErrors.jsx](src/pages/AdminErrors.jsx) |
-| `/staff/demo-videos` | reuses [AdminDemoVideos.jsx](src/pages/AdminDemoVideos.jsx) |
-| `/staff/one-page` | reuses [AdminOnePage.jsx](src/pages/AdminOnePage.jsx) |
-| `/staff/tests` | reuses [AdminTests.jsx](src/pages/AdminTests.jsx) |
+| `/staff/app` | reuses [pages/admin/AdminPlaysPage.jsx](src/pages/admin/AdminPlaysPage.jsx) |
+| `/staff/plays/:playId/edit` | reuses [pages/admin/AdminPlayEditPage.jsx](src/pages/admin/AdminPlayEditPage.jsx) |
+| `/staff/presets/:sport[/:presetId/edit]` | reuses [pages/admin/AdminSportPresetsPage.jsx](src/pages/admin/AdminSportPresetsPage.jsx) / [pages/admin/AdminPresetEditPage.jsx](src/pages/admin/AdminPresetEditPage.jsx) |
+| `/staff/prefab-presets/:sport[/:prefabPresetId/edit]` | reuses [pages/admin/AdminSportPrefabPresetsPage.jsx](src/pages/admin/AdminSportPrefabPresetsPage.jsx) / [pages/admin/AdminPrefabPresetEditPage.jsx](src/pages/admin/AdminPrefabPresetEditPage.jsx) |
+| `/staff/users/:userId` | reuses [pages/admin/AdminUserActivity.jsx](src/pages/admin/AdminUserActivity.jsx) |
+| `/staff/user-issues` | reuses [pages/admin/AdminUserIssues.jsx](src/pages/admin/AdminUserIssues.jsx) |
+| `/staff/errors` | reuses [pages/admin/AdminErrors.jsx](src/pages/admin/AdminErrors.jsx) |
+| `/staff/demo-videos` | reuses [pages/admin/AdminDemoVideos.jsx](src/pages/admin/AdminDemoVideos.jsx) |
+| `/staff/one-page` | reuses [pages/admin/AdminOnePage.jsx](src/pages/admin/AdminOnePage.jsx) |
+| `/staff/tests` | reuses [pages/admin/AdminTests.jsx](src/pages/admin/AdminTests.jsx) |
 
 ---
 

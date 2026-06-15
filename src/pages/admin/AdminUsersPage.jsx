@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAdmin } from "../admin/AdminContext";
-import { adminPath } from "../admin/adminNav";
-import { adminApi } from "../admin/adminTransport";
-import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
-import { Section, Card, Badge, EmptyState, DataTable } from "../design-system/components";
+import { useAdmin } from "../../admin/AdminContext";
+import { adminPath } from "../../admin/adminNav";
+import { adminApi } from "../../admin/adminTransport";
+import { AdminShell, AdminHeader, AdminPage } from "../../admin/components";
+import { Section, Card, Badge, EmptyState, DataTable } from "../../design-system/components";
 
 const ROLE_PRIORITY = {
   owner: 0,

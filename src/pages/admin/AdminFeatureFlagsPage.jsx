@@ -14,10 +14,10 @@ import {
   FiEdit2, FiX, FiChevronDown, FiChevronUp,
   FiInfo, FiSliders,
 } from "react-icons/fi";
-import { useAdmin } from "../admin/AdminContext";
-import { adminApi } from "../admin/adminTransport";
-import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
-import { Card, Section, Button, Input, Textarea, Select, Toggle, Modal, Badge, EmptyState, Spinner, Alert } from "../design-system/components";
+import { useAdmin } from "../../admin/AdminContext";
+import { adminApi } from "../../admin/adminTransport";
+import { AdminShell, AdminHeader, AdminPage } from "../../admin/components";
+import { Card, Section, Button, Input, Textarea, Select, Toggle, Modal, Badge, EmptyState, Spinner, Alert } from "../../design-system/components";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

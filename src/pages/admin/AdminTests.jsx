@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { useAdmin } from "../admin/AdminContext";
-import { adminPath } from "../admin/adminNav";
-import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
-import { Button, Spinner } from "../design-system/components";
-import { formatFailedTestsReport } from "../testing/formatFailedTestsReport";
+import { useAdmin } from "../../admin/AdminContext";
+import { adminPath } from "../../admin/adminNav";
+import { AdminShell, AdminHeader, AdminPage } from "../../admin/components";
+import { Button, Spinner } from "../../design-system/components";
+import { formatFailedTestsReport } from "../../testing/formatFailedTestsReport";
 
 const SUITE_NAMES = [
   "Drawing Geometry",
@@ -132,13 +132,13 @@ export default function AdminTests() {
 
   useEffect(() => {
     Promise.all([
-      import("../testing/testRunner"),
-      import("../testing/suites/drawingGeometry.suite"),
-      import("../testing/suites/interpolate.suite"),
-      import("../testing/suites/importExport.suite"),
-      import("../testing/suites/animationSchema.suite"),
-      import("../testing/suites/routes.suite"),
-      import("../testing/suites/apiRoutes.suite"),
+      import("../../testing/testRunner"),
+      import("../../testing/suites/drawingGeometry.suite"),
+      import("../../testing/suites/interpolate.suite"),
+      import("../../testing/suites/importExport.suite"),
+      import("../../testing/suites/animationSchema.suite"),
+      import("../../testing/suites/routes.suite"),
+      import("../../testing/suites/apiRoutes.suite"),
     ]).then(([runner, drawingGeometry, interpolation, importExport, animationSchema, routes, apiRoutes]) => {
       runAllSuitesRef.current = runner.runAllSuites;
       setAllSuites({
