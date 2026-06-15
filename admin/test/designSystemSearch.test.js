@@ -8,8 +8,8 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { searchDesignSystem } from "../../src/pages/designSystem/designSystemSearch.js";
-import { ALL_SECTIONS } from "../../src/pages/designSystem/designSystemNav.js";
+import { searchDesignSystem } from "../../src/admin/designSystem/designSystemSearch.js";
+import { ALL_SECTIONS } from "../../src/admin/designSystem/designSystemNav.js";
 
 describe("searchDesignSystem", () => {
   it("returns nothing for a blank or whitespace query", () => {

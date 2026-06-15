@@ -14,7 +14,7 @@ import {
   DEFAULT_SECTION_ID,
   getSection,
   getAdjacentSections,
-} from "../../src/pages/designSystem/designSystemNav.js";
+} from "../../src/admin/designSystem/designSystemNav.js";
 
 describe("design system nav registry", () => {
   it("exposes grouped sections", () => {

@@ -21,7 +21,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 /** Read a section file by name. */
 function section(name) {
-  const path = resolve(ROOT, `src/pages/designSystem/sections/${name}.jsx`);
+  const path = resolve(ROOT, `src/admin/designSystem/sections/${name}.jsx`);
   if (!existsSync(path)) throw new Error(`Section file not found: ${name}.jsx`);
   return readFileSync(path, "utf8");
 }

@@ -44,7 +44,7 @@ import AdminStaff from "./pages/admin/AdminStaff";
 import AdminEmailPage from "./pages/admin/AdminEmailPage";
 import AdminRecurringEmailPage from "./pages/admin/AdminRecurringEmailPage";
 import AdminNotificationsPage from "./pages/admin/AdminNotificationsPage";
-import DesignSystemPage from "./pages/designSystem/DesignSystemPage";
+import DesignSystemPage from "./admin/designSystem/DesignSystemPage";
 import AdminFeatureFlagsPage from "./pages/admin/AdminFeatureFlagsPage";
 import AdminOutreachScraperPage from "./pages/admin/AdminOutreachScraperPage";
 import RequirePerm from "./admin/RequirePerm";
