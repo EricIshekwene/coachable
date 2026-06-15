@@ -68,6 +68,7 @@ function Panel({ title, subtitle, eyebrow, stat, statLabel, tone = "orange", chi
 export default function DataVizSection() {
   return (
     <div className="flex flex-col gap-10">
+      {/* doc-only */}
       <DSPageHeading
         eyebrow="Components"
         title="Data visualization"

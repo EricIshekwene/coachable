@@ -10,6 +10,7 @@ import { DSPageHeading, DSGroup, DSTile, DSChecklist } from "../dsPrimitives";
 export default function EdgeCasesSection() {
   return (
     <div className="flex flex-col gap-10">
+      {/* doc-only */}
       <DSPageHeading
         eyebrow="Cross-cutting rules"
         title="Edge cases"

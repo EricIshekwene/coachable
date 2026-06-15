@@ -19,6 +19,7 @@ const SCALE = [
 export default function TypographySection() {
   return (
     <div className="flex flex-col gap-10">
+      {/* doc-only */}
       <DSPageHeading
         eyebrow="Design tokens"
         title="Typography"

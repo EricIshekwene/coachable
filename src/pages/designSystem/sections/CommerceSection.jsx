@@ -23,6 +23,7 @@ export default function CommerceSection() {
 
   return (
     <div className="flex flex-col gap-10">
+      {/* doc-only */}
       <DSPageHeading
         eyebrow="Patterns & templates"
         title="Commerce, billing & pricing"

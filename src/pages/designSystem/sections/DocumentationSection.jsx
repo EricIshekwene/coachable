@@ -9,6 +9,7 @@ import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSAnatomy } from "../dsPri
 export default function DocumentationSection() {
   return (
     <div className="flex flex-col gap-10">
+      {/* doc-only */}
       <DSPageHeading
         eyebrow="Meta"
         title="Documentation & contribution"

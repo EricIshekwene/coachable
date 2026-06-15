@@ -10,6 +10,7 @@ import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSRef, DSMeta, DSDoDont } 
 export default function FilesSection() {
   return (
     <div className="flex flex-col gap-10">
+      {/* doc-only */}
       <DSPageHeading
         eyebrow="Patterns & templates"
         title="Files & uploads"

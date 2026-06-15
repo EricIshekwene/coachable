@@ -184,6 +184,133 @@ describe("SelectionSection reconciliation", () => {
   });
 });
 
+// ── Q4 Sessions 3–7: atomic, media, composite, and chip components ─────────────
+
+describe("FormsSection — Q4 reconciliation", () => {
+  const src = section("FormsSection");
+
+  it("imports TagInput from DS barrel", () => {
+    expect(src).toContain("TagInput");
+    expect(src).toContain("design-system/components");
+  });
+
+  it("renders <TagInput> in a live group", () => {
+    expect(src).toContain("<TagInput");
+  });
+
+  it("imports CodeInput from DS barrel", () => {
+    expect(src).toContain("CodeInput");
+  });
+
+  it("renders <CodeInput> in a live group", () => {
+    expect(src).toContain("<CodeInput");
+  });
+});
+
+describe("CardsSection — Q4 reconciliation", () => {
+  const src = section("CardsSection");
+
+  it("imports VideoCard from DS barrel", () => {
+    expect(src).toContain("VideoCard");
+    expect(src).toContain("design-system/components");
+  });
+
+  it("renders <VideoCard> in a live group", () => {
+    expect(src).toContain("<VideoCard");
+  });
+
+  it("imports BrowseTile from DS barrel", () => {
+    expect(src).toContain("BrowseTile");
+  });
+
+  it("renders <BrowseTile> in a live group", () => {
+    expect(src).toContain("<BrowseTile");
+  });
+
+  it("imports RecentlyEditedChip from DS barrel", () => {
+    expect(src).toContain("RecentlyEditedChip");
+  });
+
+  it("renders <RecentlyEditedChip> in a live group", () => {
+    expect(src).toContain("<RecentlyEditedChip");
+  });
+});
+
+describe("FeedbackSection — Q4 reconciliation", () => {
+  const src = section("FeedbackSection");
+
+  it("imports StarRating from DS barrel", () => {
+    expect(src).toContain("StarRating");
+    expect(src).toContain("design-system/components");
+  });
+
+  it("renders <StarRating> in a live group", () => {
+    expect(src).toContain("<StarRating");
+  });
+});
+
+describe("IconographySection — Q4 reconciliation", () => {
+  const src = section("IconographySection");
+
+  it("imports IconBubble from DS barrel", () => {
+    expect(src).toContain("IconBubble");
+    expect(src).toContain("design-system/components");
+  });
+
+  it("renders <IconBubble> in a live group", () => {
+    expect(src).toContain("<IconBubble");
+  });
+});
+
+describe("Doc-only sections — comment guard", () => {
+  const DOC_ONLY = [
+    "ColorSection", "BrandSection", "ValuesSection", "CopySection",
+    "DocumentationSection", "OverviewSection", "AccessibilitySection",
+    "TypographySection", "SpacingSection", "DataVizSection", "SlateSection",
+    "MarketingSection", "CommerceSection", "FilesSection", "EdgeCasesSection",
+    "OnboardingSection",
+  ];
+
+  test.each(DOC_ONLY)("%s has the {/* doc-only */} marker", (name) => {
+    const src = section(name);
+    expect(src).toContain("doc-only");
+  });
+});
+
+describe("Q4 DS barrel completeness", () => {
+  const barrelSrc = readFileSync(resolve(ROOT, "src/design-system/components/index.js"), "utf8");
+
+  it("exports Q4 Session 3 components", () => {
+    expect(barrelSrc).toContain("IconBubble");
+    expect(barrelSrc).toContain("AccordionItem");
+    expect(barrelSrc).toContain("InlineEdit");
+    expect(barrelSrc).toContain("TimestampChip");
+    expect(barrelSrc).toContain("TokenBox");
+    expect(barrelSrc).toContain("AuthCard");
+  });
+
+  it("exports Q4 Session 4 components", () => {
+    expect(barrelSrc).toContain("VideoCard");
+    expect(barrelSrc).toContain("BrowseTile");
+  });
+
+  it("exports Q4 Session 5 components", () => {
+    expect(barrelSrc).toContain("TagInput");
+    expect(barrelSrc).toContain("StarRating");
+    expect(barrelSrc).toContain("QuestionCard");
+    expect(barrelSrc).toContain("CodeInput");
+  });
+
+  it("exports Q4 Session 7 component", () => {
+    expect(barrelSrc).toContain("RecentlyEditedChip");
+  });
+
+  it("exports Q4 Session 9 navigation components", () => {
+    expect(barrelSrc).toContain("Sidebar");
+    expect(barrelSrc).toContain("SidebarNavItem");
+  });
+});
+
 // ── Admin-only components live in the right barrel ────────────────────────────
 
 describe("Admin-only component source locations", () => {

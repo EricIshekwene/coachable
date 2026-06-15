@@ -8,6 +8,7 @@ import { DSPageHeading, DSGroup, DSChecklist, DSDoDont, DSTile, DSCallout } from
 export default function AccessibilitySection() {
   return (
     <div className="flex flex-col gap-10">
+      {/* doc-only */}
       <DSPageHeading
         eyebrow="Cross-cutting rules"
         title="Accessibility"

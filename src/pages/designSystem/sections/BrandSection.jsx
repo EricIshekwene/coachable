@@ -38,6 +38,7 @@ const PERSONALITY = [
 export default function BrandSection() {
   return (
     <div className="flex flex-col gap-10">
+      {/* doc-only */}
       <DSPageHeading
         eyebrow="Brand foundations"
         title="Brand identity, voice, and personality"

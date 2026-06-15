@@ -9,6 +9,7 @@ import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSDoDont } from "../dsPrim
 export default function CopySection() {
   return (
     <div className="flex flex-col gap-10">
+      {/* doc-only */}
       <DSPageHeading
         eyebrow="Cross-cutting rules"
         title="UI copy & content"

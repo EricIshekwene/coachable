@@ -29,6 +29,7 @@ const TWO_WORLDS = [
 export default function OverviewSection() {
   return (
     <div className="flex flex-col gap-10">
+      {/* doc-only */}
       <DSPageHeading
         eyebrow="Coachable Design System"
         title="A single source of truth for how Coachable looks, reads, and behaves."

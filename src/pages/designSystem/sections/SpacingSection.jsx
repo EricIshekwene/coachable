@@ -50,6 +50,7 @@ const BREAKPOINTS = [
 export default function SpacingSection() {
   return (
     <div className="flex flex-col gap-10">
+      {/* doc-only */}
       <DSPageHeading
         eyebrow="Design tokens"
         title="Spacing, radius, elevation & motion"

@@ -110,6 +110,7 @@ export default function SlateSection() {
 
   return (
     <div className="flex flex-col gap-10">
+      {/* doc-only */}
       <DSPageHeading
         eyebrow="Editor"
         title="Slate editor UI"

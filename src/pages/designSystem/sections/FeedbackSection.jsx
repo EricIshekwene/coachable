@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { FiPlus } from "react-icons/fi";
-import { Badge, Alert, EmptyState, Spinner, Button, Skeleton } from "../../../design-system/components";
+import { Badge, Alert, EmptyState, Spinner, Button, Skeleton, StarRating } from "../../../design-system/components";
 import { DSPageHeading, DSGroup, DSTile, DSStage, DSChecklist } from "../dsPrimitives";
 
 /**
@@ -9,6 +10,7 @@ import { DSPageHeading, DSGroup, DSTile, DSStage, DSChecklist } from "../dsPrimi
  * @returns {JSX.Element}
  */
 export default function FeedbackSection() {
+  const [rating, setRating] = useState(3);
   return (
     <div className="flex flex-col gap-10">
       <DSPageHeading
@@ -65,6 +67,15 @@ export default function FeedbackSection() {
             { label: "Mobile placement", status: "spec" },
           ]}
         />
+      </DSGroup>
+
+      <DSGroup title="Star rating" status="live" description="Interactive 5-star rating control with hover preview.">
+        <DSTile>
+          <div className="flex flex-col gap-4">
+            <StarRating value={rating} onChange={setRating} label="Session rating" />
+            <StarRating value={4} onChange={() => {}} disabled label="Locked rating" />
+          </div>
+        </DSTile>
       </DSGroup>
 
       <DSGroup title="Status indicators" description="State the product surfaces on plays, users, and teams.">

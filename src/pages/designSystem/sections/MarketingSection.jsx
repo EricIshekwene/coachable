@@ -10,6 +10,7 @@ import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSRef } from "../dsPrimiti
 export default function MarketingSection() {
   return (
     <div className="flex flex-col gap-10">
+      {/* doc-only */}
       <DSPageHeading
         eyebrow="Patterns & templates"
         title="Marketing website"

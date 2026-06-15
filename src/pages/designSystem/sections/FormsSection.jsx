@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FiSearch } from "react-icons/fi";
-import { Input, Select, Textarea, Checkbox, Toggle, RadioGroup, Button } from "../../../design-system/components";
+import { Input, Select, Textarea, Checkbox, Toggle, RadioGroup, Button, TagInput, CodeInput } from "../../../design-system/components";
 import { DSPageHeading, DSGroup, DSTile, DSChecklist } from "../dsPrimitives";
 
 /**
@@ -36,6 +36,8 @@ function FieldState({ label, value, tone = "default" }) {
  */
 export default function FormsSection() {
   const [form, setForm] = useState({ search: "Trips Right Flood", role: "coach", notes: "Keep language concise and action-led.", alerts: true, owners: false, live: true, visibility: "team" });
+  const [tags, setTags] = useState(["red zone", "shot play"]);
+  const [code, setCode] = useState("");
 
   return (
     <div className="flex flex-col gap-10">
@@ -104,6 +106,18 @@ export default function FormsSection() {
         </div>
       </DSGroup>
 
+      <DSGroup title="Tag input" status="live" description="Multi-value chip-based field. Press Enter or comma to add; click × to remove.">
+        <DSTile>
+          <TagInput value={tags} onChange={setTags} suggestions={["option A", "option B", "corner", "snap count"]} placeholder="Add a tag…" />
+        </DSTile>
+      </DSGroup>
+
+      <DSGroup title="Code / OTP input" status="live" description="One character per box. Paste fills all; backspace moves focus back.">
+        <DSTile>
+          <CodeInput length={6} value={code} onChange={setCode} />
+        </DSTile>
+      </DSGroup>
+
       <DSGroup title="Form patterns" description="Layout and submission patterns built from the primitives above.">
         <DSChecklist
           columns={3}
@@ -126,7 +140,7 @@ export default function FormsSection() {
           columns={3}
           items={[
             { label: "Combobox / searchable select", status: "spec" },
-            { label: "Multi-select / tag input", note: "Play tags use chips.", status: "inApp" },
+            { label: "Multi-select / tag input", note: "TagInput + CodeInput components.", status: "live" },
             { label: "Color picker", note: "Slate ColorPickerPopover.", status: "inApp" },
             { label: "Date / date-range picker", status: "planned" },
             { label: "Time / timezone selector", status: "planned" },

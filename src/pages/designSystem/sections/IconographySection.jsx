@@ -1,5 +1,6 @@
 import { FiPlay, FiPause, FiPlus, FiTrash2, FiSettings, FiSearch, FiBell, FiShare2, FiDownload, FiEdit2, FiCheck, FiX, FiAlertCircle, FiUsers, FiGrid, FiLayers } from "react-icons/fi";
 import { PiPenNib, PiShapesFill } from "react-icons/pi";
+import { IconBubble } from "../../../design-system/components";
 import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSDoDont } from "../dsPrimitives";
 
 const SIZES = [
@@ -56,6 +57,26 @@ export default function IconographySection() {
             </div>
           ))}
         </div>
+      </DSGroup>
+
+      <DSGroup title="Icon bubble" status="live" description="Rounded icon container with tinted background for category markers, empty states, and notification icons.">
+        <DSTile>
+          <div className="flex flex-wrap gap-3">
+            {[
+              { icon: <FiPlay />, tone: "orange" },
+              { icon: <FiUsers />, tone: "blue" },
+              { icon: <FiAlertCircle />, tone: "red" },
+              { icon: <FiCheck />, tone: "green" },
+              { icon: <FiGrid />, tone: "purple" },
+              { icon: <FiSettings />, tone: "gray" },
+            ].map((item, i) => (
+              <div key={i} className="flex flex-col items-center gap-2">
+                <IconBubble icon={item.icon} tone={item.tone} size="md" />
+                <span className="text-[10px]" style={{ color: "var(--adm-text3)" }}>{item.tone}</span>
+              </div>
+            ))}
+          </div>
+        </DSTile>
       </DSGroup>
 
       <DSGroup title="Icon color & alignment rules">

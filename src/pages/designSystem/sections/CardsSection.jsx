@@ -1,5 +1,5 @@
-import { FiMoreHorizontal, FiCircle } from "react-icons/fi";
-import { Card, Avatar, Badge, Button } from "../../../design-system/components";
+import { FiMoreHorizontal, FiCircle, FiPlay } from "react-icons/fi";
+import { Card, Avatar, Badge, Button, VideoCard, BrowseTile, RecentlyEditedChip } from "../../../design-system/components";
 import PlayPreviewCard from "../../../components/PlayPreviewCard";
 import { prefabToPreviewPlayData } from "../../../utils/sportPrefabPresets";
 import { DSPageHeading, DSGroup, DSTile, DSChecklist, DSAnatomy } from "../dsPrimitives";
@@ -120,6 +120,30 @@ export default function CardsSection() {
 
       <DSGroup title="Play card" status="live" description="The real PlayPreviewCard with an auto-playing thumbnail on hover.">
         <PlayCardPreview />
+      </DSGroup>
+
+      <DSGroup title="Video card" status="live" description="Media card with 16:9 thumbnail, hover play overlay, and metadata footer.">
+        <div className="grid gap-4 md:grid-cols-3">
+          <VideoCard title="Zone Press — Film Session" duration="4:32" onClick={() => {}} />
+          <VideoCard title="Red Zone Package" duration="2:18" badge={<Badge status="info">New</Badge>} onClick={() => {}} />
+          <VideoCard title="Processing…" isReady={false} title="Pending render" />
+        </div>
+      </DSGroup>
+
+      <DSGroup title="Browse tile" status="live" description="Collection card: colored header strip, icon, title, and count.">
+        <div className="grid gap-4 md:grid-cols-3">
+          <BrowseTile color="#ef4444" icon={<FiPlay />} title="Offense" description="Passing concepts and run schemes." count={12} onClick={() => {}} />
+          <BrowseTile color="#3b82f6" icon={<FiPlay />} title="Defense" description="Base alignments and blitz packages." count={8} onClick={() => {}} />
+          <BrowseTile color="#8b5cf6" icon={<FiPlay />} title="Special Teams" count={4} onClick={() => {}} />
+        </div>
+      </DSGroup>
+
+      <DSGroup title="Recently edited chip" status="live" description="Compact horizontal chip for recently-edited carousels.">
+        <div className="flex flex-wrap gap-2">
+          <RecentlyEditedChip title="Zone Press" time="2h ago" onClick={() => {}} />
+          <RecentlyEditedChip title="Trips Right Flood" time="1d ago" onClick={() => {}} />
+          <RecentlyEditedChip title="Motion West — Red Zone" time="3d ago" onClick={() => {}} />
+        </div>
       </DSGroup>
 
       <DSGroup title="Card anatomy">

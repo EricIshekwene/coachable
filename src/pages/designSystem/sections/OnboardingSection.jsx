@@ -18,6 +18,7 @@ export default function OnboardingSection() {
 
   return (
     <div className="flex flex-col gap-10">
+      {/* doc-only */}
       <DSPageHeading
         eyebrow="Patterns & templates"
         title="Onboarding & education"
