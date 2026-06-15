@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { copyPlatformPlay } from "../utils/apiPlays";
+import { copyPlatformPlay } from "../api/apiPlays";
 import PlayPreviewCard from "../components/PlayPreviewCard";
-import useThemeColor from "../utils/useThemeColor";
+import useThemeColor from "../hooks/useThemeColor";
 import { FiLoader, FiTag, FiPlus, FiExternalLink, FiCheck, FiUser } from "react-icons/fi";
 import darkLogo from "../assets/logos/White_Full_Coachable.png";
 import lightLogo from "../assets/logos/full_Coachable_logo.png";

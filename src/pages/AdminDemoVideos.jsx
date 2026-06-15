@@ -16,7 +16,7 @@ import { Card, Section, Button, Input, Modal, EmptyState, Spinner, ConfirmDialog
 import {
   isAdminElevated,
   setAdminElevated,
-} from "../utils/adminElevation";
+} from "../api/adminElevation";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";

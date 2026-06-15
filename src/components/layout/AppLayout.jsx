@@ -5,7 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import darkLogo from "../../assets/logos/White_Coachable_Logo.png";
 import lightLogo from "../../assets/logos/coachable_Logo.png";
 import { FiBookOpen, FiUsers, FiUser, FiLogOut, FiSettings, FiEye, FiX, FiFlag, FiPlay, FiGrid, FiBell } from "react-icons/fi";
-import useThemeColor from "../../utils/useThemeColor";
+import useThemeColor from "../../hooks/useThemeColor";
 import TeamSwitcher from "../TeamSwitcher";
 import NotificationBell from "../NotificationBell";
 import { NotificationsProvider } from "../../context/NotificationsContext";
@@ -13,7 +13,7 @@ import { useFlag } from "../../context/FeatureFlagContext";
 import {
   fetchPublishedPlaybookSections,
   filterPublishedPlaybookSectionsForSport,
-} from "../../utils/playbookSectionsApi";
+} from "../../api/playbookSectionsApi";
 
 const BASE_TEAM_NAV = [
   { to: "/app/plays", icon: FiBookOpen, label: "Plays" },

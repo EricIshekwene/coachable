@@ -5,8 +5,8 @@ import MessagePopup from "../components/MessagePopup/MessagePopup";
 import Slate from "../features/slate/Slate";
 import MobileViewOnlyGate from "../components/MobileViewOnlyGate";
 import { useAuth } from "../context/AuthContext";
-import { fetchPlay, updatePlay } from "../utils/apiPlays";
-import useThemeColor from "../utils/useThemeColor";
+import { fetchPlay, updatePlay } from "../api/apiPlays";
+import useThemeColor from "../hooks/useThemeColor";
 
 const LS_PREFIX = "coachable_play_";
 

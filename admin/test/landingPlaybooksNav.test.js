@@ -4,7 +4,7 @@
  * playbook section with at least one play.
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { filterPublishedPlaybookSectionsForSport } from "../../src/utils/playbookSectionsApi";
+import { filterPublishedPlaybookSectionsForSport } from "../../src/api/playbookSectionsApi";
 
 const API_URL = "http://localhost:3001";
 

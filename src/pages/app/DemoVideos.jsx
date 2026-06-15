@@ -9,7 +9,7 @@ import { AccordionItem, Alert, Badge, Button, Card, Divider, EmptyState, Input, 
  */
 import { useState, useEffect, useMemo } from "react";
 import { FiPlay, FiSearch, FiX } from "react-icons/fi";
-import { apiFetch } from "../../utils/api";
+import { apiFetch } from "../../api/api";
 
 // ── Hardcoded FAQ data (keywords embedded for search, not shown to user) ──────
 

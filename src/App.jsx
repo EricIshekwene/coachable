@@ -11,7 +11,7 @@ import SlateRecord from "./features/slate/SlateRecord";
 import SlateDrawing from "./features/slate/SlateDrawing";
 import MessagePopup from "./components/MessagePopup/MessagePopup";
 import { useMessagePopup } from "./components/MessagePopup/useMessagePopup";
-import useThemeColor from "./utils/useThemeColor";
+import useThemeColor from "./hooks/useThemeColor";
 import { AppMessageProvider } from "./context/AppMessageContext";
 import Landing from "./pages/Landing";
 import Signup from "./pages/Signup";

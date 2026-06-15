@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiFetch } from "../utils/api";
+import { apiFetch } from "../api/api";
 import { ConfirmDialog } from "../design-system/components";
 import { formatFailedTestsReport } from "../testing/formatFailedTestsReport";
 import {
@@ -8,7 +8,7 @@ import {
   getAdminElevatedUntil,
   setAdminElevated,
   clearAdminElevated,
-} from "../utils/adminElevation";
+} from "../api/adminElevation";
 import { useAdmin } from "../admin/AdminContext";
 import { adminPath } from "../admin/adminNav";
 import AnalyticsDashboard from "../admin/analytics/AnalyticsDashboard";

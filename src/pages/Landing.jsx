@@ -5,10 +5,10 @@ import logo from "../assets/logos/White_Full_Coachable.png";
 const productVideo = "/product-demo.mp4";
 import videoSectionBg from "../assets/backgrounds/Gemini_Generated_Image_fet7z5fet7z5fet7.png";
 import { FiArrowRight, FiPlay, FiUsers, FiLayers, FiPlus, FiCheck } from "react-icons/fi";
-import { createPlay } from "../utils/apiPlays";
+import { createPlay } from "../api/apiPlays";
 import PlayPreviewCard from "../components/PlayPreviewCard";
 import SportAwarePublicNav from "../components/SportAwarePublicNav";
-import usePageMeta from "../utils/usePageMeta";
+import usePageMeta from "../hooks/usePageMeta";
 import { getLandingMeta } from "../utils/sportSeo";
 
 // Local photography assets

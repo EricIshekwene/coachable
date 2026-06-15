@@ -11,8 +11,8 @@ import {
   POPUP_SURFACE_CLASS,
   POPUP_TITLE_CLASS,
 } from "./subcomponents/popupStyles";
-import { createPlay, updatePlay, fetchPlay, movePlayToFolder } from "../utils/apiPlays";
-import { fetchFolders, createFolder as apiCreateFolder } from "../utils/apiFolders";
+import { createPlay, updatePlay, fetchPlay, movePlayToFolder } from "../api/apiPlays";
+import { fetchFolders, createFolder as apiCreateFolder } from "../api/apiFolders";
 import { useAuth } from "../context/AuthContext";
 
 const normalizePlayName = (value) => String(value ?? "").trim().toLowerCase();

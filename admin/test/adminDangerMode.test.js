@@ -13,7 +13,7 @@ import {
   setAdminElevated,
   clearAdminElevated,
   ELEVATED_TTL_MS,
-} from "../../src/utils/adminElevation.js";
+} from "../../src/api/adminElevation.js";
 
 // ── Utility tests ─────────────────────────────────────────────────────────────
 

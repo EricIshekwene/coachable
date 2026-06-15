@@ -4,7 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useAppMessage } from "../../context/AppMessageContext";
 import { FiCopy, FiCheck, FiShield, FiUser, FiMail, FiSearch, FiRefreshCw, FiSend, FiUserMinus } from "react-icons/fi";
 import { isValidEmail } from "../../utils/inputValidation";
-import { apiFetch } from "../../utils/api";
+import { apiFetch } from "../../api/api";
 
 function InviteCodeSection({ role, code, copiedRole, onCopy, onRotate, onSendInvite, sending }) {
   const [email, setEmail] = useState("");

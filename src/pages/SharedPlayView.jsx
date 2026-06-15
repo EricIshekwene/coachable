@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import Slate from "../features/slate/Slate";
-import { fetchSharedPlay } from "../utils/apiPlays";
-import useThemeColor from "../utils/useThemeColor";
+import { fetchSharedPlay } from "../api/apiPlays";
+import useThemeColor from "../hooks/useThemeColor";
 
 export default function SharedPlayView() {
   const { token } = useParams();

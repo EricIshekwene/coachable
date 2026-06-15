@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { FiArrowLeft, FiEdit2, FiClock, FiTag, FiExternalLink } from "react-icons/fi";
-import { fetchPlay, updatePlay } from "../../utils/apiPlays";
+import { fetchPlay, updatePlay } from "../../api/apiPlays";
 import PlayPreviewPlayer from "../../components/PlayPreviewPlayer";
 
 const MOBILE_BREAKPOINT = 768;

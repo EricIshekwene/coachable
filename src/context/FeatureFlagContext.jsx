@@ -10,7 +10,7 @@
  */
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { apiFetch } from "../utils/api";
+import { apiFetch } from "../api/api";
 
 /** @type {React.Context<Record<string, boolean>>} */
 const FeatureFlagContext = createContext({});

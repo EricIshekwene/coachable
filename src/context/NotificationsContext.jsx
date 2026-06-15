@@ -4,7 +4,7 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
   submitNotificationResponse,
-} from "../utils/notificationsApi";
+} from "../api/notificationsApi";
 
 const NotificationsContext = createContext(null);
 

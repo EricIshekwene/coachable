@@ -11,7 +11,7 @@ import WomensLacrosseField from "../assets/objects/Field Vectors/Womans_Lacrosse
 import BasketballField from "../assets/objects/Field Vectors/Basketball_Field.png";
 import FieldHockeyField from "../assets/objects/Field Vectors/Field_Hockey_Field.png";
 import IceHockeyField from "../assets/objects/Field Vectors/Ice_Hockey_Field.png";
-import { getAuthToken } from "../utils/api";
+import { getAuthToken } from "../api/api";
 import PlayPreviewCard from "../components/PlayPreviewCard";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";

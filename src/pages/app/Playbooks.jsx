@@ -2,11 +2,11 @@ import { Alert, Badge, BrowseTile, Button, Card, Checkbox, Chip, EmptyState, Inp
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { apiFetch } from "../../utils/api";
+import { apiFetch } from "../../api/api";
 import {
   fetchPublishedPlaybookSections,
   filterPublishedPlaybookSectionsForSport,
-} from "../../utils/playbookSectionsApi";
+} from "../../api/playbookSectionsApi";
 import PlayPickerCard from "../../components/PlayPickerCard";
 import {
   FiBookOpen,

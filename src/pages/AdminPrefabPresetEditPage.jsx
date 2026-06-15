@@ -5,7 +5,7 @@ import MessagePopup from "../components/MessagePopup/MessagePopup";
 import { useMessagePopup } from "../components/MessagePopup/useMessagePopup";
 import { useAdmin } from "../admin/AdminContext";
 import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
-import useThemeColor from "../utils/useThemeColor";
+import useThemeColor from "../hooks/useThemeColor";
 import { prefabToInitialPlayData } from "../utils/sportPrefabPresets";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";

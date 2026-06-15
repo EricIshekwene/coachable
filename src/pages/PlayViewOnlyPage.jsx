@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Slate from "../features/slate/Slate";
 import { useAuth } from "../context/AuthContext";
-import { fetchPlay } from "../utils/apiPlays";
-import useThemeColor from "../utils/useThemeColor";
+import { fetchPlay } from "../api/apiPlays";
+import useThemeColor from "../hooks/useThemeColor";
 
 export default function PlayViewOnlyPage() {
   const { playId } = useParams();

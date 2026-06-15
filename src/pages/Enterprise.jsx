@@ -11,7 +11,7 @@ import {
   FiLayers,
   FiShare2,
 } from "react-icons/fi";
-import usePageMeta from "../utils/usePageMeta";
+import usePageMeta from "../hooks/usePageMeta";
 
 const PROBLEMS = [
   {

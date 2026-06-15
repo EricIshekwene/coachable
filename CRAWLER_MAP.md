@@ -150,12 +150,12 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 | "import play" | [src/utils/importPlay.js](src/utils/importPlay.js) |
 | "video export" | [src/utils/videoEncoder.js](src/utils/videoEncoder.js) |
 | "GIF export", "gif encoder", "play to GIF" | [src/utils/gifEncoder.js](src/utils/gifEncoder.js) |
-| "save play to server" (API client) | [src/utils/apiPlays.js](src/utils/apiPlays.js) |
-| "folders API client" | [src/utils/apiFolders.js](src/utils/apiFolders.js) |
-| "prefabs API client" | [src/utils/prefabsApi.js](src/utils/prefabsApi.js) |
-| "playbook sections API client" | [src/utils/playbookSectionsApi.js](src/utils/playbookSectionsApi.js) |
-| "notifications API client" | [src/utils/notificationsApi.js](src/utils/notificationsApi.js) |
-| "generic API helper / fetch" | [src/utils/api.js](src/utils/api.js) |
+| "save play to server" (API client) | [src/api/apiPlays.js](src/api/apiPlays.js) |
+| "folders API client" | [src/api/apiFolders.js](src/api/apiFolders.js) |
+| "prefabs API client" | [src/api/prefabsApi.js](src/api/prefabsApi.js) |
+| "playbook sections API client" | [src/api/playbookSectionsApi.js](src/api/playbookSectionsApi.js) |
+| "notifications API client" | [src/api/notificationsApi.js](src/api/notificationsApi.js) |
+| "generic API helper / fetch" | [src/api/api.js](src/api/api.js) |
 | "local autosave for plays" | [src/utils/appPlaysStorage.js](src/utils/appPlaysStorage.js) |
 | "playbook localStorage" | [src/utils/playbookStorage.js](src/utils/playbookStorage.js) |
 | "custom prefabs (local)" | [src/utils/customPrefabs.js](src/utils/customPrefabs.js) |
@@ -183,10 +183,11 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 | "routes", "router", "all pages" | [src/App.jsx](src/App.jsx) |
 | "app shell layout" (nav chrome) | [src/components/layout/AppLayout.jsx](src/components/layout/AppLayout.jsx) |
 | "page layout components", "AppShell", "AppPage", "AppSection", "AppCard", "AppHeader" | [src/components/layout/](src/components/layout/) ([LAYOUT.md](src/components/layout/LAYOUT.md), barrel: [index.js](src/components/layout/index.js)) |
-| "admin elevation / session" | [src/utils/adminElevation.js](src/utils/adminElevation.js) |
+| "admin elevation / session" | [src/api/adminElevation.js](src/api/adminElevation.js) |
 | "error reporter" | [src/utils/errorReporter.js](src/utils/errorReporter.js) |
 | "mobile viewport fixes" | [src/utils/mobileViewport.js](src/utils/mobileViewport.js) |
-| "theme color hook" | [src/utils/useThemeColor.js](src/utils/useThemeColor.js) |
+| "theme color hook" | [src/hooks/useThemeColor.js](src/hooks/useThemeColor.js) |
+| "page meta hook" | [src/hooks/usePageMeta.js](src/hooks/usePageMeta.js) |
 
 ### Dev overlay
 | User says... | Primary file(s) | Notes |

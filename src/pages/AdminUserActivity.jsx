@@ -6,7 +6,7 @@ import { adminPath } from "../admin/adminNav";
 import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
 import { AdminShell, AdminHeader, AdminPage } from "../admin/components";
 import { Button, Spinner, Modal } from "../design-system/components";
-import { isAdminElevated } from "../utils/adminElevation";
+import { isAdminElevated } from "../api/adminElevation";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAppMessage } from "../context/AppMessageContext";
-import { apiFetch } from "../utils/api";
+import { apiFetch } from "../api/api";
 import { validatePassword, validateConfirmPassword, INPUT_LIMITS } from "../utils/inputValidation";
 import logo from "../assets/logos/full_Coachable_logo.png";
 import whiteLogo from "../assets/logos/White_Full_Coachable.png";

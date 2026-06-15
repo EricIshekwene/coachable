@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiX, FiSearch } from "react-icons/fi";
 import { useAppMessage } from "../../context/AppMessageContext";
 import { useAuth } from "../../context/AuthContext";
-import { createPlay, fetchTeamTags, fetchSportPresets } from "../../utils/apiPlays";
+import { createPlay, fetchTeamTags, fetchSportPresets } from "../../api/apiPlays";
 import PlayPreviewCard from "../../components/PlayPreviewCard";
 import {
   resolveFieldTypeFromSport,

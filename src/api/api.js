@@ -1,4 +1,4 @@
-import { reportApiError } from "./errorReporter";
+import { reportApiError } from "../utils/errorReporter";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 const TOKEN_KEY = "coachable_token";

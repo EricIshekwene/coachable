@@ -5,14 +5,14 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { NotificationsProvider, useNotifications } from "../../src/context/NotificationsContext.jsx";
 
-vi.mock("../../src/utils/notificationsApi.js", () => ({
+vi.mock("../../src/api/notificationsApi.js", () => ({
   fetchNotifications: vi.fn(),
   markAllNotificationsRead: vi.fn(),
   markNotificationRead: vi.fn(),
   submitNotificationResponse: vi.fn(),
 }));
 
-import { fetchNotifications } from "../../src/utils/notificationsApi.js";
+import { fetchNotifications } from "../../src/api/notificationsApi.js";
 
 /**
  * Consumer component that captures the notifications context state into a

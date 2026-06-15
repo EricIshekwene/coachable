@@ -18,7 +18,7 @@ import {
   getAdminElevatedUntil,
   setAdminElevated,
   clearAdminElevated,
-} from "../utils/adminElevation";
+} from "../api/adminElevation";
 import { SUPPORTED_FIELD_TYPES } from "../features/slate/hooks/useAdvancedSettings";
 
 const SESSION_KEY = "coachable_admin_session";

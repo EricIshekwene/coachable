@@ -24,7 +24,7 @@ import { useFieldViewport } from "./hooks/useFieldViewport";
 import { INITIAL_BALL, useSlateEntities, getNextPlayerId } from "./hooks/useSlateEntities";
 import SavePrefabModal from "../../components/SavePrefabModal";
 import { buildCustomPrefab, buildPrefabPresetPayload } from "../../utils/customPrefabs";
-import { fetchPrefabs, savePrefabToServer, deletePrefabFromServer, fetchSportPrefabPresets } from "../../utils/prefabsApi";
+import { fetchPrefabs, savePrefabToServer, deletePrefabFromServer, fetchSportPrefabPresets } from "../../api/prefabsApi";
 import { mapSportPrefabPresetToSidebarPrefab } from "../../utils/sportPrefabPresets";
 import { useSlateHistory } from "./hooks/useSlateHistory";
 import { useSlateActionLog } from "./hooks/useSlateActionLog";

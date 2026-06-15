@@ -8,7 +8,7 @@ import { Alert, Badge, Button, Card, EmptyState, IconBubble, Input, Textarea } f
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { apiFetch } from "../../utils/api";
+import { apiFetch } from "../../api/api";
 import { FiFlag, FiCheckCircle } from "react-icons/fi";
 
 const MAX_TITLE = 200;

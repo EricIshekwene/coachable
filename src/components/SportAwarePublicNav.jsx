@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import logo from "../assets/logos/White_Full_Coachable.png";
-import { filterPublishedPlaybookSectionsForSport } from "../utils/playbookSectionsApi";
+import { filterPublishedPlaybookSectionsForSport } from "../api/playbookSectionsApi";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 

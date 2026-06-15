@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { apiFetch, setAuthToken } from "../utils/api";
+import { apiFetch, setAuthToken } from "../api/api";
 import { setErrorReporterUserId } from "../utils/errorReporter";
 
 const AuthContext = createContext(null);

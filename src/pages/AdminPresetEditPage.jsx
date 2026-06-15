@@ -6,7 +6,7 @@ import { useMessagePopup } from "../components/MessagePopup/useMessagePopup";
 import { useAdmin } from "../admin/AdminContext";
 import { adminPath } from "../admin/adminNav";
 import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
-import useThemeColor from "../utils/useThemeColor";
+import useThemeColor from "../hooks/useThemeColor";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 const SESSION_KEY = "coachable_admin_session";
