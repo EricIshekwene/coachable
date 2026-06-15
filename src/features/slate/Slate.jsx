@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import WideSidebar from "../../components/WideSidebar";
-import ControlPill from "../../components/controlPill/ControlPill";
-import RightPanel from "../../components/RightPanel";
-import MobileEditorBar from "../../components/MobileEditorBar";
-import AdvancedSettings from "../../components/AdvancedSettings";
+import WideSidebar from "./components/WideSidebar";
+import ControlPill from "./components/controlPill/ControlPill";
+import RightPanel from "./components/RightPanel";
+import MobileEditorBar from "./components/MobileEditorBar";
+import AdvancedSettings from "./components/AdvancedSettings";
 import KonvaCanvasRoot from "../../canvas/KonvaCanvasRoot";
-import DrawToolsPill from "../../components/DrawToolsPill";
-import AnimationDrawingTools from "../../components/AnimationDrawingTools";
-import PlayerEditPanel from "../../components/rightPanel/PlayerEditPanel";
+import DrawToolsPill from "./components/DrawToolsPill";
+import AnimationDrawingTools from "./components/AnimationDrawingTools";
+import PlayerEditPanel from "./components/rightPanel/PlayerEditPanel";
 import { buildPlayExport, downloadPlayExport, downloadScreenshot, downloadVideo } from "../../utils/exportPlay";
-import ScreenshotConfirmBar from "../../components/ScreenshotConfirmBar";
-import ExportModal from "../../components/ExportModal";
-import ExportOverlay from "../../components/ExportOverlay";
+import ScreenshotConfirmBar from "./components/ScreenshotConfirmBar";
+import ExportModal from "./components/ExportModal";
+import ExportOverlay from "./components/ExportOverlay";
 import { IMPORT_FILE_SIZE_LIMIT_BYTES, validatePlayImport } from "../../utils/importPlay";
 import { rotatePoint } from "../../utils/rotatePoint";
 import {
@@ -22,7 +22,7 @@ import {
 } from "./hooks/useAdvancedSettings";
 import { useFieldViewport } from "./hooks/useFieldViewport";
 import { INITIAL_BALL, useSlateEntities, getNextPlayerId } from "./hooks/useSlateEntities";
-import SavePrefabModal from "../../components/SavePrefabModal";
+import SavePrefabModal from "./components/SavePrefabModal";
 import { buildCustomPrefab, buildPrefabPresetPayload } from "../../utils/customPrefabs";
 import { fetchPrefabs, savePrefabToServer, deletePrefabFromServer, fetchSportPrefabPresets } from "../../api/prefabsApi";
 import { mapSportPrefabPresetToSidebarPrefab } from "../../utils/sportPrefabPresets";
@@ -62,11 +62,11 @@ import {
 import { useDrawings } from "./hooks/useDrawings";
 import { splitLegacyDrawingsArray } from "./utils/drawingSchema";
 import { useRecordingMode } from "./hooks/useRecordingMode";
-import RecordingControlBar from "../../components/RecordingControlBar";
-import RecordingCountdown from "../../components/RecordingCountdown";
+import RecordingControlBar from "./components/RecordingControlBar";
+import RecordingCountdown from "./components/RecordingCountdown";
 import SaveToPlaybookModal from "../../components/SaveToPlaybookModal";
 import AuthPromptModal from "../../components/AuthPromptModal";
-import ViewOnlyControls from "../../components/ViewOnlyControls";
+import ViewOnlyControls from "./components/ViewOnlyControls";
 import { useAuth } from "../../context/AuthContext";
 
 /**

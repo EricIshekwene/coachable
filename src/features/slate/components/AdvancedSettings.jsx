@@ -10,10 +10,10 @@ import BallSettingsSection from "./advancedSettings/BallSettingsSection";
 import ExportVideoSettingsSection from "./advancedSettings/ExportVideoSettingsSection";
 import AnimationSettingsSection from "./advancedSettings/AnimationSettingsSection";
 import LoggerSettingsSection from "./advancedSettings/LoggerSettingsSection";
-import PlayPreviewCard from "./PlayPreviewCard";
+import PlayPreviewCard from "../../../components/PlayPreviewCard";
 import DebugPanel from "./rightPanel/DebugPanel";
 import RecordDebugPanel from "./advancedSettings/RecordDebugPanel";
-import { SPORT_DEFAULTS } from "../../hooks/useAdvancedSettings";
+import { SPORT_DEFAULTS } from "../hooks/useAdvancedSettings";
 
 export default function AdvancedSettings({
     value,

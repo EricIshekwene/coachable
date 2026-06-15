@@ -10,7 +10,7 @@ import {
   POPUP_PRIMARY_BUTTON_CLASS,
   POPUP_SURFACE_CLASS,
   POPUP_TITLE_CLASS,
-} from "./subcomponents/popupStyles";
+} from "../features/slate/components/subcomponents/popupStyles";
 import { createPlay, updatePlay, fetchPlay, movePlayToFolder } from "../api/apiPlays";
 import { fetchFolders, createFolder as apiCreateFolder } from "../api/apiFolders";
 import { useAuth } from "../context/AuthContext";

@@ -1,16 +1,16 @@
 import { useMemo, useRef } from "react";
 import { FiGrid, FiLayers } from "react-icons/fi";
-import AnimationDrawingTools from "../../../components/AnimationDrawingTools";
-import ControlPill from "../../../components/controlPill/ControlPill";
-import MobileEditorBar from "../../../components/MobileEditorBar";
-import DrawToolsPill from "../../../components/DrawToolsPill";
-import AddPlayerSection from "../../../components/sidebar/AddPlayerSection";
-import HistoryActionsSection from "../../../components/sidebar/HistoryActionsSection";
-import PenToolSection from "../../../components/sidebar/PenToolSection";
-import PlayerColorSection, { PLAYER_COLORS } from "../../../components/sidebar/PlayerColorSection";
-import PrefabsSection from "../../../components/sidebar/PrefabsSection";
-import PresetSection from "../../../components/sidebar/PresetSection";
-import SelectToolSection from "../../../components/sidebar/SelectToolSection";
+import AnimationDrawingTools from "../../../features/slate/components/AnimationDrawingTools";
+import ControlPill from "../../../features/slate/components/controlPill/ControlPill";
+import MobileEditorBar from "../../../features/slate/components/MobileEditorBar";
+import DrawToolsPill from "../../../features/slate/components/DrawToolsPill";
+import AddPlayerSection from "../../../features/slate/components/sidebar/AddPlayerSection";
+import HistoryActionsSection from "../../../features/slate/components/sidebar/HistoryActionsSection";
+import PenToolSection from "../../../features/slate/components/sidebar/PenToolSection";
+import PlayerColorSection, { PLAYER_COLORS } from "../../../features/slate/components/sidebar/PlayerColorSection";
+import PrefabsSection from "../../../features/slate/components/sidebar/PrefabsSection";
+import PresetSection from "../../../features/slate/components/sidebar/PresetSection";
+import SelectToolSection from "../../../features/slate/components/sidebar/SelectToolSection";
 import { DSPageHeading, DSCallout } from "../dsPrimitives";
 
 const noop = () => {};

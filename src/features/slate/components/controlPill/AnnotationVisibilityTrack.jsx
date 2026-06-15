@@ -1,5 +1,5 @@
 import { useRef, useCallback } from "react";
-import { MIN_DRAWING_WINDOW_MS } from "../../../../utils/drawingTiming";
+import { MIN_DRAWING_WINDOW_MS } from "../../utils/drawingTiming";
 import {
   TRACK_SNAP_THRESHOLD_PX,
   pxToMs,

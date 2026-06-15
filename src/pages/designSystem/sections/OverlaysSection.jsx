@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FiZap, FiInfo } from "react-icons/fi";
 import { Modal, Button, Input, Textarea, Tooltip } from "../../../design-system/components";
-import { Tooltip as SlateTooltip } from "../../../components/subcomponents/Popovers";
+import { Tooltip as SlateTooltip } from "../../../features/slate/components/subcomponents/Popovers";
 import { DSPageHeading, DSGroup, DSTile, DSStage, DSChecklist, DSAnatomy } from "../dsPrimitives";
 
 /**

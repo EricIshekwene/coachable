@@ -7,7 +7,7 @@ import {
   POPUP_TITLE_CLASS,
   POPUP_PRIMARY_BUTTON_CLASS,
   POPUP_SECONDARY_BUTTON_CLASS,
-} from "./subcomponents/popupStyles";
+} from "../features/slate/components/subcomponents/popupStyles";
 
 /**
  * Modal prompting unauthenticated users to log in or sign up.

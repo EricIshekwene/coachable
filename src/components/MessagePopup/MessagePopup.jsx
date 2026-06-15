@@ -6,7 +6,7 @@ import {
   IoInformationCircleOutline,
   IoWarningOutline,
 } from "react-icons/io5";
-import { POPUP_TOAST_SURFACE_CLASS } from "../subcomponents/popupStyles";
+import { POPUP_TOAST_SURFACE_CLASS } from "../../features/slate/components/subcomponents/popupStyles";
 
 const TYPE_STYLES = {
   error: {
