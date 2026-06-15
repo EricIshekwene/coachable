@@ -39,6 +39,12 @@ describe("design-system barrel", () => {
     "IconBubble", "AccordionItem", "InlineEdit", "TimestampChip", "TokenBox", "AuthCard",
     // Q4 Session 4 — media and display
     "VideoCard", "BrowseTile",
+    // Q4 Session 5 — composite inputs
+    "TagInput", "StarRating", "QuestionCard", "CodeInput",
+    // Q4 Session 7 — recently edited chip
+    "RecentlyEditedChip",
+    // Q4 Session 9 — navigation sidebar primitives
+    "Sidebar", "SidebarNavItem",
   ];
 
   test.each(canonical)("%s is exported as a React component type", (name) => {

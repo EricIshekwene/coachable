@@ -64,6 +64,9 @@ export { default as StarRating }   from "./StarRating";
 export { default as QuestionCard } from "./QuestionCard";
 export { default as CodeInput }    from "./CodeInput";
 
+// Q4 Session 7 — recently edited chip
+export { default as RecentlyEditedChip } from "./RecentlyEditedChip";
+
 // Q4 Session 9 — navigation sidebar primitives
 export { default as Sidebar }        from "./Sidebar";
 export { default as SidebarNavItem } from "./SidebarNavItem";

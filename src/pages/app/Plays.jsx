@@ -1,9 +1,9 @@
-import { Breadcrumbs, Button, Card, Chip, EmptyState, Input, Modal, Section, Spinner, Textarea, Toast, SearchInput, BulkBar } from "../../design-system/components";
+import { Breadcrumbs, Button, Card, Chip, EmptyState, Input, Modal, Section, Spinner, Textarea, Toast, SearchInput, BulkBar, RecentlyEditedChip } from "../../design-system/components";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import {
-  FiPlus, FiPlay, FiClock, FiTag, FiFolder,
+  FiPlus, FiPlay, FiTag, FiFolder,
   FiSearch, FiRotateCcw, FiX, FiCheckSquare,
   FiTrash2, FiSend,
 } from "react-icons/fi";
@@ -493,18 +493,12 @@ export default function Plays() {
         <Section title="Recently Edited" variant="compact" className="mt-6">
           <div className="hide-scroll flex gap-2 overflow-x-auto pb-1">
             {recentlyEdited.map((play) => (
-              <Button variant="outline"
+              <RecentlyEditedChip
                 key={play.id}
+                title={play.title}
+                time={formatRelativeTime(play.updatedAt || play.createdAt)}
                 onClick={() => navigate(playerViewMode ? `/app/plays/${play.id}/view` : `/app/plays/${play.id}`)}
-                className="flex shrink-0 items-center gap-2.5 rounded-lg border px-3.5 py-2.5 text-left transition hover:border-BrandOrange/30"
-                style={{ borderColor: "var(--ui-border)", backgroundColor: "var(--ui-surface-2)" }}
-              >
-                <FiClock className="shrink-0 text-xs" style={{ color: "var(--ui-text-subtle)" }} />
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold max-w-[160px]">{play.title}</p>
-                  <p className="text-[10px]" style={{ color: "var(--ui-text-subtle)" }}>{formatRelativeTime(play.updatedAt || play.createdAt)}</p>
-                </div>
-              </Button>
+              />
             ))}
           </div>
         </Section>
