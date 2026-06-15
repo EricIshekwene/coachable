@@ -37,6 +37,8 @@ describe("design-system barrel", () => {
     "StatCard",
     // Q4 Session 3 — atomic components
     "IconBubble", "AccordionItem", "InlineEdit", "TimestampChip", "TokenBox", "AuthCard",
+    // Q4 Session 4 — media and display
+    "VideoCard", "BrowseTile",
   ];
 
   test.each(canonical)("%s is exported as a React component type", (name) => {

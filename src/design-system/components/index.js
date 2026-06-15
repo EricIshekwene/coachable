@@ -54,6 +54,20 @@ export { default as TimestampChip } from "./TimestampChip";
 export { default as TokenBox }      from "./TokenBox";
 export { default as AuthCard }      from "./AuthCard";
 
+// Q4 Session 4 — media and display
+export { default as VideoCard }  from "./VideoCard";
+export { default as BrowseTile } from "./BrowseTile";
+
+// Q4 Session 5 — composite inputs
+export { default as TagInput }     from "./TagInput";
+export { default as StarRating }   from "./StarRating";
+export { default as QuestionCard } from "./QuestionCard";
+export { default as CodeInput }    from "./CodeInput";
+
+// Q4 Session 9 — navigation sidebar primitives
+export { default as Sidebar }        from "./Sidebar";
+export { default as SidebarNavItem } from "./SidebarNavItem";
+
 // Layout (re-export only; files stay at src/components/layout/)
 export { default as PageShell }  from "../../components/layout/AppShell";
 export { default as Page }       from "../../components/layout/AppPage";

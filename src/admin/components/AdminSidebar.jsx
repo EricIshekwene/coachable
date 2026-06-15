@@ -1,8 +1,9 @@
-import { NavLink, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAdmin } from "../AdminContext";
 import { adminPath } from "../adminNav";
 import darkLogo from "../../assets/logos/full_Coachable_logo.png";
 import whiteLogo from "../../assets/logos/White_Full_Coachable.png";
+import { Sidebar, SidebarNavItem } from "../../design-system/components";
 
 function DashboardIcon() {
   return (
@@ -143,8 +144,22 @@ function MoonIcon() {
   );
 }
 
+function ThemeToggleButton({ theme, setTheme }) {
+  return (
+    <button
+      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+      aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+      className="flex w-full items-center gap-2.5 rounded-md px-3 py-2.5 text-xs font-semibold transition-colors hover:bg-[color:var(--ui-surface-2)]"
+      style={{ color: "var(--ui-text-muted)" }}
+    >
+      {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+      {theme === "dark" ? "Light mode" : "Dark mode"}
+    </button>
+  );
+}
+
 const NAV_ITEMS = [
-  { label: "Dashboard", path: "", icon: <DashboardIcon />, perm: "dashboard.viewAnalytics" },
+  { label: "Dashboard", path: "", icon: <DashboardIcon />, perm: "dashboard.viewAnalytics", end: true },
   { label: "Plays", path: "/app", icon: <PlaysIcon />, anyOf: ["plays.viewFolders", "pageSections.manage", "playbooks.view", "presets.create", "presets.edit", "prefabs.manage"] },
   { label: "Users", path: "/users", icon: <UsersIcon />, perm: "users.viewTable" },
   { label: "One Page", path: "/one-page", icon: <OnePageIcon />, perm: "pageSections.manage" },
@@ -165,9 +180,8 @@ const NAV_ITEMS = [
  * Persistent vertical sidebar for the admin panel.
  * Collapses into an off-canvas drawer on smaller screens.
  *
- * Items are filtered by the caller's permissions. While the staff session
- * is still loading (mode="staff"), nav items are hidden to avoid flashing
- * forbidden links.
+ * @param {boolean}    [props.mobileOpen=false]
+ * @param {() => void} props.onClose
  */
 export default function AdminSidebar({ mobileOpen = false, onClose }) {
   const { basePath, theme, setTheme, hasPerm, isOwner, sessionLoaded } = useAdmin();
@@ -177,10 +191,12 @@ export default function AdminSidebar({ mobileOpen = false, onClose }) {
         if (item.ownerOnly) return isOwner;
         if (isOwner) return true;
         if (item.perm) return hasPerm(item.perm);
-        if (Array.isArray(item.anyOf)) return item.anyOf.some((path) => hasPerm(path));
+        if (Array.isArray(item.anyOf)) return item.anyOf.some((p) => hasPerm(p));
         return true;
       })
     : [];
+
+  const logo = theme === "dark" ? whiteLogo : darkLogo;
 
   return (
     <>
@@ -191,78 +207,42 @@ export default function AdminSidebar({ mobileOpen = false, onClose }) {
       />
       <aside
         data-component="AdminSidebar"
-        className={`fixed inset-y-0 left-0 z-40 flex h-full w-[min(18rem,85vw)] shrink-0 flex-col transition-transform duration-200 lg:static lg:z-auto lg:w-52 ${mobileOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
-        style={{
-          backgroundColor: "var(--adm-bg)",
-          borderRight: "1px solid var(--adm-border)",
-        }}
+        className={`fixed inset-y-0 left-0 z-40 flex h-full w-[min(18rem,85vw)] shrink-0 transition-transform duration-200 lg:static lg:z-auto lg:w-52 ${mobileOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
       >
-        {/* Logo */}
-        <div
-          className="flex h-14 shrink-0 items-center gap-3 px-5"
-          style={{ borderBottom: "1px solid var(--adm-border)" }}
+        <Sidebar
+          width="sm"
+          className="w-full"
+          header={
+            <>
+              <Link to={basePath} className="flex-1 min-w-0">
+                <img src={logo} alt="Coachable" className="h-6 w-auto" />
+              </Link>
+              <button
+                type="button"
+                onClick={onClose}
+                className="ml-auto inline-flex h-9 w-9 items-center justify-center rounded-md lg:hidden"
+                style={{ color: "var(--ui-text-muted)" }}
+                aria-label="Close admin navigation"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </>
+          }
+          footer={<ThemeToggleButton theme={theme} setTheme={setTheme} />}
         >
-          <Link to={basePath} className="flex-1 min-w-0">
-            <img src={theme === "dark" ? whiteLogo : darkLogo} alt="Coachable" className="h-6 w-auto" />
-          </Link>
-          <button
-            type="button"
-            onClick={onClose}
-            className="ml-auto inline-flex h-9 w-9 items-center justify-center rounded-[var(--adm-radius-sm)] lg:hidden"
-            style={{ color: "var(--adm-text2)" }}
-            aria-label="Close admin navigation"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Nav items */}
-        <nav className="hide-scroll flex flex-1 flex-col gap-1 overflow-y-auto p-3">
-          {visibleItems.map(({ label, path, icon }) => (
-            <NavLink
+          {visibleItems.map(({ label, path, icon, end }) => (
+            <SidebarNavItem
               key={path}
-              to={adminPath(basePath, path)}
-              end={path === ""}
+              label={label}
+              icon={icon}
+              href={adminPath(basePath, path)}
+              end={end ?? false}
               onClick={onClose}
-              className={({ isActive }) =>
-                [
-                  "font-Manrope flex items-center gap-3 rounded-[var(--adm-radius-sm)] px-3 py-3 text-sm font-semibold transition-colors",
-                  isActive ? "" : "hover:opacity-80",
-                ].join(" ")
-              }
-              style={({ isActive }) =>
-                isActive
-                  ? {
-                      backgroundColor: "color-mix(in srgb, var(--adm-accent-dim) 85%, var(--adm-surface2))",
-                      color: "var(--adm-accent)",
-                      boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--adm-accent) 22%, transparent)",
-                    }
-                  : { color: "var(--adm-text2)", backgroundColor: "transparent" }
-              }
-            >
-              {icon}
-              {label}
-            </NavLink>
+            />
           ))}
-        </nav>
-
-        {/* Theme toggle */}
-        <div
-          className="shrink-0 p-3"
-          style={{ borderTop: "1px solid var(--adm-border)" }}
-        >
-          <button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            className="font-Manrope flex w-full items-center gap-2.5 rounded-[var(--adm-radius-sm)] px-3 py-2.5 text-sm font-semibold transition-colors hover:opacity-80"
-            style={{ color: "var(--adm-text2)" }}
-          >
-            {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-            {theme === "dark" ? "Light mode" : "Dark mode"}
-          </button>
-        </div>
+        </Sidebar>
       </aside>
     </>
   );

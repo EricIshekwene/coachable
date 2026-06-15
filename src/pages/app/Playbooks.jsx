@@ -1,4 +1,4 @@
-import { Alert, Badge, Button, Card, Checkbox, Chip, EmptyState, Input, Popover, SearchInput, Spinner, Tabs } from "../../design-system/components";
+import { Alert, Badge, BrowseTile, Button, Card, Checkbox, Chip, EmptyState, Input, Popover, SearchInput, Spinner, Tabs } from "../../design-system/components";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -7,18 +7,15 @@ import {
   fetchPublishedPlaybookSections,
   filterPublishedPlaybookSectionsForSport,
 } from "../../utils/playbookSectionsApi";
-import PlayPreviewCard from "../../components/PlayPreviewCard";
+import PlayPickerCard from "../../components/PlayPickerCard";
 import {
-  FiChevronRight,
   FiBookOpen,
   FiChevronDown,
   FiChevronLeft,
   FiCheck,
   FiFilter,
-  FiLayout,
   FiPlus,
   FiSearch,
-  FiTag,
   FiX,
 } from "react-icons/fi";
 
@@ -104,84 +101,13 @@ function PlayGrid({ plays, isCoach, copiedIds, onCopyPlay, onPreview }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {plays.map((play) => (
-        <Card
+        <PlayPickerCard
           key={play.id}
-          padding="none"
-          interactive
+          play={play}
+          added={copiedIds.has(play.id)}
+          onAdd={isCoach ? () => onCopyPlay(play) : undefined}
           onClick={() => onPreview(play)}
-          className="group flex cursor-pointer flex-col overflow-hidden rounded-3xl border border-[color:var(--ui-border)] transition hover:border-BrandOrange/25 hover:shadow-[0_18px_50px_rgba(0,0,0,0.24)]"
-          style={{ background: "linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0)),var(--ui-surface)" }}
-        >
-          <div className="relative block w-full text-left">
-            <div className="border-b border-white/6 bg-BrandBlack/40 p-3">
-              {play.playData ? (
-                <PlayPreviewCard
-                  playData={play.playData}
-                  autoplay="hover"
-                  shape="landscape"
-                  cameraMode="fit-distribution"
-                  background="field"
-                  paddingPx={20}
-                  minSpanPx={100}
-                  showHoverHint={false}
-                  className="overflow-hidden rounded-2xl"
-                />
-              ) : (
-                <div className="flex aspect-video w-full items-center justify-center rounded-2xl" style={{ backgroundColor: "var(--ui-surface-2)" }}>
-                  <FiLayout className="text-2xl opacity-40" style={{ color: "var(--ui-text-subtle)" }} />
-                </div>
-              )}
-              {play.tags?.length > 0 && (
-                <Badge className="pointer-events-none absolute right-5 top-5 backdrop-blur-sm" size="xs">
-                  {play.tags.length} tag{play.tags.length !== 1 ? "s" : ""}
-                </Badge>
-              )}
-            </div>
-          </div>
-
-          <div className="flex flex-1 flex-col p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <h4 className="truncate font-Manrope text-sm font-bold" style={{ color: "var(--ui-text)" }}>{play.title}</h4>
-                <p className="mt-1 text-[11px] uppercase tracking-[0.16em]" style={{ color: "var(--ui-text-subtle)" }}>
-                  Play Preview
-                </p>
-              </div>
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[color:var(--ui-border)] text-[color:var(--ui-text-muted)] transition group-hover:border-BrandOrange/30 group-hover:text-BrandOrange" style={{ backgroundColor: "rgba(0,0,0,0.35)" }}>
-                <FiChevronRight className="text-sm" />
-              </div>
-            </div>
-            {play.description && (
-              <p className="mt-2 line-clamp-2 text-xs leading-relaxed" style={{ color: "var(--ui-text-muted)" }}>
-                {play.description}
-              </p>
-            )}
-            {play.tags?.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {play.tags.map((tag) => (
-                  <Chip key={tag} leadingIcon={<FiTag className="text-[8px]" />}>{tag}</Chip>
-                ))}
-              </div>
-            )}
-
-            {isCoach && (
-              <Button variant="primary"
-                onClick={(e) => { e.stopPropagation(); onCopyPlay(play); }}
-                disabled={copiedIds.has(play.id)}
-                className={`mt-4 flex w-full items-center justify-center gap-1.5 rounded-full py-2.5 text-xs font-semibold transition disabled:opacity-70 ${
-                  copiedIds.has(play.id)
-                    ? "bg-green-500/10 text-green-400"
-                    : "border border-BrandOrange/20 bg-BrandOrange/10 text-BrandOrange hover:bg-BrandOrange/18"
-                }`}
-              >
-                {copiedIds.has(play.id)
-                  ? <><FiCheck className="text-xs" /> Added to Playbook</>
-                  : <><FiPlus className="text-xs" /> Add to Playbook</>
-                }
-              </Button>
-            )}
-          </div>
-        </Card>
+        />
       ))}
     </div>
   );
@@ -441,45 +367,6 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
   );
 }
 
-// ── Browse tile ───────────────────────────────────────────────────────────────
-
-/**
- * A single tile in the section browse grid.
- * @param {Object} props
- * @param {string} props.title
- * @param {string|null} props.description
- * @param {number} props.playCount
- * @param {Function} props.onClick
- */
-function BrowseTile({ title, description, playCount, onClick }) {
-  return (
-    <Card
-      as="button"
-      type="button"
-      padding="none"
-      interactive
-      onClick={onClick}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-[color:var(--ui-border)] text-left transition hover:border-BrandOrange/40 hover:shadow-lg hover:shadow-BrandOrange/5"
-      style={{ backgroundColor: "var(--ui-surface)" }}
-    >
-      <div className="flex h-28 items-center justify-center bg-BrandOrange/5">
-        <FiBookOpen className="text-4xl text-BrandOrange/40 transition group-hover:text-BrandOrange/70" />
-      </div>
-
-      <div className="flex flex-1 flex-col p-4">
-        <h3 className="truncate font-Manrope text-sm font-bold" style={{ color: "var(--ui-text)" }}>{title}</h3>
-        {description && (
-          <p className="mt-1 line-clamp-2 text-xs leading-relaxed" style={{ color: "var(--ui-text-muted)" }}>{description}</p>
-        )}
-
-        <p className="mt-auto pt-3 text-xs" style={{ color: "var(--ui-text-subtle)" }}>
-          {playCount} {playCount === 1 ? "play" : "plays"}
-        </p>
-      </div>
-    </Card>
-  );
-}
-
 // ── Tab selector ──────────────────────────────────────────────────────────────
 
 /**
@@ -597,9 +484,12 @@ export default function Playbooks() {
           {visibleSections.map((section) => (
             <BrowseTile
               key={section.id}
+              color="var(--ui-accent)"
+              icon={<FiBookOpen />}
               title={section.name}
               description={section.description}
-              playCount={section.playCount}
+              count={section.playCount}
+              countLabel={section.playCount === 1 ? "play" : "plays"}
               onClick={() => navigate(`/app/playbooks/${section.id}`)}
             />
           ))}

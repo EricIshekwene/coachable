@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { render, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import InlineEdit from "../../src/design-system/components/InlineEdit";

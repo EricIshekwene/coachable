@@ -1,7 +1,7 @@
-import { Alert, Badge, Button, Card, Checkbox, EmptyState, Input, RadioGroup, Select, Spinner, Textarea } from "../../design-system/components";
+import { Alert, Badge, Button, Card, Checkbox, EmptyState, Input, RadioGroup, Select, Spinner, Textarea, StarRating, QuestionCard } from "../../design-system/components";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { FiBell, FiAlertCircle, FiStar, FiInbox } from "react-icons/fi";
+import { FiBell, FiAlertCircle, FiInbox } from "react-icons/fi";
 import { useNotifications } from "../../context/NotificationsContext";
 
 /** Friendly absolute date, e.g. "May 22, 2026 · 3:14 PM". */
@@ -142,26 +142,7 @@ function QuestionField({ question, value, onChange, disabled }) {
 
   if (q.type === "rating") {
     return (
-      <div className="flex gap-1.5">
-        {[1, 2, 3, 4, 5].map((n) => (
-          <Button variant="ghost"
-            key={n}
-            type="button"
-            disabled={disabled}
-            onClick={() => onChange(n)}
-            aria-label={`${n} star${n > 1 ? "s" : ""}`}
-            className="transition disabled:opacity-70"
-          >
-            <FiStar
-              className="h-7 w-7"
-              style={{
-                fill: Number(value) >= n ? "var(--color-BrandOrange)" : "transparent",
-                color: Number(value) >= n ? "var(--color-BrandOrange)" : "var(--tw-prose-body, #9ca3af)",
-              }}
-            />
-          </Button>
-        ))}
-      </div>
+      <StarRating value={Number(value)} onChange={onChange} max={5} disabled={disabled} />
     );
   }
 
@@ -243,29 +224,14 @@ function NotificationDetail({ notif, onRespond }) {
           const num = qIndex;
           const readOnly = !showForm;
           return (
-            <Card
-              key={b.id}
-              padding="sm"
-              style={{ backgroundColor: "var(--ui-surface-2)" }}
-            >
-              <div className="mb-3 flex items-start gap-2">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-BrandOrange/15 text-xs font-bold text-BrandOrange">
-                  {num}
-                </span>
-                <span className="text-sm font-semibold" style={{ color: "var(--ui-text)" }}>
-                  {b.label || "Untitled question"}
-                  {b.required && <span className="ml-1 text-BrandOrange">*</span>}
-                </span>
-              </div>
-              <div className="pl-8">
-                <QuestionField
-                  question={b}
-                  value={answers[b.id]}
-                  onChange={(v) => setAnswers((prev) => ({ ...prev, [b.id]: v }))}
-                  disabled={readOnly}
-                />
-              </div>
-            </Card>
+            <QuestionCard key={b.id} number={num} label={b.label || "Untitled question"} required={b.required}>
+              <QuestionField
+                question={b}
+                value={answers[b.id]}
+                onChange={(v) => setAnswers((prev) => ({ ...prev, [b.id]: v }))}
+                disabled={readOnly}
+              />
+            </QuestionCard>
           );
         })}
       </div>

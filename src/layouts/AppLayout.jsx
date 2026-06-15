@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Sidebar, SidebarNavItem } from "../design-system/components";
 import { useAuth } from "../context/AuthContext";
 import darkLogo from "../assets/logos/White_Coachable_Logo.png";
 import lightLogo from "../assets/logos/coachable_Logo.png";
@@ -95,11 +96,30 @@ export default function AppLayout() {
     navigate("/");
   };
 
-  const linkClass = ({ isActive }) =>
-    `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${isActive
-      ? "bg-BrandOrange/10 text-BrandOrange font-semibold"
-      : "text-BrandGray hover:bg-BrandBlack2 hover:text-BrandText"
-    }`;
+  /** Footer content: user avatar + logout button. */
+  function AppSidebarFooter() {
+    return (
+      <div>
+        <div className="mb-3 flex items-center gap-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold" style={{ backgroundColor: "var(--ui-accent-muted)", color: "var(--ui-accent)" }}>
+            {user?.name?.[0] || "?"}
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-xs font-semibold" style={{ color: "var(--ui-text)" }}>{user?.name || "Guest"}</p>
+            <p className="truncate text-[10px]" style={{ color: "var(--ui-text-subtle)" }}>{isPersonal ? "solo" : playerViewMode ? "player" : (user?.role || "")}</p>
+          </div>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-xs font-semibold transition hover:text-red-400"
+          style={{ color: "var(--ui-text-muted)" }}
+        >
+          <FiLogOut className="shrink-0" />
+          Log out
+        </button>
+      </div>
+    );
+  }
 
   const handleExitPlayerView = () => {
     setPlayerViewMode(false);
@@ -131,50 +151,36 @@ export default function AppLayout() {
       )}
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-      {/* Sidebar */}
-      <aside className="hidden w-60 flex-col border-r border-BrandGray2/20 md:flex">
-        <div className="flex items-center justify-between px-5 py-5">
-          <Link to="/app" className="flex items-center gap-3">
-            <img src={isLight ? lightLogo : darkLogo} alt="Coachable" className="h-7 w-7" />
-            <span className="font-Manrope text-sm font-semibold tracking-tight">Coachable</span>
-          </Link>
-          {notificationsEnabled && <NotificationBell />}
-        </div>
-
-        {/* Team switcher */}
-        <TeamSwitcher />
-
-        <nav className="flex flex-1 flex-col gap-1 px-3">
+      {/* Desktop sidebar */}
+      <div className="hidden md:flex">
+        <Sidebar
+          width="md"
+          header={
+            <>
+              <Link to="/app" className="flex items-center gap-3">
+                <img src={isLight ? lightLogo : darkLogo} alt="Coachable" className="h-7 w-7" />
+                <span className="font-Manrope text-sm font-semibold tracking-tight" style={{ color: "var(--ui-text)" }}>Coachable</span>
+              </Link>
+              {notificationsEnabled && <NotificationBell />}
+            </>
+          }
+          footer={<AppSidebarFooter />}
+        >
+          <TeamSwitcher />
           {navItems.map((navItem) => {
             const NavIcon = navItem.icon;
             return (
-              <NavLink key={navItem.to} to={navItem.to} className={linkClass}>
-                <NavIcon className="text-base" />
-                {navItem.label}
-              </NavLink>
+              <SidebarNavItem
+                key={navItem.to}
+                label={navItem.label}
+                icon={<NavIcon className="text-base" />}
+                href={navItem.to}
+                active={location.pathname.startsWith(navItem.to)}
+              />
             );
           })}
-        </nav>
-
-        <div className="border-t border-BrandGray2/20 px-3 py-4">
-          <div className="mb-3 flex items-center gap-3 px-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-BrandOrange/20 text-xs font-bold text-BrandOrange">
-              {user?.name?.[0] || "?"}
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-xs font-semibold">{user?.name || "Guest"}</p>
-              <p className="truncate text-[10px] text-BrandGray2">{isPersonal ? "solo" : playerViewMode ? "player" : (user?.role || "")}</p>
-            </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-BrandGray transition hover:bg-BrandBlack2 hover:text-red-400"
-          >
-            <FiLogOut className="text-base" />
-            Log out
-          </button>
-        </div>
-      </aside>
+        </Sidebar>
+      </div>
 
       {/* Mobile bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-BrandGray2/20 bg-BrandBlack pb-[env(safe-area-inset-bottom)] md:hidden">

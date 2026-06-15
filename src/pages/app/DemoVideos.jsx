@@ -1,4 +1,4 @@
-import { AccordionItem, Alert, Badge, Button, Card, Divider, EmptyState, Input, Modal, Section, Spinner } from "../../design-system/components";
+import { AccordionItem, Alert, Badge, Button, Card, Divider, EmptyState, Input, Modal, Section, Spinner, VideoCard } from "../../design-system/components";
 /**
  * How To page — searchable FAQs and tutorial videos.
  * FAQs are hardcoded with embedded keywords for search.
@@ -8,7 +8,7 @@ import { AccordionItem, Alert, Badge, Button, Card, Divider, EmptyState, Input, 
  * @module DemoVideos
  */
 import { useState, useEffect, useMemo } from "react";
-import { FiPlay, FiClock, FiSearch, FiX } from "react-icons/fi";
+import { FiPlay, FiSearch, FiX } from "react-icons/fi";
 import { apiFetch } from "../../utils/api";
 
 // ── Hardcoded FAQ data (keywords embedded for search, not shown to user) ──────
@@ -137,60 +137,6 @@ function FAQItem({ q, a, linkedVideo, onPlayVideo }) {
   );
 }
 
-/**
- * Single video card.
- * @param {Object} props
- * @param {Object} props.video
- * @param {Function} props.onPlay
- */
-function VideoCard({ video, onPlay }) {
-  const ytId = extractYouTubeId(video.youtubeUrl);
-  const isReady = video.done && ytId;
-
-  return (
-    <Card
-      padding="none"
-      interactive={isReady}
-      className={`group relative overflow-hidden rounded-2xl border transition ${
-        isReady
-          ? "cursor-pointer border-[color:var(--ui-border)] hover:border-BrandOrange/60"
-          : "cursor-default border-[color:var(--ui-border)] opacity-60"
-      }`}
-      onClick={() => isReady && onPlay(ytId)}
-    >
-      <div className="relative aspect-video w-full overflow-hidden" style={{ backgroundColor: "var(--ui-surface)" }}>
-        {ytId ? (
-          <img
-            src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`}
-            alt={video.title}
-            className="h-full w-full object-cover transition group-hover:scale-105"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <FiClock className="text-3xl opacity-30" style={{ color: "var(--ui-text-subtle)" }} />
-          </div>
-        )}
-        {isReady && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition group-hover:opacity-100">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-BrandOrange shadow-lg">
-              <FiPlay className="ml-0.5 text-xl text-white" />
-            </div>
-          </div>
-        )}
-        {!isReady && (
-          <div className="absolute bottom-2 left-2">
-            <Badge size="xs">Coming Soon</Badge>
-          </div>
-        )}
-      </div>
-      <div className="px-3 py-2.5">
-        <p className="text-sm font-medium leading-snug" style={{ color: isReady ? "var(--ui-text)" : "var(--ui-text-muted)" }}>
-          {video.title}
-        </p>
-      </div>
-    </Card>
-  );
-}
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -328,9 +274,18 @@ export default function DemoVideos() {
       {!loading && readyVideos.length > 0 && (
         <Section title="Tutorial Videos" variant="compact" className="mb-8">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {readyVideos.map((video) => (
-              <VideoCard key={video.id} video={video} onPlay={setActiveYtId} />
-            ))}
+            {readyVideos.map((video) => {
+              const ytId = extractYouTubeId(video.youtubeUrl);
+              return (
+                <VideoCard
+                  key={video.id}
+                  thumbnailUrl={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`}
+                  title={video.title}
+                  isReady
+                  onClick={() => setActiveYtId(ytId)}
+                />
+              );
+            })}
           </div>
         </Section>
       )}
@@ -339,7 +294,12 @@ export default function DemoVideos() {
         <Section title="Coming Soon" variant="compact" className="mb-10">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {comingSoonVideos.map((video) => (
-              <VideoCard key={video.id} video={video} onPlay={setActiveYtId} />
+              <VideoCard
+                key={video.id}
+                title={video.title}
+                isReady={false}
+                badge={<Badge size="xs">Coming Soon</Badge>}
+              />
             ))}
           </div>
         </Section>

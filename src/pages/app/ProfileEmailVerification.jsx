@@ -1,5 +1,5 @@
-import { Alert, Button, Card, IconBubble, Input } from "../../design-system/components";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { Alert, Button, Card, CodeInput, IconBubble } from "../../design-system/components";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiCheck, FiMail } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
@@ -9,12 +9,11 @@ const CODE_LENGTH = 6;
 export default function ProfileEmailVerification() {
   const { pendingEmailChange, confirmEmailChange, cancelEmailChange, requestEmailChange } = useAuth();
   const navigate = useNavigate();
-  const [digits, setDigits] = useState(Array(CODE_LENGTH).fill(""));
+  const [code, setCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(60);
-  const inputRefs = useRef([]);
 
   useEffect(() => {
     if (!pendingEmailChange?.nextEmail) {
@@ -29,11 +28,6 @@ export default function ProfileEmailVerification() {
     return () => clearTimeout(t);
   }, [resendCooldown]);
 
-  // Auto-focus first input
-  useEffect(() => {
-    inputRefs.current[0]?.focus();
-  }, []);
-
   const submitCode = useCallback(
     async (code) => {
       if (submitting) return;
@@ -45,8 +39,7 @@ export default function ProfileEmailVerification() {
         setTimeout(() => navigate("/app/profile"), 900);
       } catch (err) {
         setError(err.message || "Invalid or expired code.");
-        setDigits(Array(CODE_LENGTH).fill(""));
-        inputRefs.current[0]?.focus();
+        setCode("");
       } finally {
         setSubmitting(false);
       }
@@ -54,42 +47,13 @@ export default function ProfileEmailVerification() {
     [submitting, confirmEmailChange, navigate]
   );
 
-  const handleChange = (index, value) => {
-    const digit = value.replace(/\D/g, "").slice(-1);
-    const next = [...digits];
-    next[index] = digit;
-    setDigits(next);
-
-    if (digit && index < CODE_LENGTH - 1) {
-      inputRefs.current[index + 1]?.focus();
-    }
-
-    if (digit && index === CODE_LENGTH - 1 && next.every((d) => d)) {
-      submitCode(next.join(""));
-    }
-  };
-
-  const handleKeyDown = (index, e) => {
-    if (e.key === "Backspace" && !digits[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handlePaste = (e) => {
-    e.preventDefault();
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, CODE_LENGTH);
-    if (!pasted) return;
-    const next = Array(CODE_LENGTH).fill("");
-    for (let i = 0; i < pasted.length; i++) next[i] = pasted[i];
-    setDigits(next);
-    const focusIdx = Math.min(pasted.length, CODE_LENGTH - 1);
-    inputRefs.current[focusIdx]?.focus();
-    if (pasted.length === CODE_LENGTH) submitCode(pasted);
+  const handleCodeChange = (val) => {
+    setCode(val);
+    if (val.length === CODE_LENGTH) submitCode(val);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const code = digits.join("");
     if (code.length !== CODE_LENGTH) {
       setError("Please enter the full 6-digit code.");
       return;
@@ -135,30 +99,19 @@ export default function ProfileEmailVerification() {
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6">
-          <div className="flex justify-between gap-2">
-            {digits.map((d, i) => (
-              <Input
-                key={i}
-                ref={(el) => (inputRefs.current[i] = el)}
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
-                value={d}
-                onChange={(e) => handleChange(i, e.target.value)}
-                onKeyDown={(e) => handleKeyDown(i, e)}
-                onPaste={i === 0 ? handlePaste : undefined}
-                className="h-14 w-12 rounded-lg border-2 border-[color:var(--ui-border)] text-center font-Manrope text-2xl font-bold text-[color:var(--ui-text)] outline-none transition hover:border-[color:var(--ui-border-strong)] focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)] sm:h-16 sm:w-14"
-                style={{ backgroundColor: "var(--ui-surface-2)" }}
-                disabled={submitting}
-              />
-            ))}
-          </div>
+          <CodeInput
+            length={CODE_LENGTH}
+            value={code}
+            onChange={handleCodeChange}
+            disabled={submitting}
+            autoFocus
+          />
 
           {error && <Alert className="mt-3" tone="error" title="Verification failed">{error}</Alert>}
 
           <Button variant="primary"
             type="submit"
-            disabled={submitting || digits.some((d) => !d)}
+            disabled={submitting || code.length < CODE_LENGTH}
             className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-BrandOrange py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
           >
             {showSuccess ? (

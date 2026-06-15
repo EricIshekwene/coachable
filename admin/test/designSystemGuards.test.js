@@ -78,12 +78,12 @@ test("Playbooks.jsx: filter panel uses Popover, not raw absolute div", () => {
 
 // ── Popover migration: no raw absolute tag dropdown in PlayNew ─────────────────
 
-test("PlayNew.jsx: tag suggestions use Popover, not raw absolute div", () => {
+test("PlayNew.jsx: tag input uses TagInput component, not raw div+Input combo", () => {
   const source = read("src/pages/app/PlayNew.jsx");
-  // The original absolute panel: 'absolute left-0 right-0 top-0 z-20'
+  // No more raw absolute suggestion panel
   expect(source).not.toMatch(/absolute left-0 right-0 top-0 z-20/);
-  // The migrated version uses Popover
-  expect(source).toMatch(/<Popover/);
+  // Uses TagInput from DS barrel
+  expect(source).toMatch(/<TagInput/);
 });
 
 // ── Toast migration: no raw toast div in Plays ────────────────────────────────

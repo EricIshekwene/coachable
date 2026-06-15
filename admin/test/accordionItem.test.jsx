@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { render, fireEvent } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import AccordionItem from "../../src/design-system/components/AccordionItem";
