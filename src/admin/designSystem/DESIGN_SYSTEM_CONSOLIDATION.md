@@ -93,7 +93,7 @@ Also left: `Landing.jsx` marketing SVG paths, `AdminOnePage.jsx` (intentional ex
 
 ## Guard tests extended
 
-`admin/test/designTokenUnification.test.js` now also asserts:
+`test-harness/test/designTokenUnification.test.js` now also asserts:
 - `index.css` defines the canonical radius scale (`--radius-sm/md/lg/xl`)
 - `index.css` defines the canonical shadow scale
 - `index.css` defines motion tokens in `@theme`

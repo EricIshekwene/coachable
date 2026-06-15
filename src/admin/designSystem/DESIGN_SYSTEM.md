@@ -144,14 +144,14 @@ existing product UI was changed.
   content changed.
 
 ## Tests
-- `admin/test/designSystem.test.js` validates the pure nav registry: unique
+- `test-harness/test/designSystem.test.js` validates the pure nav registry: unique
   url-safe slugs, group/section integrity, the default section, `getSection`
   fallback, and `getAdjacentSections` prev/next adjacency.
-- `admin/test/designSystemSearch.test.js` validates the pure search ranking:
+- `test-harness/test/designSystemSearch.test.js` validates the pure search ranking:
   blank-query handling, label/keyword/summary matching, case/punctuation
   insensitivity, descending scores, the result limit, and that every result
   maps to a real section.
-- `admin/test/designTokenUnification.test.js` guards the single-source-of-truth
+- `test-harness/test/designTokenUnification.test.js` guards the single-source-of-truth
   rule: asserts that admin color tokens alias `--color-Brand*`, that admin
   `--adm-radius*` / `--adm-shadow*` alias the shared `--radius-*` / `--shadow-*`
   scale, and that motion tokens exist in `@theme`. Fails the build if any axis

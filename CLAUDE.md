@@ -14,8 +14,8 @@
 - Any significant feature or big implementation must include a markdown (`.md`) file in the relevant folder describing what was implemented, how it works, and key decisions made.
 
 ## Testing
-- Every new feature or component must have corresponding tests in `admin/test/`.
-- Create the directory structure as needed under `admin/test/`.
+- Every new feature or component must have corresponding tests in `test-harness/test/`.
+- Create the directory structure as needed under `test-harness/test/`.
 
 ## Deployment
 - MCP servers available: **Railway** and **Resend**.

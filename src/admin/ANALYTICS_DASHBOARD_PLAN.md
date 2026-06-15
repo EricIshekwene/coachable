@@ -386,7 +386,7 @@ The existing users table, error list, issues list, and test runner all remain be
 
 ### Step 8 — Tests
 
-`admin/test/analyticsDashboard.test.jsx`:
+`test-harness/test/analyticsDashboard.test.jsx`:
 - `useDashboardAnalytics` fetches with correct `period` query param
 - `KpiCard` shows green delta for positive, red for negative
 - `ActivityFeed` switches tabs correctly
@@ -429,6 +429,6 @@ The existing users table, error list, issues list, and test runner all remain be
 | `src/admin/analytics/ActivityFeed.jsx` | New |
 | `src/admin/analytics/ANALYTICS_DASHBOARD.md` | New doc |
 | `src/pages/Admin.jsx` | Mount `<AnalyticsDashboard>` |
-| `admin/test/analyticsDashboard.test.jsx` | New tests |
+| `test-harness/test/analyticsDashboard.test.jsx` | New tests |
 
 **Dependencies to add:** `recharts` (MIT license, ~300 KB gzipped)

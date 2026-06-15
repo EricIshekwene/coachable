@@ -6,7 +6,7 @@
  * keyword, summary, and group matches, then returns the best matches in
  * descending relevance. Because it imports only the plain metadata from
  * designSystemNav.js (no React), it is unit-testable in a Node environment —
- * see admin/test/designSystemSearch.test.js.
+ * see test-harness/test/designSystemSearch.test.js.
  */
 
 import { ALL_SECTIONS } from "./designSystemNav";

@@ -26,7 +26,7 @@
 | **Z-index** | ✅ done | `--z-*` in `@theme` | z-sticky/overlay/modal/toast Tailwind utilities + SpacingSection docs. |
 | **Iconography** | 🟡 partial | react-icons, IconographySection docs | Sizes documented in section; no `--icon-*` CSS tokens yet. |
 | **Live components in design-rules** | 🟡 partial | `sections/` | Most sections updated; see §H below for remaining items. |
-| **Guard tests** | 🟡 partial | `admin/test/designTokenUnification.test.js` | Now covers color, radius, shadow, motion. App hex lint not yet automated. |
+| **Guard tests** | 🟡 partial | `test-harness/test/designTokenUnification.test.js` | Now covers color, radius, shadow, motion. App hex lint not yet automated. |
 
 ---
 
