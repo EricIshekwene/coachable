@@ -10,7 +10,8 @@ import {
 import { fetchPlays, deletePlay as apiDeletePlay, updatePlay, toggleFavorite as apiToggleFavorite, movePlayToFolder as apiMovePlayToFolder, sharePlay, fetchTrashedPlays, restorePlay as apiRestorePlay, permanentDeletePlay as apiPermanentDelete, duplicatePlay as apiDuplicatePlay, bulkDeletePlays, bulkMovePlays, bulkTagPlays, postToCommunity as apiPostToCommunity } from "../../utils/apiPlays";
 import { fetchFolders, createFolder as apiCreateFolder, updateFolder, deleteFolder as apiFolderDelete, shareFolder } from "../../utils/apiFolders";
 import { AppPage, AppHeader } from "../../components/layout";
-import { PlayCard, FolderCard } from "../../components";
+import PlayCard from "../../components/PlayCard";
+import FolderCard from "../../components/FolderCard";
 
 function formatRelativeTime(isoString) {
   if (!isoString) return "";

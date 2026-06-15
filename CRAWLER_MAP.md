@@ -124,7 +124,7 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 | "prefabs popover" | [src/components/subcomponents/PrefabsPopover.jsx](src/components/subcomponents/PrefabsPopover.jsx) |
 | "generic popovers" | [src/components/subcomponents/Popovers.jsx](src/components/subcomponents/Popovers.jsx) |
 | "screenshot confirm bar" | [src/components/ScreenshotConfirmBar.jsx](src/components/ScreenshotConfirmBar.jsx) |
-| "message popup", "toast / notifications" | [src/components/MessagePopup/MessagePopup.jsx](src/components/MessagePopup/MessagePopup.jsx) + [src/components/messaging/useMessagePopup.js](src/components/messaging/useMessagePopup.js) |
+| "message popup", "toast / notifications" | [src/components/MessagePopup/MessagePopup.jsx](src/components/MessagePopup/MessagePopup.jsx) + [src/components/MessagePopup/useMessagePopup.js](src/components/MessagePopup/useMessagePopup.js) (barrel: [index.js](src/components/MessagePopup/index.js)) |
 | "mobile view-only gate" | [src/components/MobileViewOnlyGate.jsx](src/components/MobileViewOnlyGate.jsx) |
 
 ### Recording mode
@@ -181,7 +181,7 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 | "notifications context" | [src/context/NotificationsContext.jsx](src/context/NotificationsContext.jsx) |
 | "app-wide messages" | [src/context/AppMessageContext.jsx](src/context/AppMessageContext.jsx) |
 | "routes", "router", "all pages" | [src/App.jsx](src/App.jsx) |
-| "app shell layout" (nav chrome) | [src/layouts/AppLayout.jsx](src/layouts/AppLayout.jsx) |
+| "app shell layout" (nav chrome) | [src/components/layout/AppLayout.jsx](src/components/layout/AppLayout.jsx) |
 | "page layout components", "AppShell", "AppPage", "AppSection", "AppCard", "AppHeader" | [src/components/layout/](src/components/layout/) ([LAYOUT.md](src/components/layout/LAYOUT.md), barrel: [index.js](src/components/layout/index.js)) |
 | "admin elevation / session" | [src/utils/adminElevation.js](src/utils/adminElevation.js) |
 | "error reporter" | [src/utils/errorReporter.js](src/utils/errorReporter.js) |
@@ -203,8 +203,8 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 | "admin play card", "AdminPlayCard" | [src/admin/components/AdminPlayCard.jsx](src/admin/components/AdminPlayCard.jsx) — extracted from AdminPlaysPage; multi-step menu, permission flags, inline rename; barrel: `src/admin/components/index.js` |
 | "admin folder card", "AdminFolderCard" | [src/admin/components/AdminFolderCard.jsx](src/admin/components/AdminFolderCard.jsx) — folder card with inline rename; barrel: `src/admin/components/index.js` |
 | "admin section row", "AdminSectionRow" | [src/admin/components/AdminSectionRow.jsx](src/admin/components/AdminSectionRow.jsx) — section row with play picker and priority toggle; barrel: `src/admin/components/index.js` |
-| "app play card", "PlayCard" (app Plays page) | [src/components/PlayCard.jsx](src/components/PlayCard.jsx) — self-contained play card (rename, favorite, share, bulk, drag); context menu uses `<Menu>` + `<MenuItem>` from design-system (Session 4); barrel: `src/components/index.js` |
-| "app folder card", "FolderCard" (app Plays page) | [src/components/FolderCard.jsx](src/components/FolderCard.jsx) — folder card with drag-drop, inline rename; context menu uses `<Menu>` + `<MenuItem>` from design-system (Session 4); barrel: `src/components/index.js` |
+| "app play card", "PlayCard" (app Plays page) | [src/components/PlayCard.jsx](src/components/PlayCard.jsx) — self-contained play card (rename, favorite, share, bulk, drag); context menu uses `<Menu>` + `<MenuItem>` from design-system (Session 4) |
+| "app folder card", "FolderCard" (app Plays page) | [src/components/FolderCard.jsx](src/components/FolderCard.jsx) — folder card with drag-drop, inline rename; context menu uses `<Menu>` + `<MenuItem>` from design-system (Session 4) |
 | "team switcher" | [src/components/TeamSwitcher.jsx](src/components/TeamSwitcher.jsx) |
 | "sport-aware public nav" | [src/components/SportAwarePublicNav.jsx](src/components/SportAwarePublicNav.jsx) |
 
@@ -290,7 +290,7 @@ All under [src/animation/](src/animation/), [src/canvas/](src/canvas/), [src/fea
 | `/admin/outreach-scraper` (owner-only) | [AdminOutreachScraperPage.jsx](src/pages/AdminOutreachScraperPage.jsx) — scrape college athletic staff directories → filter → CSV; see [OUTREACH_SCRAPER.md](server/lib/outreachScraper/OUTREACH_SCRAPER.md) |
 
 ### Staff admin (`/staff/*`)
-Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PLAN.md). Pages reuse the existing Admin* components with `basePath="/staff"` and `mode="staff"` on `<AdminProvider>`.
+Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](.codex/STAFF_ADMIN_PLAN.md). Pages reuse the existing Admin* components with `basePath="/staff"` and `mode="staff"` on `<AdminProvider>`.
 
 | Path | File |
 |---|---|
@@ -356,7 +356,7 @@ Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PL
 
 ### Middleware / lib / utils / config
 - [middleware/auth.js](server/middleware/auth.js) — JWT/session middleware (also exports `verifySessionToken`, `readSessionToken` for compositional auth)
-- [middleware/staffAuth.js](server/middleware/staffAuth.js) — scoped staff-admin auth: `requireAdminOrStaff`, `requireOwnerOrLegacyAdmin`, `requirePerm`, `requireAnyPerm`, `requireSportScope`, `redactByPerm`, `writeAudit`, `isOwner`, `resolveActor` (see [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PLAN.md))
+- [middleware/staffAuth.js](server/middleware/staffAuth.js) — scoped staff-admin auth: `requireAdminOrStaff`, `requireOwnerOrLegacyAdmin`, `requirePerm`, `requireAnyPerm`, `requireSportScope`, `redactByPerm`, `writeAudit`, `isOwner`, `resolveActor` (see [STAFF_ADMIN_PLAN.md](.codex/STAFF_ADMIN_PLAN.md))
 - [routes/staff.js](server/routes/staff.js) — public-or-JWT staff endpoints: `GET /staff/session`, `POST /staff/accept-invite`
 - [lib/email.js](server/lib/email.js) — Resend email helpers
 - [lib/userTeams.js](server/lib/userTeams.js) — user↔team queries

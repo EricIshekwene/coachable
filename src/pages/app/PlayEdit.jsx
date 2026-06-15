@@ -1,7 +1,7 @@
 import { Button, ConfirmDialog, Divider } from "../../design-system/components";
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useMessagePopup } from "../../components/messaging/useMessagePopup";
+import { useMessagePopup } from "../../components/MessagePopup/useMessagePopup";
 import MessagePopup from "../../components/MessagePopup/MessagePopup";
 import Slate from "../../features/slate/Slate";
 import { FiSave, FiArrowLeft, FiX } from "react-icons/fi";

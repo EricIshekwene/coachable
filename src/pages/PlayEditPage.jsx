@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { useMessagePopup } from "../components/messaging/useMessagePopup";
+import { useMessagePopup } from "../components/MessagePopup/useMessagePopup";
 import MessagePopup from "../components/MessagePopup/MessagePopup";
 import Slate from "../features/slate/Slate";
 import MobileViewOnlyGate from "../components/MobileViewOnlyGate";

@@ -1,6 +1,6 @@
 import Slate from "../features/slate/Slate";
 import MessagePopup from "../components/MessagePopup/MessagePopup";
-import { useMessagePopup } from "../components/messaging/useMessagePopup";
+import { useMessagePopup } from "../components/MessagePopup/useMessagePopup";
 import { useAdmin } from "../admin/AdminContext";
 import useThemeColor from "../utils/useThemeColor";
 

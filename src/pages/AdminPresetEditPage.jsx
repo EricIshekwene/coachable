@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { Navigate, useParams, useNavigate } from "react-router-dom";
 import Slate from "../features/slate/Slate";
 import MessagePopup from "../components/MessagePopup/MessagePopup";
-import { useMessagePopup } from "../components/messaging/useMessagePopup";
+import { useMessagePopup } from "../components/MessagePopup/useMessagePopup";
 import { useAdmin } from "../admin/AdminContext";
 import { adminPath } from "../admin/adminNav";
 import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
