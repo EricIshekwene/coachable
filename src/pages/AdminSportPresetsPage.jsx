@@ -7,6 +7,8 @@ import { useAdmin } from "../admin/AdminContext";
 import { adminPath } from "../admin/adminNav";
 import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
 import { AdminShell, AdminHeader, AdminPage, AdminBtn, AdminEmptyState, AdminSpinner } from "../admin/components";
+import DangerModeModal from "../admin/components/DangerModeModal";
+import { useDangerMode } from "../admin/hooks/useDangerMode";
 import {
   buildSportPresetBundle,
   parseSportPresetBundle,
@@ -134,6 +136,8 @@ export default function AdminSportPresetsPage() {
   const canEditPresets = isOwner || hasPerm("presets.edit");
   const canUsePresetBundles = supportsSportPresetBundles(decodedSport);
 
+  const { dangerMode, setPassword: setDangerPassword, setCode: setDangerCode, ensureElevated, handleSubmit: handleDangerSubmit, handleCancel: handleDangerCancel } = useDangerMode();
+
   const [presets, setPresets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -242,6 +246,8 @@ export default function AdminSportPresetsPage() {
       `Delete "${preset.name}"? This cannot be undone.`
     );
     if (!confirmed) return;
+    const elevated = await ensureElevated();
+    if (!elevated) return;
     setDeletingId(preset.id);
     try {
       await deletePreset(session, decodedSport, preset.id);
@@ -359,6 +365,13 @@ export default function AdminSportPresetsPage() {
           onCancel={() => { confirmModal.resolve(false); setConfirmModal(null); }}
         />
       )}
+      <DangerModeModal
+        dangerMode={dangerMode}
+        setPassword={setDangerPassword}
+        setCode={setDangerCode}
+        onSubmit={handleDangerSubmit}
+        onCancel={handleDangerCancel}
+      />
 
 
 

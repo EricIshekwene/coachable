@@ -6,7 +6,8 @@ import { adminPath } from "../admin/adminNav";
 import { adminFetchOptions, readAdminSession } from "../admin/adminTransport";
 import { AdminShell, AdminHeader, AdminPage, AdminBtn, AdminSpinner } from "../admin/components";
 import AdminModal from "../admin/components/AdminModal";
-import { isAdminElevated } from "../utils/adminElevation";
+import DangerModeModal from "../admin/components/DangerModeModal";
+import { useDangerMode } from "../admin/hooks/useDangerMode";
 
 const SESSION_KEY = "coachable_admin_session";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -127,6 +128,8 @@ export default function AdminUserActivity() {
   const [deletedTeamsLoading, setDeletedTeamsLoading] = useState(false);
   const [deletedTeamsError, setDeletedTeamsError] = useState("");
   const [restoringId, setRestoringId] = useState(null);
+  const { dangerMode, setPassword: setDangerPassword, setCode: setDangerCode, ensureElevated, handleSubmit: handleDangerSubmit, handleCancel: handleDangerCancel } = useDangerMode();
+
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
@@ -185,10 +188,9 @@ export default function AdminUserActivity() {
   };
 
   const handleDeleteUser = async () => {
-    if (!isAdminElevated()) {
-      setDeleteError("Danger Mode required. Enable it from the Admin dashboard before deleting users.");
-      return;
-    }
+    setDeleteModalOpen(false);
+    const elevated = await ensureElevated();
+    if (!elevated) return;
     setDeleting(true);
     setDeleteError("");
     try {
@@ -243,6 +245,13 @@ export default function AdminUserActivity() {
 
   return (
     <AdminShell>
+      <DangerModeModal
+        dangerMode={dangerMode}
+        setPassword={setDangerPassword}
+        setCode={setDangerCode}
+        onSubmit={handleDangerSubmit}
+        onCancel={handleDangerCancel}
+      />
       <AdminHeader
         title="User Activity"
         backLabel="Dashboard"

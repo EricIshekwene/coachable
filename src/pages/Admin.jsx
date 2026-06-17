@@ -54,17 +54,7 @@ function patchUsersViewState(patch) {
   }
 }
 
-const TIME_AGE_OPTIONS = [
-  { value: "1h",  label: "1 hour" },
-  { value: "2h",  label: "2 hours" },
-  { value: "4h",  label: "4 hours" },
-  { value: "8h",  label: "8 hours" },
-  { value: "1d",  label: "1 day" },
-  { value: "2d",  label: "2 days" },
-  { value: "7d",  label: "7 days" },
-  { value: "30d", label: "30 days" },
-];
-const TIME_AGE_MS = { "1h": 36e5, "2h": 72e5, "4h": 144e5, "8h": 288e5, "1d": 864e5, "2d": 1728e5, "7d": 6048e5, "30d": 2592e6 };
+const UNIT_MS = { minutes: 60_000, hours: 3_600_000, days: 86_400_000, months: 2_592_000_000 };
 
 // ── Test suite registry (names/descriptions only — suites loaded lazily) ──
 const SUITE_NAMES = ["Drawing Geometry", "Interpolation", "Import / Export", "Animation Schema", "Routes"];
@@ -274,22 +264,28 @@ export default function Admin() {
   const persistedUsersView = useRef(readUsersViewState()).current;
   const [usersSearch, setUsersSearch] = useState(() => persistedUsersView.usersSearch || "");
   const [hideOptions, setHideOptions] = useState(() => new Set(
-    Array.isArray(persistedUsersView.hideOptions) ? persistedUsersView.hideOptions : ["demo"]
+    Array.isArray(persistedUsersView.hideOptions) && persistedUsersView.hideOptionsV === 2
+      ? persistedUsersView.hideOptions
+      : ["demo", "player"]
   ));
   const [hideDropdownOpen, setHideDropdownOpen] = useState(false);
   const hideDropdownRef = useRef(null);
+  const [rolesDropdownOpen, setRolesDropdownOpen] = useState(false);
+  const rolesDropdownRef = useRef(null);
   const usersScrollRef = useRef(null);
   const hasRestoredScrollRef = useRef(false);
   const [usersPerPage, setUsersPerPage] = useState(() => persistedUsersView.usersPerPage || 10);
-  const [filterRole, setFilterRole] = useState(() => persistedUsersView.filterRole || ""); // "coach"|"owner"|"assistant_coach"|"player"|""
+  const [filterRoles, setFilterRoles] = useState(() => new Set(Array.isArray(persistedUsersView.filterRoles) ? persistedUsersView.filterRoles : []));
   const [filterVerified, setFilterVerified] = useState(() => persistedUsersView.filterVerified || ""); // "verified"|"unverified"|""
   const [filterOnboarded, setFilterOnboarded] = useState(() => persistedUsersView.filterOnboarded || ""); // "yes"|"no"|""
   const [filterPlays, setFilterPlays] = useState(() => persistedUsersView.filterPlays || "");
   const [filterPlaysOp, setFilterPlaysOp] = useState(() => persistedUsersView.filterPlaysOp || ">");
   const [filterSport, setFilterSport] = useState(() => persistedUsersView.filterSport || "");
-  const [filterJoinedAge, setFilterJoinedAge] = useState(() => persistedUsersView.filterJoinedAge || "");
+  const [filterJoinedNum, setFilterJoinedNum] = useState(() => persistedUsersView.filterJoinedNum || "");
+  const [filterJoinedUnit, setFilterJoinedUnit] = useState(() => persistedUsersView.filterJoinedUnit || "days");
   const [filterJoinedOp, setFilterJoinedOp] = useState(() => persistedUsersView.filterJoinedOp || "<");
-  const [filterActivityAge, setFilterActivityAge] = useState(() => persistedUsersView.filterActivityAge || "");
+  const [filterActivityNum, setFilterActivityNum] = useState(() => persistedUsersView.filterActivityNum || "");
+  const [filterActivityUnit, setFilterActivityUnit] = useState(() => persistedUsersView.filterActivityUnit || "days");
   const [filterActivityOp, setFilterActivityOp] = useState(() => persistedUsersView.filterActivityOp || "<");
   const [sortKey, setSortKey] = useState(() => persistedUsersView.sortKey || ""); // ""|"plays"|"teamSize"|"name"|"sport"|"joined"|"team"
   const [sortDir, setSortDir] = useState(() => persistedUsersView.sortDir || "asc"); // "asc"|"desc"
@@ -896,26 +892,41 @@ export default function Admin() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [hideDropdownOpen]);
 
+  // ── Roles dropdown outside-click ──
+  useEffect(() => {
+    if (!rolesDropdownOpen) return;
+    function handleClick(e) {
+      if (rolesDropdownRef.current && !rolesDropdownRef.current.contains(e.target)) {
+        setRolesDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [rolesDropdownOpen]);
+
   // ── Persist users-table view state (filters + scroll) across navigation ──
   useEffect(() => {
     patchUsersViewState({
       usersSearch,
+      hideOptionsV: 2,
       hideOptions: Array.from(hideOptions),
       usersPerPage,
-      filterRole,
+      filterRoles: Array.from(filterRoles),
       filterVerified,
       filterOnboarded,
       filterPlays,
       filterPlaysOp,
       filterSport,
-      filterJoinedAge,
+      filterJoinedNum,
+      filterJoinedUnit,
       filterJoinedOp,
-      filterActivityAge,
+      filterActivityNum,
+      filterActivityUnit,
       filterActivityOp,
       sortKey,
       sortDir,
     });
-  }, [usersSearch, hideOptions, usersPerPage, filterRole, filterVerified, filterOnboarded, filterPlays, filterPlaysOp, filterSport, filterJoinedAge, filterJoinedOp, filterActivityAge, filterActivityOp, sortKey, sortDir]);
+  }, [usersSearch, hideOptions, usersPerPage, filterRoles, filterVerified, filterOnboarded, filterPlays, filterPlaysOp, filterSport, filterJoinedNum, filterJoinedUnit, filterJoinedOp, filterActivityNum, filterActivityUnit, filterActivityOp, sortKey, sortDir]);
 
   // Restore the users-table scroll position once after users load.
   useEffect(() => {
@@ -961,8 +972,8 @@ export default function Admin() {
           .toLowerCase();
         if (!haystack.includes(normalizedUsersSearch)) return false;
       }
-      if (filterRole) {
-        const hasRole = (u.memberships || []).some((m) => m.role === filterRole);
+      if (filterRoles.size > 0) {
+        const hasRole = (u.memberships || []).some((m) => filterRoles.has(m.role));
         if (!hasRole) return false;
       }
       if (filterVerified === "verified" && !u.email_verified_at) return false;
@@ -970,13 +981,13 @@ export default function Admin() {
       if (filterOnboarded === "yes" && !u.onboarded_at) return false;
       if (filterOnboarded === "no" && u.onboarded_at) return false;
       if (playsVal !== null && !isNaN(playsVal) && !matchesOp(u.plays_created ?? 0, filterPlaysOp, playsVal)) return false;
-      if (filterJoinedAge) {
-        const ageMs = TIME_AGE_MS[filterJoinedAge];
+      if (filterJoinedNum) {
+        const ageMs = UNIT_MS[filterJoinedUnit] * Number(filterJoinedNum);
         const userAgeMs = Date.now() - new Date(u.created_at).getTime();
         if (!matchesOp(userAgeMs, filterJoinedOp, ageMs)) return false;
       }
-      if (filterActivityAge) {
-        const ageMs = TIME_AGE_MS[filterActivityAge];
+      if (filterActivityNum) {
+        const ageMs = UNIT_MS[filterActivityUnit] * Number(filterActivityNum);
         const userAgeMs = Date.now() - new Date(u.updated_at || u.created_at).getTime();
         if (!matchesOp(userAgeMs, filterActivityOp, ageMs)) return false;
       }
@@ -986,7 +997,7 @@ export default function Admin() {
       }
       return true;
     });
-  }, [users, normalizedUsersSearch, hideOptions, filterRole, filterVerified, filterOnboarded, filterPlays, filterPlaysOp, filterSport, filterJoinedAge, filterJoinedOp, filterActivityAge, filterActivityOp]);
+  }, [users, normalizedUsersSearch, hideOptions, filterRoles, filterVerified, filterOnboarded, filterPlays, filterPlaysOp, filterSport, filterJoinedNum, filterJoinedUnit, filterJoinedOp, filterActivityNum, filterActivityUnit, filterActivityOp]);
 
   // Map of teamId → number of users in that team (across the full user list, not just filtered).
   const teamSizesById = useMemo(() => {
@@ -1047,7 +1058,7 @@ export default function Admin() {
     });
   }, [filteredUsers, sortKey, sortDir, teamSizesById]);
 
-  const activeFilterCount = [filterRole, filterVerified, filterOnboarded, filterPlays, filterSport, filterJoinedAge, filterActivityAge].filter(Boolean).length;
+  const activeFilterCount = [filterRoles.size > 0 ? "x" : "", filterVerified, filterOnboarded, filterPlays, filterSport, filterJoinedNum, filterActivityNum].filter(Boolean).length;
   const filteredUserStats = useMemo(() => ({
     verified: filteredUsers.filter((u) => u.email_verified_at).length,
     beta: filteredUsers.filter((u) => u.is_beta_tester).length,
@@ -1066,17 +1077,19 @@ export default function Admin() {
   }
 
   function resetFilters() {
-    setFilterRole("");
+    setFilterRoles(new Set());
     setFilterVerified("");
     setFilterOnboarded("");
     setFilterPlays("");
     setFilterPlaysOp(">");
     setFilterSport("");
-    setFilterJoinedAge("");
+    setFilterJoinedNum("");
+    setFilterJoinedUnit("days");
     setFilterJoinedOp("<");
-    setFilterActivityAge("");
+    setFilterActivityNum("");
+    setFilterActivityUnit("days");
     setFilterActivityOp("<");
-    setHideOptions(new Set(["demo"]));
+    setHideOptions(new Set(["demo", "player"]));
     setSortKey("");
     setSortDir("asc");
   }
@@ -1300,11 +1313,7 @@ export default function Admin() {
                     </button>
                   )}
                 </div>
-                <span className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-[11px] font-semibold" style={{ backgroundColor: filteredUsers.length === users.length ? "var(--adm-surface3)" : "var(--adm-accent-dim)", color: filteredUsers.length === users.length ? "var(--adm-muted)" : "var(--adm-accent)" }}>
-                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: filteredUsers.length === users.length ? "var(--adm-muted)" : "var(--adm-accent)" }} />
-                  {filteredUsers.length === users.length ? "Full directory" : "Filtered view"}
-                </span>
-                <div className="relative shrink-0" ref={hideDropdownRef}>
+<div className="relative shrink-0" ref={hideDropdownRef}>
                   <AdminBtn variant="secondary" size="sm" onClick={() => setHideDropdownOpen((o) => !o)}>
                     Hide {hideOptions.size > 0 && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-white leading-none" style={{ backgroundColor: "var(--adm-accent)" }}>{hideOptions.size}</span>}
                   </AdminBtn>
@@ -1339,13 +1348,37 @@ export default function Admin() {
               </div>
               {/* Row 2: filters */}
               <div className="flex flex-wrap items-center gap-2">
-                <AdminSelect value={filterRole} onChange={(e) => setFilterRole(e.target.value)} className="w-36">
-                  <option value="">All roles</option>
-                  <option value="owner">Owner</option>
-                  <option value="coach">Coach</option>
-                  <option value="assistant_coach">Asst. Coach</option>
-                  <option value="player">Player</option>
-                </AdminSelect>
+                <div className="relative w-36 shrink-0" ref={rolesDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setRolesDropdownOpen((o) => !o)}
+                    className="flex w-full cursor-pointer items-center min-h-9 py-2 pl-3 pr-8 text-xs rounded-[var(--adm-radius-md)] outline-none transition-all"
+                    style={{ backgroundColor: "var(--adm-surface2)", border: "1px solid var(--adm-border2)", color: filterRoles.size > 0 ? "var(--adm-text)" : "var(--adm-text3)" }}
+                  >
+                    {filterRoles.size > 0 ? `${filterRoles.size} role${filterRoles.size > 1 ? "s" : ""}` : "All roles"}
+                  </button>
+                  <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: "var(--adm-muted)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                  {rolesDropdownOpen && (
+                    <div className="absolute left-0 top-full z-50 mt-1 min-w-[160px] rounded-[var(--adm-radius)] py-1 shadow-xl" style={{ backgroundColor: "var(--adm-surface)", border: "1px solid var(--adm-border2)" }}>
+                      {[
+                        { value: "owner", label: "Owner" },
+                        { value: "coach", label: "Coach" },
+                        { value: "assistant_coach", label: "Asst. Coach" },
+                        { value: "player", label: "Player" },
+                      ].map(({ value, label }) => (
+                        <div key={value} className="px-3 py-1.5">
+                          <AdminCheckbox
+                            checked={filterRoles.has(value)}
+                            onChange={() => setFilterRoles((prev) => { const next = new Set(prev); next.has(value) ? next.delete(value) : next.add(value); return next; })}
+                            label={label}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <AdminSelect value={filterVerified} onChange={(e) => setFilterVerified(e.target.value)} className="w-36">
                   <option value="">Any verified</option>
                   <option value="verified">Verified</option>
@@ -1357,7 +1390,7 @@ export default function Admin() {
                   <option value="no">Not onboarded</option>
                 </AdminSelect>
                 <div className="flex items-center gap-1">
-                  <AdminSelect value={filterPlaysOp} onChange={(e) => setFilterPlaysOp(e.target.value)} className="w-14">
+                  <AdminSelect value={filterPlaysOp} onChange={(e) => setFilterPlaysOp(e.target.value)} className="w-16">
                     <option value=">">&gt;</option>
                     <option value="<">&lt;</option>
                     <option value="=">=</option>
@@ -1384,30 +1417,48 @@ export default function Admin() {
                 </AdminSelect>
                 <div className="flex items-center gap-1">
                   <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--adm-muted)" }}>Joined</span>
-                  <AdminSelect value={filterJoinedOp} onChange={(e) => setFilterJoinedOp(e.target.value)} className="w-14">
+                  <AdminSelect value={filterJoinedOp} onChange={(e) => setFilterJoinedOp(e.target.value)} className="w-16">
                     <option value=">">&gt;</option>
                     <option value="<">&lt;</option>
                     <option value="=">=</option>
                   </AdminSelect>
-                  <AdminSelect value={filterJoinedAge} onChange={(e) => setFilterJoinedAge(e.target.value)} className="w-28">
-                    <option value="">Any time</option>
-                    {TIME_AGE_OPTIONS.map(({ value, label }) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
+                  <AdminInput
+                    type="number"
+                    min={1}
+                    max={1000}
+                    value={filterJoinedNum}
+                    onChange={(e) => setFilterJoinedNum(e.target.value)}
+                    placeholder="#"
+                    className="w-16"
+                  />
+                  <AdminSelect value={filterJoinedUnit} onChange={(e) => setFilterJoinedUnit(e.target.value)} className="w-24">
+                    <option value="minutes">minutes</option>
+                    <option value="hours">hours</option>
+                    <option value="days">days</option>
+                    <option value="months">months</option>
                   </AdminSelect>
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--adm-muted)" }}>Active</span>
-                  <AdminSelect value={filterActivityOp} onChange={(e) => setFilterActivityOp(e.target.value)} className="w-14">
+                  <AdminSelect value={filterActivityOp} onChange={(e) => setFilterActivityOp(e.target.value)} className="w-16">
                     <option value=">">&gt;</option>
                     <option value="<">&lt;</option>
                     <option value="=">=</option>
                   </AdminSelect>
-                  <AdminSelect value={filterActivityAge} onChange={(e) => setFilterActivityAge(e.target.value)} className="w-28">
-                    <option value="">Any time</option>
-                    {TIME_AGE_OPTIONS.map(({ value, label }) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
+                  <AdminInput
+                    type="number"
+                    min={1}
+                    max={1000}
+                    value={filterActivityNum}
+                    onChange={(e) => setFilterActivityNum(e.target.value)}
+                    placeholder="#"
+                    className="w-16"
+                  />
+                  <AdminSelect value={filterActivityUnit} onChange={(e) => setFilterActivityUnit(e.target.value)} className="w-24">
+                    <option value="minutes">minutes</option>
+                    <option value="hours">hours</option>
+                    <option value="days">days</option>
+                    <option value="months">months</option>
                   </AdminSelect>
                 </div>
                 <div className="flex items-center gap-1">
