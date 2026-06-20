@@ -138,6 +138,29 @@ The branch tried to: purge aliases, build ~30 new components, migrate multiple p
 
 ---
 
+## What I Actually Wanted (The Original Intent)
+
+The goal was simple: somewhere under `src/` — whether under `components/` or a dedicated `design-system/` folder — there should be a single set of files where every reusable UI piece in Coachable lives. Not just admin components. Not just app components. Every component that could appear in admin, in the main app, or even in a future version of Coachable entirely, should come from that one place.
+
+The components themselves should be simple: just React with props passed through. No div slop. No scattered inline HTML that gets copy-pasted between pages and drifts apart. If something is reused more than once anywhere in the platform, it belongs in that folder with a clear name and a clear prop interface.
+
+Concrete examples of what that means in practice:
+- An `IntakeForm` component that takes in field definitions as props — not four different forms built from scratch across four different pages
+- A `NotificationBar` with props for type, message, and dismiss — not a different toast implementation in every feature
+- A `Sidebar` that takes nav items as props — not two separate sidebar implementations for admin and app
+- A `Header` with props for title and actions — not raw `<div>` headers rebuilt on every page
+- A `PlayCard` that takes a play object and a role — not three slightly different play card layouts depending on which page you're on
+
+The idea is that when a new page or feature gets built, the developer (or AI assistant) reaches for that folder first. If the component they need is there, they use it. If it is not there yet, they add it to the folder before using it anywhere. The folder becomes the path of least resistance, not an afterthought.
+
+What happened instead was that through fast iteration — often with AI assistance — every session produced new raw HTML and inline JSX in the page files. Pages accumulated their own local component definitions, their own layout patterns, and their own styling choices. By the time the unification branch was started, there were multiple slightly different versions of the same UI pattern scattered across `AdminPlaysPage.jsx`, `Plays.jsx`, the app pages, and the design system section files. The branch tried to extract and consolidate all of that at once, which is what made it unmanageable.
+
+The result is real technical debt. The platform has components that exist in three or four near-identical forms instead of one shared source. Adding a new feature means choosing which version to copy from, or building a fifth version. Changing a shared pattern means hunting down every place it was duplicated.
+
+The exact folder structure for v2 is not decided yet. Whether it lives at `src/components/`, `src/design-system/`, `src/ui/`, or somewhere else is an open question. But the need itself is not — a single, clean, prop-driven component library that covers the entire platform is a pain point that has to be addressed in v2 before iteration starts again.
+
+---
+
 ## What the Branch Is Useful For
 
 Despite not being merged, the branch produced real reference material for v2:
