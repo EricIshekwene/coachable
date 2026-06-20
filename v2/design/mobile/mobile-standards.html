@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Coachable Mobile Design Standards</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --black:   #121212;
+      --black2:  #2a2e34;
+      --gray:    #9AA0A6;
+      --gray2:   #4b5157;
+      --text:    #f5f7fa;
+      --orange:  #FF7A18;
+      --green:   #4FA85D;
+      --red:     #e53e3e;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { background: #f4f5f7; color: #1a1a1a; font-family: 'DM Sans', sans-serif; font-size: 15px; line-height: 1.5; }
+    body { max-width: 860px; margin: 0 auto; padding: 48px 24px 120px; }
+
+    /* ── Doc header ── */
+    .doc-eyebrow {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--orange); margin-bottom: 10px;
+    }
+    .doc-title {
+      font-family: 'Manrope', sans-serif; font-size: 30px; font-weight: 700;
+      color: #1a1a1a; line-height: 1.15; margin-bottom: 10px;
+    }
+    .doc-desc { font-size: 15px; color: #6b7280; max-width: 560px; line-height: 1.65; margin-bottom: 32px; }
+
+    /* ── Warning banner ── */
+    .banner {
+      background: #fff8f3; border: 1px solid rgba(255,122,24,0.3);
+      border-radius: 10px; padding: 14px 18px; margin-bottom: 40px;
+      display: flex; gap: 12px; align-items: flex-start;
+    }
+    .banner-icon { color: var(--orange); font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .banner p:first-child {
+      font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 600;
+      color: var(--orange); margin-bottom: 4px;
+    }
+    .banner p:last-child { font-size: 13px; color: #6b7280; line-height: 1.6; }
+    code {
+      font-size: 12px; background: rgba(0,0,0,0.06);
+      padding: 1px 5px; border-radius: 4px; font-family: monospace; color: #374151;
+    }
+
+    /* ── TOC ── */
+    .toc {
+      background: #fff; border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 12px; padding: 20px 24px; margin-bottom: 56px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .toc-heading {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.1em; color: #9ca3af; margin-bottom: 14px;
+    }
+    .toc-list {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6px 40px;
+      list-style: none;
+    }
+    .toc-list a { font-size: 14px; color: #6b7280; text-decoration: none; }
+    .toc-list a:hover { color: var(--orange); }
+    .toc-num { color: #9ca3af; margin-right: 6px; font-size: 12px; }
+
+    /* ── Principle sections ── */
+    hr.divider { border: none; border-top: 1px solid rgba(0,0,0,0.08); margin: 52px 0; }
+
+    .principle {
+      margin-bottom: 52px;
+      scroll-margin-top: 32px;
+    }
+    .principle-header { margin-bottom: 12px; }
+    .principle-id {
+      display: inline-block;
+      font-size: 11px; font-weight: 600; color: var(--orange);
+      background: rgba(255,122,24,0.08); border: 1px solid rgba(255,122,24,0.22);
+      border-radius: 5px; padding: 2px 7px; margin-bottom: 8px;
+    }
+    .principle-title {
+      font-family: 'Manrope', sans-serif; font-size: 19px; font-weight: 600;
+      color: #1a1a1a; margin-bottom: 6px;
+    }
+    .principle-rule {
+      font-size: 15px; color: #1a1a1a; line-height: 1.6;
+      border-left: 3px solid var(--orange);
+      background: #fff8f3; border-radius: 0 8px 8px 0;
+      padding: 10px 14px; margin-bottom: 10px;
+    }
+    .principle-why { font-size: 13px; color: #6b7280; line-height: 1.65; margin-bottom: 20px; }
+
+    /* ── Example wrapper ── */
+    .eg {
+      border: 1px solid rgba(0,0,0,0.08); border-radius: 12px; overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .eg-label {
+      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+      color: #9ca3af; background: #f9fafb;
+      border-bottom: 1px solid rgba(0,0,0,0.07); padding: 8px 16px;
+    }
+    .eg-body { background: #fff; padding: 28px 24px; }
+
+    /* ── Good / Bad pair ── */
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .pair-col {}
+    .pair-label {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.07em; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+    }
+    .ok  { color: var(--green); }
+    .no  { color: var(--red); }
+
+    /* ── Annotation helper ── */
+    .ann {
+      font-size: 11px; color: var(--orange); margin-top: 8px;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .ann::before { content: '→'; }
+
+    /* ═══════════ SPACING ═══════════ */
+    .grid-row {
+      display: flex; align-items: center; gap: 14px; margin-bottom: 10px;
+    }
+    .grid-token { font-size: 12px; color: #9ca3af; width: 80px; flex-shrink: 0; font-family: monospace; }
+    .grid-bar-wrap { flex: 1; display: flex; align-items: center; gap: 10px; }
+    .grid-bar {
+      background: rgba(255,122,24,0.15); border: 1px solid rgba(255,122,24,0.35);
+      border-radius: 3px; height: 20px; flex-shrink: 0;
+    }
+    .grid-use { font-size: 12px; color: #6b7280; }
+
+    /* ═══════════ TYPOGRAPHY ═══════════ */
+    .type-scale { display: flex; flex-direction: column; }
+    .type-row {
+      display: flex; align-items: baseline; gap: 20px;
+      padding: 14px 0; border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+    .type-row:last-child { border-bottom: none; }
+    .type-meta { width: 150px; flex-shrink: 0; }
+    .type-meta-name { font-size: 12px; font-weight: 600; color: var(--orange); font-family: monospace; }
+    .type-meta-spec { font-size: 11px; color: #9ca3af; margin-top: 2px; line-height: 1.5; }
+    .type-sample { color: #1a1a1a; }
+    .type-use { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+
+    /* ═══════════ TOUCH TARGETS ═══════════ */
+    .target-demo { display: flex; gap: 40px; align-items: flex-start; flex-wrap: wrap; }
+    .target-item { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .target-zone {
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 8px; position: relative;
+    }
+    .zone-bad  { width: 28px; height: 28px; background: rgba(229,62,62,0.1); border: 1px dashed rgba(229,62,62,0.5); }
+    .zone-ok   { width: 48px; height: 48px; background: rgba(79,168,93,0.1); border: 1px dashed rgba(79,168,93,0.4); }
+    .zone-icon { width: 18px; height: 18px; background: var(--gray); border-radius: 3px; }
+    .zone-label { font-size: 11px; color: var(--gray); text-align: center; line-height: 1.5; }
+    .size-callout {
+      display: inline-block; font-size: 11px; font-weight: 600; font-family: monospace;
+      padding: 2px 6px; border-radius: 4px;
+    }
+    .size-bad { background: rgba(229,62,62,0.12); color: var(--red); }
+    .size-ok  { background: rgba(79,168,93,0.12); color: var(--green); }
+
+    /* ═══════════ CONTRAST ═══════════ */
+    .contrast-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .contrast-table th {
+      text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600;
+      color: #9ca3af; text-transform: uppercase; letter-spacing: 0.06em;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+    }
+    .contrast-table td { padding: 10px 12px; border-bottom: 1px solid rgba(0,0,0,0.05); color: #374151; }
+    .contrast-table tr:last-child td { border-bottom: none; }
+    .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: middle; margin-right: 6px; border: 1px solid rgba(0,0,0,0.12); }
+    .pass { color: var(--green); font-weight: 600; font-size: 11px; }
+    .fail { color: var(--red); font-weight: 600; font-size: 11px; }
+    .note { color: #9ca3af; font-size: 12px; }
+
+    /* ═══════════ BORDERS ═══════════ */
+    .border-pair { display: flex; gap: 20px; }
+    .border-demo-box {
+      flex: 1; height: 80px; border-radius: 12px;
+      background: #f9fafb;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 6px;
+    }
+    .b1 { border: 1px solid rgba(0,0,0,0.15); }
+    .b2 { border: 2px solid rgba(0,0,0,0.15); }
+    .border-box-label { font-size: 11px; color: #6b7280; margin-top: 8px; text-align: center; }
+
+    /* ═══════════ RADIUS ═══════════ */
+    .radius-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+    .radius-item { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .radius-box {
+      width: 72px; height: 72px;
+      background: #f0f1f3; border: 1px solid rgba(0,0,0,0.1);
+    }
+    .radius-spec { font-size: 11px; color: var(--orange); font-family: monospace; font-weight: 600; }
+    .radius-use  { font-size: 11px; color: #9ca3af; text-align: center; max-width: 80px; }
+
+    /* ═══════════ SHADOWS ═══════════ */
+    .shadow-row { display: flex; gap: 20px; flex-wrap: wrap; }
+    .shadow-item { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .shadow-box {
+      width: 140px; height: 90px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; text-align: center; padding: 12px;
+    }
+    /* dark card — shown on a dark background to demonstrate the principle */
+    .sh-none  { background: #2a2e34; color: #9AA0A6; border: 1px solid rgba(75,81,87,0.4); }
+    .sh-soft  { background: #fff; color: #6b7280; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.07); }
+    .sh-over  { background: #fff; color: #6b7280; box-shadow: 0 20px 48px rgba(0,0,0,0.18), 0 8px 20px rgba(0,0,0,0.1); border: 1px solid rgba(0,0,0,0.07); }
+    .shadow-label { font-size: 12px; color: #6b7280; text-align: center; max-width: 140px; line-height: 1.5; }
+
+    /* ═══════════ RHYTHM ═══════════ */
+    .rhythm-sim { background: #f9fafb; border: 1px solid rgba(0,0,0,0.07); border-radius: 10px; padding: 20px; max-width: 320px; }
+    .rhythm-heading {
+      font-family: 'Manrope', sans-serif; font-size: 22px; font-weight: 600;
+      color: #1a1a1a; margin-bottom: 16px;
+    }
+    .rhythm-block {
+      background: #fff; border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 12px; padding: 12px 14px; font-size: 13px; color: #6b7280;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .rhythm-gap {
+      display: flex; align-items: center; gap: 8px; padding: 2px 0;
+    }
+    .rhythm-gap-line { flex: 1; border-top: 1px dashed rgba(255,122,24,0.4); }
+    .rhythm-gap-val { font-size: 10px; color: rgba(255,122,24,0.7); flex-shrink: 0; font-family: monospace; }
+    .rhythm-section-label {
+      font-family: 'Manrope', sans-serif; font-size: 17px;
+      font-weight: 600; color: #6b7280; margin-bottom: 8px;
+    }
+
+    /* ═══════════ LAYOUT ═══════════ */
+    .layout-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .layout-sim { border-radius: 10px; overflow: hidden; border: 1px solid rgba(0,0,0,0.08); }
+    .layout-screen { background: #f9fafb; }
+    .layout-margin-wrap { display: flex; }
+    .layout-margin {
+      width: 16px; flex-shrink: 0;
+      background: rgba(255,122,24,0.06);
+      border-right: 1px dashed rgba(255,122,24,0.35);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .layout-margin-r { border-right: none; border-left: 1px dashed rgba(255,122,24,0.35); }
+    .layout-margin-label {
+      font-size: 9px; color: rgba(255,122,24,0.55);
+      writing-mode: vertical-lr; transform: rotate(180deg);
+    }
+    .layout-content { flex: 1; padding: 12px 0; display: flex; flex-direction: column; gap: 8px; }
+    .layout-block {
+      background: #fff; border: 1px solid rgba(0,0,0,0.07); border-radius: 8px; padding: 10px 12px;
+      font-size: 12px; color: #6b7280; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .layout-edge-block {
+      background: rgba(229,62,62,0.05); border: 1px solid rgba(229,62,62,0.2);
+      border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #6b7280;
+      margin: 4px 0;
+    }
+    .layout-edge-wrap { display: flex; flex-direction: column; }
+
+    /* ═══════════ ACTIVE STATE ═══════════ */
+    .nav-demo { display: flex; background: #fff; border-top: 1px solid rgba(0,0,0,0.08); }
+    .nav-item {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 4px; padding: 10px 0; min-height: 56px;
+    }
+    .nav-icon-box { width: 22px; height: 22px; border-radius: 4px; }
+    .nav-lbl { font-size: 10px; font-weight: 600; }
+    .nav-active .nav-icon-box { background: var(--orange); }
+    .nav-active .nav-lbl { color: var(--orange); }
+    .nav-inactive .nav-icon-box { background: #d1d5db; }
+    .nav-inactive .nav-lbl { color: #9ca3af; }
+
+    /* ═══════════ SHEET PRINCIPLE ═══════════ */
+    .sheet-principle { max-width: 320px; position: relative; height: 300px; background: rgba(0,0,0,0.12); border-radius: 12px; overflow: hidden; border: 1px solid rgba(0,0,0,0.08); }
+    .sheet-behind { position: absolute; inset: 0; padding: 16px; font-size: 12px; color: rgba(0,0,0,0.2); }
+    .sheet-float {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: #fff; border-top: 1px solid rgba(0,0,0,0.08);
+      border-left: 1px solid rgba(0,0,0,0.08); border-right: 1px solid rgba(0,0,0,0.08);
+      border-radius: 20px 20px 0 0;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+    }
+    .sheet-pill-row { display: flex; justify-content: center; padding: 12px 0 6px; }
+    .sheet-pill { width: 36px; height: 4px; border-radius: 9999px; background: rgba(0,0,0,0.15); }
+    .sheet-inner { padding: 8px 16px 20px; }
+    .sheet-inner-title { font-family: 'Manrope', sans-serif; font-size: 17px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px; }
+    .sheet-inner-body { font-size: 13px; color: #6b7280; }
+    .sheet-annotation {
+      position: absolute; right: -160px; top: 50%; transform: translateY(-50%);
+      display: flex; flex-direction: column; gap: 8px;
+    }
+
+    /* ── Quick ref ── */
+    .ref-wrap { background: #fff; border: 1px solid rgba(0,0,0,0.08); border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .ref-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .ref-table th {
+      text-align: left; padding: 8px 14px;
+      background: #f9fafb; font-size: 11px; font-weight: 600;
+      color: #9ca3af; text-transform: uppercase; letter-spacing: 0.06em;
+      border-bottom: 1px solid rgba(0,0,0,0.07);
+    }
+    .ref-table td { padding: 9px 14px; border-bottom: 1px solid rgba(0,0,0,0.05); color: #6b7280; }
+    .ref-table td:first-child { color: #1a1a1a; font-weight: 600; width: 44%; }
+    .ref-table tr:last-child td { border-bottom: none; }
+    .ref-table tr td:last-child { font-family: monospace; font-size: 12px; }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <p class="doc-eyebrow">Coachable · v2</p>
+  <h1 class="doc-title">Mobile Design Standards</h1>
+  <p class="doc-desc">These are the formatting principles every mobile screen must follow. This is not a component library — it is a set of rules about spacing, type, touch, color, and layout that govern how everything is built.</p>
+
+  <!-- Warning -->
+  <div class="banner">
+    <span class="banner-icon">⚠</span>
+    <div>
+      <p>Needs regeneration after the design system is finalized.</p>
+      <p>Examples here use pre-v2 token names (<code>BrandBlack</code>, <code>BrandGray2</code>, etc.). Once the semantic token rename and component library are locked in, rebuild this page so all examples reflect the final names and values.</p>
+    </div>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <p class="toc-heading">Principles</p>
+    <ul class="toc-list">
+      <li><a href="#p-spacing"><span class="toc-num">01</span>Spacing Grid</a></li>
+      <li><a href="#p-type"><span class="toc-num">02</span>Typography Scale</a></li>
+      <li><a href="#p-touch"><span class="toc-num">03</span>Touch Targets</a></li>
+      <li><a href="#p-contrast"><span class="toc-num">04</span>Color &amp; Contrast</a></li>
+      <li><a href="#p-borders"><span class="toc-num">05</span>Borders</a></li>
+      <li><a href="#p-radius"><span class="toc-num">06</span>Border Radius</a></li>
+      <li><a href="#p-shadow"><span class="toc-num">07</span>Elevation &amp; Shadow</a></li>
+      <li><a href="#p-rhythm"><span class="toc-num">08</span>Vertical Rhythm</a></li>
+      <li><a href="#p-layout"><span class="toc-num">09</span>Layout &amp; Margins</a></li>
+      <li><a href="#p-active"><span class="toc-num">10</span>Active States</a></li>
+      <li><a href="#p-sheet"><span class="toc-num">11</span>Overlays &amp; Sheets</a></li>
+      <li><a href="#p-ref"><span class="toc-num">—</span>Quick Reference</a></li>
+    </ul>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 01 SPACING                                  -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="principle" id="p-spacing">
+    <div class="principle-header">
+      <span class="principle-id">01 — Spacing</span>
+      <h2 class="principle-title">Everything snaps to the 4px grid</h2>
+    </div>
+    <p class="principle-rule">All padding, gap, and margin values must be multiples of 4px. No exceptions.</p>
+    <p class="principle-why">A 4px grid creates consistent visual rhythm across all screens without over-constraining layout. 4px is the atom — structural gaps between components tend to use 8px+ multiples. Inner component padding can use 4px or 12px. "14px feels right" is not a valid reason — use 12px or 16px.</p>
+    <div class="eg">
+      <p class="eg-label">Example — valid spacing values and their typical roles</p>
+      <div class="eg-body">
+        <div class="grid-row"><span class="grid-token">4px · p-1</span><div class="grid-bar-wrap"><div class="grid-bar" style="width:4px;"></div><span class="grid-use">Icon inner gap, badge padding</span></div></div>
+        <div class="grid-row"><span class="grid-token">8px · p-2</span><div class="grid-bar-wrap"><div class="grid-bar" style="width:8px;"></div><span class="grid-use">Items within a group</span></div></div>
+        <div class="grid-row"><span class="grid-token">12px · p-3</span><div class="grid-bar-wrap"><div class="grid-bar" style="width:12px;"></div><span class="grid-use">List row vertical padding</span></div></div>
+        <div class="grid-row"><span class="grid-token">16px · p-4</span><div class="grid-bar-wrap"><div class="grid-bar" style="width:16px;"></div><span class="grid-use">Page margin, card inner padding, gap between cards</span></div></div>
+        <div class="grid-row"><span class="grid-token">24px · p-6</span><div class="grid-bar-wrap"><div class="grid-bar" style="width:24px;"></div><span class="grid-use">Gap before a new named section</span></div></div>
+        <div class="grid-row"><span class="grid-token">32px · p-8</span><div class="grid-bar-wrap"><div class="grid-bar" style="width:32px;"></div><span class="grid-use">Large structural padding, empty state top padding</span></div></div>
+        <div class="grid-row" style="margin-bottom:0;"><span class="grid-token">48px · p-12</span><div class="grid-bar-wrap"><div class="grid-bar" style="width:48px;"></div><span class="grid-use">Minimum touch target height</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 02 TYPOGRAPHY                               -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="principle" id="p-type">
+    <div class="principle-header">
+      <span class="principle-id">02 — Typography</span>
+      <h2 class="principle-title">Six named levels — no ad-hoc sizes</h2>
+    </div>
+    <p class="principle-rule">Every text element on every screen maps to one of six defined levels. Inventing intermediate sizes is not allowed.</p>
+    <p class="principle-why">A fixed scale creates consistency and forces priority decisions. If you're unsure between two sizes, ask whether this text is a heading or a label — then use that level. Manrope is for headings (it carries the brand). DM Sans is for everything else (it reads cleanly at small sizes). Minimum body text is 15px — below that, achieving WCAG AA contrast at small sizes becomes harder and text strains on mobile screens.</p>
+    <div class="eg">
+      <p class="eg-label">Example — all six levels rendered with their specs</p>
+      <div class="eg-body">
+        <div class="type-scale">
+          <div class="type-row">
+            <div class="type-meta">
+              <p class="type-meta-name">heading</p>
+              <p class="type-meta-spec">22px · Manrope 600<br/>line-height 1.2</p>
+            </div>
+            <div>
+              <p class="type-sample" style="font-family:'Manrope',sans-serif;font-size:22px;font-weight:600;line-height:1.2;">Page Title</p>
+              <p class="type-use">Page-level heading. One per screen. Not for sections.</p>
+            </div>
+          </div>
+          <div class="type-row">
+            <div class="type-meta">
+              <p class="type-meta-name">subheading</p>
+              <p class="type-meta-spec">17px · Manrope 600<br/>line-height 1.3</p>
+            </div>
+            <div>
+              <p class="type-sample" style="font-family:'Manrope',sans-serif;font-size:17px;font-weight:600;line-height:1.3;">Section Header</p>
+              <p class="type-use">Names a group of content. Typically muted (BrandGray), not primary text color.</p>
+            </div>
+          </div>
+          <div class="type-row">
+            <div class="type-meta">
+              <p class="type-meta-name">body</p>
+              <p class="type-meta-spec">15px · DM Sans 400<br/>line-height 1.5</p>
+            </div>
+            <div>
+              <p class="type-sample" style="font-size:15px;font-weight:400;line-height:1.5;">Default reading text for descriptions, paragraphs, and supporting copy.</p>
+              <p class="type-use">The default. If unsure which level to use, start here.</p>
+            </div>
+          </div>
+          <div class="type-row">
+            <div class="type-meta">
+              <p class="type-meta-name">body-strong</p>
+              <p class="type-meta-spec">15px · DM Sans 600<br/>line-height 1.5</p>
+            </div>
+            <div>
+              <p class="type-sample" style="font-size:15px;font-weight:600;line-height:1.5;">Primary row text, play name, member name</p>
+              <p class="type-use">Same size as body, heavier weight. Signals "this is the primary label for this item."</p>
+            </div>
+          </div>
+          <div class="type-row">
+            <div class="type-meta">
+              <p class="type-meta-name">label</p>
+              <p class="type-meta-spec">13px · DM Sans 600<br/>line-height 1.4</p>
+            </div>
+            <div>
+              <p class="type-sample" style="font-size:13px;font-weight:600;line-height:1.4;">Button text · Nav label · Badge · Chip</p>
+              <p class="type-use">Small, bold, high-contrast. Controls and interactive labels only — not for reading copy.</p>
+            </div>
+          </div>
+          <div class="type-row">
+            <div class="type-meta">
+              <p class="type-meta-name">caption</p>
+              <p class="type-meta-spec">11px · DM Sans 400<br/>line-height 1.4</p>
+            </div>
+            <div>
+              <p class="type-sample" style="font-size:11px;font-weight:400;color:var(--gray);line-height:1.4;">Timestamp · Secondary role · Metadata</p>
+              <p class="type-use">The smallest level. Only for secondary, supporting information that doesn't need to be read first. Never for primary content.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 03 TOUCH TARGETS                            -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="principle" id="p-touch">
+    <div class="principle-header">
+      <span class="principle-id">03 — Touch Targets</span>
+      <h2 class="principle-title">Every tappable element is at least 48×48px</h2>
+    </div>
+    <p class="principle-rule">The tap zone — not the visual size — must be 48×48px minimum. A small-looking icon button can still meet this with padding.</p>
+    <p class="principle-why">This satisfies WCAG 2.2 AA (2.5.8), Apple HIG (44pt), and Material Design 3 (48dp) simultaneously. A 24px icon with <code>p-1</code> (4px padding) gives a 32px tap zone — half the minimum. A 24px icon with <code>p-3</code> (12px padding) gives a 48px zone. The visual and the interactive layer are separate concerns.</p>
+    <div class="eg">
+      <p class="eg-label">Example — tap zone vs visual size</p>
+      <div class="eg-body">
+        <div class="target-demo">
+          <div class="target-item">
+            <div class="target-zone zone-bad"><div class="zone-icon"></div></div>
+            <span class="size-callout size-bad">28×28px</span>
+            <p class="zone-label no">Too small<br/>tap zone ≠ icon</p>
+          </div>
+          <div class="target-item">
+            <div class="target-zone zone-ok"><div class="zone-icon"></div></div>
+            <span class="size-callout size-ok">48×48px</span>
+            <p class="zone-label ok">Correct<br/>icon: 18px, zone: 48px</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;justify-content:center;">
+            <p style="font-size:13px;color:#6b7280;">The dashed outline is the tap zone.<br/>The filled block is the visible icon.<br/>They do not need to be the same size.</p>
+            <p style="font-size:13px;color:#6b7280;">This applies to: icon buttons, list rows,<br/>nav items, checkboxes, toggles, chips.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 04 CONTRAST                                 -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="principle" id="p-contrast">
+    <div class="principle-header">
+      <span class="principle-id">04 — Color &amp; Contrast</span>
+      <h2 class="principle-title">Text must meet 4.5:1 contrast. BrandGray2 is a border color, not a text color.</h2>
+    </div>
+    <p class="principle-rule">Normal text: 4.5:1 minimum against its background. Large text (18px+ or 14px+ bold): 3:1 minimum. (WCAG 2.2 AA)</p>
+    <p class="principle-why">BrandGray2 (#4b5157) is only 2.1:1 against BrandBlack — it fails for text. It's useful as a subtle border color but should never carry readable text. For muted text, use BrandGray (#9AA0A6) which passes at 5.8:1. BrandOrange on BrandBlack passes at 5.7:1, making it safe for active labels and links.</p>
+    <div class="eg">
+      <p class="eg-label">Example — brand token contrast ratios on dark background</p>
+      <div class="eg-body" style="padding:0;">
+        <table class="contrast-table">
+          <thead>
+            <tr>
+              <th>Token</th>
+              <th>Ratio vs BrandBlack</th>
+              <th>AA text</th>
+              <th>Use it for</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="swatch" style="background:#f5f7fa;"></span>BrandText</td>
+              <td>15.5 : 1</td>
+              <td><span class="pass">✓ Pass</span></td>
+              <td>Primary text, headings, values</td>
+            </tr>
+            <tr>
+              <td><span class="swatch" style="background:#9AA0A6;"></span>BrandGray</td>
+              <td>5.8 : 1</td>
+              <td><span class="pass">✓ Pass</span></td>
+              <td>Secondary text, section labels, descriptions</td>
+            </tr>
+            <tr>
+              <td><span class="swatch" style="background:#FF7A18;"></span>BrandOrange</td>
+              <td>5.7 : 1</td>
+              <td><span class="pass">✓ Pass</span></td>
+              <td>Active labels, links, accent text</td>
+            </tr>
+            <tr>
+              <td><span class="swatch" style="background:#4FA85D;"></span>BrandGreen</td>
+              <td>4.9 : 1</td>
+              <td><span class="pass">✓ Pass</span></td>
+              <td>Success state text</td>
+            </tr>
+            <tr>
+              <td><span class="swatch" style="background:#4b5157;border-color:#666;"></span>BrandGray2</td>
+              <td>2.1 : 1</td>
+              <td><span class="fail">✗ Fail</span></td>
+              <td class="note">Borders only — never text</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 05 BORDERS                                  -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="principle" id="p-borders">
+    <div class="principle-header">
+      <span class="principle-id">05 — Borders</span>
+      <h2 class="principle-title">1px only. A heavier border is not more defined — it's just louder.</h2>
+    </div>
+    <p class="principle-rule">All borders are 1px. No exceptions for cards, inputs, modals, or dividers.</p>
+    <p class="principle-why">On retina displays, 1px is already crisp and clear. 2px borders add visual weight that competes with content. The distinction between surfaces should come from background color contrast and shadow — not from border weight. A 2px border on a card signals "I couldn't make the surfaces look distinct, so I drew a thicker line." Fix the root cause instead.</p>
+    <div class="eg">
+      <p class="eg-label">Example — 1px vs 2px border on a surface</p>
+      <div class="eg-body">
+        <div class="border-pair">
+          <div>
+            <div class="border-demo-box b1"></div>
+            <p class="border-box-label ok">✓ 1px — refined, correct</p>
+          </div>
+          <div>
+            <div class="border-demo-box b2"></div>
+            <p class="border-box-label no">✗ 2px — too heavy</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 06 RADIUS                                   -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="principle" id="p-radius">
+    <div class="principle-header">
+      <span class="principle-id">06 — Border Radius</span>
+      <h2 class="principle-title">Radius signals hierarchy — use it consistently</h2>
+    </div>
+    <p class="principle-rule">Use the defined radius scale. Do not pick a radius because it "looks nice" — pick the one that matches the component's role.</p>
+    <p class="principle-why">Larger radius = more prominent, more floating. Smaller radius = tighter, more inline. A sheet that slides up from the bottom should feel like a separate layer — 20px top radius. A button is an inline control — 8px. A badge is a tiny inline label — 6px. Consistency across the codebase means users build spatial intuition about what type of surface they're looking at.</p>
+    <div class="eg">
+      <p class="eg-label">Example — radius scale by role</p>
+      <div class="eg-body">
+        <div class="radius-row">
+          <div class="radius-item">
+            <div class="radius-box" style="border-radius:6px;"></div>
+            <span class="radius-spec">6px</span>
+            <span class="radius-use">Chips, badges, small tags</span>
+          </div>
+          <div class="radius-item">
+            <div class="radius-box" style="border-radius:8px;"></div>
+            <span class="radius-spec">8px</span>
+            <span class="radius-use">Buttons, inputs, dropdowns</span>
+          </div>
+          <div class="radius-item">
+            <div class="radius-box" style="border-radius:12px;"></div>
+            <span class="radius-spec">12px</span>
+            <span class="radius-use">Cards, panels, list containers</span>
+          </div>
+          <div class="radius-item">
+            <div class="radius-box" style="border-radius:16px;"></div>
+            <span class="radius-spec">16px</span>
+            <span class="radius-use">Large overlays, floating elements</span>
+          </div>
+          <div class="radius-item">
+            <div class="radius-box" style="border-radius:20px 20px 0 0;"></div>
+            <span class="radius-spec">20px top</span>
+            <span class="radius-use">Bottom sheets (top corners only)</span>
+          </div>
+          <div class="radius-item">
+            <div class="radius-box" style="border-radius:9999px;"></div>
+            <span class="radius-spec">pill</span>
+            <span class="radius-use">Avatars, toggles, drag handles</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 07 SHADOW                                   -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="principle" id="p-shadow">
+    <div class="principle-header">
+      <span class="principle-id">07 — Elevation &amp; Shadow</span>
+      <h2 class="principle-title">Shadow means "floating." Cards in a list are not floating.</h2>
+    </div>
+    <p class="principle-rule">Dark mode: cards use no shadow — background contrast does the work. Overlays (modals, dropdowns, toasts) always use a strong shadow. Light mode cards may use a soft shadow to compensate for near-identical backgrounds.</p>
+    <p class="principle-why">In dark mode, <code>#2a2e34</code> (card) on <code>#121212</code> (page) is clearly distinct — a shadow adds nothing and wastes GPU. On lower-end Android devices, compositing shadows on 20+ list items during scroll causes jank. Reserve shadows for the semantic purpose: "this element is physically above the page." A card in a list is part of the page. A modal is above it. That distinction matters.</p>
+    <div class="eg">
+      <p class="eg-label">Example — when shadows apply</p>
+      <div class="eg-body">
+        <div class="shadow-row">
+          <div class="shadow-item">
+            <div style="background:#121212;border-radius:12px;padding:16px;display:flex;align-items:center;justify-content:center;">
+              <div class="shadow-box sh-none">Card<br/>(dark mode)</div>
+            </div>
+            <p class="shadow-label">No shadow. #2a2e34 on #121212 is distinct enough — shadow adds nothing.</p>
+          </div>
+          <div class="shadow-item">
+            <div style="background:#f4f5f7;border-radius:12px;padding:16px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,0.06);">
+              <div class="shadow-box sh-soft">Card<br/>(light mode)</div>
+            </div>
+            <p class="shadow-label">Soft shadow. Light backgrounds need it to separate surfaces.</p>
+          </div>
+          <div class="shadow-item">
+            <div style="background:#f4f5f7;border-radius:12px;padding:16px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,0.06);">
+              <div class="shadow-box sh-over">Modal /<br/>Dropdown</div>
+            </div>
+            <p class="shadow-label">Strong shadow. Always — these elements float above the page.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 08 VERTICAL RHYTHM                          -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="principle" id="p-rhythm">
+    <div class="principle-header">
+      <span class="principle-id">08 — Vertical Rhythm</span>
+      <h2 class="principle-title">Gap size communicates grouping. More gap = less related.</h2>
+    </div>
+    <p class="principle-rule">8px between items in a group. 16px between sibling cards. 24px before a new named section.</p>
+    <p class="principle-why">Gestalt proximity: elements that are close together are perceived as related. The three-tier gap system (8 → 16 → 24) makes grouping legible without needing explicit divider lines. If everything has the same gap, nothing groups — the page reads as an undifferentiated list of items with no hierarchy.</p>
+    <div class="eg">
+      <p class="eg-label">Example — gap hierarchy on a screen</p>
+      <div class="eg-body">
+        <div class="rhythm-sim">
+          <p class="rhythm-heading">My Plays</p>
+          <div class="rhythm-gap"><div class="rhythm-gap-line"></div><span class="rhythm-gap-val">16px between cards</span><div class="rhythm-gap-line"></div></div>
+          <div class="rhythm-block">Card A</div>
+          <div class="rhythm-gap" style="margin-top:4px;"><div class="rhythm-gap-line"></div><span class="rhythm-gap-val">16px</span><div class="rhythm-gap-line"></div></div>
+          <div class="rhythm-block">Card B</div>
+          <div class="rhythm-gap" style="margin-top:4px;"><div class="rhythm-gap-line"></div><span class="rhythm-gap-val">24px — new section</span><div class="rhythm-gap-line"></div></div>
+          <p class="rhythm-section-label">Recent</p>
+          <div class="rhythm-gap"><div class="rhythm-gap-line"></div><span class="rhythm-gap-val">8px within section</span><div class="rhythm-gap-line"></div></div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div class="rhythm-block" style="font-size:12px;">Item 1</div>
+            <div class="rhythm-block" style="font-size:12px;">Item 2</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 09 LAYOUT                                   -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="principle" id="p-layout">
+    <div class="principle-header">
+      <span class="principle-id">09 — Layout &amp; Margins</span>
+      <h2 class="principle-title">Mobile is a single column. 16px margins. Nothing goes edge-to-edge.</h2>
+    </div>
+    <p class="principle-rule">16px horizontal margin on every mobile screen. All content — including lists — sits inside that margin. No two-column layouts below 768px.</p>
+    <p class="principle-why">At 375px (iPhone SE: 320px) with 16px margins, the usable column is 343px (288px). Everything must fit in that column without horizontal scroll — WCAG 1.4.10 requires content to work at 320px viewport width. Side-by-side columns on mobile force content into columns too narrow to read comfortably. Lists that bleed edge-to-edge look uncontained and create an inconsistent layout rule that's hard to enforce.</p>
+    <div class="eg">
+      <p class="eg-label">Example — 16px margin and single-column stacking</p>
+      <div class="eg-body">
+        <div class="layout-pair">
+          <div>
+            <p class="pair-label ok">✓ Correct</p>
+            <div class="layout-sim">
+              <div class="layout-screen">
+                <div style="background:rgba(255,122,24,0.06);border-bottom:1px solid rgba(255,122,24,0.18);padding:5px;text-align:center;font-size:10px;color:rgba(255,122,24,0.6);">screen edge</div>
+                <div class="layout-margin-wrap">
+                  <div class="layout-margin"><span class="layout-margin-label">16px</span></div>
+                  <div class="layout-content">
+                    <div class="layout-block">Main content</div>
+                    <div class="layout-block">Sidebar (below)</div>
+                  </div>
+                  <div class="layout-margin layout-margin-r"></div>
+                </div>
+                <div style="background:rgba(255,122,24,0.06);border-top:1px solid rgba(255,122,24,0.18);padding:5px;text-align:center;font-size:10px;color:rgba(255,122,24,0.6);">screen edge</div>
+              </div>
+            </div>
+            <p class="ann">Stacked, inside 16px margins</p>
+          </div>
+          <div>
+            <p class="pair-label no">✗ Wrong</p>
+            <div class="layout-sim">
+              <div class="layout-edge-wrap" style="background:var(--black);">
+                <div style="background:rgba(229,62,62,0.07);border-bottom:1px solid rgba(229,62,62,0.12);padding:5px;text-align:center;font-size:10px;color:rgba(229,62,62,0.5);">screen edge</div>
+                <div style="display:flex;gap:4px;padding:10px 4px;">
+                  <div class="layout-edge-block" style="flex:1;">Main</div>
+                  <div class="layout-edge-block" style="width:55px;">Side</div>
+                </div>
+              </div>
+            </div>
+            <p class="ann" style="color:var(--red);border-left:none;">Columns too narrow, no margin</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 10 ACTIVE STATES                            -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="principle" id="p-active">
+    <div class="principle-header">
+      <span class="principle-id">10 — Active States</span>
+      <h2 class="principle-title">Active = color change. Not backgrounds, pills, or animation.</h2>
+    </div>
+    <p class="principle-rule">Active/selected states are communicated by color alone — BrandOrange on the active item, BrandGray on inactive. No filled background pill, no underline indicator, no animated bubble.</p>
+    <p class="principle-why">Color is the clearest, cheapest signal for "this is where you are." Pill backgrounds and animated indicators add complexity, require more vertical space, and can look out of place against the dark surface. Coachable's nav has five items — a pill behind an icon creates visual noise in a tight space. The most recognized mobile apps (Instagram, Twitter, YouTube) use icon+label color change with no additional decoration.</p>
+    <div class="eg">
+      <p class="eg-label">Example — nav active state: color only, no pill or background</p>
+      <div class="eg-body" style="padding:0; background:#f9fafb;">
+        <div style="height:40px;"></div>
+        <div class="nav-demo">
+          <div class="nav-item nav-active">
+            <div class="nav-icon-box"></div>
+            <span class="nav-lbl">Plays</span>
+          </div>
+          <div class="nav-item nav-inactive">
+            <div class="nav-icon-box"></div>
+            <span class="nav-lbl">Playbooks</span>
+          </div>
+          <div class="nav-item nav-inactive">
+            <div class="nav-icon-box"></div>
+            <span class="nav-lbl">Team</span>
+          </div>
+          <div class="nav-item nav-inactive">
+            <div class="nav-icon-box"></div>
+            <span class="nav-lbl">Alerts</span>
+          </div>
+          <div class="nav-item nav-inactive">
+            <div class="nav-icon-box" style="border-radius:50%;"></div>
+            <span class="nav-lbl">Profile</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 11 OVERLAYS & SHEETS                        -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="principle" id="p-sheet">
+    <div class="principle-header">
+      <span class="principle-id">11 — Overlays &amp; Sheets</span>
+      <h2 class="principle-title">Sheets grow with content, cap at 85dvh, and always signal dismissibility</h2>
+    </div>
+    <p class="principle-rule">Bottom sheets: content-driven height, max 85dvh, scrollable inside. Always show a drag handle. Close on backdrop tap or downward drag.</p>
+    <p class="principle-why">A fixed-height sheet wastes space for short content and clips long content. Content-driven height with a max cap handles both cases. The drag handle pill (36×4px) is a native iOS/Android convention — users expect it and know it means "drag to dismiss." Without it, dismissal feels ambiguous. The 85dvh cap ensures the top of the page remains partially visible, orienting the user to where they were.</p>
+    <div class="eg">
+      <p class="eg-label">Example — sheet structure and the drag handle</p>
+      <div class="eg-body">
+        <div style="display:flex;gap:32px;flex-wrap:wrap;align-items:flex-start;">
+          <div class="sheet-principle">
+            <div class="sheet-behind">page content (dimmed)</div>
+            <div class="sheet-float">
+              <div class="sheet-pill-row"><div class="sheet-pill"></div></div>
+              <div class="sheet-inner">
+                <p class="sheet-inner-title">Sheet title</p>
+                <p class="sheet-inner-body">Content drives height. If content is long, sheet grows to 85dvh and the content scrolls inside — not the page.</p>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px;max-width:280px;">
+            <p style="font-size:13px;color:#6b7280;line-height:1.65;"><strong style="color:#1a1a1a;">Drag handle</strong> — the small pill at the top. Signals "this panel is drag-dismissible." Not a close button — just a visual hint. Always present on sheets.</p>
+            <p style="font-size:13px;color:#6b7280;line-height:1.65;"><strong style="color:#1a1a1a;">85dvh cap</strong> — the sheet never goes full-screen unless the content demands it. Keeping the page partially visible orients the user.</p>
+            <p style="font-size:13px;color:#6b7280;line-height:1.65;"><strong style="color:#1a1a1a;">Scrolls inside</strong> — when content exceeds the cap, it scrolls within the sheet. The page behind stays fixed. Never two scroll containers fighting.</p>
+            <p style="font-size:13px;color:#6b7280;line-height:1.65;"><strong style="color:#1a1a1a;">Desktop</strong> — the same sheet becomes a centered dialog (full border radius, max-w-md). One codebase, two presentations.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- QUICK REF                                   -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div id="p-ref">
+    <p class="doc-eyebrow" style="margin-bottom:16px;">Quick Reference</p>
+    <div class="ref-wrap">
+      <table class="ref-table">
+        <thead><tr><th>Decision</th><th>Rule</th></tr></thead>
+        <tbody>
+          <tr><td>Spacing unit</td><td>4px grid — all values divisible by 4</td></tr>
+          <tr><td>Page horizontal margin</td><td>16px mobile · 24px desktop</td></tr>
+          <tr><td>List edge treatment</td><td>Inside the 16px margin — never full-bleed</td></tr>
+          <tr><td>Gap — items in a group</td><td>8px</td></tr>
+          <tr><td>Gap — sibling cards</td><td>16px</td></tr>
+          <tr><td>Gap — between sections</td><td>24px</td></tr>
+          <tr><td>Min touch target</td><td>48×48px (zone, not visual size)</td></tr>
+          <tr><td>Type — heading</td><td>22px Manrope 600 · lh 1.2</td></tr>
+          <tr><td>Type — subheading</td><td>17px Manrope 600 · lh 1.3</td></tr>
+          <tr><td>Type — body</td><td>15px DM Sans 400 · lh 1.5 (minimum body size)</td></tr>
+          <tr><td>Type — body-strong</td><td>15px DM Sans 600 · lh 1.5</td></tr>
+          <tr><td>Type — label</td><td>13px DM Sans 600 · lh 1.4</td></tr>
+          <tr><td>Type — caption</td><td>11px DM Sans 400 · lh 1.4</td></tr>
+          <tr><td>Border width</td><td>1px only — everywhere</td></tr>
+          <tr><td>Card radius</td><td>12px</td></tr>
+          <tr><td>Button / input radius</td><td>8px</td></tr>
+          <tr><td>Sheet top radius</td><td>20px (top corners only)</td></tr>
+          <tr><td>Card shadow — dark mode</td><td>None (bg contrast is enough)</td></tr>
+          <tr><td>Card shadow — light mode</td><td>0 1px 3px rgba(0,0,0,0.08)</td></tr>
+          <tr><td>Overlay shadow</td><td>0 20px 48px rgba(0,0,0,0.34)</td></tr>
+          <tr><td>Active state signal</td><td>Color change only — no pills or backgrounds</td></tr>
+          <tr><td>Sheet height</td><td>Content-driven · max 85dvh · scrolls inside</td></tr>
+          <tr><td>Sheet dismiss</td><td>Drag down or tap backdrop</td></tr>
+          <tr><td>Contrast — normal text</td><td>4.5:1 AA minimum</td></tr>
+          <tr><td>Contrast — large text</td><td>3:1 AA minimum (18px+ or 14px+ bold)</td></tr>
+          <tr><td>BrandGray2 as text</td><td>Never — fails contrast. Borders only.</td></tr>
+          <tr><td>Mobile breakpoint</td><td>768px (below = mobile, above = desktop)</td></tr>
+          <tr><td>Height unit</td><td>100dvh not 100vh. Never h-screen inside a page.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</body>
+</html>

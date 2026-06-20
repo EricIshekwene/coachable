@@ -356,6 +356,113 @@ coachable/
 
 **`src/utils/` is grouped by concern.** Currently 20+ flat files. In v2 they're grouped into `api/`, `storage/`, `export/`, and `misc/`. This is the minimum organization needed — not over-engineered, just enough that you know where to look.
 
+**Test files co-locate inside a `tests/` subfolder.** Every page directory (`src/app/pages/`, `src/admin/pages/`, `src/auth/`) contains a `tests/` folder alongside the page files, not at the repo root and not mirrored in a separate tree. See `ui-testing-standards.md` for the full convention: simple pages get `tests/page-name.test.js`; complex pages get `tests/page-name.function/roles.test.js` and optionally `flow.test.js`. Shared test infrastructure (renderAs, assertions, fixtures) lives in `src/tests/`.
+
+```
+src/app/pages/
+  Plays.jsx
+  tests/
+    plays.browse/
+      roles.test.js
+      flow.test.js
+    plays.folders/
+      roles.test.js
+      flow.test.js
+    plays.search/
+      roles.test.js
+
+src/tests/
+  renderAs.js
+  assertions.js
+  fixtures/
+    role1.js
+    role2.js
+    admin.js
+```
+
+---
+
+## Testing structure
+
+Role-based UI tests live co-located with the pages they test, inside a `tests/` subfolder. Shared test infrastructure lives in `src/tests/`.
+
+**Simple page — one file:**
+```
+src/app/pages/
+  Notifications.jsx
+  tests/
+    notifications.test.js
+```
+
+**Complex page — folder per distinct user-facing function:**
+```
+src/app/pages/
+  Plays.jsx
+  tests/
+    plays.browse/
+      roles.test.js     ← visibility assertions (always present)
+      flow.test.js      ← multi-step flows (only when needed)
+    plays.folders/
+      roles.test.js
+      flow.test.js
+    plays.search/
+      roles.test.js     ← no flow needed
+```
+
+**Promotion rule:** Start with a `roles.test.js` file. Promote to a folder and add `flow.test.js` only when there is a user flow to test for that section.
+
+**Shared infrastructure:**
+```
+src/tests/
+  renderAs.js           ← role-based render helper
+  assertions.js         ← assertVisible / assertHidden
+  fixtures/
+    coach.js
+    player.js
+    admin.js
+```
+
+Full standard — see `ui-testing-standards.md` in this folder.
+
+## Server testing structure
+
+Server tests live in `server/tests/`, mirroring the server directory structure. Simple route files get one test file. Complex route files with multiple role-gated endpoints get a subfolder with one file per endpoint.
+
+```
+server/
+  tests/
+    helpers/
+      requestAs.js      ← identity helper (seeds user + team, returns authed Supertest agent)
+      seed.js           ← data factory: seed.play(), seed.folder(), seed.team()
+      assertions.js     ← expectOk, expectCreated, expectForbidden, expectUnauthorized, etc.
+
+    middleware/
+      auth.test.js
+      rateLimit.test.js
+      bodyBounds.test.js
+
+    routes/
+      auth.test.js          ← simple — no team role branching
+      verification.test.js
+      shared.test.js
+
+      plays/                ← complex — role branches on every endpoint
+        plays.list.test.js
+        plays.create.test.js
+        plays.update.test.js
+        plays.delete.test.js
+
+      teams/
+        teams.create.test.js
+        teams.join.test.js
+        teams.members.test.js
+        teams.settings.test.js
+```
+
+**Isolation rule:** `beforeAll` truncates relevant tables once per file. `requestAs` seeds a fresh user + team per test. Tests never share identity state.
+
+Full standard — see `server-testing-standards.md` in this folder.
+
 ---
 
 ## What this does not change
