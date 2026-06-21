@@ -36,9 +36,9 @@ The underlying play data, autosave, and export logic are identical between mobil
 
 ---
 
-## What Needs to Change to Wire It for Users
+## How to Wire Mobile Editing in the New Repo
 
-There are three things to change. None of them touch the Slate editor itself.
+In the v2 repo, there is no `MobileViewOnlyGate` to remove — just wire it correctly the first time. There are three things to do. None of them touch the Slate editor itself.
 
 ### Change 1 — Remove `MobileViewOnlyGate` from the user editor path
 
@@ -314,3 +314,17 @@ Light mode:
 5. **Remove `&& !isMobile`** from `canEditPlay` in `Plays.jsx`
 
 That is five changes across three files. The Slate editor itself requires zero changes — `mobileLayout` is already fully implemented. The wiring is entirely in the shell around it.
+
+---
+
+## Cross-Reference Notes
+
+**References:** `src/pages/MOBILE_EDITOR.md` in the v1 repo (technical feature spec — reference for mobile UX decisions). **Referenced by:** `v2/TODO.md` item 9.2.
+
+**New repo note:** In the v2 repo, the mobile editor is wired correctly from the start — no retrofit needed. Use this doc as the specification for how to build it. File paths in the new repo:
+
+- `PlayEdit.jsx` → `src/app/pages/PlayEdit.jsx`
+- `Plays.jsx` → `src/app/pages/Plays.jsx`
+- `Slate.jsx` → `src/slate/Slate.jsx`
+- `AdminPlayEdit.jsx` → `src/admin/pages/AdminPlayEdit.jsx`
+- `MobileViewOnlyGate` — do not include in the new repo. Wire `mobileLayout` detection directly in `PlayEdit.jsx`. The gate only existed to block mobile in v1.

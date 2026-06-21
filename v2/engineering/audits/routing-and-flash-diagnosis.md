@@ -436,4 +436,22 @@ With semantic names, `var(--surface-page)` in the editor applies the correct col
 | Pages render blank while fetching | Empty viewport gap during data load | Skeleton states on all data-fetching pages |
 | Auth guards show full-screen spinner | Dark spinner between every auth check | Skeleton behind spinner, or persist last content |
 
+---
+
+## Cross-Reference Notes
+
+**Referenced by:** `v2/TODO.md` item 4.5 (Frontend performance baseline, ❌ Not started). **References:** `App.jsx`, `src/index.css`, `ThemeInit`.
+
+**Inconsistencies to resolve — `design/color-semantics.md` (newer, done ✅) takes priority:**
+
+1. **Decision 6 — Token rename (critical: superseded).** This doc proposes renaming Brand tokens: BrandBlack → surface-page, BrandBlack2 → surface-elevated, BrandText → text-primary, BrandGray → text-secondary, BrandGray2 → text-subtle. **This rename did NOT happen.** `design/color-semantics.md` (done ✅) implemented a different approach: Brand primitives stay in `@theme` unchanged; a `--ui-*` semantic token layer was added on top (`--ui-bg`, `--ui-surface`, `--ui-text`, `--ui-text-muted`, `--ui-accent`, etc.). **Decision 6 as written is superseded. Update it to reference the `--ui-*` approach from `color-semantics.md`.**
+
+2. **Fix 2 — `index.css` light theme override.** The proposed CSS uses `html[data-theme="light"]` overrides referencing hardcoded hex. The correct implementation uses `--ui-bg` and `--ui-surface` tokens with their light-mode values already defined in `color-semantics.md`. No separate hex is needed.
+
+3. **`src/utils/lazyWithRetry.js` path.** Per `engineering/planning/architecture/proposed-file-structure.md`, utils are organized under `src/utils/misc/`, `src/utils/api/`, etc. This file should go to `src/utils/misc/lazyWithRetry.js`.
+
+4. **Fix 6 import path.** `import("../PlayEditPage")` — under the proposed structure, the import would be from within `src/app/pages/Plays.jsx` to `./PlayEdit` (same folder). Update after file structure migration.
+
+5. **`AdminSkeleton` reference.** Says it exists at `src/admin/components/AdminSkeleton.jsx`. Per `proposed-file-structure.md`, admin components consolidate into `src/admin/`. Path may be `src/admin/AdminSkeleton.jsx` or this component merges into `src/ui/Skeleton.jsx`.
+
 None of these require Next.js. All of them are fixable in the current Vite app. The total effort for all six fixes is roughly 2–3 days. The strobe would be gone and the load time would drop significantly.

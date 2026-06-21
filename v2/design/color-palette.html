@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coachable — Color Palette</title>
+  <style>
+    :root {
+      --ui-bg:             #0D0D0D;
+      --ui-surface:        #141516;
+      --ui-surface-raised: #181A1D;
+      --ui-surface-muted:  #202328;
+      --ui-border:         #343A40;
+      --ui-border-strong:  #4B5563;
+      --ui-text:           #F5F7FA;
+      --ui-text-muted:     #A3AAB3;
+      --ui-text-subtle:    #747C87;
+      --ui-accent:             #F97316;
+      --ui-accent-hover:       #FF8F3D;
+      --ui-accent-pressed:     #E85D04;
+      --ui-accent-muted:       #2B1A10;
+      --ui-accent-muted-hover: #3A2417;
+      --ui-accent-border:      #7A3A0A;
+      --ui-accent-text:        #FF9F50;
+      --ui-success:        #22C55E;
+      --ui-success-muted:  #0F2A1A;
+      --ui-success-text:   #4ADE80;
+      --ui-error:          #F04438;
+      --ui-error-muted:    #2A1212;
+      --ui-error-text:     #F87171;
+      --ui-warning:        #FBBF24;
+      --ui-warning-muted:  #2A1D08;
+      --ui-warning-text:   #FCD34D;
+      --ui-info:           #3B82F6;
+      --ui-info-muted:     #101E35;
+      --ui-info-text:      #93C5FD;
+    }
+
+    body.light {
+      --ui-bg:             #FBFBFC;
+      --ui-surface:        #FFFFFF;
+      --ui-surface-raised: #FFFFFF;
+      --ui-surface-muted:  #F4F5F7;
+      --ui-border:         #E1E4EA;
+      --ui-border-strong:  #7C8794;
+      --ui-text:           #1A1A1A;
+      --ui-text-muted:     #4B5563;
+      --ui-text-subtle:    #6B7280;
+      --ui-accent:             #FF7A18;
+      --ui-accent-hover:       #E85D04;
+      --ui-accent-pressed:     #C2410C;
+      --ui-accent-muted:       #FFE4CC;
+      --ui-accent-muted-hover: #FFD2A8;
+      --ui-accent-border:      #FFB071;
+      --ui-accent-text:        #B84700;
+      --ui-success:        #16A34A;
+      --ui-success-muted:  #DCFCE7;
+      --ui-success-text:   #166534;
+      --ui-error:          #DC2626;
+      --ui-error-muted:    #FEE2E2;
+      --ui-error-text:     #DC2626;
+      --ui-warning:        #D97706;
+      --ui-warning-muted:  #FEF3C7;
+      --ui-warning-text:   #B45309;
+      --ui-info:           #3B82F6;
+      --ui-info-muted:     #DBEAFE;
+      --ui-info-text:      #1D4ED8;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--ui-bg);
+      color: var(--ui-text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 40px;
+      border-bottom: 1px solid var(--ui-border);
+      background-color: var(--ui-surface);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .header-title {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .header-sub {
+      font-size: 12px;
+      color: var(--ui-text-muted);
+      margin-top: 2px;
+    }
+
+    /* ── Toggle ── */
+    .toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: transparent;
+      border: 1px solid var(--ui-border);
+      border-radius: 8px;
+      padding: 7px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ui-text-muted);
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .toggle:hover {
+      border-color: var(--ui-border-strong);
+      color: var(--ui-text);
+    }
+
+    .pill {
+      width: 32px;
+      height: 18px;
+      background: var(--ui-accent);
+      border-radius: 9999px;
+      position: relative;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+
+    .pill::after {
+      content: '';
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: #fff;
+      border-radius: 50%;
+      top: 3px;
+      left: 3px;
+      transition: transform 0.2s ease;
+    }
+
+    body.light .pill::after {
+      transform: translateX(14px);
+    }
+
+    /* ── Content ── */
+    .content {
+      padding: 40px;
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+
+    /* ── Group ── */
+    .group {
+      margin-bottom: 48px;
+    }
+
+    .group-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ui-text-subtle);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--ui-border);
+    }
+
+    .swatches {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    /* ── Swatch ── */
+    .swatch {
+      width: 116px;
+    }
+
+    .swatch-block {
+      width: 116px;
+      height: 80px;
+      border-radius: 8px;
+      border: 1px solid var(--ui-border);
+      margin-bottom: 10px;
+      transition: border-color 0.15s;
+    }
+
+    .swatch:hover .swatch-block {
+      border-color: var(--ui-border-strong);
+    }
+
+    .swatch-token {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--ui-text-muted);
+      font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
+      margin-bottom: 3px;
+      word-break: break-all;
+      line-height: 1.4;
+    }
+
+    .swatch-hex {
+      font-size: 11px;
+      color: var(--ui-text-subtle);
+      font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div>
+      <div class="header-title">Coachable — Color Palette</div>
+      <div class="header-sub">All <code>--ui-*</code> tokens &nbsp;·&nbsp; For usage rules see <code>color-semantics.md</code></div>
+    </div>
+    <button class="toggle" onclick="toggle()">
+      <div class="pill"></div>
+      <span id="mode-label">Dark</span>
+    </button>
+  </header>
+
+  <main class="content">
+
+    <div class="group">
+      <div class="group-label">Backgrounds</div>
+      <div class="swatches">
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-bg)"></div>
+          <div class="swatch-token">--ui-bg</div>
+          <div class="swatch-hex" data-dark="#0D0D0D" data-light="#FBFBFC">#0D0D0D</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-surface)"></div>
+          <div class="swatch-token">--ui-surface</div>
+          <div class="swatch-hex" data-dark="#141516" data-light="#FFFFFF">#141516</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-surface-raised)"></div>
+          <div class="swatch-token">--ui-surface-raised</div>
+          <div class="swatch-hex" data-dark="#181A1D" data-light="#FFFFFF">#181A1D</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-surface-muted)"></div>
+          <div class="swatch-token">--ui-surface-muted</div>
+          <div class="swatch-hex" data-dark="#202328" data-light="#F4F5F7">#202328</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-label">Borders</div>
+      <div class="swatches">
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-border)"></div>
+          <div class="swatch-token">--ui-border</div>
+          <div class="swatch-hex" data-dark="#343A40" data-light="#E1E4EA">#343A40</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-border-strong)"></div>
+          <div class="swatch-token">--ui-border-strong</div>
+          <div class="swatch-hex" data-dark="#4B5563" data-light="#7C8794">#4B5563</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-label">Text</div>
+      <div class="swatches">
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-text)"></div>
+          <div class="swatch-token">--ui-text</div>
+          <div class="swatch-hex" data-dark="#F5F7FA" data-light="#1A1A1A">#F5F7FA</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-text-muted)"></div>
+          <div class="swatch-token">--ui-text-muted</div>
+          <div class="swatch-hex" data-dark="#A3AAB3" data-light="#4B5563">#A3AAB3</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-text-subtle)"></div>
+          <div class="swatch-token">--ui-text-subtle</div>
+          <div class="swatch-hex" data-dark="#747C87" data-light="#6B7280">#747C87</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-label">Accent</div>
+      <div class="swatches">
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-accent)"></div>
+          <div class="swatch-token">--ui-accent</div>
+          <div class="swatch-hex" data-dark="#F97316" data-light="#FF7A18">#F97316</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-accent-hover)"></div>
+          <div class="swatch-token">--ui-accent-hover</div>
+          <div class="swatch-hex" data-dark="#FF8F3D" data-light="#E85D04">#FF8F3D</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-accent-pressed)"></div>
+          <div class="swatch-token">--ui-accent-pressed</div>
+          <div class="swatch-hex" data-dark="#E85D04" data-light="#C2410C">#E85D04</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-accent-muted)"></div>
+          <div class="swatch-token">--ui-accent-muted</div>
+          <div class="swatch-hex" data-dark="#2B1A10" data-light="#FFE4CC">#2B1A10</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-accent-muted-hover)"></div>
+          <div class="swatch-token">--ui-accent-muted-hover</div>
+          <div class="swatch-hex" data-dark="#3A2417" data-light="#FFD2A8">#3A2417</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-accent-border)"></div>
+          <div class="swatch-token">--ui-accent-border</div>
+          <div class="swatch-hex" data-dark="#7A3A0A" data-light="#FFB071">#7A3A0A</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-accent-text)"></div>
+          <div class="swatch-token">--ui-accent-text</div>
+          <div class="swatch-hex" data-dark="#FF9F50" data-light="#B84700">#FF9F50</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-label">Success</div>
+      <div class="swatches">
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-success)"></div>
+          <div class="swatch-token">--ui-success</div>
+          <div class="swatch-hex" data-dark="#22C55E" data-light="#16A34A">#22C55E</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-success-muted)"></div>
+          <div class="swatch-token">--ui-success-muted</div>
+          <div class="swatch-hex" data-dark="#0F2A1A" data-light="#DCFCE7">#0F2A1A</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-success-text)"></div>
+          <div class="swatch-token">--ui-success-text</div>
+          <div class="swatch-hex" data-dark="#4ADE80" data-light="#166534">#4ADE80</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-label">Error</div>
+      <div class="swatches">
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-error)"></div>
+          <div class="swatch-token">--ui-error</div>
+          <div class="swatch-hex" data-dark="#F04438" data-light="#DC2626">#F04438</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-error-muted)"></div>
+          <div class="swatch-token">--ui-error-muted</div>
+          <div class="swatch-hex" data-dark="#2A1212" data-light="#FEE2E2">#2A1212</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-error-text)"></div>
+          <div class="swatch-token">--ui-error-text</div>
+          <div class="swatch-hex" data-dark="#F87171" data-light="#DC2626">#F87171</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-label">Warning</div>
+      <div class="swatches">
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-warning)"></div>
+          <div class="swatch-token">--ui-warning</div>
+          <div class="swatch-hex" data-dark="#FBBF24" data-light="#D97706">#FBBF24</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-warning-muted)"></div>
+          <div class="swatch-token">--ui-warning-muted</div>
+          <div class="swatch-hex" data-dark="#2A1D08" data-light="#FEF3C7">#2A1D08</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-warning-text)"></div>
+          <div class="swatch-token">--ui-warning-text</div>
+          <div class="swatch-hex" data-dark="#FCD34D" data-light="#B45309">#FCD34D</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-label">Info</div>
+      <div class="swatches">
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-info)"></div>
+          <div class="swatch-token">--ui-info</div>
+          <div class="swatch-hex" data-dark="#3B82F6" data-light="#3B82F6">#3B82F6</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-info-muted)"></div>
+          <div class="swatch-token">--ui-info-muted</div>
+          <div class="swatch-hex" data-dark="#101E35" data-light="#DBEAFE">#101E35</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:var(--ui-info-text)"></div>
+          <div class="swatch-token">--ui-info-text</div>
+          <div class="swatch-hex" data-dark="#93C5FD" data-light="#1D4ED8">#93C5FD</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    function toggle() {
+      const isLight = document.body.classList.toggle('light');
+      document.getElementById('mode-label').textContent = isLight ? 'Light' : 'Dark';
+      document.querySelectorAll('.swatch-hex').forEach(el => {
+        el.textContent = isLight ? el.dataset.light : el.dataset.dark;
+      });
+    }
+  </script>
+</body>
+</html>

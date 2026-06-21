@@ -32,7 +32,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // 3. Local absolute
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/ui/Button';
 
 // 4. Local relative
 import { TeamCard } from './TeamCard';
@@ -236,22 +236,20 @@ return <div>{body}</div>;
 
 ## 11. Component Registration
 
-> **⚠ PENDING DECISION — location not yet defined.**  
-> Coachable has a component catalogue page where every shared component is listed and visually demonstrated. The exact file path and route for this page have not been confirmed yet.  
-> **Once the location is confirmed, this section must be updated with the path before this rule is enforceable.**
-
-Every new shared component must be added to the component catalogue page when it is created — not after, not eventually. The catalogue is the single place where:
+Every new shared component must be added to the component catalogue when it is created — not after, not eventually. The catalogue is the single place where:
 
 - All available components are discoverable
 - Visual states (default, hover, active, disabled, error) are demonstrated
 - Props and usage notes are shown
 
-**What counts as a shared component:** anything in the shared components directory that is used in more than one feature or page. One-off components scoped to a single page do not need to be catalogued.
+**Location:** `src/admin/pages/AdminDesignSystem.jsx` — accessible at `/admin/design-system` in the running dev server.
+
+**What counts as a shared component:** anything in `src/ui/` that is used in more than one feature or page. One-off components scoped to a single page do not need to be catalogued.
 
 **What the catalogue entry must include:**
 - Component name and a one-line description of its purpose
 - A live render of every meaningful visual state
-- The import path
+- The import path (`@/ui/ComponentName`)
 
 Skipping the catalogue is not acceptable. A component that is not in the catalogue does not officially exist — other developers will rebuild it.
 
@@ -345,7 +343,7 @@ A helper starts co-located. If a second page needs it, move it up to `src/utils/
 
 All UI code must follow the testing standards defined in `ui-testing-standards.md`.
 
-**Location:** `v2/engineering/planning/ui-testing-standards.md`
+**Location:** `v2/engineering/planning/testing/ui-testing-standards.md`
 
 Key rules from that doc that apply here:
 
@@ -451,3 +449,15 @@ The error alias map is a shared file, not defined per-component. Every component
 | Client-side validation | Validate before sending — block submit on invalid input |
 | Role gating | Hide components the user can't use — never show and disable |
 | Error display | Map backend errors to user-actionable aliases — never show raw errors |
+
+---
+
+## Cross-Reference Notes
+
+**References:** `design/general-formatting-standards.md` (styling), `design/accessibility-standards.md`, `engineering/planning/testing/ui-testing-standards.md`
+
+**Open items:**
+
+1. **§14 Role gating — `usePermissions()` not yet built.** The section describes `usePermissions()` as the target pattern. Per `v2/TODO.md` item 7.4, this hook is ❌ Not started. Until it exists, use inline `user.role === 'coach'` checks. Switch to `usePermissions()` once item 7.4 is done.
+
+2. **`data-component` attribute convention.** The abandoned `design-system-unification` branch added `data-component="ComponentName"` on every component root for a dev overlay. If carried forward in v2, document the convention here. Decision not yet made.

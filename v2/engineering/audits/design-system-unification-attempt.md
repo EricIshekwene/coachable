@@ -159,6 +159,8 @@ The result is real technical debt. The platform has components that exist in thr
 
 The exact folder structure for v2 is not decided yet. Whether it lives at `src/components/`, `src/design-system/`, `src/ui/`, or somewhere else is an open question. But the need itself is not — a single, clean, prop-driven component library that covers the entire platform is a pain point that has to be addressed in v2 before iteration starts again.
 
+> **Note (added post-mortem):** The folder question is now resolved. `engineering/planning/architecture/proposed-file-structure.md` (done ✅) establishes `src/ui/` as the location for all shared components. The location ambiguity described above no longer applies.
+
 ---
 
 ## What the Branch Is Useful For
@@ -171,3 +173,23 @@ Despite not being merged, the branch produced real reference material for v2:
 - `AdminPlayCard.jsx`, `AdminFolderCard.jsx`, and `AdminSectionRow.jsx` are solid extractions and worth reviewing as references.
 - The test file patterns in `test-harness/test/` (especially `componentExtraction.test.js` and `designSystemGuards.test.js`) are worth using as templates.
 - The decision to separate Part A and Part B into independent branches is the key lesson. In v2, directory restructure and component work should never share a branch.
+
+---
+
+## Cross-Reference Notes
+
+**Referenced by:** `v2/TODO.md` (item 6.2 — build the primitives). **References:** `src/design-system/components/` (old path, superseded).
+
+**Inconsistencies to resolve — newer docs take priority:**
+
+1. **Component location — resolved.** This doc says the folder location was an open question. `engineering/planning/architecture/proposed-file-structure.md` (newer, done ✅) resolves it as `src/ui/`. Not `src/design-system/components/` as this branch used.
+
+2. **`--ui-*` token names — partially outdated.** The branch defined: `--ui-bg`, `--ui-surface`, `--ui-surface-2`, `--ui-border`, `--ui-border-strong`, `--ui-text`, `--ui-text-muted`, `--ui-text-subtle`, `--ui-accent`, `--ui-accent-muted`, `--ui-success`, `--ui-danger`, `--ui-warning`, `--ui-info`. `design/color-semantics.md` (newer, done ✅) uses a superset with these differences:
+   - Branch: `--ui-surface-2` → Current: `--ui-surface-raised` (floating) + `--ui-surface-muted` (disabled/inactive)
+   - Branch: `--ui-danger` → Current: `--ui-error` (with full `--ui-error-muted`, `--ui-error-text` family)
+   - Current adds: `--ui-accent-hover`, `--ui-accent-pressed`, `--ui-accent-border`, `--ui-accent-text`, `--ui-success-muted`, `--ui-success-text`, `--ui-warning-muted`, `--ui-warning-text`, `--ui-info-muted`, `--ui-info-text`
+   **Any component code from this branch using `--ui-danger` or `--ui-surface-2` must be updated.**
+
+3. **`data-component` attribute convention.** Branch added `data-component="ComponentName"` on every component's root node for the dev overlay. This convention is not referenced in any other v2 doc. If carried forward into v2, document it in `engineering/frontend-code-standards.md`.
+
+4. **Test files in `test-harness/test/`.** Branch renamed `admin/test/` to `test-harness/test/`. `proposed-file-structure.md` does not include `test-harness/`. Server tests go to `server/tests/`. Frontend tests go co-located with pages in `tests/` subfolders. The `test-harness/` location is abandoned along with the branch.

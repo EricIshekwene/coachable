@@ -6,30 +6,21 @@ This is a full inventory of what Coachable needs tested, how we should do it, an
 
 ## Current state
 
-There are six test suites that live in `src/testing/suites/`:
+**v1 repo:** Six browser-based test suites live in `src/testing/suites/`. They run via `/admin/tests` in a live browser session with a mocked fetch — no CLI runner, no CI integration. These do not carry over to the v2 repo.
 
-| Suite | What it covers |
-|---|---|
-| `routes.suite.js` | Route guards (auth, onboarding, no-team, admin), critical flows (login, signup, verify email, reset password, onboarding, save-to-playbook, logout) |
-| `apiRoutes.suite.js` | API fetch contract tests — URL shape, method, headers, body for every route the client calls |
-| `animationSchema.suite.js` | Animation data schema validation |
-| `drawingGeometry.suite.js` | Canvas drawing geometry math |
-| `importExport.suite.js` | Play import/export round-trips |
-| `interpolate.suite.js` | Animation interpolation math |
+**v2 repo (new):** No existing test suites. The v2 build starts from scratch with proper Vitest infrastructure from the first commit. The six v1 suite subjects (animation schema, drawing geometry, import/export, interpolation, route guards, API contracts) are re-covered by the appropriate test layer in the plan below.
 
-The problem: all six suites run inside the browser against a custom `testRunner.js` with a mocked fetch. You have to navigate to `/admin/tests` in a running dev server and click "Run Tests" manually. There is no command you can run from the terminal, no output you can pipe to CI, and no way to validate a code push automatically. The server (Express routes, DB queries, middleware) has zero test coverage.
+Both server and frontend have zero test coverage in v1 — a complete test suite is a primary v2 deliverable.
 
 ---
 
 ## Tool recommendation
 
-**Keep Vitest.** It is already installed and the existing suites depend on it. Switching to Jest would require rewriting the runner scaffolding for no real gain — Vitest is Jest-compatible in API and is faster. The issue is not the runner, it is the test environments and the missing server coverage.
-
-The v2 setup is two Vitest environments running from the same repo:
+**Use Vitest.** Already installed in the repo. Vitest is Jest-compatible in API and faster. Two environments running from the same repo:
 
 ```
-vitest.config.js        ← browser/JSDOM environment (existing frontend suites)
-vitest.server.config.js ← Node environment (new server/API tests)
+vitest.config.js        ← JSDOM environment (frontend/component tests)
+vitest.server.config.js ← Node environment (server integration tests)
 ```
 
 Add **Supertest** for hitting the actual Express app without a live server port. Supertest wraps your Express app and gives you `.get()`, `.post()`, `.expect()` — you import the app, not `http.Server`, so no port conflicts and no network noise.
@@ -47,7 +38,7 @@ Run in Node. No React, no Express, no DB. Tests for logic you can import and cal
 Run in Node with Supertest. Import the Express app, hit actual route handlers with a real (test) database. These replace the current admin manual flow where you check if routes work by loading pages.
 
 ### Layer 3 — Frontend flow tests
-Run in JSDOM with React Testing Library. This is what the existing suites already do — render components with mocked fetch, simulate user interaction, assert navigation and state. These stay as-is and get wired into the CLI.
+Run in JSDOM with React Testing Library. Render components with mocked fetch, simulate user interaction, assert navigation and state. Co-located with pages as they are built.
 
 ---
 
@@ -246,7 +237,7 @@ On every push to `main` (and every PR against `main`):
 
 1. Run `npm test` — both configs in sequence
 2. If either fails, block the merge
-3. On pass, Railway deploy proceeds
+3. On pass, Railway auto-deploy proceeds
 
 This gives you the "validate new code pushes" guarantee without needing a separate CI service — GitHub Actions with a single workflow file runs both test configs, and the Railway deploy is gated behind the test step.
 
@@ -254,14 +245,28 @@ This gives you the "validate new code pushes" guarantee without needing a separa
 
 ## Phase order
 
-**Phase 1 — Wire the existing suites into the CLI (quick win)**
-The existing six suites already work in Vitest. The only reason they run in the browser is because they were built as in-browser test pages before Vitest was fully configured. Move them to run via `vitest run` from the terminal. This unlocks CI validation for everything that is already tested.
+**Phase 1 — Establish Vitest infrastructure and write first server tests**
+There are no existing suites to wire on the `stage` branch. Set up `vitest.config.js` (JSDOM, for frontend) and `vitest.server.config.js` (Node, for server). Write `src/tests/renderAs.js`, `src/tests/assertions.js`, and `src/tests/fixtures/`. Then write the first server integration tests for the highest-blast-radius routes: auth (login, signup, reset password), plays CRUD, team create/leave/join.
 
-**Phase 2 — Server integration tests**
-Set up `vitest.server.config.js` with a Node environment, add Supertest, and write tests for the highest-blast-radius routes first: auth (login, signup, reset password), plays CRUD, team create/leave/join, admin user delete. These are the routes that, when broken, cause the most visible production failures.
+**Phase 2 — Server integration test suite (full coverage)**
+All routes listed in the "Server routes" section above. Work top-down from auth through admin. Priority order: auth → plays → teams → folders → notifications → admin → platform.
 
-**Phase 3 — Fill in the gaps**
-Animation engine edge cases, canvas geometry edge cases, play data edge cases, feature flags, notifications, email mocks.
+**Phase 3 — Frontend role-based tests and unit tests**
+Write co-located `tests/` folders alongside pages as they are built. Animation engine edge cases, canvas geometry, play data serialization, feature flags — write as unit tests in Layer 1.
 
 **Phase 4 — E2E (future)**
 Playwright for the three most critical coach flows: sign up → onboard → create play, invite a player → player views play, create a folder → share folder link → public viewer loads it.
+
+---
+
+## Cross-Reference Notes
+
+**Referenced by:** `engineering/planning/testing/ui-testing-standards.md`, `engineering/planning/testing/server-testing-standards.md`, `v2/TODO.md` items 3.1 and 8.1.
+
+**Notes:**
+
+1. **No `src/testing/suites/` on stage.** The v1 browser-run suites at `src/testing/suites/` do not exist on the `stage` branch. The v1 suites are reference material only — their test subjects (animation schema, drawing geometry, import/export, interpolation, route guards, API contracts) are covered by Layer 1 and Layer 2 tests in the new infrastructure.
+
+2. **Use `server/tests/` consistently.** No double underscores — `server/tests/routes/` everywhere.
+
+3. **Admin route test paths** — Use subfolder structure per `server-testing-standards.md`: `server/tests/routes/admin/admin.users.test.js`, not a flat `admin.users.test.js`.

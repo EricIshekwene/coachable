@@ -2,10 +2,7 @@
 
 **Status:** Mobile-exclusive formatting rules.  
 **Scope:** Everything below the `md` breakpoint (768px). Rules here are in addition to — not a replacement for — the general standards in `../general-formatting-standards.md`.  
-**HTML Reference:** Open `mobile-standards.html` alongside this doc — every principle has a live visual example.
-
-> **Note — HTML page needs a redo after the design system is finalized.**  
-> Once the v2 token rename, component library, and color system are locked in, regenerate the HTML so all examples use the final names and values. Update the rules in this doc at the same time.
+**HTML Reference:** None — `mobile-standards.html` has been removed. Visual examples will be added as part of the component library work (Group 6).
 
 ---
 
@@ -83,3 +80,22 @@ Primary navigation on mobile lives in a bottom tab bar.
 | Height unit | 100dvh not 100vh (see general standards) |
 
 For all other decisions — spacing grid, typography, contrast, borders, radius, shadow, focus, motion, icons, form states — see `../general-formatting-standards.md`.
+
+---
+
+## Cross-Reference Notes
+
+**This doc extends `general-formatting-standards.md`. It is authoritative for mobile-exclusive rules. `color-semantics.md` is newer and takes priority on token usage.**
+
+**Stale references:**
+- All `→ See p-* in the HTML reference` anchors are dead — `mobile-standards.html` was removed. Delete these lines when updating.
+
+**Inconsistencies to resolve:**
+
+1. **§03 Active state** — Says "No pills, no filled backgrounds, no animation." `color-semantics.md` (newer) allows `--ui-accent-muted` background tint on active nav items as the sole exception. **Add this exception to §03 or explicitly note it does not apply to mobile bottom nav.** If mobile bottom nav active state is intentionally pill-free (color only), document that explicitly as diverging from desktop sidebar behavior.
+
+2. **§03 Token names** — Uses `BrandOrange` and `BrandGray` for active/inactive states. Per `color-semantics.md` (newer), implementations should use `--ui-accent` and `--ui-text-muted`. These are equivalent in light mode but diverge in dark mode (`--ui-accent` dark = `#F97316`, `BrandOrange` = `#FF7A18`).
+
+3. **§04 Drag handle** — "BrandGray2 color." Per `color-semantics.md`, border elements should use `--ui-border` (`#343A40` dark). `BrandGray2` = `#4b5157`; `--ui-border` = `#343A40`. These are different values — confirm which is correct and update.
+
+4. **`mobile-ui-standards.md` in the same folder** — That file says minimum touch target is **44px**. This doc says **48×48px** (WCAG 2.2 AA SC 2.5.8). **This doc takes priority — 48px is the standard.**

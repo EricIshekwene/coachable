@@ -339,3 +339,15 @@ Automated tools catch roughly 30% of accessibility issues. The rest require manu
 | Disabled — still reachable | `aria-disabled="true"` (without HTML disabled) |
 | Automated testing | axe-core extension — catches ~30% of issues |
 | Manual testing | Keyboard walkthrough on every new screen |
+
+---
+
+## Cross-Reference Notes
+
+**Referenced by:** `engineering/frontend-code-standards.md`. Extends `design/general-formatting-standards.md` for visual formatting rules (contrast, focus ring, motion, semantic HTML).
+
+**Inconsistencies to resolve:**
+
+1. **§07 Skip link CSS — undefined token.** The skip link uses `background: var(--orange)`. `--orange` is not a defined CSS token in the Coachable token system. `color-semantics.md` (newer, authoritative) defines the accent color as `var(--ui-accent)`. **Update to `background: var(--ui-accent); color: var(--ui-text);`**
+
+2. **Focus ring appearance** — This doc defers focus ring appearance to `general-formatting-standards.md`. That doc currently specifies `#FF7A18` (hex). `color-semantics.md` (newest) says `var(--ui-accent)`. When implementations use focus rings, follow `color-semantics.md`: `outline: 2px solid var(--ui-accent); outline-offset: 2px`. No change needed to this doc's text (it correctly defers), but the cross-reference is documented here for awareness.

@@ -222,10 +222,9 @@ const token = await issueToken(userId);
 
 ## 11. Testing
 
-> **⚠ LOCATION PENDING — path may change.**  
-> The server testing standards are currently at `v2/engineering/planning/server-testing-standards.md`. This path is not final — the planning folder may be reorganised. Update this pointer when the location is confirmed.
-
 All backend code must follow the testing standards defined in `server-testing-standards.md`.
+
+**Location:** `v2/engineering/planning/testing/server-testing-standards.md`
 
 For the full standard — test structure, what to test per route, database interaction patterns, and CI integration — read that doc directly.
 
@@ -341,3 +340,11 @@ console.error('[POST /teams] createTeam failed', {
 | Status codes | Always accurate — never `200` for errors, never `500` for client mistakes |
 | Error response shape | `{ code, field?, message }` — stable `code` string, no internal details |
 | Logging | Route + safe input summary + user ID + full error/stack to server log |
+
+---
+
+## Cross-Reference Notes
+
+**References:** `engineering/planning/testing/server-testing-standards.md`
+
+No inconsistencies.

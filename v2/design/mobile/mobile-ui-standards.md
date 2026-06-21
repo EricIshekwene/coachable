@@ -1,6 +1,6 @@
 # Mobile UI Standards — Coachable
 
-**Status:** Reference doc for v2. Describes the current architecture, root causes of recurring mobile breakage, and the rules every page and component must follow going forward.
+> **⚠ DEPRECATED.** This doc is superseded by `design/mobile/mobile-formatting-standards.md` (layout and spacing rules) and `design/color-semantics.md` (token usage). Do not use this doc for new work. It is preserved as historical context only.
 
 ---
 
@@ -405,3 +405,25 @@ In order:
 5. Build pages mobile-first, add desktop enhancements second
 
 Without steps 1 and 4, every new session will make the same mistakes. Steps 1 and 4 are the most important.
+
+---
+
+## Cross-Reference Notes
+
+> **⚠ STATUS: This document predates the official v2 formatting standards. It is NOT listed in the v2 TODO.md done table. The authoritative mobile rules are in `design/mobile/mobile-formatting-standards.md`. Read this doc as historical context and a problem catalog — not as the standard.**
+
+**Where this doc is superseded by newer docs:**
+
+1. **Touch target minimum (critical conflict)** — This doc says 44×44px (Apple HIG). `design/mobile/mobile-formatting-standards.md` (newer, official v2 doc) says **48×48px** (WCAG 2.2 AA SC 2.5.8). **48px is the v2 standard.**
+
+2. **Token rename — Option C** — Proposes renaming BrandBlack → surface-page, BrandBlack2 → surface-elevated, etc. This rename **did not happen as described**. `design/color-semantics.md` (newer, done ✅) took a different approach: Brand primitives stay in `@theme`; a `--ui-*` semantic token layer was added on top. Option C as written is superseded. The correct approach is to use `--ui-*` tokens (`--ui-bg`, `--ui-surface`, `--ui-text`, `--ui-text-muted`, `--ui-accent`, etc.) rather than renaming Brand tokens.
+
+3. **Rule 3 — Token mapping table** — The "Token to use" column lists Brand class names (`bg-BrandBlack`, `bg-BrandBlack2`, etc.). Per `color-semantics.md` (newer), the semantic equivalents are: `--ui-bg` (page bg), `--ui-surface` (card/panel), `--ui-text` (primary text), `--ui-text-muted` (muted), `--ui-text-subtle` (subtle). The dark/light values in this table are still accurate as raw color references.
+
+4. **Border rule** — "Use `border-BrandGray2/30` minimum." `color-semantics.md` defines `--ui-border` (dark: `#343A40`) and `--ui-border-strong` (dark: `#4B5563`) for borders. Use `--ui-border` for default borders instead of `BrandGray2/30`.
+
+5. **Tailwind component classes — Option D** — The `.card`, `.btn-primary`, `.input-base`, `.modal-overlay` etc. proposed here use Brand raw tokens. If these classes are adopted, they must be updated to use `--ui-*` tokens so light/dark mode works correctly.
+
+6. **File paths** — References `src/pages/app/Plays.jsx`, `src/components/layout/AppPage.jsx`. Per `engineering/planning/architecture/proposed-file-structure.md` (newer), these paths are `src/app/pages/Plays.jsx` and `src/ui/PageShell.jsx` (or similar). Update any code references.
+
+7. **`AppPage` component** — Says "AppPage already exists at `src/components/layout/AppPage.jsx`." This was from the abandoned unification branch. It does not exist in main. The v2 equivalent is `PageShell.jsx` in `src/ui/` per `proposed-file-structure.md`.

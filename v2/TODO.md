@@ -1,8 +1,12 @@
-# v2 TODO — Full-Stack Initiative List
+# v2 TODO — Upgrade Initiative List
 
-Each item is a major workstream — roughly the same size as building the
-testing standards. Work top to bottom. Items within a group can run in parallel;
-groups generally depend on the ones above them.
+v2 is a complete rebuild in a new repo. Both `server/` and `src/` are
+written from scratch. The only thing ported from v1 is the Slate canvas
+editor. The v1 repo stays live and untouched as prod until v2 is ready
+to cut over.
+
+Each item is a major workstream. Work top to bottom. Items within a group
+can run in parallel; groups generally depend on the ones above them.
 
 ---
 
@@ -20,48 +24,72 @@ groups generally depend on the ones above them.
 
 Everything downstream assumes these exist.
 
-### 1.1 — Design token and color system ❌
+### 1.1 — Design token and color system ✅
+
 Deciding the complete token set every component and page will reference.
-Confirms dark-first vs light. Adds semantic tokens (--color-error,
---color-warning, --color-success, --color-destructive) to `src/index.css`.
-Audits existing BrandX tokens against v2 component library needs.
+Token decisions are documented in `design/color-semantics.md` and
+`design/general-formatting-standards.md`. The `--ui-*` semantic layer is
+the standard; Brand primitives stay in `@theme` as reference only.
 
-**Done looks like:** `src/index.css` has a complete named token set. A companion
-`design/color-semantics.md` maps each semantic role to a specific token with
-a usage rule and a contrast check.
-
----
-
-### 1.2 — File structure migration ❌
-Executing the proposed v2 structure. Moving source files into `src/app/`,
-`src/admin/`, `src/auth/`, `src/slate/`, `src/ui/`, `src/marketing/`,
-`src/shared-pages/`, `src/staff/`. Moving all scattered `.md` files into
-`docs/`. Updating all imports.
-
-**Done looks like:** Codebase matches the proposed structure. All imports
-resolve. Dev server runs. No markdown in `server/routes/` or `src/pages/`.
-`CLAUDE.md` updated to reflect new paths.
+**Done looks like:** `src/index.css` in the new repo has the complete `--ui-*`
+token set per `design/color-semantics.md`. No `BrandX` classes used directly
+in components — only `--ui-*` vars.
 
 ---
 
-### 1.3 — CI/CD pipeline ⚠️
+### 1.2 — Initialize new repo ❌
+
+Creating the new repo and establishing the starting structure. The v1 repo
+is untouched — this is a fresh GitHub repo for Coachable v2.
+
+**Steps:**
+1. Create new GitHub repo (e.g. `coachable-v2`)
+2. Copy `src/slate/` from v1 as the starting point for the editor
+3. Copy `v2/` planning docs folder into `docs/` in the new repo
+4. Scaffold the full `src/` and `server/` directory trees per `proposed-file-structure.md`
+5. Set up `package.json`, `vite.config.js`, `index.html`, `eslint.config.js`, `tailwind.config.js`
+6. Write `CLAUDE.md` as an AI navigation index (per TODO 1.5)
+7. Wire Railway to the new repo (per TODO 1.6)
+
+**Done looks like:** New repo exists on GitHub. `src/slate/` is present and
+working. `src/ui/index.js` barrel exists. All other folders scaffolded but
+empty. `App.jsx` and `main.jsx` scaffolded with lazy imports. Server runs
+with `node server/index.js` and returns a health check on `/api/health`.
+
+---
+
+### 1.3 — CI/CD pipeline ❌
+
 Wiring pre-push hooks (Husky), GitHub Actions (lint + test on every push),
-Dependabot, and Secret Scanning. Plan is already written in
+Dependabot, Secret Scanning, and Snyk. Plan is finalized in
 `engineering/planning/infrastructure/security-and-code-quality.md`.
 
-**Done looks like:** `.github/workflows/ci.yml` is active. Pre-push hook
-blocks on failing lint or tests. Dependabot config is in the repo. GitHub
-Secret Scanning is enabled. Snyk is connected.
+**Decisions made:**
+- Pre-push hook: `npm test && npm run lint && npm audit --audit-level=high` via Husky. Wire after first tests pass.
+- CI triggers on pushes to `main`. Runs lint + frontend tests; `test:server` step commented out until TODO 3.1 ships.
+- `CI_ADMIN_HASH` GitHub secret = bcrypt hash of the admin password. Set in GitHub repo Settings → Secrets.
+- Dependabot: manual review on all PRs, no auto-merge.
+- Secret Scanning: enable in GitHub repo settings (not on by default).
+- Snyk Code: free tier SAST. `eslint-plugin-security` + `eslint-plugin-no-secrets` alongside it.
+- CodeRabbit: deferred until first collaborator joins.
+
+**Done looks like:** Husky installed, `.husky/pre-push` committed, `.github/workflows/ci.yml`
+committed, `.github/dependabot.yml` committed, Secret Scanning enabled in GitHub
+settings, Snyk wired as GitHub Action, ESLint plugins added to config.
 
 ---
 
 ### 1.4 — Environment and secrets management ❌
+
 Defining and documenting how secrets move between dev, production, and any
-future staging environment. Covers: which env vars are required vs optional,
-how to rotate JWT_SECRET and RESEND_API_KEY without downtime, how a new
-developer gets a working local setup, and where secrets live (Railway dashboard,
-`.env.local`, CI secrets). `.env.example` exists but there is no onboarding
-doc for getting from zero to running.
+future staging environment.
+
+**Grill questions:**
+- What env vars are set in the Railway production dashboard right now? Is there a `.env.example` that covers all of them or are some undocumented?
+- JWT is stored in localStorage under `coachable_token`. If `JWT_SECRET` is rotated, every logged-in user gets signed out immediately — is that acceptable or does it need a grace period with two valid secrets?
+- R2 credentials — are those shared between dev and production or does dev use a separate bucket? Does dev currently hit the real R2 bucket?
+- `RESEND_API_KEY` — is there a dev key and a prod key, or does dev also send real emails?
+- How does a new developer get from zero to a running local server right now — is there any documented setup or is it tribal knowledge?
 
 **Done looks like:** `docs/environment.md` documents every env var, which
 environment it belongs to, and how to rotate it. A new contributor can get
@@ -70,9 +98,14 @@ the app running locally in under 30 minutes by following it.
 ---
 
 ### 1.5 — CLAUDE.md and docs index ❌
-Rewriting `CLAUDE.md` from an instruction list into an AI navigation index
-(template is in `security-and-code-quality.md`). Creating `docs/INDEX.md`
-as a master table of every doc with a one-line description.
+
+Rewriting `CLAUDE.md` from an instruction list into an AI navigation index.
+Creating `docs/INDEX.md` as a master table of every doc with a one-line description.
+
+**Grill questions:**
+- `CLAUDE.md` currently has deployment instructions, the CRAWLER_MAP reference, and code rules. Should CRAWLER_MAP.md be absorbed into `docs/INDEX.md` or kept as its own file?
+- If a cold Claude session reads only `CLAUDE.md`, what are the 5 most important things it needs to know to be immediately useful — where auth lives, where routes are, how the play editor is structured?
+- The current CLAUDE.md has rules like "always ask clarifying questions before proceeding." Should those stay in CLAUDE.md or move to a separate `docs/contributing.md`?
 
 **Done looks like:** `CLAUDE.md` tells an AI assistant where every domain of
 the codebase lives and how the auth system works in under one page. `docs/INDEX.md`
@@ -80,132 +113,110 @@ lists every doc with a description.
 
 ---
 
-### 1.6 — Staging environment and branch strategy ❌
-Setting up a true second environment so all new work is tested on stage before
-it ever reaches production. Three parts:
+### 1.6 — Railway setup for v2 repo ❌
 
-**Git strategy — decision needed:**
-Adopt `feature/* → stage → main`. All feature branches merge into `stage`.
-Once a week (or when stable), open a PR from `stage → main` as the release.
-Never commit directly to `main`. This must be documented and enforced via
-branch protection rules on GitHub.
+Connecting the new repo to Railway so builds are automatic and the app
+runs in a hosted environment during development.
 
-**Railway — decision needed:**
-Create a second Railway environment called `stage` inside the existing project.
-It gets its own PostgreSQL database, its own env vars, and deploys from the
-`stage` branch automatically. The staging database runs the same migrations as
-production but holds only test data.
+**Setup:**
+- New Railway project for v2 (separate from the v1 `resplendent-inspiration` project)
+- One service per environment: `coachable-v2-dev` (always-on dev) and `coachable-v2-prod` (launch target)
+- Each service gets its own PostgreSQL database — no shared DB with v1
+- `ENVIRONMENT=development` on dev service; `ENVIRONMENT=production` on prod service
+- v1 Railway project stays live and unchanged until cutover
+- Cutover: when v2 is ready, update DNS/domain to point at `coachable-v2-prod`. v1 service stays up briefly as fallback, then decommissioned.
 
-**DNS — action needed:**
-Add a CNAME record on Cloudflare pointing `stage.coachableplays.com` at the
-Railway staging service URL. No domain purchase needed — the subdomain is free
-under the existing `coachableplays.com`. Cloudflare Pages will also produce
-a branch preview URL automatically for the frontend (`stage.coachable.pages.dev`
-or similar), which may be sufficient for the frontend side.
-
-**Feature flags across environments — decision needed:**
-Decide whether environment is passed as a context value to the flag system or
-whether separate flag sets exist per environment (stage flags vs prod flags).
-The staging environment should default all in-progress v2 flags to `on`; production
-defaults them to `off` until deliberately flipped.
-
-Example target state:
-| Flag             | stage | prod (main)          |
-|------------------|-------|----------------------|
-| newFileStructure | on    | off                  |
-| v2TestRunner     | on    | off                  |
-| mobileEditor     | on    | off (until shipped)  |
-
-**Note:** The file structure reorganization (1.2) is the one exception to the
-incremental/flag approach — it touches every import path and cannot be usefully
-flagged. Do it as a single dedicated PR into `stage`, let it bake, then merge.
-
-**Done looks like:** `stage` branch exists and is protected. Railway staging
-environment auto-deploys on push to `stage`. `stage.coachableplays.com` resolves
-to the staging service. A new feature branch can be opened, merged to `stage`,
-tested, and promoted to `main` without any manual DNS or Railway changes.
-The flag environment split is documented in `docs/environment.md` (connects to 1.4).
+**Done looks like:** `coachable-v2-dev` Railway service is live, auto-deploys
+on push to `main`, and serves the app at a `.railway.app` URL. PostgreSQL
+service is connected. All env vars documented in `docs/environment.md` (TODO 1.4).
 
 ---
 
 ## Group 2 — Database
 
 ### 2.1 — Migration system formalization ❌
+
 The current `schema.sql` is 942 lines of mixed `CREATE TABLE` and `ALTER TABLE`
-with safe-re-run guards. This works but adds risk as the schema grows: running
-the full file on production restarts every constraint check, and there is no
-record of which changes have been applied or when. Options: keep the current
-approach with stricter discipline (document the convention explicitly), or adopt
-numbered migration files (`001_initial.sql`, `002_add_folders.sql`, etc.) with
-a `migrations` tracking table.
+with safe-re-run guards.
 
-**This is a decision-first initiative.** The decision and its rationale go in
-`docs/database.md` before any files move.
+**Grill questions:**
+- Has `schema.sql` ever been run more than once on the production database? Are the `IF NOT EXISTS` guards actually complete for every `ALTER TABLE` statement or are some bare?
+- If a new column needs to be added right now, what's the exact process — edit `schema.sql` and run the whole file, or add a one-off `ALTER` statement manually?
+- What would happen if `schema.sql` ran on a database that already had the full schema — would it error, no-op, or silently corrupt something?
+- Preference: keep the single-file approach with stricter discipline, or switch to numbered migration files (`001_initial.sql`, `002_add_folders.sql`) with a migrations tracking table?
 
-**Done looks like:** The migration approach is documented and consistently
-followed. Running migrations in production is a known, scripted procedure,
-not a manual step.
+**Done looks like:** `docs/database.md` has a migrations section documenting
+the chosen approach (single-file vs numbered), how to add a migration, and
+the exact procedure for running one in production.
 
 ---
 
 ### 2.2 — Database backup and recovery strategy ❌
-Railway's PostgreSQL includes automated backups on paid plans, but there is
-no documented recovery process. What is the backup retention window? How is a
-specific point-in-time restore triggered? Who does it? How long does recovery
-take? What data could be lost in the worst case?
+
+**Grill questions:**
+- What Railway plan is the project on — does it include automated PostgreSQL backups? If yes, what's the retention window?
+- Has a restore ever been tested? If the DB was corrupted right now, what would the recovery process be and who would do it?
+- What's the acceptable data loss window — losing the last hour of coach edits, the last 24 hours, more?
+- Are there tables where data loss would be catastrophic vs recoverable (e.g. user accounts vs play thumbnail cache)?
 
 **Done looks like:** `docs/database.md` has a backup section that answers all
-of the above. A recovery has been tested at least once (you know the process
-works before you need it under pressure).
+of the above. A recovery has been tested at least once.
 
 ---
 
 ### 2.3 — Index and query performance audit ❌
-The schema has grown organically. Foreign keys, common filter columns
-(`team_id`, `user_id`, `folder_id`), and sort columns (`updated_at`,
-`created_at`) may be missing indexes. Plays, folders, and notifications are
-queried on every page load — slow queries here affect every user on every
-request.
 
-**Done looks like:** Every frequently-queried column has an index in the schema.
-The three most common query patterns (load team plays, load team folders, load
-user notifications) have been run through `EXPLAIN ANALYZE` and their plans
-are reasonable. Results are documented.
+**Grill questions:**
+- The plays query does `WHERE team_id = $1 AND archived_at IS NULL ORDER BY updated_at DESC` — is there a compound index on `(team_id, archived_at, updated_at)` or just individual column indexes?
+- The notifications query joins `notification_recipients` on `user_id`. Does that column have an index?
+- Have you seen any slow page loads in production that could be query-related?
+- Is `EXPLAIN ANALYZE` something you've run on the production DB or only locally?
+
+**Done looks like:** `engineering/audits/query-performance.md` documents the
+three most critical query patterns, their current `EXPLAIN ANALYZE` plans,
+and the index changes needed to improve them. Ready to execute.
 
 ---
 
 ### 2.4 — Schema documentation ❌
-The 942-line schema is the source of truth for the data model, but there is
-no human-readable explanation of what each table represents, what its key
-relationships are, or what invariants it maintains. When adding a new feature,
-it is easy to build inconsistently with existing patterns.
+
+**Grill questions:**
+- How many tables are there total? Which ones have relationships that aren't obvious from the column names alone?
+- Are there invariants that aren't enforced by DB constraints — for example, "a team must have exactly one owner" or "a play can only be in one folder at a time"?
+- The `notifications` table has a `blocks` column — is that JSONB? What's the shape of a block object?
 
 **Done looks like:** `docs/database.md` has a table-by-table description:
-what each table stores, what it references, and what the important constraints
-mean. Not a schema dump — a readable narrative.
+what each table stores, what it references, and what the important constraints mean.
 
 ---
 
 ## Group 3 — Backend
 
 ### 3.1 — Server integration test suite ⚠️
-Writing the full server-side test suite with Vitest + Supertest against a
-real test database. Covers all auth, teams, plays, folders, platform plays,
-notifications, shared routes, admin routes, middleware, and email mocks. Plan
-and per-route test list are in `engineering/planning/testing/test-suite-plan.md`.
 
-**Done looks like:** `npm run test:server` passes from the CLI. Every route
-in `test-suite-plan.md` has integration test coverage. CI runs it on every push.
+Writing the full server-side test suite with Vitest + Supertest against a
+real test database. Plan is in `engineering/planning/testing/test-suite-plan.md`.
+
+**Grill questions:**
+- Does `server/db/migrate.js` exist yet and work headlessly — takes `DATABASE_URL` from env, no prompts? That's the prerequisite for CI running tests against a fresh schema.
+- What's the seed data strategy — hard-coded fixture objects in `tests/helpers/seed.js`, or does each test bootstrap state by hitting the actual signup/create-team routes?
+- Is there a test DB running locally right now or does this need to be set up from scratch?
+
+**Done looks like:** `engineering/planning/testing/test-suite-plan.md` is
+the complete server test plan: every route listed with its test cases, seed
+strategy decided, test DB setup documented, and CI wiring specified. Ready to execute.
 
 ---
 
 ### 3.2 — API contract and error model ❌
-Standardizing how the server communicates success and failure. Decides:
-does `apiFetch` throw on non-2xx (try/catch model) or return `{ ok, data, error }`
-(check model)? Standardizes function names across `src/utils/api/` (`getPlays`,
-`createPlay`, `updatePlay`, `deletePlay` — REST verb as prefix). Decides the
-error surfacing model (silent `.catch(() => {})` vs toast on failure). Decides
-optimistic update rollback behavior.
+
+`apiFetch` throws on non-2xx. Client function names are inconsistent (`fetchPlays`, `apiDeletePlay`, `apiToggleFavorite`).
+
+**Grill questions:**
+- `apiFetch` throws on non-2xx — does that mean every call site needs a try/catch? Looking at `Plays.jsx`, functions like `handleDeletePlay` — do those have try/catch today or do failures silently disappear?
+- The naming is inconsistent: `fetchPlays`, `deletePlay as apiDeletePlay`, `apiToggleFavorite`. Should the standard be REST verb prefix (`getPlays`, `deletePlay`, `updatePlay`) or something else?
+- When an API call fails, does the user see a toast, a console error, or nothing? Where does error surfacing happen today?
+- For optimistic updates (e.g. toggling favorite) — if the server call fails, does the UI roll back, or does it stay in the wrong state?
 
 **Done looks like:** `engineering/planning/api-standards.md` covers error
 contract, naming convention, auth expiry handling, and optimistic update pattern.
@@ -214,395 +225,463 @@ All `src/utils/api/` files renamed to match.
 ---
 
 ### 3.3 — Security hardening ❌
-Auditing every server route for missing auth middleware. Adding rate limiting
-to auth endpoints (login, signup, forgot password, reset password). Verifying
-CORS is locked to known origins (`CORS_ORIGINS` env var exists but needs
-to be confirmed active in `server/index.js`). Adding Content Security Policy
-headers. Reviewing JWT handling for expiry, rotation, and leakage. Verifying
-that all user-supplied input reaching a DB query goes through parameterized
-queries (no string concatenation). Ensuring `npm audit --audit-level=high`
-passes.
 
-**Done looks like:** Every route either has `requireAuth` or is documented as
-intentionally public. Auth endpoints are rate-limited. CORS and CSP headers
-are present and correct on every response. `npm audit` passes at high severity.
+**Grill questions:**
+- `CORS_ORIGINS` env var exists. Is it actually wired in `server/index.js` right now, or is it defined but not used?
+- Auth routes (login, signup, forgot-password, reset-password) — is there any rate limiting on them currently?
+- JWT is in localStorage — XSS-accessible. Is that a known accepted tradeoff or something to address?
+- `server/lib/validate.js` has `requireString`, `optionalString`, etc. Are those used on every route that accepts user input, or are there routes where `req.body.x` flows directly into a query?
+- `npm audit --audit-level=high` — has that been run recently? Any known high/critical vulnerabilities?
+
+**Done looks like:** `engineering/audits/security-hardening.md` documents
+every security gap found — missing auth guards, unprotected routes, rate
+limiting gaps, CORS/CSP configuration — and specifies the fix for each.
+Ready to execute.
 
 ---
 
 ### 3.4 — Route-level JSDoc pass ❌
-Adding JSDoc to every route handler: what auth it requires, what the request
-body shape is, what it returns, what can go wrong. The format is in
-`security-and-code-quality.md`. This is not documentation for human readers —
-it is a navigation signal for AI-assisted development.
 
-**Done looks like:** Every route handler in every `server/routes/*.js` file
-has a JSDoc block. No exceptions.
+**Grill questions:**
+- Some routes already have JSDoc (`notifications.js` has it, `plays.js` has a helper JSDoc). Is the format consistent or does each file do it differently?
+- What's the minimum JSDoc needed to be useful to Claude — just auth requirement and return shape, or also request body schema?
+- Routes that are intentionally public (shared play view, platform plays) — should those explicitly say "no auth required" in JSDoc so it's obvious vs accidentally missing?
+
+**Done looks like:** `engineering/backend-code-standards.md` specifies the
+exact JSDoc format required for every route handler, with a worked example
+and the required fields (auth requirement, request body, return shape).
+Ready to execute the pass.
 
 ---
 
 ## Group 4 — Production readiness
 
-These are invisible until something breaks in production. They have no
-external impact when working — only when they are missing.
-
 ### 4.1 — Error monitoring ❌
-The server has only `console.log`. When a route throws an unhandled exception
-in production, it either crashes silently or logs to Railway's console, which
-nobody is watching. There is a custom `errorReporter.js` on the client that
-sends errors to the admin backend, but there is no external aggregation,
-alerting, or grouping. Sentry (free tier covers this scale) or a Railway
-log drain would change this.
 
-**Done looks like:** Uncaught server errors and unhandled promise rejections
-are captured and visible in a dashboard outside of Railway logs. Client-side
-React errors are captured separately. An alert fires when error rate spikes.
+The server has only `console.log`. `errorReporter.js` sends client errors to
+the admin backend but there is no external aggregation or alerting.
+
+**Grill questions:**
+- Is Sentry the call or is something else on the table? What's the budget?
+- The custom `errorReporter.js` currently sends to `/api/error-reports` which stores in the DB and surfaces in the admin. Should that be kept and augmented with Sentry, or replaced entirely?
+- Should client errors and server errors go to the same Sentry project or separate ones?
+- What's the alert threshold — every unhandled error, or only when error rate spikes above some baseline?
+
+**Done looks like:** `engineering/planning/infrastructure/ops-setup.md` has
+an error monitoring section: tool decision, Sentry project structure (server
+vs client), and alert thresholds. All decisions made. Ready to execute.
 
 ---
 
 ### 4.2 — Structured logging ❌
-Current server logging is `console.log` strings. In production this means
-all logs are unfiltered plaintext in Railway's log view. Adding structured
-JSON logging (request ID, user ID, route, response time, status code) makes
-Railway logs filterable and makes debugging production issues possible without
-reading the full log stream.
 
-**Done looks like:** Every incoming request logs a structured entry with
-method, route, status, and response time. Errors log with request context.
-Sensitive fields (passwords, tokens) are never logged.
+**Grill questions:**
+- Is pino the right choice or is a hand-rolled JSON middleware sufficient at this scale?
+- What fields need to be on every log line — request ID, user ID, route, status, response time?
+- Are there fields that must never be logged — tokens, passwords, raw play data?
+- Does Railway's log view support filtering on JSON fields, or do logs need to go to an external drain for structured queries to be useful?
+
+**Done looks like:** `engineering/planning/infrastructure/ops-setup.md` has
+a logging section: tool decision (pino vs hand-rolled), required fields on
+every log line, and the explicit list of fields that must never be logged.
+Ready to execute.
 
 ---
 
 ### 4.3 — Health check endpoint ❌
-Railway uses a health check URL for zero-downtime deploys. If no health check
-is configured, Railway considers a deploy successful as soon as the process
-starts, even if the DB connection hasn't been established yet. A `/health`
-endpoint that verifies the DB connection is live makes Railway's health gate
-meaningful.
 
-**Done looks like:** `GET /health` returns `200 { status: "ok" }` when the
-DB pool is healthy and `503` when it is not. Railway is configured to use
-this URL for health checks.
+**Grill questions:**
+- Does Railway have a default health check path it expects, or can `/health` be configured freely in Railway settings?
+- Should the check verify the DB pool is accepting queries, or just that the process is alive?
+- Should R2 connectivity be checked or just the DB?
+
+**Done looks like:** `engineering/planning/infrastructure/ops-setup.md` has
+a health check section: what the endpoint verifies (DB pool only vs R2),
+Railway configuration steps, and the expected response shape. Ready to execute.
 
 ---
 
 ### 4.4 — Uptime monitoring ❌
-There is no external service watching whether the Railway deployment is
-responding. If the service crashes, users know before you do. BetterStack,
-UptimeRobot, and Checkly all have free tiers that ping a URL every 1–5 minutes
-and alert via email/SMS on downtime.
 
-**Done looks like:** An external monitor pings the `/health` endpoint every
-minute. An alert goes to your phone within two minutes of downtime.
+**Grill questions:**
+- Should alerts go to email, phone (SMS), or both? What's the acceptable time-to-know — 1 minute of downtime, 5 minutes?
+- BetterStack, UptimeRobot, or Checkly — preference, or just whatever has the best free tier?
+
+**Done looks like:** `engineering/planning/infrastructure/ops-setup.md` has
+an uptime monitoring section: tool decision, check interval, and alert routing
+(email vs SMS, who gets notified). Ready to execute.
 
 ---
 
 ### 4.5 — Frontend performance baseline ❌
-The bundle includes `@ffmpeg/core` (a WASM binary that can exceed 30MB),
-`@mui/material`, `react-konva`, `recharts`, and the full Slate editor. No
-one has measured the current bundle size or Core Web Vitals. Until you have
-a baseline, you cannot know whether the MUI removal (Group 7) or code splitting
-(Group 7) actually improves anything.
 
-**Done looks like:** A Lighthouse run on the main app route is documented
-(LCP, CLS, TBT, bundle size). Vite's `--reporter=verbose` build output is
-captured. This becomes the baseline against which bundle improvements are
-measured.
+The bundle includes `@ffmpeg/core` (WASM, can exceed 30MB), `@mui/material`,
+`react-konva`, `recharts`, and the full Slate editor.
+
+**Grill questions:**
+- Has a Lighthouse run ever been done on the main app route? What's the current LCP on a cold load?
+- Is `@ffmpeg/core` loaded eagerly on page load or only when the GIF export modal opens? If it's eager that alone could be the main bundle problem.
+- What's the acceptable LCP target — under 2.5s, 3s, something else?
+
+**Done looks like:** `engineering/audits/performance-baseline.md` captures
+Lighthouse results (LCP, CLS, TBT) and Vite bundle output as the pre-optimization
+baseline. Referenced again after MUI removal (7.1) to measure improvement.
 
 ---
 
 ## Group 5 — Platform
 
 ### 5.1 — Billing and monetization ❌
-There is no Stripe integration. The app has users and coaches but no payment
-system. This is either intentional (free while building, monetize later) or
-an oversight. Decisions needed: freemium model vs paid from day one, what
-the pricing tiers are, whether Stripe handles subscriptions or one-time
-payments, and what features are gated behind payment.
 
-**This is a product decision before it is an engineering initiative.** The
-output of the decision is either "not in v2" (documented, intentional) or a
-`docs/billing.md` describing the Stripe integration plan before any code is
-written.
+**Grill questions:**
+- Is there a timeline for monetization or is this intentionally deferred until user count grows to a threshold?
+- If a pricing model were designed today, what would the tiers be — free for individuals, paid for teams? Per seat or flat team price?
+- Which features would be gated — mobile editor, GIF export, playbook sections, team size limits?
+- Stripe subscriptions vs one-time payment — is this a recurring SaaS model?
+
+**Done looks like:** Either "not in v2" is documented as an intentional decision,
+or `docs/billing.md` describes the Stripe integration plan before any code is written.
 
 ---
 
 ### 5.2 — Email deliverability ❌
-Resend sends transactional email (verification, password reset, invites,
-broadcasts). Whether those emails land in inboxes or spam depends entirely on
-DNS records (SPF, DKIM, DMARC) that are configured outside the codebase. If
-these are not set, a meaningful fraction of signup verification emails are
-being silently junked and users cannot verify their accounts.
 
-**Done looks like:** SPF, DKIM, and DMARC records exist and pass a check
-(mxtoolbox.com or similar). A test email chain (signup → verify → invite →
-reset) has been sent from the production domain and verified to land in the
-inbox. This is documented.
+**Grill questions:**
+- What domain does Resend send from — `coachableplays.com` or a subdomain? Are SPF, DKIM, and DMARC records configured on that domain right now?
+- Has anyone tested whether signup verification emails land in the inbox or spam on Gmail, Yahoo, and Apple Mail?
+- Are there any user reports of not receiving verification or invite emails?
+
+**Done looks like:** `engineering/audits/email-deliverability.md` records the
+DNS configuration, mxtoolbox results, and inbox test results per provider.
+Ready to execute.
 
 ---
 
 ### 5.3 — Storage and media lifecycle ❌
-R2 is used for GIF and video exports (`r2Upload.js`, `gifAssetStore.js`).
-There is no visible cleanup strategy — exported GIFs accumulate indefinitely.
-Open questions: what happens to a GIF export when the play is deleted? Is there
-a maximum file size enforced? Is there a per-user or per-team storage limit?
-What does R2 cost at scale (1,000 teams × average exports)?
 
-**Done looks like:** A lifecycle rule in R2 or a server-side cleanup job removes
-exports after a defined TTL (e.g., 24 hours for one-time exports, longer for
-saved ones). Max file size is enforced at upload. Storage cost per unit is
-known and has a ceiling.
+**Grill questions:**
+- When a play is deleted, what happens to any GIF or video exports generated from it — do they stay in R2 indefinitely?
+- Is there a max file size enforced server-side for R2 uploads, or can a user export a 500MB video with no limit?
+- How many active teams are there and roughly how many exports have been generated — is R2 cost already noticeable?
+- Should exports be ephemeral (TTL-deleted after 24 hours) or persistent (tied to the play, deleted when the play is deleted)?
+
+**Done looks like:** `engineering/planning/features/media-lifecycle.md`
+documents the TTL decision, size limit, cleanup approach, and R2 cost baseline.
+Ready to execute.
 
 ---
 
 ### 5.4 — Real-time and notification delivery ❌
-Notifications exist in the database and the `NotificationsContext` fetches them,
-but there is no visible mechanism for delivering a new notification to a logged-in
-user in real time. The current behavior appears to be: a new play is added,
-nothing happens for the player until they navigate to the notifications page or
-refresh the app. Decisions needed: polling interval (simple, works for this scale),
-Server-Sent Events (one-directional stream, no library), or WebSockets (full
-duplex, more complex).
 
-**Done looks like:** A player who is logged in receives a notification within
-N seconds of a coach adding a new play, without refreshing the page. The
-approach is documented and tested.
+Notifications are fetched on demand, capped at 100. There is no push mechanism.
+
+**Grill questions:**
+- What's the acceptable delay — a player needs to know within how long that a new play was assigned? Seconds, minutes, next time they open the app?
+- How many concurrent logged-in users are there at peak? That determines whether polling or SSE makes sense.
+- The `notifications` table has a `priority` column — is high-priority supposed to deliver faster, or is priority only about display order?
+- If polling: what interval — 30 seconds, 60 seconds? Does it happen on every page or only the notifications page?
+
+**Done looks like:** `engineering/planning/features/notification-delivery.md`
+documents the chosen approach (polling vs SSE), the interval, and how priority
+affects delivery. Ready to execute.
 
 ---
 
 ### 5.5 — SEO for public pages ❌
-Marketing pages, SharedPlay, PlatformPlayView, and sport-specific pages are
-the only pages search engines can index. `sportSeo.js` and `usePageMeta.js`
-exist in the codebase but coverage is unknown. Missing: Open Graph tags for
-share previews (when a coach sends a link, the preview card should show the
-play title and sport), a sitemap at `/sitemap.xml`, canonical URLs, and
-structured data for sport-specific pages.
 
-**Done looks like:** Every public page has a unique `<title>`, `<meta
-description>`, and OG tags. A `/sitemap.xml` exists and lists all public
-routes. Running the Google Rich Results test on a shared play URL shows
-the preview card correctly.
+`sportSeo.js` and `usePageMeta.js` exist but coverage is unknown.
+
+**Grill questions:**
+- Which pages need SEO treatment — SharedPlay, SharedFolder, PlatformPlayView, Landing, Enterprise, PublicPlaybooks? Which are actually indexable vs require auth?
+- Is there a `/sitemap.xml` right now? Are canonical URLs set on any page?
+- When a coach shares a play link, what should the OG preview card show — play title, sport, a screenshot/thumbnail?
+- Does a shared play have a stable canonical URL or does it vary?
+
+**Done looks like:** `engineering/planning/features/seo-plan.md` documents
+which pages are covered, OG tag specs, and the sitemap approach. Ready to execute.
 
 ---
 
-## Group 6 — Frontend component library (src/ui/)
+## Group 6 — Component library (src/ui/)
+
+Building the shared component layer at `src/ui/` from scratch. Every component is written new against the component specs — no code is extracted or ported from the v1 codebase. The v1 `design-system-unification` branch (`engineering/audits/design-system-unification-attempt.md`) produced a solid component list and `--ui-*` token vocabulary worth referencing, but the implementations themselves start fresh.
 
 ### 6.1 — Component prop convention ❌
-Deciding the shared prop API before any `src/ui/` component is built. Covers:
-whether all components accept `className`, what `size` and `variant` values
-are standard, how loading and disabled states are handled. Written as
-`design/component-specs.md`.
 
-**Done looks like:** `component-specs.md` covers the prop convention and specs
-the four highest-priority components (Button, Input, Modal, Toast) with variant
-tables and examples.
+**Grill questions:**
+- Should all `src/ui/` components accept a `className` prop for one-off styling, or does that create escape-hatch inconsistency?
+- Size values — `sm`/`md`/`lg`, numeric px, or Tailwind size names?
+- How are loading states handled on Button — a `loading` boolean that shows a spinner inside the button, or a wrapper?
+- Variant naming for Button: `primary`/`secondary`/`ghost`/`destructive` — are those the four, or are there others?
+- `AppMessageContext` handles toasts today. Does `Toast` in `src/ui/` replace that context entirely, or is Toast a display component and the context stays for managing toast queue state?
 
----
-
-### 6.2 — Build the primitives ❌
-Building: Button, Input, Textarea, Select, Checkbox, Toggle, Modal, Toast,
-Spinner, Skeleton, EmptyState, Alert. These replace AdminBtn, AdminModal,
-AdminInput, etc. and the scattered components in `src/components/`.
-
-**Done looks like:** All primitives exist in `src/ui/`, exported from
-`src/ui/index.js`. The design system viewer renders them. AdminBtn,
-AdminModal, AdminInput deleted.
+**Done looks like:** `design/component-specs.md` covers the prop convention and specs
+Button, Input, Modal, and Toast with variant tables and examples.
 
 ---
 
-### 6.3 — Build the display and domain components ❌
-Building: PlayCard, FolderCard, Avatar, Badge, Chip, Tooltip, DataTable,
-ListItem, StatCard, Tabs, Breadcrumbs, Pagination, NotificationItem.
-PlayPreviewCard from `src/components/` becomes PlayCard here.
+### 6.2 — Build primitives in src/ui/ ❌
 
-**Done looks like:** All display and domain components exist in `src/ui/`.
-Every surface that had its own version (AdminBadge, etc.) is migrated.
+**Grill questions:**
+- Should `Modal` use a React portal (`createPortal`) to escape stacking context issues?
+- The current toast pattern fires via `AppMessageContext`. Should `Toast` in `src/ui/` be a purely display component, with `AppMessageContext` still managing the queue?
+
+**Done looks like:** `design/component-specs.md` updated to confirm each
+primitive is complete. Ready to execute.
 
 ---
 
-### 6.4 — Layout and shell components ❌
-Building: Sidebar, Header, PageShell — the chrome wrapping every page.
-Currently embedded in `AppShell.jsx` and the admin layout.
+### 6.3 — Build display and domain components in src/ui/ ❌
 
-**Done looks like:** `src/ui/Sidebar.jsx`, `Header.jsx`, `PageShell.jsx`
-exist. App shell and admin shell both use them. Sidebar nav follows desktop
-formatting standard.
+**Grill questions:**
+- `PlayCard` — what props does it need to serve app, admin, and platform plays surfaces? Define the prop API before building.
+- `NotificationItem` — is the block renderer (the `blocks` JSONB array with question/text/etc. types) part of `NotificationItem` or a separate component?
+
+**Done looks like:** `design/component-specs.md` updated with the full
+component list. Ready to execute.
+
+---
+
+### 6.4 — Build layout and shell components ❌
+
+**Grill questions:**
+- Does `Sidebar` compose nav items as children or accept them as a prop array?
+- Does the admin share the app shell (`PageShell`) or have its own layout wrapper?
+- `PageShell` — does it include sidebar + header together, or are they composed by the consumer?
+
+**Done looks like:** `design/component-specs.md` updated with shell component
+specs and composition rules. Ready to execute.
 
 ---
 
 ## Group 7 — Frontend architecture
 
 ### 7.1 — MUI removal ❌
-Auditing the MUI footprint (`grep -r "@mui" src/`) and replacing every usage
-with a `src/ui/` component or Tailwind equivalent. `@mui/material` is a large
-dependency that conflicts with the v2 component library goal.
 
-**Done looks like:** No `@mui/material` imports in the codebase. Package
-removed from `package.json`. Bundle size is re-baselined (see 4.5).
+**Grill questions:**
+- Where is MUI actually used right now — which components and what specifically (`DataGrid`, `Autocomplete`, `DatePicker`, etc.)? Running `grep -r "@mui" src/` would answer this.
+- Is there anything MUI provides with complex built-in accessibility behavior (e.g. focus trap, ARIA) that would need to be rebuilt from scratch?
+
+**Done looks like:** `engineering/audits/performance-baseline.md` updated
+with post-MUI-removal bundle sizes to document the improvement against the
+4.5 baseline. Ready to execute.
 
 ---
 
 ### 7.2 — Routing v2 ❌
-Redesigning the routing layer to match the v2 folder structure. Deciding
-whether `App.jsx` stays as a single file or splits into feature routers.
-Adding route-level code splitting (`React.lazy` + `Suspense`) for admin,
-Slate, and shared pages. Documenting route guards, `returnTo` handling,
-and the onboarding redirect chain.
 
-**Done looks like:** `engineering/planning/routing.md` documents the v2
-route structure. Lazy loading is active for admin and Slate routes. Route
-guards are consistent and documented.
+**Grill questions:**
+- `App.jsx` has all routes today. Should it split into feature routers (one per domain: app, admin, auth) or stay as a single file with logical sections?
+- How does `returnTo` work currently — is there a query param on the login redirect that brings the user back after auth? Where does that get set and consumed?
+- Are there route guards beyond `requireAuth` — for example, a guard blocking unverified users or users who haven't completed onboarding?
+- Should admin routes have a separate layout wrapper (`AdminShell`) or share the app shell?
+
+**Done looks like:** `engineering/planning/routing.md` documents the v2 route
+structure. Lazy loading is active for admin and Slate routes. Route guards are consistent.
 
 ---
 
 ### 7.3 — State management decision and implementation ❌
-Deciding whether v2 adds Zustand (cross-page state), React Query/SWR (server
-state), or keeps React state + Context. If adding a library: implementing it
-on Plays.jsx as the reference case (30+ useState calls). If staying with React
-state: documenting what lives where (local, context, URL params).
+
+`Plays.jsx` has 30+ useState calls. No Zustand or React Query today.
+
+**Grill questions:**
+- In `Plays.jsx`, what's actually server state (plays list, folders list) vs local UI state (menu open, rename input value, toast)? The goal is to understand how much of the 30+ useStates are real complexity vs UI noise.
+- Is there any data that needs to be shared across pages today — for example, does the notification badge in the sidebar need to sync with `NotificationsContext`? That's what would push toward Zustand.
+- React Query vs SWR for server state — any preference? The main value is caching, automatic refetch, and built-in loading/error states.
+- If React Query handles the plays list, does the optimistic update on favorite toggle become a React Query mutation or stay manual?
 
 **Done looks like:** `engineering/planning/state-management.md` documents the
-decision and pattern. Plays.jsx serves as the reference implementation.
+decision. Plays.jsx serves as the reference implementation.
 
 ---
 
 ### 7.4 — Permission abstraction ❌
-Replacing the copy-pasted `isCoach` boolean across every page with a
-`usePermissions()` hook returning named flags (`canCreatePlay`, `canDeletePlay`,
-`canManageRoster`, `canViewTrash`). Folds in `assistantPermissions` (currently
-an object on the user, checked inline).
 
-**Done looks like:** `usePermissions()` exists in `src/context/`. Every page
-uses it. No page has an inline `user?.role === "coach"` check. `isCoach` deleted.
+`Plays.jsx` has `const isCoach = (user?.role === "coach" || user?.role === "owner") && !playerViewMode` inline. `assistantPermissions` is an object on the user with `canCreateEditDeletePlays`, `canManageRoster`, `canSendInvites`.
+
+**Grill questions:**
+- What are all the permission flags that need to exist — `canCreatePlay`, `canEditPlay`, `canDeletePlay`, `canManageRoster`, `canSendInvites`, `canViewAdmin`, `canViewTrash` — what else?
+- Should `usePermissions()` fold `assistantPermissions` in directly, or is there a separate path for assistant coach permissions?
+- `playerViewMode` overrides role — should `usePermissions()` take that into account internally, or is it the caller's job to check?
+- Are there team-level settings that affect permissions (some teams restrict what coaches can do) or is it purely role-based?
+
+**Done looks like:** `engineering/planning/permissions.md` documents all
+permission flags, the role matrix, and how `assistantPermissions` and
+`playerViewMode` are handled. Ready to execute.
 
 ---
 
-### 7.5 — Error boundary implementation ❌
-Adding React error boundaries at the page level so a JS error in one page
-doesn't crash the whole app. Defining the fallback UI. Connected to the error
-monitoring initiative (4.1) — the boundary should report to whatever monitoring
-system is chosen.
+### 7.5 — Error boundaries ❌
 
-**Done looks like:** A reusable `ErrorBoundary` exists in `src/ui/`. Every
-page route is wrapped in it. Errors caught by the boundary are sent to the
-monitoring system from 4.1.
+**Grill questions:**
+- Should the boundary show a retry button or just an error message with a "go home" link?
+- The boundary needs to report to monitoring (4.1). Should it be written now with a no-op report function, or should 4.1 be done first?
+- Should there be nested boundaries (per section of a page) or one per route?
+
+**Done looks like:** `engineering/frontend-code-standards.md` updated with
+the error boundary pattern: component location, fallback UI spec, and the
+requirement that every route is wrapped. Ready to execute.
 
 ---
 
 ### 7.6 — isMobile JS check elimination ❌
-Removing `window.matchMedia` mobile detection from component state (Plays.jsx,
-PlayEdit.jsx, etc.) and replacing with CSS-first responsive behavior. For cases
-where behavior truly differs on mobile, a single shared `useBreakpoint()` hook
-replaces per-component `matchMedia` calls.
 
-**Done looks like:** No `window.matchMedia` calls in page components. JSDOM
-test environment no longer produces false results for mobile-gated features.
+`Plays.jsx` has `const MOBILE_BREAKPOINT = 768` and uses `window.matchMedia` in a useEffect. Same pattern is repeated across multiple page components.
+
+**Grill questions:**
+- Which behaviors in `Plays.jsx` gated on `isMobile` can become CSS-only (hiding a button, changing layout), vs which truly require JS (disabling canvas interaction)?
+- `canCreatePlay = isCoach && !isMobile` is going away once mobile editing is enabled (9.2). Is the isMobile elimination in 7.6 blocked on 9.2 or independent?
+- If a shared `useBreakpoint()` hook is written, should it return a single `isMobile` boolean or a more general breakpoint value (`sm`/`md`/`lg`)?
+
+**Done looks like:** `engineering/frontend-code-standards.md` updated to
+document the hook API and which behaviors should remain CSS-only vs require JS.
+Ready to execute.
 
 ---
 
 ### 7.7 — Feature flag integration ❌
-Deciding how a component uses feature flags: a general `<FlagGate>` wrapper
-vs inline `useFeatureFlags()` calls. `AdminFlagGate.jsx` already exists —
-does it generalize? Documenting how a developer reading a component can tell
-it is behind a flag.
 
-**Done looks like:** One pattern is documented and used consistently.
-`AdminFlagGate` is either generalized into `src/ui/FlagGate.jsx` or deleted
-in favor of the inline pattern.
+`AdminFlagGate.jsx` exists. `FeatureFlagContext.jsx` provides flags. Usage is inconsistent.
+
+**Grill questions:**
+- How are flags loaded today — does `FeatureFlagContext` fetch `/api/flags` on mount? Are they re-fetched on navigation or only once per session?
+- Should `AdminFlagGate` generalize into `src/ui/FlagGate.jsx` that works everywhere, or is the inline `useFeatureFlags()` pattern preferred for non-admin gates?
+- Can a flag be toggled in the admin and take effect without a page refresh, or does the user need to reload?
+- What's the rule for how a developer reading a component knows it's behind a flag — a comment, a JSDoc note, something else?
+
+**Done looks like:** `engineering/planning/feature-flags.md` documents the
+chosen pattern, how flags are loaded, and the developer convention for marking
+flagged components. Ready to execute.
 
 ---
 
 ## Group 8 — UI testing
 
-### 8.1 — Wire existing tests to CLI ⚠️
-The existing six browser test suites already work in Vitest — they just run
-in the browser. This initiative moves them to `vitest run` from the terminal.
+### 8.1 — Establish Vitest config and write first tests ❌
 
-**Done looks like:** `npm run test:frontend` runs all six suites from the CLI
-and exits with pass/fail. CI picks them up automatically.
+The v1 browser-based test suites in `src/testing/suites/` do not carry over
+to the `stage` branch. The new build starts with no existing UI tests.
+
+**What this means:** Skip directly to building the test infrastructure from
+scratch. Set up `vitest.config.js` with JSDOM environment, write `src/tests/renderAs.js`
+and `src/tests/assertions.js` per `ui-testing-standards.md`, and write the
+first co-located role tests alongside the first pages built in 8.2.
+
+**Grill questions:**
+- What mock strategy for API calls in UI tests — MSW (intercept at network level) or `vi.mock` the api module?
+- `assistant_coach` is a role with `assistantPermissions` that differ from regular coaches. Does it need its own fixture, or share the coach fixture with permission overrides?
+
+**Done looks like:** `src/tests/renderAs.js`, `src/tests/assertions.js`, and
+`src/tests/fixtures/` exist and work. At least one page has a co-located
+`tests/` folder with a passing `roles.test.js`. Ready to execute.
 
 ---
 
 ### 8.2 — Role-based UI test suite ❌
-Writing the full role-based UI test suite using the standards in
-`engineering/planning/testing/ui-testing-standards.md`. Covers every page
-in `src/app/pages/` and `src/admin/pages/` — visibility assertions and flow
-tests. Uses `renderAs()` and the `tests/` subfolder pattern.
 
-**Done looks like:** Every page in the "Example file structure" section of
-`ui-testing-standards.md` has a `tests/` folder with the appropriate
-`roles.test.js` and `flow.test.js` files.
+Full role-based test suite per `engineering/planning/testing/ui-testing-standards.md`.
+
+**Grill questions:**
+- Does `renderAs(role)` exist anywhere yet, or does it need to be written from scratch per the standards doc?
+- What's the mock strategy for API calls in UI tests — MSW (intercept at network level), `vi.mock` the api module, or something else?
+- `assistant_coach` is a role with `assistantPermissions` that differ from regular coaches. Does it need its own fixture, or can it share the coach fixture with permission overrides?
+
+**Done looks like:** `engineering/planning/testing/ui-testing-standards.md`
+has a complete role-based test suite section: `renderAs(role)` helper spec,
+mock strategy decision, and the per-page test file list. Ready to execute.
 
 ---
 
 ## Group 9 — Core product
 
 ### 9.1 — Slate UX standards ❌
-Building the design standards doc for the play editor — same interview-driven
-process as the formatting standards. Covers: draw tool selection and states,
-field orientation per sport, animation timeline UX, player placement, control
-pill states, color picker constraints, undo/redo, mobile editor layout.
-Output: `design/slate/slate-ux-standards.md`.
 
-**Done looks like:** `slate-ux-standards.md` is as thorough as
-`desktop-formatting-standards.md`. The mobile Slate UX is fully specified,
-not just technically planned.
+**Grill questions:**
+- The draw tool has multiple modes (pen, arrow, shape, eraser). Is the state machine mutually exclusive — can a player be selected at the same time as draw mode is active?
+- Field orientation: some sports are vertical (basketball), some horizontal (football). Is orientation decided per-sport or can a coach rotate within the editor?
+- When a coach adds a keyframe, what gets captured — all player positions, or only positions of players that moved since the last keyframe?
+- Undo/redo scope: does undo go back one atomic action (move one player) or one gesture (a full drag)?
+- On mobile, what's the gesture for "select player" vs "pan canvas" vs "start drawing" — is that already decided and in `MOBILE_EDITOR.md`?
+
+**Done looks like:** `design/slate/slate-ux-standards.md` is as thorough as
+`desktop-formatting-standards.md`. The mobile Slate UX is fully specified.
 
 ---
 
 ### 9.2 — Mobile editor launch ⚠️
-Removing `MobileViewOnlyGate` from the user editor path and wiring the full
-mobile editing experience for regular coaches. Wiring plan is in
-`engineering/planning/features/mobile-slate-plan.md`. Blocked on 9.1 confirming
-the mobile editor UX is ready for users.
 
-**Done looks like:** Coaches on mobile can open and edit a play at
-`/app/plays/:id/edit`. `MobileViewOnlyGate` is deleted or repurposed.
-The feature is no longer admin-only.
+Blocked on 9.1 confirming the mobile editor UX is ready for users.
+Wiring plan is in `engineering/planning/features/mobile-slate-plan.md`.
+
+**Grill questions:**
+- Which sports have been tested end-to-end on mobile and confirmed working — football, basketball, soccer, lacrosse?
+- Is `MobileViewOnlyGate` the only block or are there other `!isMobile` checks in the editor path — `PlayNew.jsx`, `Plays.jsx`?
+- Is `mobileLayout` already accepted as a prop by `Slate.jsx` in the user-facing version, or only in the admin path?
+
+**Done looks like:** `engineering/planning/features/mobile-slate-plan.md`
+updated to mark the launch complete and note any divergences from the wiring
+plan. Ready to execute.
 
 ---
 
 ### 9.3 — PlayerViewMode UX ❌
-Specifying and implementing playerViewMode end to end. Currently the mode
-silently changes what renders with no visual indicator — a coach has no
-confirmation they are seeing what a player sees. Covers: persistent mode
-indicator, how the coach enters/exits, whether it affects navigation or only
-content, and role-based test coverage for all playerViewMode states.
 
-**Done looks like:** A coach in playerViewMode sees a clear persistent
-indicator. The toggle is discoverable. Tests cover the context override.
+`playerViewMode` is a boolean in `AuthContext`. `Plays.jsx` uses `&& !playerViewMode` in all role checks.
+
+**Grill questions:**
+- How does a coach currently toggle `playerViewMode` — is there any UI for it, or is it only accessible via a dev tool?
+- What should be hidden in playerViewMode — just coach action buttons, or also UI chrome that reveals coach-only information like `hiddenFromPlayers` badges?
+- Does `playerViewMode` persist across page navigation and refreshes, or is it session-only (reset on refresh)?
+- Should a coach in playerViewMode see a persistent indicator (a banner, a badge in the nav) so they don't forget?
+
+**Done looks like:** `design/player-view-mode.md` documents what is hidden
+in playerViewMode, the indicator spec, toggle placement, and persistence
+behavior. Ready to execute.
 
 ---
 
 ### 9.4 — Shared and public page redesign ❌
-Redesigning SharedPlay, SharedFolder, and PlatformPlayView with a clear
-stance on: dark vs light, navigation presence, "Get Coachable" CTA, expired
-link handling, and whether the shared play view is a full read-only editor or
-an animated preview only. Output: `design/shared-pages.md`.
 
-**Done looks like:** All three public page types match a documented spec.
-An expired link shows a proper error state. SEO tags are present (connects
-to 5.5).
+**Grill questions:**
+- Are SharedPlay, SharedFolder, and PlatformPlayView currently dark or light? Is that a deliberate decision?
+- What should happen when a share link expires — a specific error page, generic 404?
+- Should there be a "Get Coachable" CTA on shared pages for viewers without an account — and if so, where (banner, floating button)?
+- Is a shared play a full read-only editor (can scrub animation, see keyframes) or a static animated preview only?
+
+**Done looks like:** `design/public-pages.md` is the spec — covers SharedPlay,
+SharedFolder, and PlatformPlayView: layout, CTA placement, expired-link error
+state, and editor mode. Ready to execute.
 
 ---
 
 ## Group 10 — Documentation cleanup (parallel with everything else)
 
 ### 10.1 — Migrate scattered markdown to docs/ ❌
-Moving every `.md` file in `server/routes/`, `server/lib/`, `src/pages/`,
-and `src/features/slate/` into the `docs/` folder. Updating any links.
 
-**Done looks like:** No `.md` files in `server/` or `src/`. All docs are
-in `docs/`. `docs/INDEX.md` has an entry for every file.
+`server/routes/` has `DEMO_VIDEOS.md`, `FORGOT_PASSWORD.md`, `PLAY_COPY_ANALYTICS_FIX.md`.
+`src/pages/` has `MOBILE_EDITOR.md`, `HIDE_FROM_PLAYERS.md`, `NOTIFICATIONS_PAGE.md`, and more.
+
+**Grill questions:**
+- When these move to `docs/`, do any of them have links or references in code comments that would break?
+- `CRAWLER_MAP.md` at the root maps features to files. Does that move to `docs/` or stay at root for Claude to find easily?
+- Some files are fix notes (`PLAY_COPY_ANALYTICS_FIX.md`, `CODEX_VIDEO_EXPORT_FIX.txt`). Are those worth keeping now that the fix is already in, or just delete them?
+
+**Done looks like:** `docs/INDEX.md` has an entry for every file moved.
+Ready to execute.
 
 ---
 
 ### 10.2 — Admin design standards ❌
-Deciding whether v2 admin is dark (matches the app) or a different treatment,
-and documenting the formatting rules for admin pages. Output:
-`design/admin-standards.md`.
 
-**Done looks like:** Admin pages are built to a documented standard. No
-ambiguity about whether an admin page should match the app or differ.
+**Grill questions:**
+- The admin has its own `admin.css`. Is the intent for admin to match the dark app, or is a lighter admin UI acceptable since it's internal-staff-only?
+- Who uses the admin — just you, or are there other staff members who log in? That affects how polished it needs to be.
+- Should admin pages follow the same 4px grid and typography scale from `general-formatting-standards.md`, or does the admin get its own looser standards?
+
+**Done looks like:** `design/admin-standards.md` documents whether admin matches
+the app or has its own rules, the grid and typography decisions, and which
+`--ui-*` tokens admin surfaces use. No ambiguity about how an admin page should look.
 
 ---
 
@@ -614,11 +693,29 @@ ambiguity about whether an admin page should match the app or differ.
 | Mobile formatting standards | `design/mobile/mobile-formatting-standards.md` |
 | Desktop formatting standards | `design/desktop/desktop-formatting-standards.md` |
 | Accessibility standards | `design/accessibility-standards.md` |
+| Frontend code standards | `engineering/frontend-code-standards.md` |
+| Backend code standards | `engineering/backend-code-standards.md` |
 | UI testing standards | `engineering/planning/testing/ui-testing-standards.md` |
 | Server test plan (what to test, per-route list, CI wiring) | `engineering/planning/testing/test-suite-plan.md` |
 | Security, CI/CD, and AI-friendliness plan | `engineering/planning/infrastructure/security-and-code-quality.md` |
-| Proposed v2 file structure | `engineering/planning/architecture/proposed-file-structure.md` |
+| Target file structure | `engineering/planning/architecture/proposed-file-structure.md` |
 | Mobile Slate wiring plan (technical) | `engineering/planning/features/mobile-slate-plan.md` |
 | API surface audit | `engineering/audits/api-review.md` |
 | Routing and flash diagnosis | `engineering/audits/routing-and-flash-diagnosis.md` |
 | Design system unification attempt (post-mortem) | `engineering/audits/design-system-unification-attempt.md` |
+
+---
+
+## Cross-Reference Notes
+
+**This doc is the master work list. All v2 docs should be consistent with the status entries here.**
+
+**Things to be aware of:**
+
+1. **Item 1.1 done note.** The grill questions mention regenerating HTML reference pages after token rename. Those HTML pages (`mobile-standards.html`, `desktop-standards.html`) were removed instead — visual examples will come from the component consolidation work (Group 6).
+
+2. **`design/mobile/mobile-ui-standards.md`** — Older doc (pre-v2 formatting standards) with superseded content. Superseded by `mobile-formatting-standards.md` + `color-semantics.md`. Retire it: add a deprecation header pointing to the current docs, then ignore it.
+
+3. **Item 3.2 "Done looks like"** — References `engineering/planning/api-standards.md`. This doc does not exist yet. Consistent with ❌ Not started status.
+
+4. **All file paths in the done table** use the current `v2/` prefix (v1 repo location). In the new repo, these docs live at `docs/v2/` from the start per the file structure plan.

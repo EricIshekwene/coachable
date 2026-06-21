@@ -5,8 +5,8 @@
 **HTML Reference:** None — rules are canonical here. Visual examples live in the platform-specific HTML files.  
 **Accessibility:** This doc covers accessibility where it intersects with visual formatting (contrast, focus ring appearance, motion, semantic HTML). For ARIA usage, keyboard patterns, focus management, live regions, and testing see `accessibility-standards.md`.
 
-> **Note — Platform HTML pages need a redo after the design system is finalized.**  
-> Once the v2 token rename, component library, and color system are locked in, regenerate `mobile-standards.html` and `desktop-standards.html` so all examples use the final names and values.
+> **Note — Visual examples are not yet written.**  
+> The `mobile-standards.html` and `desktop-standards.html` reference files have been removed. Visual examples for each principle will be produced as part of the component library work (Group 6).
 
 ---
 
@@ -252,3 +252,19 @@ On mobile Safari, `100vh` includes the retracted browser toolbar and sizes conte
 | Height unit | 100dvh not 100vh |
 | Scroll container | App shell `<main>` only |
 | Mobile breakpoint | 768px (md) |
+
+---
+
+## Cross-Reference Notes
+
+**Referenced by:** `design/mobile/mobile-formatting-standards.md`, `design/desktop/desktop-formatting-standards.md`, `design/accessibility-standards.md`, `engineering/frontend-code-standards.md`, `design/color-semantics.md`
+
+**Inconsistencies to resolve — `color-semantics.md` is the newer doc and takes priority:**
+
+1. **§09 Focus ring — hex vs CSS variable.** This doc says `outline: 2px solid #FF7A18; outline-offset: 2px`. `color-semantics.md` says `outline: 2px solid var(--ui-accent); outline-offset: 2px`. Dark mode `--ui-accent` is `#F97316` (not `#FF7A18`), so these diverge in dark mode. **Update to `var(--ui-accent)` to match `color-semantics.md`.**
+
+2. **§08 Active states — nav item exception.** This doc says "Color change only. No filled background pill." `color-semantics.md` (newer) explicitly allows `--ui-accent-muted` background tint on active **nav items only**, calling it "the only place a background tint is allowed on active state." **Add a nav item exception to §08 aligned with `color-semantics.md`.**
+
+3. **Quick Reference table — focus ring entry.** Lists `2px solid BrandOrange, 2px offset`. Change to `2px solid var(--ui-accent), 2px offset` once §09 is updated above.
+
+4. **§03 Color token table.** Lists Brand primitive names (BrandText, BrandGray, BrandOrange, BrandGreen, BrandGray2). `color-semantics.md` adds a semantic `--ui-*` layer on top of these. The Brand names in §03 are the raw primitive values — acceptable here as visual-rule definitions. Component implementations should use `--ui-*` tokens from `color-semantics.md`.

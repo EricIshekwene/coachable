@@ -8,7 +8,7 @@
 
 html {
     min-height: 100%;
-    background-color: #121212;
+    background-color: var(--ui-bg);
     overscroll-behavior-y: none;
 }
 
@@ -19,7 +19,7 @@ body {
     overflow-y: auto;
     touch-action: manipulation;
     -webkit-overflow-scrolling: touch;
-    background-color: #121212;
+    background-color: var(--ui-bg);
 }
 
 #root {
@@ -71,6 +71,57 @@ body {
     --icon-lg: 20px;
 }
 
+/* ─── Semantic UI tokens ────────────────────────────────────────────────────
+   Dark defaults. Light overrides in the [data-theme="light"] block below.
+   Components reference via var(--ui-accent) etc. — not Tailwind utilities.
+   --ui-accent diverges from BrandOrange (#FF7A18) by design: dark mode uses
+   #F97316 (slightly deeper) for better vibrancy on near-black surfaces. */
+:root {
+    /* Backgrounds */
+    --ui-bg:              #0D0D0D;
+    --ui-surface:         #141516;
+    --ui-surface-raised:  #181A1D;
+    --ui-surface-muted:   #202328;
+
+    /* Borders */
+    --ui-border:          #343A40;
+    --ui-border-strong:   #4B5563;
+
+    /* Text */
+    --ui-text:            #F5F7FA;
+    --ui-text-muted:      #A3AAB3;
+    --ui-text-subtle:     #747C87;
+
+    /* Accent (orange) */
+    --ui-accent:              #F97316;
+    --ui-accent-hover:        #FF8F3D;
+    --ui-accent-pressed:      #E85D04;
+    --ui-accent-muted:        #2B1A10;
+    --ui-accent-muted-hover:  #3A2417;
+    --ui-accent-border:       #7A3A0A;
+    --ui-accent-text:         #FF9F50;
+
+    /* Success */
+    --ui-success:         #22C55E;
+    --ui-success-muted:   #0F2A1A;
+    --ui-success-text:    #4ADE80;
+
+    /* Error */
+    --ui-error:           #F04438;
+    --ui-error-muted:     #2A1212;
+    --ui-error-text:      #F87171;
+
+    /* Warning */
+    --ui-warning:         #FBBF24;
+    --ui-warning-muted:   #2A1D08;
+    --ui-warning-text:    #FCD34D;
+
+    /* Info */
+    --ui-info:            #3B82F6;
+    --ui-info-muted:      #101E35;
+    --ui-info-text:       #93C5FD;
+}
+
 /* Light-mode shadow overrides (applied alongside brand neutral overrides below) */
 [data-theme="light"] .app-themed,
 [data-admin-theme="light"] {
@@ -93,7 +144,7 @@ body {
     --z-toast:   99;
 }
 
-/* Light theme overrides for the brand neutrals.
+/* Light theme overrides for the brand neutrals and semantic UI tokens.
    Applies to the app shell (.app-themed) AND to light-mode admin surfaces
    ([data-admin-theme="light"]) so both worlds resolve the same brand tokens
    from one source. Brand accent/green stay constant across themes. */
@@ -104,6 +155,36 @@ body {
     --color-BrandGray: #6b7280;
     --color-BrandGray2: #9ca3af;
     --color-BrandText: #1a1a1a;
+
+    /* Semantic UI token overrides */
+    --ui-bg:              #FBFBFC;
+    --ui-surface:         #FFFFFF;
+    --ui-surface-raised:  #FFFFFF;
+    --ui-surface-muted:   #F4F5F7;
+    --ui-border:          #E1E4EA;
+    --ui-border-strong:   #7C8794;
+    --ui-text:            #1A1A1A;
+    --ui-text-muted:      #4B5563;
+    --ui-text-subtle:     #6B7280;
+    --ui-accent:              #FF7A18;
+    --ui-accent-hover:        #E85D04;
+    --ui-accent-pressed:      #C2410C;
+    --ui-accent-muted:        #FFE4CC;
+    --ui-accent-muted-hover:  #FFD2A8;
+    --ui-accent-border:       #FFB071;
+    --ui-accent-text:         #B84700;
+    --ui-success:         #16A34A;
+    --ui-success-muted:   #DCFCE7;
+    --ui-success-text:    #166534;
+    --ui-error:           #DC2626;
+    --ui-error-muted:     #FEE2E2;
+    --ui-error-text:      #DC2626;
+    --ui-warning:         #D97706;
+    --ui-warning-muted:   #FEF3C7;
+    --ui-warning-text:    #B45309;
+    --ui-info:            #3B82F6;
+    --ui-info-muted:      #DBEAFE;
+    --ui-info-text:       #1D4ED8;
 }
 
 

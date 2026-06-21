@@ -2,10 +2,7 @@
 
 **Status:** Desktop-exclusive formatting rules.  
 **Scope:** Everything at the `md` breakpoint (768px) and above. Rules here are in addition to — not a replacement for — the general standards in `../general-formatting-standards.md`.  
-**HTML Reference:** Open `desktop-standards.html` alongside this doc — every principle has a live visual example.
-
-> **Note — HTML page needs a redo after the design system is finalized.**  
-> Once the v2 token rename, component library, and color system are locked in, regenerate the HTML so all examples use the final names and values. Update the rules in this doc at the same time.
+**HTML Reference:** None — `desktop-standards.html` has been removed. Visual examples will be added as part of the component library work (Group 6).
 
 ---
 
@@ -238,3 +235,29 @@ Tooltips are hover-triggered supplemental labels. Valid on desktop because deskt
 | Layout direction | Mobile-first — base for mobile, md/lg/xl layer on top |
 
 For all other decisions — spacing grid, typography, contrast, borders, radius, shadow, focus, motion, icons, form states — see `../general-formatting-standards.md`.
+
+---
+
+## Cross-Reference Notes
+
+**This doc extends `general-formatting-standards.md`. It is authoritative for desktop-exclusive rules. `color-semantics.md` is newer and takes priority on token usage.**
+
+**Stale references:**
+- All `→ See d-* in the HTML reference` anchors are dead — `desktop-standards.html` was removed. Delete these lines when updating.
+
+**Inconsistencies to resolve — `color-semantics.md` takes priority:**
+
+1. **§05 Nav active state (critical conflict)** — The nav table shows Active = "BrandOrange color only — no pill" with Background = "None". `color-semantics.md` (newer, authoritative) says: "Active nav items: `--ui-accent-muted` background tint + `--ui-accent-text` label. This is the only place a background tint is allowed on active state." **Update the nav table: Active background = `--ui-accent-muted`, label color = `--ui-accent-text`.**
+
+2. **§05 Sidebar background** — "BrandBlack2 (#2a2e34)." Per `color-semantics.md`, this should be `--ui-surface` (dark: `#141516`). Values differ. Update to `--ui-surface`.
+
+3. **§05 Nav hover** — "BrandText + BrandBlack2 tint." Should be `--ui-text` + `--ui-surface-muted` background per `color-semantics.md` token roles.
+
+4. **§09 Tooltip colors** — "Background: BrandBlack2 (#2a2e34), Text: BrandText (#f5f7fa)." Per `color-semantics.md`, floating elements use `--ui-surface-raised` (dark: `#181A1D`). Update to `--ui-surface-raised` / `--ui-text`.
+
+5. **§04 Hover style** — "BrandBlack2 at 60% opacity." Should reference `--ui-surface` or `--ui-surface-muted` per `color-semantics.md`.
+
+6. **Quick Reference table** — Nav active, nav hover, sidebar, tooltip entries all reference Brand token names. Update to `--ui-*` tokens after resolving items 1–5 above.
+
+**From `general-formatting-standards.md` (also applies here):**
+- §08 Active state rule in the general doc says "no backgrounds." This doc now defers to `color-semantics.md`'s nav item exception (see item 1 above).

@@ -1,10 +1,12 @@
-# Proposed v2 File Structure
+# v2 File Structure
 
-This is a proposed reorganization of the Coachable repo. Not a migration plan — a target state to review and edit before anything is moved.
+This is the file structure for the v2 new repo. Both `src/` and `server/` are built from scratch against this structure. The only exception is `src/slate/` (the core editor), which is ported from the v1 repo as-is.
 
 ---
 
-## What is wrong with the current structure
+## Why v1 was scrapped (historical context)
+
+The problems below are what motivated starting a new repo. Preserved as context.
 
 **Root is a junk drawer.** CLAUDE.md, README.md, tests.md, todo.md, STAFF_ADMIN_HANDOFF.md, STAFF_ADMIN_PLAN.md, OUTREACH_SCRAPER_PLAN.md, CODEX_VIDEO_EXPORT_FIX.txt, vite-dev.err.log, football-presets-all-formations.json, soccer-presets-all-formations.json — all flat at root. No organization, no signal about where anything belongs.
 
@@ -22,7 +24,7 @@ This is a proposed reorganization of the Coachable repo. Not a migration plan �
 
 ---
 
-## Proposed Structure
+## Target Structure
 
 ```
 coachable/
@@ -36,7 +38,7 @@ coachable/
 │
 ├── docs/                            # ALL steering, planning, and feature documentation
 │   ├── INDEX.md                     # master index of all docs in this folder
-│   ├── v2/                          # v2 planning docs (current v2/ folder moves here)
+│   ├── v2/                          # v2 planning docs (live here on stage from day 1)
 │   │   └── *.md
 │   ├── features/                    # per-feature docs (moved from src/pages/, src/features/slate/)
 │   │   ├── slate.md
@@ -204,9 +206,24 @@ coachable/
     │   │   ├── useFieldViewport.js
     │   │   └── useRecordingMode.js
     │   │
-    │   └── utils/
-    │       ├── drawingSchema.js
-    │       └── drawingTiming.js
+    │   ├── utils/
+    │   │   ├── drawingSchema.js
+    │   │   └── drawingTiming.js
+    │   │
+    │   └── ui/                      # slate-exclusive editor chrome — never imported outside slate/
+    │       │                        # (ControlPill, RightPanel, sidebar, tool pills, etc.)
+    │       ├── ControlPill.jsx      # animation timeline and playback controls
+    │       ├── RightPanel.jsx       # player/drawing property panel
+    │       ├── SidebarRoot.jsx      # editor tool sidebar
+    │       ├── DrawToolsPill.jsx
+    │       ├── AnimationDrawingTools.jsx
+    │       ├── MobileEditorBar.jsx
+    │       ├── AdvancedSettings.jsx
+    │       ├── ExportModal.jsx
+    │       ├── AuthPromptModal.jsx
+    │       ├── RecordingControlBar.jsx
+    │       ├── ViewOnlyControls.jsx
+    │       └── ...                  # all other slate-exclusive subcomponents
     │
     ├── app/                         # user-facing app (authenticated coach/player experience)
     │   ├── pages/
@@ -344,15 +361,15 @@ coachable/
 
 **`src/ui/` is the design system.** One flat folder. All shared components in one place with a barrel export (`index.js`). No `src/admin/components/` and no separate design system page — those admin-prefixed components (AdminBtn, AdminModal, etc.) get replaced by the shared ones. The rule: if two surfaces (app, admin, staff) both need a Button, it lives in `src/ui/`. AI tools, future contributors, and you can always find a component by looking in exactly one place.
 
-**`src/slate/` is the core product and is treated as a boundary.** The play editor, canvas, and animation engine are currently split across `src/features/slate/`, `src/canvas/`, and `src/animation/`. In v2 they live together under `src/slate/`. Nothing outside this folder should import internal slate modules directly — the slate exposes what it exposes and that's it. This makes the core safe to refactor without rippling changes everywhere.
+**`src/slate/` is the core product and is treated as a boundary.** The play editor, canvas, animation engine, and all slate-exclusive editor chrome live here. `src/slate/ui/` holds components that are only ever used inside the editor (ControlPill, RightPanel, SidebarRoot, tool pills, MobileEditorBar, etc.). Nothing outside `src/slate/` should import from it — the slate exposes what it exposes through `Slate.jsx` and that's it.
 
 **`server/` has no markdown files.** Documentation about server routes and features belongs in `docs/server/`. The routes folder should be unambiguous: `.js` files only, one per resource.
 
-**`docs/` is the single source of all steering documents.** Every `.md` file that currently lives scattered in `src/pages/`, `src/features/slate/`, `server/routes/`, and `server/lib/` moves here. `CLAUDE.md` at the root becomes an index: it tells AI tools where to find things, not a document itself. `docs/INDEX.md` lists all docs with one-line descriptions so any AI context window can orient itself in one file.
+**`docs/` is the single source of all steering documents.** All planning docs, feature specs, and design docs live here. `CLAUDE.md` at the root is an index: it tells AI tools where to find things, not a document itself. `docs/INDEX.md` lists all docs with one-line descriptions so any AI context window can orient itself in one file. No `.md` files in `src/` or `server/`.
 
-**Admin is consolidated.** Currently split between `src/admin/` (context, hooks, component library) and `src/pages/Admin*.jsx` (15+ page files). In v2, `src/admin/` holds everything related to the internal admin dashboard.
+**Admin is one folder.** `src/admin/` holds pages, analytics, context, guards, and hooks for the internal staff dashboard. The design system catalogue lives at `src/admin/pages/AdminDesignSystem.jsx`.
 
-**Auth, marketing, shared-pages, and staff are separated.** Currently all mixed into `src/pages/` alongside app pages. In v2 they each have their own folder — this makes routing setup obvious and avoids the "what belongs in pages/" question that caused the current mess.
+**Auth, marketing, shared-pages, and staff each have their own folder.** Every surface type is unambiguously located — no "what belongs in pages?" question.
 
 **`src/utils/` is grouped by concern.** Currently 20+ flat files. In v2 they're grouped into `api/`, `storage/`, `export/`, and `misc/`. This is the minimum organization needed — not over-engineered, just enough that you know where to look.
 
@@ -465,21 +482,26 @@ Full standard — see `server-testing-standards.md` in this folder.
 
 ---
 
-## What this does not change
+## What stage branch inherits unchanged
 
-- The server's actual route structure, DB schema, and middleware are fine — just removing the scattered markdown
-- `shared/` stays as-is
-- `scripts/` stays as-is
-- `public/` stays as-is
-- `src/assets/` stays as-is
-- `src/context/` stays as-is
-- `src/App.jsx` routing wires up the new folder structure but is otherwise the same
+- `server/` — route structure, DB schema, middleware, all unchanged
+- `src/slate/` — ported directly from `main` as the starting point
+- `shared/`, `scripts/`, `public/`, `src/assets/` — unchanged
 
 ---
 
-## Open questions for review
+## Cross-Reference Notes
 
-1. Should `src/ui/` stay completely flat or is there one level of grouping that makes sense (e.g., `ui/primitives/`, `ui/layout/`, `ui/domain/`)? Flat is fastest for iteration with AI.
-2. Should `src/slate/` also contain the editor toolbar/pill components (DrawToolsPill, AnimationDrawingTools, AdvancedSettings) or do those live in `src/ui/`? My instinct: if they are slate-only they stay in `src/slate/`, if they could be reused they go to `src/ui/`.
-3. `misc/` under `src/utils/` is still a catch-all. Worth splitting out further or leave it?
-4. Should the design system viewer (currently `src/pages/designSystem/`) move to `src/admin/` or become a standalone dev route? It's an internal tool, not a user-facing page.
+**References:** `engineering/planning/testing/ui-testing-standards.md`, `engineering/planning/testing/server-testing-standards.md`. **Referenced by:** `v2/TODO.md` item 1.2.
+
+**Decisions made (previously open questions):**
+
+1. **`src/ui/` stays flat.** No subdirectory grouping — one flat folder, barrel export at `index.js`. Fastest for AI-assisted iteration.
+
+2. **Slate-exclusive editor chrome → `src/slate/ui/`.** DrawToolsPill, AnimationDrawingTools, ControlPill, RightPanel, SidebarRoot, MobileEditorBar, AdvancedSettings, ExportModal, AuthPromptModal, and all other components only ever used inside the editor live in `src/slate/ui/`. Multi-surface components (PlayPreviewCard, PlayPickerModal, etc.) live in `src/ui/`.
+
+3. **Design system catalogue → `src/admin/pages/AdminDesignSystem.jsx`.** Internal tool, admin route.
+
+4. **`src/utils/misc/` stays as-is.** `usePageMeta.js` and `useThemeColor.js` are thin wrappers; no `src/hooks/` subfolder needed at this stage.
+
+5. **`docs/v2/` in new repo.** Planning docs are placed at `docs/v2/` in the new repo from day 1. In the v1 repo they remain at `v2/` (root). Path references in these docs use the v1 convention (`v2/`); update them in the new repo.

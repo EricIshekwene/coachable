@@ -264,3 +264,15 @@ src/
 - `test-suite-plan.md` — what to test, tool selection, CI wiring, phase order
 - `src/tests/renderAs.js` — role helper implementation
 - `src/tests/assertions.js` — assertVisible / assertHidden
+
+---
+
+## Cross-Reference Notes
+
+**References:** `engineering/planning/testing/test-suite-plan.md`. **Referenced by:** `engineering/frontend-code-standards.md`, `engineering/planning/architecture/proposed-file-structure.md`.
+
+**Inconsistencies to resolve:**
+
+1. **Example file structure — admin page paths.** The example shows `AdminUsersPage.jsx` and `AdminFeatureFlagsPage.jsx` at the top level of `src/pages/`. Per `engineering/planning/architecture/proposed-file-structure.md` (done ✅), these files live at `src/admin/pages/AdminUsers.jsx` and `src/admin/pages/AdminFeatureFlags.jsx`. Update the example file structure to use the proposed paths.
+
+2. **`PlaysPage` vs `Plays`.** The example uses `PlaysPage` as a component name in comments. The proposed file structure uses `Plays.jsx`. Confirm naming convention and align.

@@ -284,3 +284,11 @@ server/
 - `ui-testing-standards.md` — frontend role-based test standard
 - `server/tests/helpers/requestAs.js` — identity helper implementation
 - `server/tests/helpers/seed.js` — data factory implementation
+
+---
+
+## Cross-Reference Notes
+
+**References:** `engineering/planning/testing/test-suite-plan.md`, `engineering/planning/testing/ui-testing-standards.md`. **Referenced by:** `engineering/backend-code-standards.md`, `engineering/planning/architecture/proposed-file-structure.md`.
+
+No inconsistencies found. File paths and patterns are consistent with `proposed-file-structure.md` and `test-suite-plan.md`.

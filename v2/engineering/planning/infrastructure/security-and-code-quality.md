@@ -7,7 +7,7 @@ This covers how to use external tools to automatically review and validate code 
 ## What we are trying to catch
 
 1. **Security vulnerabilities** — SQL injection, XSS, hardcoded secrets, insecure JWT handling, missing auth middleware on new routes
-2. **Broken tests** — a push that makes any test suite fail should be blocked before it reaches main
+2. **Broken tests** — a push that makes any test suite fail should be blocked before it reaches `stage` or `main`
 3. **Code quality regressions** — obvious bugs, unused imports, type errors, dead code
 4. **AI-friendliness** — code that lacks enough structure or naming for Claude to navigate it confidently when you ask for changes
 5. **Dependency vulnerabilities** — packages with known CVEs pulled in by npm installs
@@ -28,35 +28,55 @@ Each stage catches different things and has different cost characteristics.
 
 ## Stage 1 — Pre-push hooks (local, free)
 
-Git hooks in `.git/hooks/pre-push` run on your machine before any push leaves. No cloud cost.
+Git hooks in `.husky/pre-push` run on your machine before any push leaves. No cloud cost.
 
 **What to run:**
 
 ```bash
 #!/bin/sh
-# .git/hooks/pre-push
+# .husky/pre-push
 
-npm test                    # all Vitest suites must pass
-npm run lint                # ESLint must pass (already configured)
+npm test                         # all Vitest suites must pass
+npm run lint                     # ESLint must pass
+npm audit --audit-level=high     # block on high/critical dependency CVEs
 ```
 
-If either fails, the push is blocked. You see the failure in your terminal before anything reaches GitHub.
+If any step fails, the push is blocked. You see the failure in your terminal before anything reaches GitHub.
 
-**Also consider:** `npm audit` in the pre-push hook to catch dependency vulnerabilities before they land on main. It is noisy when you have known minor vulnerabilities in dev dependencies, so wire it with `npm audit --audit-level=high` to only block on high/critical.
+**Prerequisite:** All tests must be passing before Husky is installed. Wire the hook with all three commands from day 1 — do not start with lint-only and add test later. Fix any failing tests first, then wire.
 
-**Tool for managing hooks:** [Husky](https://typicode.com/husky) makes git hooks shareable (they live in the repo instead of `.git/hooks/` which is not committed). When a collaborator clones the repo, `npm install` automatically installs the hooks via Husky's `prepare` script. Without Husky, hooks are per-machine only.
+**Tool for managing hooks:** [Husky](https://typicode.github.io/husky/) makes git hooks shareable. Hooks live in `.husky/` in the repo (committed to git) instead of `.git/hooks/` (per-machine only). When a collaborator clones the repo, `npm install` automatically installs the hooks via Husky's `prepare` script.
+
+**Windows note:** Husky works on Windows via Git Bash (included with Git for Windows). No special config needed. The hook file uses `#!/bin/sh` and runs correctly in Git Bash.
+
+**Setup steps (first-time install):**
+1. `npm install --save-dev husky`
+2. `npx husky init` — creates `.husky/pre-push` and adds `"prepare": "husky"` to `package.json`
+3. Replace the generated hook content with the three commands above
 
 **Cost:** Free. Runs entirely on your local machine.
 
-**Con:** Can be bypassed with `git push --no-verify`. This is fine when you are the only developer — you choose when to skip it. Becomes a gap if collaborators join, which is why Stage 2 exists.
+**Con:** Can be bypassed with `git push --no-verify`. This is acceptable when solo — you choose when to skip. Becomes a gap if collaborators join, which is why Stage 2 exists.
 
 ---
 
 ## Stage 2 — GitHub Actions CI (automated, post-push)
 
-GitHub Actions runs on every push and on every PR. The free tier is 2,000 minutes/month for public repos and 2,000 minutes/month for private repos. At ~2 minutes per run, that is ~1,000 pushes before you hit the limit. Private repos beyond the free tier cost $0.008/minute.
+GitHub Actions runs on every push to `stage` or `main`, and on every PR. The free tier is 2,000 minutes/month for private repos. At ~2 minutes per run, that is ~1,000 pushes before hitting the limit.
 
-**Recommended workflow file (`.github/workflows/ci.yml`):**
+**Required `package.json` scripts (root):**
+```json
+"test:frontend": "vitest run"
+```
+
+**Required `server/package.json` scripts:**
+```json
+"test:server": "vitest run"
+```
+
+These are separate so a server test failure does not hide a lint failure and vice versa in CI output.
+
+**Workflow file (`.github/workflows/ci.yml`):**
 
 ```yaml
 name: CI
@@ -101,26 +121,32 @@ jobs:
       - name: Frontend tests
         run: npm run test:frontend
 
-      - name: Server integration tests
-        run: npm run test:server
-        env:
-          DATABASE_URL: postgres://coachable_test:test@localhost:5432/coachable_test
-          JWT_SECRET: ci-test-secret
-          ADMIN_PASSWORD_HASH: ${{ secrets.CI_ADMIN_HASH }}
+      # Uncomment when server integration tests exist (TODO 3.1)
+      # - name: Server integration tests
+      #   run: npm run test:server
+      #   env:
+      #     DATABASE_URL: postgres://coachable_test:test@localhost:5432/coachable_test
+      #     JWT_SECRET: ci-test-secret
+      #     ADMIN_HASH: ${{ secrets.CI_ADMIN_HASH }}
 ```
 
+**`ADMIN_HASH` in CI:**
+- The server reads `process.env.ADMIN_HASH` (bcrypt hash of the admin password). In CI this is provided via a GitHub secret named `CI_ADMIN_HASH`.
+- **How to set it up:** Copy the `ADMIN_HASH` value from the Railway production dashboard → paste it as `CI_ADMIN_HASH` in GitHub repo Settings → Secrets and variables → Actions → New repository secret. The value is already set in Railway; no regeneration needed.
+- **If regeneration is ever needed:** `node --input-type=module -e "import bcrypt from 'bcrypt'; bcrypt.hash('YOUR_PASSWORD', 10).then(console.log)"`
+- **Note:** Adding this secret is an execution step — it is not done yet.
+
 **Cost estimate:**
-- Each run: ~2-3 minutes
-- 20 pushes/day average: 60 minutes/day = ~1,800 minutes/month
+- Each run: ~2–3 minutes
+- 20 pushes/day average: ~1,800 minutes/month
 - GitHub's free tier: 2,000 minutes/month for private repos
-- You will likely stay within free. If you exceed it: $0.008/minute × 200 overage minutes = $1.60/month
 - **Realistic monthly cost: $0–$3**
 
 ---
 
 ## Stage 2b — Dependency security scanning (free)
 
-**GitHub Dependabot** is built into GitHub and free. Enable it via `.github/dependabot.yml`:
+**GitHub Dependabot** — enable via `.github/dependabot.yml`:
 
 ```yaml
 version: 2
@@ -135,102 +161,86 @@ updates:
       interval: "weekly"
 ```
 
-Dependabot automatically opens PRs to bump vulnerable or outdated packages. You review and merge. It does not auto-merge unless you configure it to, so you stay in control.
+Dependabot automatically opens PRs to bump vulnerable or outdated packages. **All Dependabot PRs require manual review — no auto-merge.** Patch updates occasionally break things silently; review every one.
 
-**GitHub Dependency Graph + Secret Scanning** — also free. Dependency Graph shows you what is installed and flags known CVEs. Secret Scanning scans every push for accidentally committed API keys, tokens, JWT secrets, and database URLs, and emails you if it finds any.
+**GitHub Secret Scanning** — scans every push for accidentally committed API keys, tokens, JWT secrets, and database URLs, and emails you immediately if it finds any. **Must be enabled manually:** GitHub repo Settings → Security → Code security and analysis → Secret scanning → Enable. It is not on by default. Enabling is an execution step.
 
 **Cost: Free.**
 
 ---
 
-## Stage 3 — Automated PR review bots (when you have collaborators)
+## Stage 3 — Automated PR review bots
 
-This is the "bot reviewer that pokes holes through the code" experience. There are a few options in the under-$30/month range:
+### Snyk Code (SAST) — confirmed, add now
 
----
+Static Application Security Testing. Scans your actual application code — not just dependencies — for security bugs. Finds: hardcoded secrets, SQL injection risk, JWT validation gaps, unvalidated user input flowing into DB queries, open redirect vulnerabilities. Understands that `req.params.id` is user-controlled and warns when it flows into a query without validation.
 
-### Option A: CodeRabbit
+Integrates as a GitHub Action — runs on every push, posts results as PR checks.
 
-**What it does:** Reads every PR diff and posts review comments. Catches: logic bugs, missing error handling on new routes, security issues (SQL injection patterns, missing auth checks), code style inconsistencies, missing test coverage for changed files. It is specifically tuned to understand full context across files, not just the diff line.
+**Setup:** Sign up at snyk.io, connect the GitHub repo, enable the GitHub Action. Free tier covers 200 scans/month — more than sufficient.
 
-**Pros:**
-- The closest thing to a human code reviewer at low cost
-- Understands framework conventions (Express, React) — it will notice if you add a new route without a corresponding auth middleware check
-- Posts inline comments on the PR like a human reviewer does
-- Has a "walk me through this PR" summary at the top of every PR which is useful when reviewing collaborator changes
-
-**Cons:**
-- Reviews PRs only, not individual commits directly (though every push to a PR branch triggers a review)
-- Occasionally verbose on small diffs — you may need to tune the config to reduce noise
-- The free tier is limited; meaningful usage requires the Pro plan
-
-**Cost:** Free tier available (limited reviews). Pro plan is **$15/month per developer**. For solo or two-person use: $15/month.
+**Cost: Free (free tier).**
 
 ---
 
-### Option B: Snyk Code (SAST)
+### ESLint security plugins — confirmed, add with Snyk
 
-**What it does:** Static Application Security Testing. Deep security analysis of your code — not just dependency vulnerabilities but your actual application code. Finds things like: hardcoded secrets, SQL injection risk (even in parameterized query patterns where a variable slips in), JWT validation gaps, unvalidated user input reaching a DB query, open redirect vulnerabilities.
-
-**Pros:**
-- Best in class for finding actual security bugs in Express/Node code
-- Integrates as a GitHub Action — runs on every push, posts results as PR checks
-- Understands that `req.params.id` is user-controlled and warns when it flows into a query without validation
-- Free tier covers the important stuff for a small codebase
-
-**Cons:**
-- Focused on security, not general code quality or logic bugs
-- Can produce false positives on intentional patterns (e.g. it may flag your admin delete routes as "dangerous" even though they are properly auth-gated)
-- The free tier has a scan limit that is fine for this codebase size
-
-**Cost:** Free tier: 200 scans/month (more than enough). Paid plan if needed: **$25/month**.
-
----
-
-### Option C: ESLint + custom rules in CI (free, already partially set up)
-
-ESLint is already configured in the project. In CI it runs as part of every push. The existing config can be extended with security-focused plugins:
+Add these to the ESLint config alongside Snyk:
 
 - `eslint-plugin-security` — flags `eval()`, unvalidated regex, `innerHTML` injection patterns
 - `eslint-plugin-no-secrets` — catches accidentally committed API keys or tokens
-- `eslint-plugin-react-hooks` — catches missing dependencies in `useEffect` (already part of the React ecosystem)
 
-These are npm packages, free, and run in CI as part of `npm run lint`.
+Both are free npm packages that run in CI as part of `npm run lint`. `eslint-plugin-react-hooks` is already included in the React ecosystem config.
 
-**Pros:** Free, already integrated into the workflow, no external dependency.
-
-**Cons:** Much more limited than CodeRabbit or Snyk. ESLint rules are pattern-matching — they will not catch logic bugs or context-aware security issues. They will catch `eval()` but not a missing `requireAuth` on a new route.
+**Cost: Free.**
 
 ---
 
-## Recommended stack for under $30/month
+### CodeRabbit Pro — deferred until first collaborator
 
-For solo development with occasional collaborators:
+Reads every PR diff and posts inline review comments. Catches logic bugs, missing error handling, security gaps (missing auth checks, SQL injection patterns), and code style inconsistencies. Understands framework conventions — will notice if you add a new route without auth middleware.
 
-| Tool | Stage | Cost | Purpose |
+**Decision:** Add when the first collaborator joins. Not needed while solo. At that point: $15/month per developer.
+
+---
+
+## Recommended stack
+
+| Tool | When | Cost | Purpose |
 |---|---|---|---|
-| Husky + git hooks | Pre-push | Free | Block broken tests and lint failures before push |
-| GitHub Actions | Post-push/PR | ~$0–$3/month | Run full test suite + lint on every push |
-| GitHub Dependabot | Always-on | Free | Auto-PR for dependency vulnerabilities |
-| GitHub Secret Scanning | Always-on | Free | Alert on accidentally committed credentials |
-| Snyk Code (free tier) | Post-push | Free | Security SAST on Express routes and React code |
-| CodeRabbit Pro | PR reviews | $15/month | Automated code review comments on every PR |
+| Husky + pre-push hook | Now (after tests green) | Free | Block failing tests, lint, and high CVEs before push |
+| GitHub Actions CI | Now | ~$0–$3/month | Lint + frontend tests on every push to `stage` or `main` |
+| GitHub Dependabot | Now | Free | Weekly PRs for vulnerable or outdated packages |
+| GitHub Secret Scanning | Now (enable in settings) | Free | Alert on accidentally committed credentials |
+| Snyk Code (free tier) | Now | Free | SAST security scan on Express routes and React code |
+| ESLint security plugins | Now (with Snyk) | Free | Pattern-level security and secret detection in lint |
+| CodeRabbit Pro | When first collaborator joins | $15/month/dev | Automated code review comments on every PR |
 
-**Total: ~$15–$18/month.** Well under $30. If you bring on a second developer, CodeRabbit Pro goes to $30/month total — still at the limit.
+**Total (solo):** ~$0–$3/month. **Total (with one collaborator):** ~$15–$18/month.
 
-If you need to cut cost further, drop CodeRabbit and rely on Snyk + ESLint. You lose the general code quality feedback but keep the security coverage.
+---
+
+## Setup order
+
+1. **Fix failing tests** — pre-push hook requires a green test suite before it is wired
+2. **Install Husky** — `npm install --save-dev husky && npx husky init`, replace hook with the three-command script
+3. **Create `.github/workflows/ci.yml`** — workflow file goes in now with `test:server` step commented out; add `test:frontend` script to root `package.json`
+4. **Enable Dependabot** — commit `.github/dependabot.yml`
+5. **Enable Secret Scanning** — GitHub repo Settings → Security → Secret scanning → Enable
+6. **Wire Snyk** — snyk.io → connect repo → enable GitHub Action; add ESLint security plugins to eslint config
+7. **Uncomment `test:server` in CI** — when server integration tests ship (TODO 3.1); add `test:server` script to `server/package.json` at the same time
+8. **Add CodeRabbit** — when first collaborator joins; configure `.coderabbit.yml` to focus on security, missing auth, and test coverage
+9. **Ongoing** — keep `CLAUDE.md`, `docs/INDEX.md`, and JSDoc on route handlers current; this is not a one-time setup
 
 ---
 
 ## AI-friendliness: making Claude useful as an automatic code reviewer
 
-This is separate from the bot tools above. The goal is that when you ask Claude to make a change, it can navigate the codebase without you needing to explain where things are every time.
-
-Three things that make Claude dramatically more effective as an automatic code accessor:
+The goal is that when you ask Claude to make a change, it can navigate the codebase without you needing to explain where things are every time.
 
 **1. CLAUDE.md as a navigation index**
 
-The current `CLAUDE.md` has instructions and a reference to `CRAWLER_MAP.md`. In v2, `CLAUDE.md` should be the first file Claude reads — it should say exactly where every domain of the codebase lives. Example:
+In v2, `CLAUDE.md` should be the first file Claude reads — it should say exactly where every domain of the codebase lives:
 
 ```markdown
 # Coachable — AI Navigation Index
@@ -249,15 +259,13 @@ via GET /auth/me. Server middleware is `server/middleware/auth.js`.
 ## How to add a new route
 1. Add handler to the relevant file in `server/routes/`
 2. Add client fetch helper to matching file in `src/utils/api/`
-3. Add an integration test to `server/__tests__/routes/`
-4. Add a fetch-contract test to `src/testing/suites/apiRoutes.suite.js`
+3. Add an integration test to `server/tests/routes/`
+4. Add a fetch-contract test to `src/tests/` (see ui-testing-standards.md)
 ```
-
-Claude reads `CLAUDE.md` on every session. The better this file, the less you need to repeat context.
 
 **2. JSDoc on every route handler and every hook**
 
-Claude can read source files but it reads them faster and understands them better when functions describe their own contract. For server routes:
+For server routes:
 
 ```js
 /**
@@ -280,17 +288,13 @@ For hooks:
 export function useSlateEntities() {
 ```
 
-This is not documentation for human readers — you already know what the code does. It is a signal layer for Claude so that when you say "add hiddenFromPlayers support to the plays API," it can find the right route, understand its auth contract, and make the change without guessing.
-
 **3. `docs/INDEX.md` as a master doc map**
-
-A single file that lists every doc with a one-line description. Claude can read this file first to decide which docs are relevant before reading the full docs. Example:
 
 ```markdown
 # Docs Index
 
 ## v2 Planning
-- [proposed-file-structure.md](v2/proposed-file-structure.md) — target repo layout for v2
+- [proposed-file-structure.md](v2/proposed-file-structure.md) — target src/ layout for the stage branch
 - [test-suite-plan.md](v2/test-suite-plan.md) — what needs testing and how
 - [security-and-code-quality.md](v2/security-and-code-quality.md) — CI, pre-push hooks, bot reviewers
 
@@ -303,15 +307,16 @@ A single file that lists every doc with a one-line description. Claude can read 
 - [routes.md](server/routes.md) — all Express routes, auth requirements, DB tables used
 ```
 
-When you drop this file into a Claude session, Claude immediately knows where to look without you having to explain the project structure. Combined with `CLAUDE.md` at the root, you can start a cold session and ask Claude to make a specific change with no warm-up explanation.
-
 ---
 
-## Summary: what to set up in order
+## Cross-Reference Notes
 
-1. **Now:** Add Husky + pre-push hook running `npm test && npm run lint`. Takes 15 minutes.
-2. **When server tests are written (Phase 2 per the test plan):** Add `.github/workflows/ci.yml`. Free.
-3. **Add Dependabot + Secret Scanning:** Enable in GitHub repo settings → Security. Free, five minutes.
-4. **Add Snyk:** Sign up at snyk.io, connect GitHub repo, enable the GitHub Action. Free tier. One hour.
-5. **When collaborators join:** Add CodeRabbit. $15/month. Configure it in `.coderabbit.yml` to focus on security, missing auth, and test coverage.
-6. **Ongoing:** Keep `CLAUDE.md`, `docs/INDEX.md`, and JSDoc on route handlers current. This is not a one-time setup — it decays as the codebase evolves.
+**Referenced by:** `v2/TODO.md` item 1.3 (CI/CD pipeline ⚠️ In progress).
+
+**Resolved inconsistencies:**
+
+1. **`server/tests/routes/`** — All references in this doc use `server/tests/` (no double underscores), consistent with `test-suite-plan.md` and `server-testing-standards.md`.
+
+2. **`CLAUDE.md` example paths** — Updated to `server/tests/routes/` and `src/tests/` to match the v2 file structure on `stage`.
+
+3. **`CRAWLER_MAP.md`** — Whether it stays at root or moves to `docs/` is an open question in TODO 1.5. No decision made — defer to that item.

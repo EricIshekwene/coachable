@@ -516,3 +516,19 @@ server/routes/admin/
 **Explicit pool config** — Set `max`, `idleTimeoutMillis`, and `connectionTimeoutMillis` in `pool.js`. Comment in `rateLimit.js` already acknowledges the in-memory store needs to move to Redis before horizontal scaling.
 
 **All transactional email → template files** — Move the 7 inline HTML strings in `lib/email.js` to `.html` template files loaded once at startup. `broadcastEmailTemplate.js` already demonstrates the right pattern — extend it to all transactional emails.
+
+---
+
+## Cross-Reference Notes
+
+**Referenced by:** `v2/TODO.md` (various items in Groups 2–4). **References:** current `server/` file structure.
+
+**Inconsistencies to resolve:**
+
+1. **Admin split proposal vs `proposed-file-structure.md`.** This doc proposes splitting `admin.js` into `server/routes/admin/session.js`, `users.js`, `platform.js`, `presets.js`, `staff.js`, `analytics.js`, `email.js`, `notifications.js`. `proposed-file-structure.md` (done ✅) only shows `server/routes/admin.js` (single file). **The split proposed here is correct and should be incorporated into `proposed-file-structure.md`.** Add the `server/routes/admin/` subfolder to that doc.
+
+2. **`play_canvas` table proposal.** The V2 Considerations schema section proposes a separate `play_canvas` table for canvas state. This schema change is not referenced in `TODO.md` or any other v2 doc. If adopted, add it as a task under Group 2 (Database) in `TODO.md`.
+
+3. **`/api/` prefix proposal.** Recommends adding `/api/` prefix to all routes. Not currently in `TODO.md` as an explicit task. If accepted, add to Group 3 (Backend) or Group 1 (Foundation) in `TODO.md`.
+
+4. **File paths in Server File Map** — All paths reflect current `server/` structure (no `docs/` migration). Consistent with current state. Will need updating after TODO 1.2 runs.
