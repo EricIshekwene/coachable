@@ -124,7 +124,49 @@ Keep handlers thin. If the business logic block grows past ~15 lines, extract it
 
 ---
 
-## 05. Error Handling
+## 05. Route Handler JSDoc
+
+Every route handler gets a JSDoc block on the **named function**, not on the `router.get(...)` call. Claude reads this to understand auth requirements without tracing middleware.
+
+Minimum required: `@auth` and `@returns`. Add `@body` for any route that accepts a request body.
+
+```js
+// Authenticated mutation with a body
+/**
+ * @auth requireAuth + requireTeamRole(coach, owner)
+ * @body { name: string, sport: string, playData: object }
+ * @returns { id: string, name: string, teamId: string, createdAt: string }
+ */
+async function createPlay(req, res, next) { ... }
+router.post('/:teamId/plays', requireAuth, requireTeamRole('coach', 'owner'), createPlay);
+
+// Authenticated read — no body
+/**
+ * @auth requireAuth + requireTeamMember
+ * @returns { plays: Play[], tags: string[] }
+ */
+async function getTeamPlays(req, res, next) { ... }
+router.get('/:teamId/plays', requireAuth, requireTeamMember, getTeamPlays);
+
+// Intentionally public — @auth none is required, not optional
+/**
+ * @auth none
+ * @returns { play: Play } | 404 if token invalid or expired
+ */
+async function getSharedPlay(req, res, next) { ... }
+router.get('/plays/:token', getSharedPlay);
+```
+
+**Rules:**
+
+- `@auth none` is **required** on every intentionally public route. A missing `@auth` must be treated as an error, not assumed public.
+- Omit `@body` on GET and DELETE routes.
+- `@returns` describes the success shape. Note notable non-200 outcomes (404, 403) inline if they're not obvious from `@auth`.
+- Skip a prose description if the handler name is self-explanatory. Add one line only if the behavior is surprising or non-obvious.
+
+---
+
+## 06. Error Handling
 
 - **Always call `next(err)`** for unhandled errors — never `res.json({ error: ... })` inside a catch unless you're returning a known, intentional client error.
 - **Never swallow errors silently** — no empty catch blocks.
@@ -141,7 +183,7 @@ const result = await db.insertPlay(payload); // throws on failure
 
 ---
 
-## 06. SQL and Database Access
+## 07. SQL and Database Access
 
 - **Parameterized queries only.** Never concatenate user input into a query string.
 - **Query functions live in dedicated db/ files,** one file per resource (`db/teams.js`, `db/plays.js`).
@@ -166,7 +208,7 @@ const result = await pool.query(`SELECT * FROM teams WHERE id = '${id}'`);
 
 ---
 
-## 07. Constants and Magic Values
+## 08. Constants and Magic Values
 
 - **No inline magic numbers or strings.** Extract to a named constant.
 - Module-level constants go above the module body, below imports.
@@ -184,7 +226,7 @@ const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 ---
 
-## 08. What Never Goes in a File
+## 09. What Never Goes in a File
 
 - Commented-out code — delete it, git remembers.
 - `console.log` / `console.error` in committed code unless behind an explicit `isDev` guard or part of a structured logger.
@@ -194,7 +236,7 @@ const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 ---
 
-## 09. Exports
+## 10. Exports
 
 - **Named exports** from all modules — no `module.exports = function ...` default-style patterns when using ESM.
 - Export the router as a named export from route files: `export { ROUTER as teamsRouter }`.
@@ -202,7 +244,7 @@ const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 ---
 
-## 10. Comments
+## 11. Comments
 
 Only write a comment when the **why** is non-obvious. Never describe what the code does.
 
@@ -220,7 +262,7 @@ const token = await issueToken(userId);
 
 ---
 
-## 11. Testing
+## 12. Testing
 
 All backend code must follow the testing standards defined in `server-testing-standards.md`.
 
@@ -230,7 +272,7 @@ For the full standard — test structure, what to test per route, database inter
 
 ---
 
-## 12. Input Validation and Error Responses
+## 13. Input Validation and Error Responses
 
 ### Server-side validation
 
@@ -328,6 +370,8 @@ console.error('[POST /teams] createTeam failed', {
 | SQL | Parameterized queries only — never string interpolation |
 | Query functions | Live in `db/` files, named with a verb |
 | Route handler order | Input → auth → logic → response |
+| Route handler JSDoc | Named function above `router.get(...)`, always `@auth` + `@returns`, `@body` if applicable |
+| Public routes | Must have `@auth none` — missing `@auth` is treated as an error |
 | Module-level constants | UPPER_SNAKE_CASE |
 | Secrets / credentials | Environment variables only |
 | `console.log` | Never in committed code |

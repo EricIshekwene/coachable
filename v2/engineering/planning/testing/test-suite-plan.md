@@ -220,6 +220,75 @@ The admin Tests page (`/admin/tests`) should stay as a **debug tool**, not the p
 
 ---
 
+## Test DB setup
+
+The server integration tests run against a dedicated local PostgreSQL database (`coachable_test`). It never touches the dev database or Railway.
+
+### One-time local setup
+
+```bash
+createdb coachable_test
+```
+
+That's it. No manual migration step — `globalSetup.js` applies the schema automatically on every test run (see below).
+
+### Why not import `migrate.js` directly
+
+`server/db/migrate.js` is a standalone CLI script. It calls `pool.end()` in its `finally` block, which closes the connection pool. Importing it inside Vitest's `globalSetup` would close the pool before any tests run, breaking every query. Do not import it in test infrastructure.
+
+### `globalSetup.js` — schema applied on every run
+
+`server/tests/globalSetup.js` runs once before the Vitest worker pool starts. It opens its own short-lived `pg.Pool`, reads `server/db/schema.sql`, executes it against `coachable_test`, and closes that pool. The test workers then open their own pool via `server/db/pool.js`.
+
+```js
+// server/tests/globalSetup.js
+import pg from 'pg'
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+export async function setup() {
+  const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })
+  const sql = fs.readFileSync(path.join(__dirname, '../db/schema.sql'), 'utf-8')
+  await pool.query(sql)
+  await pool.end()
+}
+```
+
+This means schema changes are always in sync — no manual re-migration step on the dev machine or in CI. If `schema.sql` is idempotent (uses `CREATE TABLE IF NOT EXISTS`), re-runs are safe. If it uses `CREATE TABLE` without `IF NOT EXISTS`, add that guard to `schema.sql`.
+
+### `vitest.server.config.js`
+
+Does not exist yet. Create it at the project root alongside `vite.config.js`:
+
+```js
+// vitest.server.config.js
+import { defineConfig } from 'vitest/config'
+
+export default defineConfig({
+  test: {
+    environment: 'node',
+    include: ['server/tests/**/*.test.js'],
+    globalSetup: './server/tests/globalSetup.js',
+    env: {
+      DATABASE_URL: 'postgresql://localhost/coachable_test',
+    },
+  },
+})
+```
+
+### Install supertest
+
+`supertest` is not in any `package.json` yet. Install it in the root devDependencies alongside vitest:
+
+```bash
+npm install --save-dev supertest
+```
+
+---
+
 ## CI setup
 
 Wire both Vitest configs into a single CI step:
@@ -235,18 +304,32 @@ Wire both Vitest configs into a single CI step:
 
 On every push to `main` (and every PR against `main`):
 
-1. Run `npm test` — both configs in sequence
-2. If either fails, block the merge
-3. On pass, Railway auto-deploy proceeds
+1. Create the test database: `createdb coachable_test` (CI environment step, before `npm test`)
+2. Run `npm test` — both configs in sequence
+3. If either fails, block the merge
+4. On pass, Railway auto-deploy proceeds
 
-This gives you the "validate new code pushes" guarantee without needing a separate CI service — GitHub Actions with a single workflow file runs both test configs, and the Railway deploy is gated behind the test step.
+`globalSetup.js` applies the schema on every run, so CI never needs a separate migration step — only the `createdb` call to ensure the database exists.
 
 ---
 
 ## Phase order
 
 **Phase 1 — Establish Vitest infrastructure and write first server tests**
-There are no existing suites to wire on the `stage` branch. Set up `vitest.config.js` (JSDOM, for frontend) and `vitest.server.config.js` (Node, for server). Write `src/tests/renderAs.js`, `src/tests/assertions.js`, and `src/tests/fixtures/`. Then write the first server integration tests for the highest-blast-radius routes: auth (login, signup, reset password), plays CRUD, team create/leave/join.
+
+The v2 repo has partial infrastructure: `server/tests/routes/plays/plays.list.test.js` exists and is well-written, but the helper files it imports from (`requestAs.js`, `seed.js`, `assertions.js`) have not been created yet. Complete Phase 1 in this order:
+
+1. **One-time local setup** — `createdb coachable_test`
+2. **Install supertest** — `npm install --save-dev supertest` at the project root
+3. **Create `vitest.server.config.js`** at the project root (see "Test DB setup" section above)
+4. **Create `server/tests/globalSetup.js`** (see above)
+5. **Create `server/tests/helpers/requestAs.js`** — seeds user + team membership, signs JWT, returns Supertest agent
+6. **Create `server/tests/helpers/seed.js`** — data factory for plays, folders, and future resources
+7. **Create `server/tests/helpers/assertions.js`** — `expectOk`, `expectCreated`, `expectUnauthorized`, `expectForbidden`, `expectNotFound`, `expectNoContent`
+8. **Verify `plays.list.test.js` passes** — it already exists; confirm it runs green once helpers are in place
+9. **Write auth route tests** — `server/tests/routes/auth.test.js`: signup, login, logout, `/auth/me`, forgot-password, reset-password
+10. **Write team route tests** — `server/tests/routes/teams/`: create, join, members, settings, leave
+11. **Add `test:server` to root `package.json` scripts** (see CI setup section)
 
 **Phase 2 — Server integration test suite (full coverage)**
 All routes listed in the "Server routes" section above. Work top-down from auth through admin. Priority order: auth → plays → teams → folders → notifications → admin → platform.
@@ -270,3 +353,9 @@ Playwright for the three most critical coach flows: sign up → onboard → crea
 2. **Use `server/tests/` consistently.** No double underscores — `server/tests/routes/` everywhere.
 
 3. **Admin route test paths** — Use subfolder structure per `server-testing-standards.md`: `server/tests/routes/admin/admin.users.test.js`, not a flat `admin.users.test.js`.
+
+4. **`vitest.server.config.js` does not exist yet.** The plan describes it but it was not created when the plan was written. Create it as the first infrastructure step in Phase 1.
+
+5. **`supertest` is not installed yet.** Neither root nor `server/package.json` list it as a dependency. Install at root alongside vitest before writing any server integration tests.
+
+6. **`schema.sql` idempotency.** If `globalSetup.js` re-runs `schema.sql` on every test run, the schema must be idempotent (`CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`, etc.). Verify this before relying on globalSetup to stay in sync.
