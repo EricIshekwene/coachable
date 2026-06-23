@@ -726,7 +726,7 @@ Notifications are fetched on demand, capped at 100. There is no push mechanism.
 
 Building the shared component layer at `src/ui/` from scratch. Every component is written new against the component specs — no code is extracted or ported from the v1 codebase. The v1 `design-system-unification` branch (`v2/engineering/audits/design-system-unification-attempt.md`) produced a solid component list and `--ui-*` token vocabulary worth referencing, but the implementations themselves start fresh.
 
-### 6.1 — Component prop convention ❌
+### 6.1 — Component prop convention ✅ Done
 
 ```
 /grill-me
