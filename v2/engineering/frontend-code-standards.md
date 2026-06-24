@@ -427,6 +427,66 @@ The error alias map is a shared file, not defined per-component. Every component
 
 ---
 
+## 15. Breakpoint Detection — `useBreakpoint()`
+
+All breakpoint-based logic in JS must go through `useBreakpoint()`. No component or page may call `window.matchMedia` directly.
+
+**Location:** `src/utils/misc/useBreakpoint.ts`
+
+**Return shape:**
+
+```ts
+interface Breakpoint {
+  isMobile: boolean;
+}
+```
+
+Future breakpoints (`isTablet`, `breakpoint`) can be added to this object without breaking existing destructures.
+
+**Threshold:** Mobile is **below 768px** — matching the `md` breakpoint in both Tailwind and `design/mobile/mobile-formatting-standards.md`. The `matchMedia` query is `(max-width: 767px)`. Export `MOBILE_BREAKPOINT = 768` from the hook file so the value has one source of truth on the JS side.
+
+**Implementation:** Use `matchMedia.addEventListener('change', ...)`, not `window.addEventListener('resize', ...)`. `matchMedia` fires only when the threshold is crossed — no debounce is needed.
+
+**Initial value:** Initialize synchronously from `window.matchMedia(...).matches`. No SSR guard is needed — this app is client-only.
+
+---
+
+### CSS-only vs JS-gated
+
+Default to CSS. Use the hook only when JS must drive the behavior.
+
+| Behavior | Approach |
+|---|---|
+| Hide or show a button or panel on mobile | CSS — `hidden md:block` or `@media (min-width: 768px)` |
+| Change layout direction or spacing on mobile | CSS |
+| Mount a different component tree on mobile (e.g., `mobileLayout` on Slate) | `useBreakpoint()` |
+| Enable or disable a touch interaction model | `useBreakpoint()` |
+
+The rule: if you can describe the change as "show/hide" or "rearrange," use CSS. If it requires mounting a different set of components or wiring a different event model, use `useBreakpoint()`.
+
+---
+
+### Usage
+
+```tsx
+import { useBreakpoint } from '@/utils/misc/useBreakpoint';
+
+export function PlayEditPage() {
+  const { isMobile } = useBreakpoint();
+
+  return <Slate mobileLayout={isMobile} />;
+}
+```
+
+Never call `window.matchMedia` in a page or component:
+
+```tsx
+// Wrong — bypass of the shared hook
+const isMobile = window.matchMedia('(max-width: 767px)').matches;
+```
+
+---
+
 ## Quick Reference
 
 | Rule | Decision |
@@ -449,6 +509,7 @@ The error alias map is a shared file, not defined per-component. Every component
 | Client-side validation | Validate before sending — block submit on invalid input |
 | Role gating | Hide components the user can't use — never show and disable |
 | Error display | Map backend errors to user-actionable aliases — never show raw errors |
+| Breakpoint detection | `useBreakpoint()` only — no direct `window.matchMedia` in pages |
 
 ---
 

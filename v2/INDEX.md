@@ -36,6 +36,7 @@ This is the master map of every document in `docs/`. One line per doc. Grouped b
 
 - [engineering/audits/api-review.md](engineering/audits/api-review.md) — v1 server API review; schema and route recommendations carried into v2
 - [engineering/audits/design-system-unification-attempt.md](engineering/audits/design-system-unification-attempt.md) — analysis of the failed `design-system-unification` branch; what was learned
+- [engineering/audits/performance-baseline.md](engineering/audits/performance-baseline.md) — v1 bundle reference, MUI removal gap analysis, and v2 baseline targets (TODO 4.5 + 7.1)
 - [engineering/audits/landing-performance-diagnosis.md](engineering/audits/landing-performance-diagnosis.md) — landing page performance root cause analysis
 - [engineering/audits/routing-and-flash-diagnosis.md](engineering/audits/routing-and-flash-diagnosis.md) — routing and page flash diagnosis on the v1 `main` branch
 

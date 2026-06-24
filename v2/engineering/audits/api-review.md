@@ -469,6 +469,8 @@ These are design-level decisions to make before rebuilding, not feature requests
 
 **Folder depth check as recursive CTE** — Replace the iterative N-query parent walk with a single `WITH RECURSIVE` CTE. Eliminates the N+1 and the depth-check race condition.
 
+**`GET /:teamId/folders` must return play count and subfolder count** — The current response returns only folder metadata (`id`, `name`, `parent_id`, `sort_order`). `FolderCard` in v2 displays both `playCount` (plays with `folder_id = folder.id` and `archived_at IS NULL`) and `subfolderCount` (folders with `parent_id = folder.id`). Both should be included as joined counts in the list response rather than computed client-side.
+
 **Community section FK** — Add `community_section_id` to sports config or a `section_type = 'community'` flag on `playbook_sections`. Decouple `post-to-community` from the string-match `LOWER(name) = LOWER('Community ${sport} Plays')` hack.
 
 **Pagination on all list endpoints** — Cursor-based or offset. `GET /:teamId/plays`, `GET /admin/users`, `GET /admin/notifications`, `GET /error-reports` are all unbounded today.
