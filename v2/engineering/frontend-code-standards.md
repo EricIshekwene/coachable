@@ -487,6 +487,55 @@ const isMobile = window.matchMedia('(max-width: 767px)').matches;
 
 ---
 
+## 16. Error Boundaries
+
+Every feature router in `App.tsx` is wrapped with an `ErrorBoundary`. A crash in one part of the app does not take down the rest.
+
+### File
+
+`src/ui/ErrorBoundary.jsx` — a React class component. React requires a class component for the `componentDidCatch` and `getDerivedStateFromError` lifecycle methods; no library wrapper is used.
+
+### Placement
+
+One boundary per feature router, applied as the element wrapper in `App.tsx`:
+
+| Feature router | Boundary home URL |
+|---|---|
+| `<AppRoutes>` | `/app/plays` |
+| `<AuthRoutes>` | `/` |
+| `<AdminRoutes>` | `/admin` |
+| Inline public routes (`/`, `/home`, `/shared/*`, etc.) | `/` |
+
+No nested boundaries within pages. If a specific page later demonstrates a need for finer-grained isolation, a nested boundary may be added at that point — not before.
+
+### Reset behavior
+
+The boundary is keyed to the current pathname. When the user navigates to a different route, the boundary resets automatically — a crash on `/app/plays` does not persist when the user navigates to `/app/team`.
+
+### Fallback UI
+
+Full blank page — no app shell, no sidebar. The shell itself may be part of the crashed subtree; rendering it inside the fallback risks a second crash.
+
+**Copy:**
+- Heading: "Something went wrong"
+- Body: "An unexpected error occurred on this page."
+- Primary action (button): "Try again" — resets the boundary and re-mounts the crashed subtree
+- Secondary action (link): "Go to [home]" — navigates to the boundary's home URL (see table above)
+
+**In development:** the raw error stack is rendered below the fallback so it is visible after dismissing React's built-in error overlay.
+
+**In production:** the fallback only — no stack, no technical detail visible to the user.
+
+### Monitoring
+
+The boundary calls `reportError(error, info)` inside `componentDidCatch`. Until TODO 4.1 (error monitoring) is decided, `reportError` is a no-op placeholder. Once 4.1 is complete, wire the body of `reportError` to the chosen monitoring service — no other changes to the boundary are needed.
+
+### Relationship to `lazyWithRetry`
+
+Chunk-load failures after a Railway deploy are handled by `lazyWithRetry` — it catches the chunk-not-found error and reloads once to pick up the new manifest. These never reach the error boundary. The boundary catches render-time crashes only.
+
+---
+
 ## Quick Reference
 
 | Rule | Decision |
@@ -510,6 +559,7 @@ const isMobile = window.matchMedia('(max-width: 767px)').matches;
 | Role gating | Hide components the user can't use — never show and disable |
 | Error display | Map backend errors to user-actionable aliases — never show raw errors |
 | Breakpoint detection | `useBreakpoint()` only — no direct `window.matchMedia` in pages |
+| Error boundaries | One per feature router in `App.tsx` — class component, resets on navigation, full-page fallback |
 
 ---
 
@@ -521,4 +571,6 @@ const isMobile = window.matchMedia('(max-width: 767px)').matches;
 
 1. **§14 Role gating — `usePermissions()` not yet built.** The section describes `usePermissions()` as the target pattern. Per `v2/TODO.md` item 7.4, this hook is ❌ Not started. Until it exists, use inline `user.role === 'coach'` checks. Switch to `usePermissions()` once item 7.4 is done.
 
-2. **`data-component` attribute convention.** The abandoned `design-system-unification` branch added `data-component="ComponentName"` on every component root for a dev overlay. If carried forward in v2, document the convention here. Decision not yet made.
+2. **§16 Error boundaries — `reportError` not yet wired.** The boundary calls `reportError(error, info)` in `componentDidCatch`. Until TODO 4.1 (error monitoring) is decided, this is a no-op. Wire it once 4.1 is complete.
+
+3. **`data-component` attribute convention.** The abandoned `design-system-unification` branch added `data-component="ComponentName"` on every component root for a dev overlay. If carried forward in v2, document the convention here. Decision not yet made.

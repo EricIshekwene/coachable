@@ -994,7 +994,7 @@ The questions below are a starting point. Ask me as many additional questions as
 8. If a user has no team yet (fresh signup who skipped onboarding), what route do they land on?
 ```
 
-**Done looks like:** `v2/engineering/planning/routing.md` documents the full v2 route tree. `src/App.jsx` in the new repo uses lazy imports for all pages and has consistent route guards.
+**Done looks like:** `v2/engineering/planning/routing.md` documents the full v2 route tree — every route path, its public/auth/role requirements, how route guards work, and how the active team is resolved on load.
 
 > **Once complete:** Update the heading emoji to ✅ Done.
 
@@ -1027,7 +1027,7 @@ The questions below are a starting point. Ask me as many additional questions as
 7. Is Zustand on the table, or is it React Query + Context only?
 ```
 
-**Done looks like:** `v2/engineering/planning/state-management.md` documents the decision. A reference implementation is in place in the new repo.
+**Done looks like:** `v2/engineering/planning/state-management.md` documents the chosen approach for both server state and shared client state, with a reference pattern for each category showing how a developer implements it without open questions.
 
 > **Once complete:** Update the heading emoji to ✅ Done.
 
@@ -1060,13 +1060,13 @@ The questions below are a starting point. Ask me as many additional questions as
 7. Should `usePermissions()` return a flat object of booleans, or a more structured object grouped by domain (plays, roster, admin)?
 ```
 
-**Done looks like:** `v2/engineering/planning/permissions.md` documents all permission flags, the role matrix, and how `assistantPermissions` and `playerViewMode` are handled. `src/context/usePermissions.ts` exists in the new repo.
+**Done looks like:** `v2/engineering/planning/permissions.md` documents all permission flags, the role matrix, and how `assistantPermissions` and `playerViewMode` are handled. The `usePermissions()` hook API, return shape, and usage convention are fully specified so a developer can implement it without open questions.
 
 > **Once complete:** Update the heading emoji to ✅ Done.
 
 ---
 
-### 7.5 — Error boundaries ❌
+### 7.5 — Error boundaries ✅ Done
 
 ```
 /grill-me
@@ -1092,7 +1092,7 @@ The questions below are a starting point. Ask me as many additional questions as
 6. In development, should the boundary show the raw error stack, or always show the user-facing fallback?
 ```
 
-**Done looks like:** `src/ui/ErrorBoundary.jsx` exists in the new repo. Every route in `src/App.jsx` is wrapped with it.
+**Done looks like:** `v2/engineering/frontend-code-standards.md` has an error boundary section covering: what the fallback UI shows, whether it reports to monitoring, placement (per-route vs nested), library choice, and dev vs prod behavior. A developer can implement `ErrorBoundary` and wire it in `App.jsx` without follow-up questions.
 
 > **Once complete:** Update the heading emoji to ✅ Done.
 
@@ -1123,7 +1123,7 @@ The questions below are a starting point. Ask me as many additional questions as
 5. Should the hook debounce resize events, or is immediate response acceptable?
 ```
 
-**Done looks like:** `src/utils/misc/useBreakpoint.ts` exists in the new repo. No `window.matchMedia` calls in page components — all breakpoint detection goes through the shared hook.
+**Done looks like:** `v2/engineering/frontend-code-standards.md` has a breakpoint hook section covering: hook name and file path, what it returns (`isMobile` boolean vs breakpoint enum), the canonical breakpoint value, debounce decision, SSR safety, and which behaviors must go through the hook vs CSS-only. A developer can implement `useBreakpoint` without follow-up questions.
 
 > **Once complete:** Update the heading emoji to ✅ Done.
 
@@ -1155,7 +1155,7 @@ The questions below are a starting point. Ask me as many additional questions as
 7. Should flag keys be typed constants (a TypeScript enum or string union) to prevent typos?
 ```
 
-**Done looks like:** `v2/engineering/planning/feature-flags.md` documents the flag loading pattern and developer convention for marking flagged components. `src/context/FeatureFlagContext.jsx` exists and works in the new repo.
+**Done looks like:** `v2/engineering/planning/feature-flags.md` documents the flag loading pattern, developer convention for marking flagged components, flag key typing strategy, and the full list of current flags and what each gates. A developer can implement the feature flag context and `FlagGate` component without open questions.
 
 > **Once complete:** Update the heading emoji to ✅ Done.
 
@@ -1192,7 +1192,7 @@ The questions below are a starting point. Ask me as many additional questions as
 6. Should `jsdom` or `happy-dom` be used as the test environment?
 ```
 
-**Done looks like:** `vitest.config.js` and `vitest.server.config.js` are committed. `src/tests/renderAs.js`, `src/tests/assertions.js`, and `src/tests/fixtures/` exist. At least one page has a co-located `tests/` folder with a passing `roles.test.js`.
+**Done looks like:** `v2/engineering/planning/testing/test-suite-plan.md` has a Vitest setup section covering: mock strategy (MSW vs `vi.mock`), test environment (`jsdom` vs `happy-dom`), path alias config, `renderAs` helper return shape, `QueryClientProvider` strategy, and the `assistant_coach` fixture approach. A developer can write `vitest.config.js`, `vitest.server.config.js`, and all shared test helpers without follow-up questions.
 
 > **Once complete:** Update the heading emoji to ✅ Done.
 
@@ -1226,7 +1226,7 @@ The questions below are a starting point. Ask me as many additional questions as
 6. Are flow tests (multi-step user interactions like creating a play) covered in the standards, or only role snapshot tests?
 ```
 
-**Done looks like:** Every page built in the new repo has a co-located `tests/` folder containing at least `roles.test.js`. All role tests pass in CI.
+**Done looks like:** `v2/engineering/planning/testing/ui-testing-standards.md` covers async data loading strategy, `assistant_coach` permission variability, API mock approach in role tests, hidden-vs-disabled assertion helpers, and flow test conventions. A developer can write role tests for any page without consulting anything outside this doc.
 
 > **Once complete:** Update the heading emoji to ✅ Done.
 
@@ -1234,7 +1234,7 @@ The questions below are a starting point. Ask me as many additional questions as
 
 ## Group 9 — Core product
 
-### 9.1 — Slate UX standards ❌
+### 9.1 — Slate UX standards ✅ Done
 
 ```
 /grill-me
@@ -1295,7 +1295,7 @@ The questions below are a starting point. Ask me as many additional questions as
 4. Are there any known mobile bugs or crashes that aren't yet in the testing checklist?
 ```
 
-**Done looks like:** Mobile editing works for coach users in the new repo. The full testing checklist in `v2/engineering/planning/features/mobile-slate-plan.md` passes on a real iOS device.
+**Done looks like:** `v2/engineering/planning/features/mobile-slate-plan.md` has a complete testing checklist covering all 9 supported sports, the flush-on-back path, all known mobile bugs, and the sport-specific gaps originally left open. Every checklist item has an unambiguous pass/fail criterion. Ready to execute in the new repo.
 
 > **Once complete:** Update the heading emoji to ✅ Done.
 
@@ -1395,7 +1395,7 @@ The questions below are a starting point. Ask me as many additional questions as
 5. Should there be a linter or CI check that fails if a `.md` file is found inside `src/` or `server/`?
 ```
 
-**Done looks like:** `docs/INDEX.md` has an entry for every doc in the repo. No `.md` files exist inside `server/` or `src/` (Slate's internal docs excepted).
+**Done looks like:** `v2/v2.md` has a standing docs convention rule covering: which directories `.md` files are banned from, what is exempt (if anything), who maintains `docs/INDEX.md`, and whether CI will enforce the rule. `docs/INDEX.md` has an entry for every existing v2 doc.
 
 > **Once complete:** Update the heading emoji to ✅ Done.
 

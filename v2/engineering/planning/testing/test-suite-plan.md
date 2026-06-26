@@ -1,4 +1,4 @@
-# v2 Test Suite Plan
+# ✅ Done — v2 Test Suite Plan
 
 This is a full inventory of what Coachable needs tested, how we should do it, and how to move from the current state (manual in-browser suites) to automated runs that validate every push.
 
@@ -26,6 +26,181 @@ vitest.server.config.js ← Node environment (server integration tests)
 Add **Supertest** for hitting the actual Express app without a live server port. Supertest wraps your Express app and gives you `.get()`, `.post()`, `.expect()` — you import the app, not `http.Server`, so no port conflicts and no network noise.
 
 No E2E in v2. Playwright or Cypress is a Phase 3 decision once the product is stable enough that the browser UI does not change every week.
+
+---
+
+## ✅ Vitest setup
+
+All decisions below were resolved before the first test infrastructure commit. A developer can write every file listed here without follow-up questions.
+
+---
+
+### `vitest.config.js` — frontend config
+
+```js
+import { defineConfig } from 'vitest/config'
+import react from '@vitejs/plugin-react'
+import path from 'path'
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: { '@': path.resolve(__dirname, 'src') },
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    clearMocks: true,
+    setupFiles: ['src/tests/setup.js'],
+    include: ['src/**/*.test.{js,jsx,ts,tsx}'],
+    coverage: { provider: 'v8' },
+  },
+})
+```
+
+**Decision notes:**
+
+- **`jsdom` not `happy-dom`** — RTL is built and documented against jsdom. `happy-dom` is faster but has known gaps in `MutationObserver`, `ResizeObserver`, and form behavior. Switch only if test suite startup becomes a measurable bottleneck.
+- **`globals: true`** — `test`, `expect`, `describe`, `vi` are available without an import in every test file. TypeScript projects add `"types": ["vitest/globals"]` to `tsconfig`.
+- **`clearMocks: true`** — clears call counts and instances after each test but keeps mock implementations. The global context stubs stay active; only their history resets. No `afterEach(() => vi.clearAllMocks())` boilerplate needed in test files.
+- **`@vitejs/plugin-react` included directly** — does not `mergeConfig` from `vite.config.js`. Self-contained; the test infrastructure commit can land before `vite.config.js` is finalized. No risk of Vite-specific plugins (e.g. HMR, build optimizations) leaking into the test runner.
+- **`@` → `src/` alias defined here, not inherited from Vite** — mirrors what `vite.config.js` will define. Every `@/utils/api/plays` import in test files and the components they import resolves correctly. No other aliases in v2 — add only if a new surface emerges.
+- **Coverage provider: `v8`** — no extra packages, built into Node, faster than istanbul. Switch to istanbul if branch-level ignore comments become necessary.
+
+---
+
+### `vitest.server.config.js` — server config
+
+See the **Test DB setup** section below for the complete file. No additional decisions needed — that section fully specifies it.
+
+---
+
+### `src/tests/setup.js` — global test setup
+
+This file runs before every frontend test via `setupFiles`. It does three things:
+
+1. **Extends expect with jest-dom matchers** — so `toBeInTheDocument()`, `toHaveTextContent()`, etc. work in every test without an import.
+2. **Mocks all four React contexts globally** — every page component that imports a context gets the mock, not the real implementation. The real `AuthProvider` would call `GET /auth/me` on mount; `FeatureFlagContext` would call `GET /flags`; `NotificationsContext` would start a polling interval. None of that should happen in a test.
+3. **Does not set return values** — `renderAs` sets the per-call return value via `vi.mocked(useAuth).mockReturnValue(fixture)`. `setup.js` only registers the mock.
+
+```js
+import '@testing-library/jest-dom'
+import { vi } from 'vitest'
+
+vi.mock('@/context/AuthContext', () => ({
+  useAuth: vi.fn(),
+  AuthProvider: ({ children }) => children,
+}))
+
+vi.mock('@/context/FeatureFlagContext', () => ({
+  useFeatureFlags: vi.fn(() => ({})),
+  FeatureFlagProvider: ({ children }) => children,
+}))
+
+vi.mock('@/context/AppMessageContext', () => ({
+  useAppMessage: vi.fn(() => ({ showMessage: vi.fn() })),
+  AppMessageProvider: ({ children }) => children,
+}))
+
+vi.mock('@/context/NotificationsContext', () => ({
+  useNotifications: vi.fn(() => ({
+    unreadCount: 0,
+    notifications: [],
+    markRead: vi.fn(),
+    markAllRead: vi.fn(),
+    respond: vi.fn(),
+  })),
+  NotificationsProvider: ({ children }) => children,
+}))
+```
+
+**`FeatureFlagContext` default: all flags off** (`{}`). Tests that need a flag enabled pass it via `renderAs` overrides: `renderAs('coach', <Component />, { featureFlags: { newEditor: true } })` — `renderAs` merges this into the `useFeatureFlags` mock return value for that call.
+
+---
+
+### `src/tests/renderAs.js` — role helper
+
+**Signature:**
+
+```js
+renderAs(role, component, overrides = {})
+```
+
+**What it does:**
+
+1. Looks up the base fixture for `role` from `src/tests/fixtures/[role].js`
+2. Shallow-merges `overrides` onto the base fixture
+3. Sets `vi.mocked(useAuth).mockReturnValue(mergedFixture)` for this call
+4. If `overrides.featureFlags` is present, sets `vi.mocked(useFeatureFlags).mockReturnValue(overrides.featureFlags)` for this call
+5. Renders the component wrapped in:
+   - `MemoryRouter` with `initialEntries={[overrides.initialPath ?? '/']}` — routing context for `useNavigate`, `Link`, route params
+   - `QueryClientProvider` with a **fresh `QueryClient` per call** — isolated cache, no bleed between tests
+6. Returns the standard RTL render result — `screen`, `userEvent`, all RTL utilities work exactly as documented
+
+**`QueryClient` settings for tests:**
+
+```js
+new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 0, retry: false, gcTime: 0 },
+    mutations: { retry: false },
+  },
+})
+```
+
+No caching, no retries, no background refetches. The api module is mocked via `vi.mock`, so `queryFn` resolves instantly to mock data.
+
+**No navigate spy.** Flow tests assert on what renders after navigation, not on the URL or the `navigate` function. If login redirects to `/plays`, assert that plays page content appears — that tests the outcome.
+
+**Routing context is always provided.** `renderAs` never requires the caller to wrap the component in `MemoryRouter`. All page-level components use routing; wrapping it in every test would be boilerplate.
+
+---
+
+### Mock strategy for API calls
+
+**Use `vi.mock` on the api module. Do not use MSW.**
+
+The app's API calls live in `src/utils/api/` (one file per resource, mirroring `server/routes/`). In Layer 3 UI tests, mock at the module level:
+
+```js
+vi.mock('@/utils/api/plays', () => ({
+  getPlays: vi.fn().mockResolvedValue([{ id: '1', name: 'Summer Offense' }]),
+  createPlay: vi.fn().mockResolvedValue({ id: '2', name: 'New Play' }),
+}))
+```
+
+**Why not MSW:** API correctness is fully covered by Layer 2 server integration tests (Supertest + real DB). Layer 3 tests are about UI behavior — what a role sees and can do. Intercepting at the network level adds infrastructure overhead without testing anything Layer 2 doesn't already cover. `vi.mock` is explicit, fast, and scoped to the file that needs it.
+
+Mock only the functions a given test file actually calls. Do not mock an entire api file if only one function is exercised.
+
+---
+
+### Fixtures — `src/tests/fixtures/`
+
+One file per role. Five files total:
+
+```
+src/tests/fixtures/
+  owner.js
+  coach.js
+  assistant_coach.js
+  player.js
+  admin.js
+```
+
+**What every fixture contains:**
+
+- `user` object: `{ id, name, email, role, teamId }` — minimal shape that satisfies `AuthContext`
+- `role` string matching the filename (e.g. `'coach'`)
+- `teamId` string — a stable test value (e.g. `'team-test-123'`)
+- `playerViewMode: false` — overridable per test via `renderAs('coach', <C />, { playerViewMode: true })`
+- `vi.fn()` stubs for all `AuthContext` mutations: `login`, `logout`, `switchTeam`, `joinTeam`, `leaveTeam`
+
+**`assistant_coach.js` specifically** includes an `assistantPermissions` field. The exact shape is determined by task 7.4 (`usePermissions()` hook). Until 7.4 is complete, stub it as `assistantPermissions: {}` — update the fixture when the permission shape is defined.
+
+**`admin.js`** represents the internal staff/admin identity, not a team role. Its `role` is `'admin'`; it has no `teamId`.
+
+**Overrides are shallow-merged.** `renderAs('coach', <C />, { playerViewMode: true })` replaces only `playerViewMode` — all other fixture values remain. This means you never construct a full user object in a test; you only specify what differs.
 
 ---
 
