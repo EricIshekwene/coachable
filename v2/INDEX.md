@@ -16,6 +16,7 @@ This is the master map of every document in `docs/`. One line per doc. Grouped b
 - [color-semantics.md](design/color-semantics.md) — `--ui-*` CSS token reference for all app and admin surfaces; dark/light mode overrides
 - [accessibility-standards.md](design/accessibility-standards.md) — semantic HTML, keyboard behavior, focus management, ARIA, form a11y, SPA nav announcements, testing checklist
 - [component-specs.md](design/component-specs.md) — prop conventions and component APIs for all `src/ui/` components: Button, Input, Modal, Toast, display, and layout specs
+- [pages/plays-page.md](design/pages/plays-page.md) — plays page: layout toggle, folder section, search, tag filter, sort, bulk ops, drag-to-folder, empty states, and role differences
 - [player-view-mode.md](design/player-view-mode.md) — what playerViewMode hides, toggle placement, persistent indicator spec, and persistence behavior
 - [public-pages.md](design/public-pages.md) — SharedPlay, SharedFolder, and PlatformPlayView: layout, CTA placement, expired-link handling, and viewer mode
 - [desktop/desktop-formatting-standards.md](design/desktop/desktop-formatting-standards.md) — desktop-exclusive: breakpoints, sidebar layout, hover states, cursor, dialogs, panels, data density, tooltips

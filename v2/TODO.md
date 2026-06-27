@@ -1447,7 +1447,7 @@ The questions below are a starting point. Ask me as many additional questions as
 
 Components and architecture are decided in Groups 6–9. This group locks the design of each authenticated page — layout, content, empty states, and interactions — so pages can be built without open questions. Each session produces one `v2/design/pages/` doc.
 
-### 11.1 — Plays page design spec ❌
+### 11.1 — Plays page design spec ✅ Done
 
 ```
 /grill-me
@@ -1525,7 +1525,7 @@ The questions below are a starting point. Ask me as many additional questions as
 
 ---
 
-### 11.3 — Onboarding flow design ❌
+### 11.3 — Onboarding flow design ✅
 
 ```
 /grill-me

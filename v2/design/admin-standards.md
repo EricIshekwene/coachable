@@ -20,11 +20,21 @@ Dark mode tokens live in `:root` and apply by default. Light overrides are appli
 
 No custom time-based logic. The OS auto-switches (e.g. at 5pm) and admin follows it automatically via `prefers-color-scheme`.
 
-`admin.css` may alias `--ui-*` values into admin-specific names if needed, but must not redefine the base tokens. This mirrors the rule in `color-semantics.md` §Admin coverage.
+**Implementation:** A JS bootstrap on admin mount reads `window.matchMedia('(prefers-color-scheme: light)')` and sets `data-admin-theme="light"` on the document root when true. A `change` listener keeps it in sync if the OS switches while the tab is open. No CSS file needed — the `[data-admin-theme="light"]` selector in `src/index.css` handles the rest.
 
 ---
 
-## 02 — Grid, typography, spacing: identical to the app
+## 02 — Polish standard: functional and clean
+
+Admin is internal — you and staff use it, not coaches or players. The standard is **functional and clean**: no broken layouts, readable tables, working forms, correct contrast. It does not need the same micro-interaction and animation polish as the coach-facing product.
+
+That said, polish cannot slip indefinitely. Staff will eventually use admin regularly, and broken or hard-to-navigate pages cost real time. The bar is: a staff member who has never seen a page before can figure out what to do without asking.
+
+This does not relax any hard rules (contrast, focus rings, semantic HTML, 4px grid). It relaxes the expectation that every hover state is pixel-perfect and every transition is tuned.
+
+---
+
+## 03 — Grid, typography, spacing: identical to the app
 
 `general-formatting-standards.md` §01 scope line: *"Everything in this doc applies to every surface."* Admin is not an exception.
 
@@ -38,27 +48,25 @@ Being internal does not relax these rules. Inconsistent spacing and ad-hoc sizes
 
 ---
 
-## 03 — `--ui-*` tokens: all apply to admin
+## 04 — `--ui-*` tokens: all apply to admin
 
 Every `--ui-*` token from `color-semantics.md` applies to admin surfaces without restriction. Admin is covered by the same `:root` token declarations.
 
-Admin pages use the full token set: backgrounds, borders, text, accent, success, error, warning, info. No admin-specific overrides unless there is a concrete reason documented in `admin.css`.
+Admin pages use the full token set: backgrounds, borders, text, accent, success, error, warning, info. No admin-specific token overrides — ever.
 
 ---
 
-## 04 — Components: `src/ui/` for everything
+## 05 — Components: `src/ui/` for everything, no exceptions
 
-Admin uses components from `src/ui/`. There is no such thing as an admin-exclusive component.
+Admin uses components from `src/ui/`. There is no `src/admin/components/` folder. Every component — regardless of whether it was first needed for admin or for the app — lives in `src/ui/` so it is available everywhere.
 
-If a component is needed for admin, build it in `src/ui/` so it is available everywhere. Admin pages using `PageShell` with `ADMIN_NAV_ITEMS` is the established pattern — `component-specs.md` §PageShell shows this explicitly.
+If a component is needed for admin, build it in `src/ui/`, export it from `src/ui/index.ts`, and register it in the catalogue (§06). The same component can then be used on any app or admin page.
 
-**Extreme case only:** If a component is genuinely admin-internal and cannot belong in `src/ui/` (e.g., an analytics-only visualization tightly coupled to internal data shapes), it may live in `src/admin/components/`. This is not the default path — it is a named escape hatch.
-
-Every component — whether from `src/ui/` or the extreme-case `src/admin/components/` — must be registered in the component catalogue (§05 below).
+Admin pages using `PageShell` with `ADMIN_NAV_ITEMS` is the established pattern — `component-specs.md` §PageShell shows this explicitly.
 
 ---
 
-## 05 — Component catalogue: `AdminDesignSystem.jsx` stays
+## 06 — Component catalogue: `AdminDesignSystem.jsx` stays
 
 `src/admin/pages/AdminDesignSystem.jsx` is the mandatory catalogue for every shared component. This carries forward from v1 and is referenced as a hard requirement in `component-specs.md` §08:
 
@@ -68,7 +76,7 @@ Route: `/admin/design-system`. A component that is not in the catalogue does not
 
 ---
 
-## 06 — Shell: `PageShell` with `ADMIN_NAV_ITEMS`
+## 07 — Shell: `PageShell` with `ADMIN_NAV_ITEMS`
 
 Admin pages use `PageShell` from `src/ui/` with a separate nav items array (`ADMIN_NAV_ITEMS`). The shell chrome — sidebar, header, bottom nav — is identical to the app's shell. No admin-specific layout wrapper.
 
@@ -93,13 +101,12 @@ export function AdminDashboard() {
 | Decision | Rule |
 |---|---|
 | Default theme | `prefers-color-scheme` — dark when OS is dark, light when OS is light |
-| Light mode selector | `[data-admin-theme="light"]` |
+| Light mode selector | `[data-admin-theme="light"]` set by JS bootstrap on mount |
 | Spacing | 4px grid — same as app |
 | Typography | Six named levels — same as app |
-| Color tokens | All `--ui-*` tokens apply |
-| `admin.css` | Alias `--ui-*` values only — never redefine base tokens |
-| Components | `src/ui/` — no admin-exclusive components |
-| Extreme-case component home | `src/admin/components/` — named escape hatch, not the default |
+| Color tokens | All `--ui-*` tokens apply — no admin-specific overrides |
+| Separate admin CSS | None — `src/index.css` is the only stylesheet |
+| Components | `src/ui/` — no exceptions, no `src/admin/components/` |
 | Component catalogue | `AdminDesignSystem.jsx` — mandatory for every component |
 | Shell | `PageShell` with `ADMIN_NAV_ITEMS` |
 
