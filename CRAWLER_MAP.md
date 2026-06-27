@@ -338,6 +338,8 @@ Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PL
 | `/sport-prefab-presets` | [routes/sportPrefabPresets.js](server/routes/sportPrefabPresets.js) |
 | `/notifications` (user-facing in-app inbox; admin authoring lives under `/admin/notifications`) | [routes/notifications.js](server/routes/notifications.js) |
 | `/admin/outreach` (owner-only outreach scraper; scrape/staff/export endpoints) | [routes/outreach.js](server/routes/outreach.js) — scraper lib in [server/lib/outreachScraper/](server/lib/outreachScraper/) |
+| `/admin/team-suite` (admin control panel for per-team Suite entitlements) | [routes/adminTeamSuite.js](server/routes/adminTeamSuite.js) |
+| `/teams/:teamId/suite/*` (Team Suite feature endpoints; see Feature Map) | [routes/suite.js](server/routes/suite.js) |
 
 ### Middleware / lib / utils / config
 - [middleware/auth.js](server/middleware/auth.js) — JWT/session middleware (also exports `verifySessionToken`, `readSessionToken` for compositional auth)
@@ -356,7 +358,8 @@ Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PL
 - [db/migrate.js](server/db/migrate.js) — standalone migration runner
 - [db/pool.js](server/db/pool.js) — `pg` Pool export
 
-**Tables** (from schema.sql): `users`, `email_verification_codes`, `user_preferences`, `teams`, `team_settings`, `team_memberships`, `team_invite_codes`, `team_invites`, `team_join_requests`, `play_folders`, `plays`, `play_tags`, `play_tag_links`, `play_favorites`, `play_share_links`, `folder_share_links`, `error_reports`, `password_reset_codes`, `platform_play_folders`, `platform_plays`, `page_sections`, `user_issues`, `playbook_sections`, `playbook_section_plays`, `demo_videos`, `user_prefabs`, `admin_prefabs`, `sport_presets`, `sport_prefab_presets`, `staff_admins`, `staff_admin_invites`, `admin_audit_log`, `notifications`, `notification_recipients`, `notification_responses`, `outreach_schools`, `outreach_scraped_staff`.
+**Tables** (from schema.sql): `users`, `email_verification_codes`,
+`team_suite_features`, `suite_players` (now has `user_id` column for real-member profiles), `suite_depth_chart`, `suite_practice_plans`, `suite_practice_blocks`, `suite_install_items`, `suite_game_plans`, `suite_assignments`, `suite_assignment_progress`, `suite_assignment_member_status` (new — tracks per-user viewed_at + mastery; replaces old suite_players-based progress) (Team Suite — see [docs/team-suite.md](docs/team-suite.md)), `user_preferences`, `teams`, `team_settings`, `team_memberships`, `team_invite_codes`, `team_invites`, `team_join_requests`, `play_folders`, `plays`, `play_tags`, `play_tag_links`, `play_favorites`, `play_share_links`, `folder_share_links`, `error_reports`, `password_reset_codes`, `platform_play_folders`, `platform_plays`, `page_sections`, `user_issues`, `playbook_sections`, `playbook_section_plays`, `demo_videos`, `user_prefabs`, `admin_prefabs`, `sport_presets`, `sport_prefab_presets`, `staff_admins`, `staff_admin_invites`, `admin_audit_log`, `notifications`, `notification_recipients`, `notification_responses`, `outreach_schools`, `outreach_scraped_staff`.
 
 ---
 
@@ -367,6 +370,7 @@ All run via Vitest. One file per feature; create new ones here when adding tests
 - Admin shell: `adminBtn.test.js`, `adminModal.test.js`, `adminNav.test.js`, `adminShell.test.js`, `adminDangerMode.test.js`, `analyticsDashboard.test.js`, `usersHideFilters.test.js`, `designSystem.test.js` (design system nav registry: slug integrity, default section, prev/next adjacency), `designSystemSearch.test.js` (design system search ranking: keyword/label/summary matching, case-insensitivity, result limit), `designTokenUnification.test.js` (single-source-of-truth guard: admin `--adm-*` tokens must derive from the brand `--color-Brand*` palette; fails if admin drifts back to a parallel hex palette), `adminPagination.test.js` (getPaginationRange: short ranges, ellipsis collapsing, clamping)
 - Plays/folders/playbooks: `localStorageAutosave.test.js`, `platformPlays.test.js`, `playbookFolderBrowse.test.js`, `playbookSections.test.js`, `landingPlaybooksNav.test.js`, `playPreviewCardCones.test.js`, `playPreviewPlayer.test.js`, `playCopyAnalytics.test.js`, `sportPresets.test.js`, `presetBallCycle.test.js`, `presetEditorMode.test.js`, `hideFromPlayers.test.js`, `sportNavContext.test.js`, `syncSports.test.js`, `adminPlayCardConsistency.test.js` (PlayCard `canRemoveFromSection` logic + section play enrichment + picker exclusion)
 - Drawing/keyframe: `keyframeStyling.test.js`, `drawingModePreviewAnimation.test.js`, `drawingFlipReflect.test.js`, `drawingModeUndoRedo.test.js`, `drawingScopeSeparation.test.js`, `annotationDrawingVisibility.test.js`, `drawingExportV3Migration.test.js`, `trackSnap.test.js`
+- Team Suite: `teamSuite.test.js` (buildFeaturesMap, SUITE_FEATURES, RequireSuiteFeature guard logic, SuiteContext fail-closed behavior)
 - Misc: `videoEncoder.test.js`, `errorReporter.test.js`, `demoVideos.test.js`, `adminNotifications.test.js` (notification audience SQL + response aggregation), `notificationsRetry.test.js` (NotificationsContext retry-on-failure logic — jsdom env), `outreachScraper.test.js` (sidearm parsers + sport/role normalization + CSV escaping; fixtures in `admin/test/fixtures/`), `mobileTouchGestures.test.js` (two-finger pan/pinch math for the mobile editor canvas — `src/canvas/touchGestures.js`)
 
 In-source unit suite for canvas geometry: [src/canvas/__tests__/drawingGeometry.test.js](src/canvas/__tests__/drawingGeometry.test.js).
@@ -384,7 +388,7 @@ Suites used by the admin test runner: [src/testing/suites/](src/testing/suites/)
 - [public/](public/) — static assets
 - [scripts/seed-account.mjs](scripts/seed-account.mjs) — seed a dev account
 - [.railwayignore](.railwayignore) — required for deploys (excludes frontend tree)
-- [docs/](docs/) — `PLATFORM_PLAYS.md`, `backend-flows-and-required-tables.md`
+- [docs/](docs/) — `PLATFORM_PLAYS.md`, `backend-flows-and-required-tables.md`, `team-suite.md`
 
 ---
 
@@ -401,5 +405,6 @@ Suites used by the admin test runner: [src/testing/suites/](src/testing/suites/)
 - [server/routes/DEMO_VIDEOS.md](server/routes/DEMO_VIDEOS.md), [server/routes/FORGOT_PASSWORD.md](server/routes/FORGOT_PASSWORD.md), [server/routes/PLAY_COPY_ANALYTICS_FIX.md](server/routes/PLAY_COPY_ANALYTICS_FIX.md)
 - [server/PLAYBOOK_SECTIONS.md](server/PLAYBOOK_SECTIONS.md), [server/ONBOARDING_SEED_PLAY.md](server/ONBOARDING_SEED_PLAY.md), [server/lib/ACCOUNT_DELETED_EMAIL.md](server/lib/ACCOUNT_DELETED_EMAIL.md)
 - [server/lib/outreachScraper/OUTREACH_SCRAPER.md](server/lib/outreachScraper/OUTREACH_SCRAPER.md) — outreach staff-directory scraper (Sidearm legacy/nextgen parsers, sport/role normalization, CSV export); design rationale in [OUTREACH_SCRAPER_PLAN.md](OUTREACH_SCRAPER_PLAN.md)
+- [docs/team-suite.md](docs/team-suite.md) — Team Suite feature bundle: per-team entitlement system, route/table map, and role-based access rules
 - [src/pages/designSystem/DESIGN_SYSTEM.md](src/pages/designSystem/DESIGN_SYSTEM.md) — the admin Design System reference (`/admin/design-rules`): structure, shared primitives, status vocabulary, the 38 sections, and how to extend it (read before adding/renaming design-system sections)
 - [src/pages/designSystem/CONSOLIDATION_ROADMAP.md](src/pages/designSystem/CONSOLIDATION_ROADMAP.md) — master tracker for making design-rules the single source of truth across ALL axes (color, type, spacing, radius, elevation, motion, z-index, icons), plus live-component reconciliation (17 of 38 sections are still static mockups), shared-primitive extraction, guard tests, intentional exclusions, and recommended order (read before continuing any design-system consolidation work)

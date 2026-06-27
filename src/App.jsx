@@ -47,6 +47,7 @@ import AdminNotificationsPage from "./pages/AdminNotificationsPage";
 import DesignSystemPage from "./pages/designSystem/DesignSystemPage";
 import AdminFeatureFlagsPage from "./pages/AdminFeatureFlagsPage";
 import AdminOutreachScraperPage from "./pages/AdminOutreachScraperPage";
+import AdminTeamSuitePage from "./pages/AdminTeamSuitePage";
 import RequirePerm from "./admin/RequirePerm";
 import AppLayout from "./layouts/AppLayout";
 import Plays from "./pages/app/Plays";
@@ -62,6 +63,11 @@ import ReportIssue from "./pages/app/ReportIssue";
 import Notifications from "./pages/app/Notifications";
 import Playbooks from "./pages/app/Playbooks";
 import DemoVideos from "./pages/app/DemoVideos";
+import RosterPage from "./pages/app/suite/RosterPage";
+import SchedulePage from "./pages/app/suite/SchedulePage";
+import GamePlansPage from "./pages/app/suite/GamePlansPage";
+import AssignmentsPage from "./pages/app/suite/AssignmentsPage";
+import { useSuiteFeatures } from "./context/SuiteContext";
 import MobileViewOnlyGate from "./components/MobileViewOnlyGate";
 import SharedPlay from "./pages/SharedPlay";
 import SharedPlayView from "./pages/SharedPlayView";
@@ -321,6 +327,19 @@ export function RequireFlag({ flag, fallback = "/app/plays", children }) {
   return children;
 }
 
+/**
+ * Redirects to fallback when the named Team Suite feature(s) are not enabled.
+ * Accepts a single feature name or an array (any match passes the gate).
+ * Must be rendered inside SuiteProvider (i.e. inside AppLayout).
+ */
+export function RequireSuiteFeature({ feature, fallback = "/app/plays", children }) {
+  const features = useSuiteFeatures();
+  const featureList = Array.isArray(feature) ? feature : [feature];
+  const enabled = featureList.some((f) => features[f] === true);
+  if (!enabled) return <Navigate to={fallback} replace />;
+  return children;
+}
+
 export function LandingGate() {
   const { user, loading } = useAuth();
 
@@ -396,6 +415,7 @@ export function AppRoutes() {
         <Route path="/admin/notifications" element={<RequireAdminSession><AdminNotificationsPage /></RequireAdminSession>} />
         <Route path="/admin/feature-flags" element={<RequireAdminSession><AdminFeatureFlagsPage /></RequireAdminSession>} />
         <Route path="/admin/outreach-scraper" element={<RequireAdminSession><AdminOutreachScraperPage /></RequireAdminSession>} />
+        <Route path="/admin/team-suite" element={<RequireAdminSession><AdminTeamSuitePage /></RequireAdminSession>} />
       </Route>
 
       {/* Staff admin tree — scoped sub-admins (see STAFF_ADMIN_PLAN.md). */}
@@ -451,6 +471,11 @@ export function AppRoutes() {
         <Route path="playbooks" element={<Playbooks />} />
         <Route path="playbooks/:sectionId" element={<Playbooks />} />
         <Route path="videos" element={<DemoVideos />} />
+        {/* Team Suite routes — each guarded by RequireSuiteFeature */}
+        <Route path="suite/roster" element={<RequireSuiteFeature feature="roster"><RosterPage /></RequireSuiteFeature>} />
+        <Route path="suite/schedule" element={<RequireSuiteFeature feature={["practice_plans", "install_calendar"]}><SchedulePage /></RequireSuiteFeature>} />
+        <Route path="suite/game-plans" element={<RequireSuiteFeature feature="game_plans"><GamePlansPage /></RequireSuiteFeature>} />
+        <Route path="suite/assignments" element={<RequireSuiteFeature feature="assignments"><AssignmentsPage /></RequireSuiteFeature>} />
       </Route>
 
       {/* Fallback */}

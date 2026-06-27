@@ -3,12 +3,13 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-do
 import { useAuth } from "../context/AuthContext";
 import darkLogo from "../assets/logos/White_Coachable_Logo.png";
 import lightLogo from "../assets/logos/coachable_Logo.png";
-import { FiBookOpen, FiUsers, FiUser, FiLogOut, FiSettings, FiEye, FiX, FiFlag, FiPlay, FiGrid, FiBell } from "react-icons/fi";
+import { FiBookOpen, FiUsers, FiUser, FiLogOut, FiSettings, FiEye, FiX, FiFlag, FiPlay, FiGrid, FiBell, FiList, FiCalendar, FiTarget, FiCheckSquare } from "react-icons/fi";
 import useThemeColor from "../utils/useThemeColor";
 import TeamSwitcher from "../components/TeamSwitcher";
 import NotificationBell from "../components/NotificationBell";
 import { NotificationsProvider } from "../context/NotificationsContext";
 import { useFlag } from "../context/FeatureFlagContext";
+import { SuiteProvider, useSuiteFeatures } from "../context/SuiteContext";
 import {
   fetchPublishedPlaybookSections,
   filterPublishedPlaybookSectionsForSport,
@@ -33,9 +34,19 @@ const BASE_SOLO_NAV = [
   { to: "/app/videos", icon: FiPlay, label: "How To" },
 ];
 
+// Suite nav items keyed by feature name.
+// "schedule" is a virtual item shown when either practice_plans or install_calendar is enabled.
+const SUITE_NAV_ITEMS = [
+  { feature: "roster",      to: "/app/suite/roster",      icon: FiList,        label: "Roster" },
+  { feature: "schedule",    to: "/app/suite/schedule",    icon: FiCalendar,    label: "Schedule" },
+  { feature: "game_plans",  to: "/app/suite/game-plans",  icon: FiTarget,      label: "Game Plans" },
+  { feature: "assignments", to: "/app/suite/assignments",  icon: FiCheckSquare, label: "Assignments" },
+];
+
 const PLAYBOOKS_ROUTE = "/app/playbooks";
 
-export default function AppLayout() {
+/** Inner layout that can consume suite features (must be inside SuiteProvider). */
+function AppLayoutInner() {
   const { user, logout, playerViewMode, setPlayerViewMode } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -45,10 +56,23 @@ export default function AppLayout() {
   const [hasPlaybookSections, setHasPlaybookSections] = useState(true);
   const notificationsEnabled = useFlag("in_app_notifications");
 
-  const navItems = (user?.isBetaTester
-    ? [...baseNav, { to: "/app/report-issue", icon: FiFlag, label: "Report Issue" }]
-    : baseNav
-  )
+  // Suite feature flags
+  const suiteFeatures = useSuiteFeatures();
+
+  // "schedule" virtual feature = either practice_plans or install_calendar enabled
+  const suiteFeatureMap = {
+    ...suiteFeatures,
+    schedule: suiteFeatures.practice_plans || suiteFeatures.install_calendar,
+  };
+
+  const enabledSuiteNav = SUITE_NAV_ITEMS.filter((item) => suiteFeatureMap[item.feature]);
+
+  const navItems = [
+    ...(user?.isBetaTester
+      ? [...baseNav, { to: "/app/report-issue", icon: FiFlag, label: "Report Issue" }]
+      : baseNav),
+    ...enabledSuiteNav,
+  ]
     .filter((item) => item.to !== PLAYBOOKS_ROUTE || hasPlaybookSections)
     .filter((item) => item.to !== "/app/notifications" || notificationsEnabled);
 
@@ -203,5 +227,18 @@ export default function AppLayout() {
       </div>
     </div>
     </NotificationsProvider>
+  );
+}
+
+/**
+ * AppLayout — wraps AppLayoutInner with SuiteProvider so suite features
+ * are available to the sidebar and child routes.
+ */
+export default function AppLayout() {
+  const { user } = useAuth();
+  return (
+    <SuiteProvider teamId={user?.teamId ?? null}>
+      <AppLayoutInner />
+    </SuiteProvider>
   );
 }
