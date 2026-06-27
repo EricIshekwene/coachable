@@ -499,7 +499,7 @@ The questions below are a starting point. Ask me as many additional questions as
 
 ---
 
-### 4.2 — Structured logging ❌
+### 4.2 — Structured logging ✅
 
 ```
 /grill-me
@@ -1163,7 +1163,7 @@ The questions below are a starting point. Ask me as many additional questions as
 
 ## Group 8 — UI testing
 
-### 8.1 — Establish Vitest config and write first tests ❌
+### 8.1 — Establish Vitest config and write first tests ✅
 
 The v2 new repo starts with no existing UI tests. Build the test infrastructure
 from scratch as one of the first commits.
@@ -1198,7 +1198,7 @@ The questions below are a starting point. Ask me as many additional questions as
 
 ---
 
-### 8.2 — Role-based UI test suite ❌
+### 8.2 — Role-based UI test suite ✅
 
 Full role-based test suite per `v2/engineering/planning/testing/ui-testing-standards.md`.
 
@@ -1287,6 +1287,8 @@ Look inside `C:\Users\ericl\Desktop\coachable\v2\` and complete the task below u
 - `v2/engineering/planning/features/mobile-slate-plan.md` — the full wiring plan and testing checklist; read it fully first
 - `v2/design/slate/slate-ux-standards.md` — UX standards the mobile editor must conform to (complete 9.1 first)
 
+**Before asking any question, check if the answer is already in the codebase or a related doc listed above. Only ask questions about future design decisions that require the user's input — not questions about how the app currently works.**
+
 The questions below are a starting point. Ask me as many additional questions as needed — one at a time, waiting for my answer before moving to the next — until the checklist is complete and every gap is addressed. Then update `v2/engineering/planning/features/mobile-slate-plan.md`.
 
 1. Which sports have been tested end-to-end on mobile and confirmed working — football, basketball, soccer, lacrosse?
@@ -1301,7 +1303,7 @@ The questions below are a starting point. Ask me as many additional questions as
 
 ---
 
-### 9.3 — PlayerViewMode UX ❌
+### 9.3 — PlayerViewMode UX ✅
 
 ```
 /grill-me
@@ -1316,6 +1318,8 @@ Look inside `C:\Users\ericl\Desktop\coachable\v2\` and complete the task below u
 - `v2/engineering/planning/permissions.md` — `playerViewMode` interacts with the permission model; complete 7.4 first if possible
 - `v2/design/general-formatting-standards.md` — any persistent indicator (banner, badge) must follow the formatting standards
 - `v2/engineering/audits/api-review.md` — `player_view_mode` is stored in `user_preferences` table; read it for the current implementation
+
+**Before asking any question, check if the answer is already in the codebase or a related doc listed above. Only ask questions about future design decisions that require the user's input — not questions about how the app currently works.**
 
 The questions below are a starting point. Ask me as many additional questions as needed — one at a time, waiting for my answer before moving to the next — until the full PlayerViewMode behavior is specified with no ambiguity. Then write `v2/design/player-view-mode.md`.
 
@@ -1333,7 +1337,7 @@ The questions below are a starting point. Ask me as many additional questions as
 
 ---
 
-### 9.4 — Shared and public page redesign ❌
+### 9.4 — Shared and public page redesign ✅ Done
 
 ```
 /grill-me
@@ -1348,6 +1352,8 @@ Look inside `C:\Users\ericl\Desktop\coachable\v2\` and complete the task below u
 - `v2/engineering/planning/features/seo-plan.md` — OG tags and sitemap for public pages; complete 5.5 first if possible
 - `v2/engineering/planning/routing.md` — which routes are public; complete 7.2 first if possible
 - `v2/design/general-formatting-standards.md` — formatting standards apply to public pages too
+
+**Before asking any question, check if the answer is already in the codebase or a related doc listed above. Only ask questions about future design decisions that require the user's input — not questions about how the app currently works.**
 
 The questions below are a starting point. Ask me as many additional questions as needed — one at a time, waiting for my answer before moving to the next — until all public page decisions are made with no open questions. Then write `v2/design/public-pages.md`.
 
@@ -1368,7 +1374,7 @@ The questions below are a starting point. Ask me as many additional questions as
 
 ## Group 10 — Documentation hygiene (parallel with everything else)
 
-### 10.1 — Enforce docs-in-docs/ convention ❌
+### 10.1 — Enforce docs-in-docs/ convention ✅ Done
 
 In the v2 new repo there is no scattered markdown to migrate — `server/` and
 `src/` are built from scratch. The convention must be established from day one.
@@ -1385,6 +1391,8 @@ Look inside `C:\Users\ericl\Desktop\coachable\v2\` and complete the task below u
 **Related docs:**
 - `v2/v2.md` — overall v2 principles; the convention goes here as a standing rule; read it fully first
 - `v2/engineering/planning/infrastructure/security-and-code-quality.md` — CLAUDE.md and docs/INDEX.md are part of the AI-friendliness strategy that depends on this convention
+
+**Before asking any question, check if the answer is already in the codebase or a related doc listed above. Only ask questions about future design decisions that require the user's input — not questions about how the app currently works.**
 
 The questions below are a starting point. Ask me as many additional questions as needed — one at a time, waiting for my answer before moving to the next — until the convention is fully decided and the rule is unambiguous. Then update `v2/v2.md`.
 
@@ -1416,6 +1424,8 @@ Look inside `C:\Users\ericl\Desktop\coachable\v2\` and complete the task below u
 - `v2/design/general-formatting-standards.md` — shared standards admin may or may not fully follow; read it first
 - `v2/design/color-semantics.md` — `--ui-*` tokens admin surfaces should or shouldn't use
 - `v2/design/component-specs.md` — whether admin uses `src/ui/` components or its own
+
+**Before asking any question, check if the answer is already in the codebase or a related doc listed above. Only ask questions about future design decisions that require the user's input — not questions about how the app currently works.**
 
 The questions below are a starting point. Ask me as many additional questions as needed — one at a time, waiting for my answer before moving to the next — until every admin design decision is made. Then write `v2/design/admin-standards.md`.
 
@@ -1453,6 +1463,8 @@ Look inside `C:\Users\ericl\Desktop\coachable\v2\` and complete the task below u
 - `v2/engineering/planning/permissions.md` — which actions are available per role
 - `v2/design/general-formatting-standards.md` — spacing, type scale, motion budget
 - `v2/design/mobile/mobile-formatting-standards.md` — mobile layout decisions
+
+**Before asking any question, check if the answer is already in the codebase or a related doc listed above. Only ask questions about future design decisions that require the user's input — not questions about how the app currently works.**
 
 The questions below are a starting point. Ask me as many additional questions as needed — one at a time, waiting for my answer before moving to the next — until the plays page is fully specced with no open layout, interaction, or edge-case questions. Then write `v2/design/pages/plays-page.md`.
 
@@ -1492,6 +1504,8 @@ Look inside `C:\Users\ericl\Desktop\coachable\v2\` and complete the task below u
 - `v2/engineering/audits/api-review.md` — `folders.js` and `playbookSections.js` routes show the current data model
 - `v2/design/general-formatting-standards.md` — spacing, type scale, motion budget
 
+**Before asking any question, check if the answer is already in the codebase or a related doc listed above. Only ask questions about future design decisions that require the user's input — not questions about how the app currently works.**
+
 The questions below are a starting point. Ask me as many additional questions as needed — one at a time, waiting for my answer before moving to the next — until the full folder and playbook experience is specced. Then write `v2/design/pages/playbooks-page.md`.
 
 1. Is there a separate "Playbooks" page, or are playbooks sections within the main plays page?
@@ -1526,6 +1540,8 @@ Look inside `C:\Users\ericl\Desktop\coachable\v2\` and complete the task below u
 - `v2/engineering/audits/api-review.md` — `onboarding.js` route covers create-team, join-team, and solo paths; read it for the current logic
 - `v2/design/general-formatting-standards.md` — spacing, type scale, motion budget
 - `v2/engineering/planning/routing.md` — onboarding routes and guards
+
+**Before asking any question, check if the answer is already in the codebase or a related doc listed above. Only ask questions about future design decisions that require the user's input — not questions about how the app currently works.**
 
 The questions below are a starting point. Ask me as many additional questions as needed — one at a time, waiting for my answer before moving to the next — until every onboarding path and step is fully decided. Then write `v2/design/pages/onboarding-flow.md`.
 
@@ -1562,6 +1578,8 @@ Look inside `C:\Users\ericl\Desktop\coachable\v2\` and complete the task below u
 - `v2/design/component-specs.md` — NotificationItem, PlayCard (read-only), EmptyState specs
 - `v2/engineering/planning/features/notification-delivery.md` — how players receive notifications
 
+**Before asking any question, check if the answer is already in the codebase or a related doc listed above. Only ask questions about future design decisions that require the user's input — not questions about how the app currently works.**
+
 The questions below are a starting point. Ask me as many additional questions as needed — one at a time, waiting for my answer before moving to the next — until the full player experience is specced with no open questions. Then write `v2/design/pages/player-experience.md`.
 
 1. What does a player see on their home/feed page — a list of assigned plays, notifications, a dashboard?
@@ -1596,6 +1614,8 @@ Look inside `C:\Users\ericl\Desktop\coachable\v2\` and complete the task below u
 - `v2/engineering/audits/api-review.md` — `users.js`, `teams.js`, and `verification.js` routes show what's settable; read them
 - `v2/engineering/planning/permissions.md` — which settings are owner-only vs all roles
 - `v2/design/general-formatting-standards.md` — spacing, type scale, motion budget
+
+**Before asking any question, check if the answer is already in the codebase or a related doc listed above. Only ask questions about future design decisions that require the user's input — not questions about how the app currently works.**
 
 The questions below are a starting point. Ask me as many additional questions as needed — one at a time, waiting for my answer before moving to the next — until every settings page and section is fully specced. Then write `v2/design/pages/settings-pages.md`.
 
@@ -1632,6 +1652,8 @@ Look inside `C:\Users\ericl\Desktop\coachable\v2\` and complete the task below u
 - `v2/engineering/planning/permissions.md` — who can manage roster (owner vs coach vs assistant)
 - `v2/design/component-specs.md` — TeamMemberCard, AvatarGroup specs
 
+**Before asking any question, check if the answer is already in the codebase or a related doc listed above. Only ask questions about future design decisions that require the user's input — not questions about how the app currently works.**
+
 The questions below are a starting point. Ask me as many additional questions as needed — one at a time, waiting for my answer before moving to the next — until team management is fully specced. Then write `v2/design/pages/team-management.md`.
 
 1. Is team management a page in the main nav, a section inside settings, or a modal?
@@ -1666,6 +1688,8 @@ Look inside `C:\Users\ericl\Desktop\coachable\v2\` and complete the task below u
 - `v2/engineering/audits/api-review.md` — `auth.js` and `verification.js` routes show what the server supports; read them
 - `v2/engineering/audits/routing-and-flash-diagnosis.md` — v1 flash/redirect bugs these pages must not repeat; read it
 - `v2/design/general-formatting-standards.md` — spacing, type scale, motion budget
+
+**Before asking any question, check if the answer is already in the codebase or a related doc listed above. Only ask questions about future design decisions that require the user's input — not questions about how the app currently works.**
 
 The questions below are a starting point. Ask me as many additional questions as needed — one at a time, waiting for my answer before moving to the next — until all auth pages are fully specced with no open questions. Then write `v2/design/pages/auth-pages.md`.
 

@@ -257,12 +257,15 @@ Currently `Plays.jsx` disables both the New Play button and the Edit button on m
 
 ## What the Mobile Editor Does NOT Have (Known Gaps)
 
-These are documented in `MOBILE_EDITOR.md` and remain deferred. All four are gracefully absent — no broken UI, no crashes:
+These are documented in `MOBILE_EDITOR.md` and remain deferred. All five are gracefully absent — no broken UI, no crashes:
 
 - **GIF export** — `MobileEditorBar` filters the GIF row when `onGifExport` is not passed as a function. Slate never passes `onGifExport` in the mobile path — the button simply does not appear.
 - **Recording mode** — no `startRecording` trigger exists anywhere in `MobileEditorBar`. Recording cannot be initiated from mobile UI.
-- **Fine-grained drawing styles** — `fontSize`, `arrowHead`, `eraserSize`, `strokeWidth` are not present in `MobileEditorBar` at all. Draw tab exposes color pickers only.
+- **Fine-grained drawing styles** — `fontSize`, `arrowHead`, and `eraserSize` are not present in `MobileEditorBar`. The Draw tab exposes color swatches, a strokeWidth slider, and an opacity slider. Arrow head style, font size, and eraser size are desktop-only controls.
 - **Canvas inset** — canvas is full-bleed under the floating chrome rather than inset between bars. Intentional layout choice, not a crash.
+- **Football Drawing mode (AnimationDrawingTools)** — motion drawing (the Football-only mode where paths drive player movement) is not implemented in `MobileEditorBar`. No `animDraw` tool or `AnimationDrawingTools` palette exists in the mobile editor. This is handled in two places:
+  - **New Football plays created on mobile:** the Drawing/Keyframe choice is not shown. The play is always created in Keyframe mode. It will work correctly when later opened on desktop in Keyframe mode.
+  - **Existing Drawing-mode Football plays opened on mobile:** show a gated message — "This play uses Drawing mode, which isn't supported on mobile yet. Open on a desktop or laptop to edit it." Block the mobile editor from loading — do not show a broken or partially-functional UI.
 
 These gaps are acceptable for v1 of mobile editing. They should be tracked as follow-on tasks, not blockers.
 
@@ -274,7 +277,7 @@ Tests are split into **automated** (Playwright, run at 390×844 viewport / iPhon
 
 ### Automated — Playwright (390×844, iPhone 14)
 
-**Sport matrix** — one Playwright spec per sport. Each spec must: load the editor with a fixture play of the given sport, assert the field image is visible and bounding-box is not clipped by the viewport, place one player, and confirm a PATCH fires within 2 seconds. All 9 must pass:
+**Sport matrix** — one Playwright spec per sport. Each spec must: load the editor with a fixture play of the given sport, assert the field image is visible and bounding-box is not clipped by the viewport, place one player, and confirm a PATCH fires within 2 seconds. Run at both 390×844 (iPhone 14) and 375×667 (iPhone SE) — the SE viewport is shorter and can clip the timeline bar or tab bar. All 9 must pass at both viewports:
 
 ```
 [ ] Rugby           — field visible + unclipped; player placed; PATCH fires ≤2s
@@ -286,6 +289,7 @@ Tests are split into **automated** (Playwright, run at 390×844 viewport / iPhon
 [ ] Field Hockey    — field visible + unclipped; player placed; PATCH fires ≤2s
 [ ] Ice Hockey      — field visible + unclipped; player placed; PATCH fires ≤2s
 [ ] Blank           — canvas renders; player placed; PATCH fires ≤2s
+[ ] iPhone SE (375×667) — tab bar and timeline bar not clipped; all interactive elements reachable (run one sport, e.g. Soccer, as the SE viewport smoke test)
 ```
 
 **Flush-on-back** — make a dirty edit, intercept network, tap Back. PASS = PATCH response is received before the page URL changes to `/app/plays`. FAIL = URL changes before PATCH resolves, or no PATCH fires at all.
@@ -321,18 +325,34 @@ Edit:
 [ ] Tap empty canvas deselects (PASS = selection clears; FAIL = selection persists)
 [ ] Add Player (Add tab) — tap to place works (PASS = player appears at tap point; FAIL = no player added)
 [ ] Add Ball — tap to place works (PASS = ball appears at tap point; FAIL = no ball added)
+[ ] Add Cone (Add tab) — tap to place works (PASS = cone appears at tap point; FAIL = no cone added)
+[ ] Pan tool (Hand, Tools tab) — one-finger pan moves the canvas (PASS = canvas pans; FAIL = no movement or player drags instead)
+[ ] Prefabs tab — shows published presets and custom prefabs (PASS = at least published presets visible; FAIL = tab empty or crashes)
+[ ] Prefab placement — tap a prefab to arm placement, tap field to place it (PASS = formation appears; FAIL = nothing placed)
 [ ] Timeline scrub (drag) works without visible frame drops or freezing (PASS = smooth scrub; FAIL = jank or freeze)
 [ ] Add keyframe button works (PASS = keyframe appears on timeline; FAIL = no new keyframe)
 [ ] Delete keyframe works — select keyframe first (PASS = keyframe removed; FAIL = keyframe remains)
 [ ] Play/pause works (PASS = animation plays and pauses; FAIL = no motion or stuck)
 [ ] Draw tab — pen stroke works (PASS = stroke appears on canvas; FAIL = no stroke)
 [ ] Draw tab — arrow tool works (PASS = arrow appears; FAIL = no arrow)
+[ ] Draw tab — text annotation works (PASS = text appears on canvas; FAIL = nothing placed)
+[ ] Draw tab — shape tool works (PASS = shape appears; FAIL = nothing placed)
+[ ] Draw tab — eraser removes annotation (PASS = stroke is erased; FAIL = nothing removed)
 [ ] Color swatch picker works in Draw tab (PASS = stroke color changes; FAIL = color unchanged)
+[ ] Stroke width slider in Draw tab changes stroke width (PASS = visible width change; FAIL = no change)
+[ ] Opacity slider in Draw tab changes stroke opacity (PASS = visible opacity change; FAIL = no change)
 [ ] Player color picker works in Players tab (PASS = player color changes; FAIL = color unchanged)
 [ ] Context pill appears on single item select (PASS = pill visible; FAIL = no pill)
 [ ] Context pill shows correct player number/name (PASS = label matches player; FAIL = wrong label or empty)
+[ ] Tap a selected player again to deselect it — mobile toggle behavior (PASS = player deselects; FAIL = selection unchanged)
+[ ] Tap an unselected player while another is selected — adds to selection (PASS = both selected; FAIL = only one selected or first deselects)
+[ ] Near-zero marquee — lift finger after barely moving on empty canvas — deselects all (PASS = selection clears; FAIL = marquee rect persists or selection unchanged)
+[ ] "Save Prefab" button appears in bottom bar when 2+ entities are selected (PASS = button visible; FAIL = button absent)
+[ ] Saving a prefab via "Save Prefab" makes it appear in the Prefabs tab under "Your Prefabs" (PASS = prefab listed; FAIL = missing from tab)
 [ ] Undo/Redo works (Tools tab) (PASS = state reverts/reapplies; FAIL = no change)
 [ ] Field rotate works (Tools tab) (PASS = field rotates; FAIL = no rotation)
+[ ] Football Drawing-mode play (created on desktop) — opening on mobile shows the desktop-only gate message, not the editor (PASS = gate message displayed; FAIL = editor loads or blank screen)
+[ ] Football play creation on mobile — Drawing/Keyframe choice is not shown; play is created in Keyframe mode (PASS = play opens in Keyframe mode; FAIL = Drawing option shown or play stuck)
 
 Save:
 [ ] Autosave fires after edit — Network tab shows PATCH /teams/... (PASS = PATCH fires within 2s of edit; FAIL = no PATCH or fires after >5s)
@@ -344,6 +364,7 @@ Save:
 Navigation:
 [ ] Back button appears top-left (PASS = button visible; FAIL = button absent)
 [ ] Tapping Back flushes autosave before navigating — confirmed by Playwright spec above (PASS = automated spec passes; FAIL = spec fails)
+[ ] Real iOS flush-on-back — on a physical iOS device: make a dirty edit, tap Back immediately, navigate back to the same play and confirm the edit is present (PASS = edit saved; FAIL = edit lost). The Playwright network-intercept spec does not cover iOS Safari process suspension on navigation — this manual step is required.
 [ ] Browser back (swipe left on iOS) also triggers flush (PASS = PATCH fires on swipe; FAIL = no PATCH or play reverts)
 [ ] App backgrounded mid-edit — foregrounding shows saved state (PASS = play data matches last edit; FAIL = canvas reverts to pre-edit state)
 
@@ -352,10 +373,11 @@ Safe areas:
 [ ] Bottom timeline clears the home indicator (PASS = timeline above home indicator; FAIL = timeline hidden behind indicator)
 [ ] No content hidden behind the notch or home indicator (PASS = all interactive elements reachable; FAIL = any tap target inaccessible)
 
-Light mode:
-[ ] Editor chrome renders correctly in light mode (PASS = all chrome elements visible; FAIL = invisible elements or broken layout)
-[ ] Canvas background is correct in light mode (PASS = field and background render; FAIL = blank or wrong color)
+Dark mode (editor is dark-only — does not follow system light/dark setting):
+[ ] Editor chrome renders correctly in dark mode (PASS = all chrome elements visible; FAIL = invisible elements or broken layout)
+[ ] Canvas background is correct in dark mode (PASS = field and background render; FAIL = blank or wrong color)
 [ ] No invisible text or borders (PASS = all text legible; FAIL = any text invisible against background)
+[ ] Editor stays dark when iOS system is set to light mode (PASS = dark chrome; FAIL = light/system colors applied to editor)
 ```
 
 ---

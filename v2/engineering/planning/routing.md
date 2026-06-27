@@ -169,6 +169,7 @@ Handled inline in `App.tsx`.
 | `/forgot-password` | `ForgotPassword` | |
 | `/reset-password` | `ResetPassword` | |
 | `/platform-play/:playId` | `PlatformPlayView` | Single play from the platform library |
+| `/platform-play/:playId/view` | `PlatformPlayView` — Slate viewer | Read-only Slate viewer for a platform play; noindex |
 | `/shared/:token` | `SharedPlay` | Coach-shared play link |
 | `/shared/:token/view` | `SharedPlayView` | Read-only play viewer via share token |
 | `/shared/folder/:token` | `SharedFolder` | Shared playbook folder |

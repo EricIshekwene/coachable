@@ -66,7 +66,9 @@ GitHub Actions runs on every push to `stage` or `main`, and on every PR. The fre
 
 **Required `package.json` scripts (root):**
 ```json
-"test:frontend": "vitest run"
+"test:frontend": "vitest run",
+"typecheck": "tsc --noEmit",
+"size": "size-limit"
 ```
 
 **Required `server/package.json` scripts:**
@@ -118,6 +120,17 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: TypeScript type check
+        run: npm run typecheck
+
+      - name: Docs convention check
+        run: |
+          if find src/ server/ -name "*.md" | grep -q .; then
+            echo "❌ .md files found in src/ or server/ — move to docs/"
+            find src/ server/ -name "*.md"
+            exit 1
+          fi
+
       - name: Frontend tests
         run: npm run test:frontend
 
@@ -128,6 +141,10 @@ jobs:
       #     DATABASE_URL: postgres://coachable_test:test@localhost:5432/coachable_test
       #     JWT_SECRET: ci-test-secret
       #     ADMIN_HASH: ${{ secrets.CI_ADMIN_HASH }}
+
+      # Uncomment when build pipeline exists (TODO: bundle size baseline)
+      # - name: Bundle size check
+      #   run: npm run build && npm run size
 ```
 
 **`ADMIN_HASH` in CI:**
@@ -209,14 +226,39 @@ Reads every PR diff and posts inline review comments. Catches logic bugs, missin
 | Tool | When | Cost | Purpose |
 |---|---|---|---|
 | Husky + pre-push hook | Now (after tests green) | Free | Block failing tests, lint, and high CVEs before push |
-| GitHub Actions CI | Now | ~$0–$3/month | Lint + frontend tests on every push to `stage` or `main` |
+| GitHub Actions CI | Now | ~$0–$3/month | Lint + type check + docs convention + frontend tests on every push |
+| `tsc --noEmit` in CI | Now | Free | Catch TypeScript type errors that ESLint does not see |
+| Docs convention check in CI | Now | Free | Fail build if any `.md` file lands in `src/` or `server/` |
 | GitHub Dependabot | Now | Free | Weekly PRs for vulnerable or outdated packages |
 | GitHub Secret Scanning | Now (enable in settings) | Free | Alert on accidentally committed credentials |
 | Snyk Code (free tier) | Now | Free | SAST security scan on Express routes and React code |
 | ESLint security plugins | Now (with Snyk) | Free | Pattern-level security and secret detection in lint |
+| `size-limit` bundle check | When build pipeline exists | Free | Fail CI if JS bundle exceeds threshold — guards MUI-removal gains |
 | CodeRabbit Pro | When first collaborator joins | $15/month/dev | Automated code review comments on every PR |
 
 **Total (solo):** ~$0–$3/month. **Total (with one collaborator):** ~$15–$18/month.
+
+---
+
+## Bundle size check — `size-limit` (deferred)
+
+Wire this step once the Vite build pipeline is in place. The purpose is to make bundle regressions visible — a single heavy import can undo the MUI removal gains without anyone noticing until Lighthouse flags it.
+
+**Install:**
+```bash
+npm install --save-dev size-limit @size-limit/file
+```
+
+**`package.json` config:**
+```json
+"size-limit": [
+  { "path": "dist/assets/*.js", "limit": "150 kB" }
+]
+```
+
+Set the initial limit to whatever the clean build produces. Tighten it over time. The step is commented out in the CI workflow — uncomment it once the build pipeline is in place and a baseline is measured.
+
+**Cost: Free.**
 
 ---
 
@@ -224,13 +266,14 @@ Reads every PR diff and posts inline review comments. Catches logic bugs, missin
 
 1. **Fix failing tests** — pre-push hook requires a green test suite before it is wired
 2. **Install Husky** — `npm install --save-dev husky && npx husky init`, replace hook with the three-command script
-3. **Create `.github/workflows/ci.yml`** — workflow file goes in now with `test:server` step commented out; add `test:frontend` script to root `package.json`
+3. **Create `.github/workflows/ci.yml`** — workflow file goes in now; add `test:frontend` and `typecheck` scripts to root `package.json`
 4. **Enable Dependabot** — commit `.github/dependabot.yml`
 5. **Enable Secret Scanning** — GitHub repo Settings → Security → Secret scanning → Enable
 6. **Wire Snyk** — snyk.io → connect repo → enable GitHub Action; add ESLint security plugins to eslint config
 7. **Uncomment `test:server` in CI** — when server integration tests ship (TODO 3.1); add `test:server` script to `server/package.json` at the same time
-8. **Add CodeRabbit** — when first collaborator joins; configure `.coderabbit.yml` to focus on security, missing auth, and test coverage
-9. **Ongoing** — keep `CLAUDE.md`, `docs/INDEX.md`, and JSDoc on route handlers current; this is not a one-time setup
+8. **Wire `size-limit`** — when build pipeline exists; measure baseline, set threshold, uncomment CI step
+9. **Add CodeRabbit** — when first collaborator joins; configure `.coderabbit.yml` to focus on security, missing auth, and test coverage
+10. **Ongoing** — keep `CLAUDE.md`, `docs/INDEX.md`, and JSDoc on route handlers current; this is not a one-time setup
 
 ---
 
