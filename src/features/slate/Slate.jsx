@@ -44,7 +44,7 @@ import { getLogs as getDrawDebugLogs, log as logDrawDebug } from "../../canvas/d
 import { getLogs as getKeyToolDebugLogs, log as logKeyToolDebug } from "../../canvas/keyboardToolDebugLogger";
 import { getLogs as getVideoExportDebugLogs, log as logVideoExport } from "../../utils/videoExportDebugLogger";
 import { getLogs as getGifExportDebugLogs, log as logGifExport } from "../../utils/gifExportDebugLogger";
-import { supportsWebCodecsMP4, createMP4Encoder, isIOSDevice, convertWebMToMP4 } from "../../utils/videoEncoder";
+import { supportsWebCodecsMP4, createMP4Encoder, isIOSDevice, isSafari, supportsCanvasCaptureStream, convertWebMToMP4 } from "../../utils/videoEncoder";
 import { encodeCanvasFramesToGIF, GIF_PRESETS } from "../../utils/gifEncoder";
 import { samplePathAtT } from "../../canvas/drawingGeometry";
 import { getStepColor } from "../../utils/stepColor";
@@ -1818,15 +1818,18 @@ function Slate({
     const pixelRatio = Math.max(0.5, Number(quality.pixelRatio) || 2);
     const bitrate = Math.max(250_000, Number(quality.bitrate) || 5_000_000);
     const isIOS = isIOSDevice();
+    const isSafariBrowser = isSafari();
+    const hasCaptureStream = supportsCanvasCaptureStream();
     const recorderMimeType = resolveRecorderMimeType({
       preferRealtimeCodec: true,
-      preferMp4: isIOS,
+      preferMp4: isIOS || isSafariBrowser,
     });
+    // Skip WebCodecs on iOS (known to fail at runtime); use WebCodecs on Mac Safari (works since 16.4)
     const preferRecorderMP4 = isIOS && recorderMimeType?.includes("mp4");
     const useMP4 = supportsWebCodecsMP4() && !preferRecorderMP4;
 
     logVideoExport(
-      `playDurationMs=${playDurationMs} durationSec=${requestedDurationSec} fps=${fps} pixelRatio=${pixelRatio} bitrate=${bitrate} useMP4=${useMP4} isIOS=${isIOS} recorderMimeType=${recorderMimeType || "none"}`
+      `playDurationMs=${playDurationMs} durationSec=${requestedDurationSec} fps=${fps} pixelRatio=${pixelRatio} bitrate=${bitrate} useMP4=${useMP4} isIOS=${isIOS} isSafari=${isSafariBrowser} hasCaptureStream=${hasCaptureStream} recorderMimeType=${recorderMimeType || "none"}`
     );
 
     setIsExporting(true);
@@ -1941,6 +1944,12 @@ function Slate({
           throw new Error("Browser supports neither WebCodecs nor MediaRecorder");
         }
         logVideoExport(`mimeType=${mimeType}`);
+
+        if (!hasCaptureStream) {
+          throw new Error(
+            "Video export is not supported in this browser. Please use Chrome or Firefox for video export."
+          );
+        }
 
         // Use an offscreen canvas + captureStream for the MediaRecorder
         const offscreen = document.createElement("canvas");

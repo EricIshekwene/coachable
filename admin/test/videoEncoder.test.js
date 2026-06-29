@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { clampEncodeDimensions } from "../../src/utils/videoEncoder";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { clampEncodeDimensions, isSafari, supportsCanvasCaptureStream } from "../../src/utils/videoEncoder";
 
 describe("clampEncodeDimensions", () => {
   it("returns original dimensions when both are under the limit", () => {
@@ -59,5 +59,113 @@ describe("clampEncodeDimensions", () => {
     expect(result.width).toBe(1080);
     expect(result.height).toBe(1920);
     expect(result.scale).toBe(1);
+  });
+});
+
+describe("isSafari", () => {
+  let originalNavigator;
+
+  beforeEach(() => {
+    originalNavigator = global.navigator;
+  });
+
+  afterEach(() => {
+    Object.defineProperty(global, "navigator", {
+      value: originalNavigator,
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  function setUA(ua) {
+    Object.defineProperty(global, "navigator", {
+      value: { userAgent: ua },
+      writable: true,
+      configurable: true,
+    });
+  }
+
+  it("returns true for Mac Safari", () => {
+    setUA(
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15"
+    );
+    expect(isSafari()).toBe(true);
+  });
+
+  it("returns true for iOS Safari (iPhone)", () => {
+    setUA(
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+    );
+    expect(isSafari()).toBe(true);
+  });
+
+  it("returns false for Chrome on Mac", () => {
+    setUA(
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    );
+    expect(isSafari()).toBe(false);
+  });
+
+  it("returns false for Edge on Mac", () => {
+    setUA(
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0"
+    );
+    expect(isSafari()).toBe(false);
+  });
+
+  it("returns false for Firefox", () => {
+    setUA(
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 14.5; rv:127.0) Gecko/20100101 Firefox/127.0"
+    );
+    expect(isSafari()).toBe(false);
+  });
+
+  it("returns false for Chrome on iOS (CriOS)", () => {
+    setUA(
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/124.0.0.0 Mobile/15E148 Safari/604.1"
+    );
+    expect(isSafari()).toBe(false);
+  });
+
+  it("returns false when navigator is undefined", () => {
+    Object.defineProperty(global, "navigator", {
+      value: undefined,
+      writable: true,
+      configurable: true,
+    });
+    expect(isSafari()).toBe(false);
+  });
+});
+
+describe("supportsCanvasCaptureStream", () => {
+  let originalDocument;
+
+  beforeEach(() => {
+    originalDocument = global.document;
+  });
+
+  afterEach(() => {
+    global.document = originalDocument;
+  });
+
+  it("returns true when canvas has captureStream method", () => {
+    global.document = {
+      createElement: () => ({ captureStream: () => {} }),
+    };
+    expect(supportsCanvasCaptureStream()).toBe(true);
+  });
+
+  it("returns false when canvas lacks captureStream", () => {
+    global.document = {
+      createElement: () => ({}),
+    };
+    expect(supportsCanvasCaptureStream()).toBe(false);
+  });
+
+  it("returns false when document.createElement throws", () => {
+    global.document = {
+      createElement: () => { throw new Error("not available"); },
+    };
+    expect(supportsCanvasCaptureStream()).toBe(false);
   });
 });

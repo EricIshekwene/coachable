@@ -304,6 +304,32 @@ export function isIOSDevice() {
     ((platform === "MacIntel" || /Macintosh/i.test(userAgent)) && maxTouchPoints > 1);
 }
 
+/**
+ * Check if the current browser is Safari (desktop or mobile).
+ * Excludes Chrome, Edge, and Firefox which include "Safari" in their UA string.
+ * @returns {boolean}
+ */
+export function isSafari() {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  return /Safari/i.test(ua) && !/Chrome|Chromium|CriOS|FxiOS|EdgA?/i.test(ua);
+}
+
+/**
+ * Check whether the browser's canvas element supports captureStream().
+ * Safari does not support this API, which means the MediaRecorder fallback
+ * path for video export will not work in Safari.
+ * @returns {boolean}
+ */
+export function supportsCanvasCaptureStream() {
+  try {
+    const canvas = document.createElement("canvas");
+    return typeof canvas.captureStream === "function";
+  } catch {
+    return false;
+  }
+}
+
 /** Singleton FFmpeg instance (lazy-loaded). */
 let _ffmpeg = null;
 let _ffmpegLoading = null;
