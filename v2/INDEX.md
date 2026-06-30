@@ -7,6 +7,7 @@ This is the master map of every document in `docs/`. One line per doc. Grouped b
 ## Repo Root
 
 - [CLAUDE.md](CLAUDE.md) — AI navigation index; read first in every new session to understand where every domain of the codebase lives (lives at repo root, not inside `docs/`)
+- [process.md](process.md) - plain-English build process for starting v2: first steps, reference docs, build order, daily workflow, and launch path
 
 ---
 

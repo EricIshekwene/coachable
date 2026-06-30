@@ -11,7 +11,7 @@
 
 Auth pages are the first thing every user sees. Their job is to get the user to the app with as little friction as possible. v1 had three documented bugs in this flow — flash/redirect issues, returnTo threading failure, and the email verification code collision — all of which v2 must not repeat.
 
-**No SSO or Google sign-in in v2.** Email + password only.
+**Auth options:** Email + password, or Google OAuth (sign in with Google). Both are available on login and signup. Google OAuth is the optional fast path — email+password remains the primary flow.
 
 **Theme:** Dark — matching the app. The body and `html` background are `var(--ui-bg)` (set via the inline `<script>` in `index.html` before first paint). Auth pages are always dark regardless of the user's saved theme preference, since theme preference is only set after the user is logged in.
 
@@ -47,6 +47,10 @@ All auth pages use the same two-column layout:
 **Form:**
 
 ```
+[Sign in with Google]   ← Google-branded button, full-width (see Google OAuth section)
+
+────────── or ──────────
+
 [Email]           ← Input, type="email", label="Email", autoComplete="email"
 [Password]        ← Input, type="password", label="Password", autoComplete="current-password"
                   "Forgot password?" link right-aligned below password field (navigates to /forgot-password)
@@ -87,6 +91,10 @@ After login: if the user's `onboarded_at` is null, navigate to `/onboarding?retu
 **Form:**
 
 ```
+[Sign in with Google]   ← Google-branded button, full-width (see Google OAuth section)
+
+────────── or ──────────
+
 [Name]            ← Input, type="text", label="Name", autoComplete="name", autoFocus
 [Email]           ← Input, type="email", label="Email", autoComplete="email"
 [Password]        ← Input, type="password", label="Password", autoComplete="new-password"
@@ -225,6 +233,162 @@ Resend link with 60-second cooldown (same pattern as verify-email).
 
 ---
 
+## Google OAuth
+
+Sign in with Google is available on both `/login` and `/signup`. It is an optional alternative to email+password — not a replacement. The flow is entirely server-side redirect (no Google JS SDK), keeping all token handling out of the browser.
+
+---
+
+### One-time GCP setup (manual)
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com) → APIs & Services → Credentials → Create credentials → **OAuth 2.0 Client ID**
+2. Application type: **Web application**
+3. Authorized redirect URI: `https://your-domain.com/api/auth/google/callback` (and `http://localhost:3000/api/auth/google/callback` for local dev)
+4. Save `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` → add both to Railway environment variables
+
+If you have a Google Workspace account and want to restrict sign-in to your org's domain, set `hd=yourdomain.com` in the authorization URL params (step 3 of the backend flow below). This blocks personal Gmail accounts.
+
+---
+
+### Button
+
+Google's brand guidelines require using their official button styling. Use the [`@react-oauth/google`](https://github.com/MomenSherif/react-oauth) package which renders a spec-compliant button, or render a custom button that matches Google's spec (white/dark pill with Google logo SVG, "Sign in with Google" text, Roboto font).
+
+**Behavior:**
+- Clicking the Google button navigates to `GET /api/auth/google?returnTo=<current returnTo>`. The server handles the redirect to Google — no OAuth logic in the frontend.
+- `returnTo` is encoded and stored server-side in the OAuth `state` parameter so it survives the round-trip through Google's redirect.
+
+---
+
+### Backend routes
+
+Install: `npm install google-auth-library`
+
+**`GET /api/auth/google`**
+
+Generates the Google authorization URL and redirects the browser to it.
+
+```js
+import { OAuth2Client } from 'google-auth-library';
+
+const client = new OAuth2Client(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_CALLBACK_URL  // https://your-domain.com/api/auth/google/callback
+);
+
+// GET /api/auth/google
+router.get('/google', (req, res) => {
+  const state = Buffer.from(JSON.stringify({
+    returnTo: req.query.returnTo || '/app/plays'
+  })).toString('base64');
+
+  const url = client.generateAuthUrl({
+    scope: ['email', 'profile'],
+    state,
+    // hd: 'yourdomain.com',  // uncomment to restrict to Google Workspace org
+  });
+
+  res.redirect(url);
+});
+```
+
+**`GET /api/auth/google/callback`**
+
+Handles the response from Google. Exchanges the auth code for tokens, fetches the user's profile, and creates or finds the user in the database.
+
+```js
+// GET /api/auth/google/callback
+router.get('/google/callback', async (req, res) => {
+  const { code, state } = req.query;
+
+  // 1. Exchange code for tokens
+  const { tokens } = await client.getToken(code);
+  client.setCredentials(tokens);
+
+  // 2. Fetch Google user profile
+  const ticket = await client.verifyIdToken({
+    idToken: tokens.id_token,
+    audience: process.env.GOOGLE_CLIENT_ID,
+  });
+  const { sub: googleId, email, name } = ticket.getPayload();
+
+  // 3. Find or create user
+  let user = await getUserByGoogleId(googleId);
+
+  if (!user) {
+    user = await getUserByEmail(email);
+
+    if (user) {
+      // Email exists with password account — link google_id to existing account
+      await linkGoogleId(user.id, googleId);
+    } else {
+      // New user — create account (no password_hash)
+      user = await createUserFromGoogle({ googleId, email, name });
+      // New Google users skip email verification — Google has already verified their email
+      // Set email_verified = true and mark onboarding as required
+    }
+  }
+
+  // 4. Issue session (same as normal login — access token + httpOnly refresh token)
+  const { accessToken, refreshToken } = issueTokens(user);
+  res.cookie('refresh_token', refreshToken, { httpOnly: true, secure: true, sameSite: 'strict' });
+
+  // 5. Redirect to returnTo (decode from state)
+  const { returnTo } = JSON.parse(Buffer.from(state, 'base64').toString());
+  const destination = user.onboarded_at ? returnTo : `/onboarding?returnTo=${returnTo}`;
+  res.redirect(`${process.env.FRONTEND_URL}?token=${accessToken}&next=${destination}`);
+  // Frontend reads ?token on mount, stores it, then navigates to ?next
+});
+```
+
+---
+
+### Database changes
+
+Two schema changes required:
+
+```sql
+-- google_id for OAuth identity linking
+ALTER TABLE users ADD COLUMN google_id TEXT UNIQUE;
+
+-- password_hash must be nullable (Google users have no password)
+ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+```
+
+`google_id` is indexed and unique. A user can have a `google_id`, a `password_hash`, or both (if they signed up with email and later linked Google).
+
+---
+
+### Email verification for Google users
+
+Google has already verified the user's email address. When a new user is created via Google OAuth, set `email_verified = true` immediately — they do not go through the `/verify-email` OTP flow.
+
+If a Google user's email matches an existing password-account user, the accounts are linked silently (see step 3 in the callback above). The existing user's `email_verified` state is preserved.
+
+---
+
+### Account linking edge cases
+
+| Scenario | Behavior |
+|---|---|
+| New user, signs in with Google | Create account, `email_verified = true`, skip OTP flow, go to onboarding |
+| Existing email+password user, signs in with Google for first time | Link `google_id` to existing account, proceed as normal login |
+| Returning Google user | Look up by `google_id`, issue session, redirect |
+| Google user tries to use "Forgot password" | Show message: "Your account uses Google sign-in. Use the Sign in with Google button." |
+
+---
+
+### Environment variables
+
+| Variable | Value |
+|---|---|
+| `GOOGLE_CLIENT_ID` | From GCP console |
+| `GOOGLE_CLIENT_SECRET` | From GCP console |
+| `GOOGLE_CALLBACK_URL` | `https://your-domain.com/api/auth/google/callback` |
+
+---
+
 ## `returnTo` behavior
 
 `returnTo` is threaded through the entire auth funnel to land users at their intended destination:
@@ -259,7 +423,10 @@ These decisions are structural, not cosmetic. They exist specifically to prevent
 
 | Decision | Choice |
 |---|---|
-| SSO / Google sign-in | None in v2 — email + password only |
+| SSO / Google sign-in | Optional alongside email+password; server-side redirect flow, no JS SDK |
+| Google Workspace restriction | Set `hd` param in auth URL to restrict to org domain (optional) |
+| Google + email account linking | Link by email match — `google_id` written to existing account on first Google sign-in |
+| Email verification for Google users | Skipped — Google already verified the email; `email_verified = true` on create |
 | Theme | Auth pages are always dark |
 | Confirm password field | No — friction reduction; mistyped password → password reset |
 | Remember me | No checkbox — refresh tokens handle session persistence |
@@ -278,6 +445,8 @@ These decisions are structural, not cosmetic. They exist specifically to prevent
 - `docs/engineering/audits/routing-and-flash-diagnosis.md` — flash causes and v2 structural fixes; `returnTo` threading bug that these pages must not repeat
 - `docs/design/general-formatting-standards.md` — spacing, type scale, motion budget
 - `docs/engineering/planning/routing.md` — guard stacks, `returnTo` flow, `/verify-email` and `/onboarding` guard exceptions
+- `google-auth-library` npm package — server-side Google OAuth token exchange
+- GCP Console → APIs & Services → Credentials — where `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are created
 
 **Referenced by:**
 - `src/auth/pages/Login.tsx`
