@@ -159,6 +159,7 @@ const NAV_ITEMS = [
   { label: "Feature Flags", path: "/feature-flags", icon: <FeatureFlagsIcon />, ownerOnly: true },
   { label: "Outreach", path: "/outreach-scraper", icon: <OutreachIcon />, ownerOnly: true },
   { label: "Staff", path: "/staff", icon: <StaffIcon />, ownerOnly: true },
+  { label: "Team Suite", path: "/team-suite", icon: <FeatureFlagsIcon />, ownerOnly: true },
 ];
 
 /**

@@ -27,6 +27,8 @@ import staffRoutes from "./routes/staff.js";
 import notificationsRoutes from "./routes/notifications.js";
 import flagsRoutes from "./routes/flags.js";
 import outreachRoutes from "./routes/outreach.js";
+import suiteRoutes from "./routes/suite.js";
+import adminTeamSuiteRoutes from "./routes/adminTeamSuite.js";
 import { methodAwareLimiter } from "./middleware/rateLimit.js";
 import { bodyBoundsCheck } from "./middleware/bodyBounds.js";
 import { syncSports } from "./utils/syncSports.js";
@@ -106,6 +108,8 @@ app.use("/sport-prefab-presets", sportPrefabPresetsRoutes);
 app.use("/staff", staffRoutes);
 app.use("/notifications", notificationsRoutes);
 app.use("/flags", flagsRoutes);
+app.use("/teams/:teamId/suite", suiteRoutes);
+app.use("/admin/team-suite", adminTeamSuiteRoutes);
 
 // --------------- Static files ---------------
 

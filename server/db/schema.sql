@@ -940,3 +940,204 @@ VALUES
   ('Notre Dame College','Notre Dame (OH)','ndcfalcons.com','custom',NULL,'D2',FALSE),
   ('Urbana University','Urbana','urbanaathletics.com','custom',NULL,'D2',FALSE)
 ON CONFLICT (athletic_domain) DO NOTHING;
+
+-- ============================================================
+-- Team Suite — per-team paid feature entitlements + data tables
+-- See server/routes/suite.js and src/pages/app/suite/ for the
+-- full feature implementation.
+-- Features: roster, practice_plans, install_calendar,
+--           game_plans, assignments
+-- ============================================================
+
+-- Per-team entitlement flags (admin toggles these)
+CREATE TABLE IF NOT EXISTS team_suite_features (
+  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  feature TEXT NOT NULL CHECK (feature IN ('roster', 'practice_plans', 'install_calendar', 'game_plans', 'assignments')),
+  enabled BOOLEAN NOT NULL DEFAULT false,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (team_id, feature)
+);
+CREATE INDEX IF NOT EXISTS team_suite_features_team_idx ON team_suite_features(team_id);
+
+-- Roster players
+CREATE TABLE IF NOT EXISTS suite_players (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  jersey_number TEXT NOT NULL DEFAULT '',
+  position TEXT NOT NULL DEFAULT '',
+  class_year TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'injured')),
+  notes TEXT NOT NULL DEFAULT '',
+  sort_order INT NOT NULL DEFAULT 0,
+  created_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS suite_players_team_idx ON suite_players(team_id);
+
+-- Depth chart entries (position -> player ordering by depth slot)
+CREATE TABLE IF NOT EXISTS suite_depth_chart (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  player_id UUID NOT NULL REFERENCES suite_players(id) ON DELETE CASCADE,
+  position TEXT NOT NULL,
+  depth_slot INT NOT NULL DEFAULT 1 CHECK (depth_slot >= 1),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (team_id, player_id, position)
+);
+CREATE INDEX IF NOT EXISTS suite_depth_chart_team_idx ON suite_depth_chart(team_id, position);
+
+-- Practice plans
+CREATE TABLE IF NOT EXISTS suite_practice_plans (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  plan_date DATE NOT NULL,
+  title TEXT NOT NULL,
+  notes TEXT NOT NULL DEFAULT '',
+  created_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS suite_practice_plans_team_idx ON suite_practice_plans(team_id, plan_date);
+
+-- Practice plan blocks (ordered segments within a plan)
+CREATE TABLE IF NOT EXISTS suite_practice_blocks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  plan_id UUID NOT NULL REFERENCES suite_practice_plans(id) ON DELETE CASCADE,
+  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  block_type TEXT NOT NULL DEFAULT 'drill' CHECK (block_type IN ('warmup', 'drill', 'install', 'team_period', 'conditioning', 'notes', 'other')),
+  title TEXT NOT NULL,
+  duration_minutes INT,
+  start_time TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  play_id UUID REFERENCES plays(id) ON DELETE SET NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS suite_practice_blocks_plan_idx ON suite_practice_blocks(plan_id);
+CREATE INDEX IF NOT EXISTS suite_practice_blocks_team_idx ON suite_practice_blocks(team_id);
+
+-- Install calendar items
+CREATE TABLE IF NOT EXISTS suite_install_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  install_date DATE NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL DEFAULT 'concept' CHECK (category IN ('concept', 'play', 'drill', 'focus', 'other')),
+  play_id UUID REFERENCES plays(id) ON DELETE SET NULL,
+  created_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS suite_install_items_team_idx ON suite_install_items(team_id, install_date);
+
+-- Game plans
+CREATE TABLE IF NOT EXISTS suite_game_plans (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  opponent TEXT NOT NULL,
+  game_date DATE,
+  goals TEXT NOT NULL DEFAULT '',
+  key_notes TEXT NOT NULL DEFAULT '',
+  personnel_notes TEXT NOT NULL DEFAULT '',
+  opponent_tendencies TEXT NOT NULL DEFAULT '',
+  reminders TEXT NOT NULL DEFAULT '',
+  selected_play_ids UUID[] NOT NULL DEFAULT '{}',
+  created_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS suite_game_plans_team_idx ON suite_game_plans(team_id, game_date);
+
+-- Player assignments
+CREATE TABLE IF NOT EXISTS suite_assignments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  assignment_type TEXT NOT NULL DEFAULT 'general' CHECK (assignment_type IN ('play', 'install', 'practice', 'general')),
+  play_id UUID REFERENCES plays(id) ON DELETE SET NULL,
+  created_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS suite_assignments_team_idx ON suite_assignments(team_id);
+
+-- Assignment progress per player or position group
+CREATE TABLE IF NOT EXISTS suite_assignment_progress (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  assignment_id UUID NOT NULL REFERENCES suite_assignments(id) ON DELETE CASCADE,
+  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  player_id UUID REFERENCES suite_players(id) ON DELETE CASCADE,
+  position_group TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'not_started' CHECK (status IN ('not_started', 'learning', 'ready', 'mastered')),
+  notes TEXT NOT NULL DEFAULT '',
+  updated_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS suite_assignment_progress_assignment_idx ON suite_assignment_progress(assignment_id);
+CREATE INDEX IF NOT EXISTS suite_assignment_progress_team_idx ON suite_assignment_progress(team_id);
+
+-- ============================================================
+-- Suite v2 additions
+-- ============================================================
+
+-- Link roster entries to real team member accounts (nullable for unlisted players)
+DO $$ BEGIN
+  ALTER TABLE suite_players ADD COLUMN user_id UUID REFERENCES users(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+
+-- One profile per user per team
+CREATE UNIQUE INDEX IF NOT EXISTS suite_players_team_user_unique
+  ON suite_players(team_id, user_id) WHERE user_id IS NOT NULL;
+
+-- Per-member progress + view tracking keyed to real user accounts (replaces suite_players-based tracking)
+CREATE TABLE IF NOT EXISTS suite_assignment_member_status (
+  assignment_id UUID NOT NULL REFERENCES suite_assignments(id) ON DELETE CASCADE,
+  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'not_started' CHECK (status IN ('not_started', 'learning', 'ready', 'mastered')),
+  viewed_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (assignment_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS suite_asgn_member_status_asgn_idx ON suite_assignment_member_status(assignment_id);
+CREATE INDEX IF NOT EXISTS suite_asgn_member_status_team_idx ON suite_assignment_member_status(team_id, user_id);
+
+-- ============================================================
+-- Suite v3 additions (June 2026)
+-- ============================================================
+
+-- Player tags for roster filtering and grouping
+DO $$ BEGIN
+  ALTER TABLE suite_players ADD COLUMN tags TEXT[] NOT NULL DEFAULT '{}';
+EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+
+-- YouTube video links on install calendar items
+DO $$ BEGIN
+  ALTER TABLE suite_install_items ADD COLUMN youtube_url TEXT;
+EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+
+-- Game plan plays — rich per-play content blocks attached to a game plan.
+-- Replaces the flat selected_play_ids UUID[] with structured records.
+CREATE TABLE IF NOT EXISTS suite_game_plan_plays (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  game_plan_id UUID NOT NULL REFERENCES suite_game_plans(id) ON DELETE CASCADE,
+  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  play_id UUID REFERENCES plays(id) ON DELETE SET NULL,
+  description TEXT NOT NULL DEFAULT '',
+  body_text TEXT NOT NULL DEFAULT '',
+  bullet_points TEXT[] NOT NULL DEFAULT '{}',
+  tagged_user_ids UUID[] NOT NULL DEFAULT '{}',
+  youtube_url TEXT,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_suite_gp_plays_plan ON suite_game_plan_plays(game_plan_id);
+CREATE INDEX IF NOT EXISTS idx_suite_gp_plays_team ON suite_game_plan_plays(team_id);
