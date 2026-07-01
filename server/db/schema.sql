@@ -1082,6 +1082,10 @@ CREATE TABLE IF NOT EXISTS suite_assignment_progress (
 );
 CREATE INDEX IF NOT EXISTS suite_assignment_progress_assignment_idx ON suite_assignment_progress(assignment_id);
 CREATE INDEX IF NOT EXISTS suite_assignment_progress_team_idx ON suite_assignment_progress(team_id);
+-- Required by ON CONFLICT in PUT /assignments/:id/progress
+CREATE UNIQUE INDEX IF NOT EXISTS suite_assignment_progress_player_uq
+  ON suite_assignment_progress (assignment_id, team_id, player_id)
+  WHERE player_id IS NOT NULL;
 
 -- ============================================================
 -- Suite v2 additions

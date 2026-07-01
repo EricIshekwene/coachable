@@ -6,6 +6,8 @@
  * GET /teams/:teamId/suite/features. Re-fetches when the active team changes.
  *
  * Provides useSuiteFeature(name) → boolean for gating routes and nav items.
+ * Provides useSuiteLoading() → boolean so gates can show a spinner instead of
+ * redirecting before the fetch settles.
  * Fails silently — if the request errors, all features default to false.
  */
 
@@ -14,8 +16,8 @@ import { apiFetch } from "../utils/api";
 
 const SUITE_FEATURES = ["roster", "practice_plans", "install_calendar", "game_plans", "assignments"];
 
-/** @type {React.Context<Record<string, boolean>>} */
-const SuiteContext = createContext({});
+/** @type {React.Context<{ features: Record<string, boolean>, loading: boolean }>} */
+const SuiteContext = createContext({ features: {}, loading: true });
 
 /**
  * Provides resolved suite features to the component tree.
@@ -25,12 +27,15 @@ const SuiteContext = createContext({});
  */
 export function SuiteProvider({ children, teamId }) {
   const [features, setFeatures] = useState({});
+  const [loading, setLoading] = useState(true);
 
   const fetchFeatures = useCallback(async () => {
     if (!teamId) {
       setFeatures({});
+      setLoading(false);
       return;
     }
+    setLoading(true);
     try {
       const data = await apiFetch(`/teams/${teamId}/suite/features`);
       setFeatures(data.features || {});
@@ -39,6 +44,8 @@ export function SuiteProvider({ children, teamId }) {
       const defaultOff = {};
       for (const f of SUITE_FEATURES) defaultOff[f] = false;
       setFeatures(defaultOff);
+    } finally {
+      setLoading(false);
     }
   }, [teamId]);
 
@@ -47,7 +54,7 @@ export function SuiteProvider({ children, teamId }) {
   }, [fetchFeatures]);
 
   return (
-    <SuiteContext.Provider value={features}>
+    <SuiteContext.Provider value={{ features, loading }}>
       {children}
     </SuiteContext.Provider>
   );
@@ -61,10 +68,15 @@ export function SuiteProvider({ children, teamId }) {
  * @returns {boolean}
  */
 export function useSuiteFeature(name) {
-  return useContext(SuiteContext)[name] ?? false;
+  return useContext(SuiteContext).features[name] ?? false;
 }
 
 /** Access the full suite features map. */
 export function useSuiteFeatures() {
-  return useContext(SuiteContext);
+  return useContext(SuiteContext).features;
+}
+
+/** Returns true while the initial feature fetch is in flight. */
+export function useSuiteLoading() {
+  return useContext(SuiteContext).loading;
 }

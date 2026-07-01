@@ -29,6 +29,9 @@ import {
   requireEnum,
   requireUuid,
   optionalUuid,
+  requireDate,
+  optionalDate,
+  requireUuidArray,
   LIMITS,
 } from "../lib/validate.js";
 
@@ -72,6 +75,28 @@ function requireCoachRole(req, res, next) {
     return res.status(403).json({ error: "Coach access required" });
   }
   next();
+}
+
+/**
+ * Verifies that a play UUID belongs to the given team.
+ * Sends a 400 response and returns false if the check fails.
+ * Call only when playId is non-null.
+ *
+ * @param {string} teamId
+ * @param {string} playId
+ * @param {import('express').Response} res
+ * @returns {Promise<boolean>}
+ */
+async function verifyPlayOwnership(teamId, playId, res) {
+  const { rows } = await pool.query(
+    `SELECT id FROM plays WHERE id = $1 AND team_id = $2`,
+    [playId, teamId]
+  );
+  if (!rows.length) {
+    res.status(400).json({ error: "Play not found" });
+    return false;
+  }
+  return true;
 }
 
 // ── Suite features endpoint ───────────────────────────────────────────────────
@@ -214,6 +239,7 @@ router.patch(
           RETURNING *`,
         values
       );
+      if (!rows.length) return res.status(404).json({ error: "Player not found" });
       res.json({ player: rows[0] });
     } catch (err) {
       next(err);
@@ -374,7 +400,7 @@ router.post(
     try {
       const { teamId } = req.params;
       const title = requireString(req.body?.title, { field: "title", max: LIMITS.TITLE });
-      const planDate = requireString(req.body?.planDate, { field: "planDate", max: 20 });
+      const planDate = requireDate(req.body?.planDate, { field: "planDate" });
       const notes = optionalString(req.body?.notes, { field: "notes", max: LIMITS.MEDIUM_TEXT }) ?? "";
 
       const { rows } = await pool.query(
@@ -410,7 +436,7 @@ router.patch(
       if (!existing.length) return res.status(404).json({ error: "Practice plan not found" });
 
       const title = optionalString(req.body?.title, { field: "title", max: LIMITS.TITLE });
-      const planDate = optionalString(req.body?.planDate, { field: "planDate", max: 20 });
+      const planDate = optionalDate(req.body?.planDate, { field: "planDate" });
       const notes = optionalString(req.body?.notes, { field: "notes", max: LIMITS.MEDIUM_TEXT });
 
       const setClauses = ["updated_at = now()"];
@@ -427,6 +453,7 @@ router.patch(
           RETURNING *`,
         values
       );
+      if (!rows.length) return res.status(404).json({ error: "Practice plan not found" });
       res.json({ plan: rows[0] });
     } catch (err) {
       next(err);
@@ -486,6 +513,8 @@ router.post(
       const playId = optionalUuid(req.body?.playId, { field: "playId" });
       const sortOrder = optionalInt(req.body?.sortOrder, { field: "sortOrder", min: 0, max: 9999 }) ?? 0;
 
+      if (playId && !(await verifyPlayOwnership(teamId, playId, res))) return;
+
       const { rows } = await pool.query(
         `INSERT INTO suite_practice_blocks
            (plan_id, team_id, block_type, title, duration_minutes, start_time, description, play_id, sort_order)
@@ -527,6 +556,8 @@ router.patch(
       const playId = req.body?.playId !== undefined ? optionalUuid(req.body.playId, { field: "playId" }) : undefined;
       const sortOrder = optionalInt(req.body?.sortOrder, { field: "sortOrder", min: 0, max: 9999 });
 
+      if (playId && !(await verifyPlayOwnership(teamId, playId, res))) return;
+
       const setClauses = ["updated_at = now()"];
       const values = [];
       let idx = 1;
@@ -545,6 +576,7 @@ router.patch(
           RETURNING *`,
         values
       );
+      if (!rows.length) return res.status(404).json({ error: "Block not found" });
       res.json({ block: rows[0] });
     } catch (err) {
       next(err);
@@ -621,12 +653,14 @@ router.post(
   async (req, res, next) => {
     try {
       const { teamId } = req.params;
-      const installDate = requireString(req.body?.installDate, { field: "installDate", max: 20 });
+      const installDate = requireDate(req.body?.installDate, { field: "installDate" });
       const title = requireString(req.body?.title, { field: "title", max: LIMITS.TITLE });
       const description = optionalString(req.body?.description, { field: "description", max: LIMITS.MEDIUM_TEXT }) ?? "";
       const category = optionalEnum(req.body?.category, ["concept", "play", "drill", "focus", "other"], { field: "category" }) ?? "concept";
       const playId = optionalUuid(req.body?.playId, { field: "playId" });
       const youtubeUrl = optionalString(req.body?.youtubeUrl, { field: "youtubeUrl", max: 500 }) ?? null;
+
+      if (playId && !(await verifyPlayOwnership(teamId, playId, res))) return;
 
       const { rows } = await pool.query(
         `INSERT INTO suite_install_items
@@ -661,12 +695,14 @@ router.patch(
       );
       if (!existing.length) return res.status(404).json({ error: "Install item not found" });
 
-      const installDate = optionalString(req.body?.installDate, { field: "installDate", max: 20 });
+      const installDate = optionalDate(req.body?.installDate, { field: "installDate" });
       const title = optionalString(req.body?.title, { field: "title", max: LIMITS.TITLE });
       const description = optionalString(req.body?.description, { field: "description", max: LIMITS.MEDIUM_TEXT });
       const category = optionalEnum(req.body?.category, ["concept", "play", "drill", "focus", "other"], { field: "category" });
       const playId = req.body?.playId !== undefined ? optionalUuid(req.body.playId, { field: "playId" }) : undefined;
       const youtubeUrl = req.body?.youtubeUrl !== undefined ? optionalString(req.body.youtubeUrl, { field: "youtubeUrl", max: 500 }) : undefined;
+
+      if (playId && !(await verifyPlayOwnership(teamId, playId, res))) return;
 
       const setClauses = ["updated_at = now()"];
       const values = [];
@@ -685,6 +721,7 @@ router.patch(
           RETURNING *`,
         values
       );
+      if (!rows.length) return res.status(404).json({ error: "Install item not found" });
       res.json({ item: rows[0] });
     } catch (err) {
       next(err);
@@ -822,13 +859,13 @@ router.post(
     try {
       const { teamId } = req.params;
       const opponent = requireString(req.body?.opponent, { field: "opponent", max: LIMITS.NAME });
-      const gameDate = optionalString(req.body?.gameDate, { field: "gameDate", max: 20 });
+      const gameDate = optionalDate(req.body?.gameDate, { field: "gameDate" });
       const goals = optionalString(req.body?.goals, { field: "goals", max: LIMITS.LONG_TEXT }) ?? "";
       const keyNotes = optionalString(req.body?.keyNotes, { field: "keyNotes", max: LIMITS.LONG_TEXT }) ?? "";
       const personnelNotes = optionalString(req.body?.personnelNotes, { field: "personnelNotes", max: LIMITS.LONG_TEXT }) ?? "";
       const opponentTendencies = optionalString(req.body?.opponentTendencies, { field: "opponentTendencies", max: LIMITS.LONG_TEXT }) ?? "";
       const reminders = optionalString(req.body?.reminders, { field: "reminders", max: LIMITS.MEDIUM_TEXT }) ?? "";
-      const selectedPlayIds = Array.isArray(req.body?.selectedPlayIds) ? req.body.selectedPlayIds.filter((id) => typeof id === "string") : [];
+      const selectedPlayIds = requireUuidArray(req.body?.selectedPlayIds ?? [], { field: "selectedPlayIds", max: 200 });
 
       const { rows } = await pool.query(
         `INSERT INTO suite_game_plans
@@ -864,13 +901,15 @@ router.patch(
       if (!existing.length) return res.status(404).json({ error: "Game plan not found" });
 
       const opponent = optionalString(req.body?.opponent, { field: "opponent", max: LIMITS.NAME });
-      const gameDate = req.body?.gameDate !== undefined ? optionalString(req.body.gameDate, { field: "gameDate", max: 20 }) : undefined;
+      const gameDate = req.body?.gameDate !== undefined ? optionalDate(req.body.gameDate, { field: "gameDate" }) : undefined;
       const goals = optionalString(req.body?.goals, { field: "goals", max: LIMITS.LONG_TEXT });
       const keyNotes = optionalString(req.body?.keyNotes, { field: "keyNotes", max: LIMITS.LONG_TEXT });
       const personnelNotes = optionalString(req.body?.personnelNotes, { field: "personnelNotes", max: LIMITS.LONG_TEXT });
       const opponentTendencies = optionalString(req.body?.opponentTendencies, { field: "opponentTendencies", max: LIMITS.LONG_TEXT });
       const reminders = optionalString(req.body?.reminders, { field: "reminders", max: LIMITS.MEDIUM_TEXT });
-      const selectedPlayIds = Array.isArray(req.body?.selectedPlayIds) ? req.body.selectedPlayIds.filter((id) => typeof id === "string") : undefined;
+      const selectedPlayIds = req.body?.selectedPlayIds !== undefined
+        ? requireUuidArray(req.body.selectedPlayIds, { field: "selectedPlayIds", max: 200 })
+        : undefined;
 
       const setClauses = ["updated_at = now()"];
       const values = [];
@@ -891,6 +930,7 @@ router.patch(
           RETURNING *`,
         values
       );
+      if (!rows.length) return res.status(404).json({ error: "Game plan not found" });
       res.json({ plan: rows[0] });
     } catch (err) {
       next(err);
@@ -951,6 +991,8 @@ router.post(
       const bodyText = optionalString(req.body?.bodyText, { field: "bodyText", max: LIMITS.LONG_TEXT }) ?? "";
       const bulletPoints = Array.isArray(req.body?.bulletPoints) ? req.body.bulletPoints.filter((b) => typeof b === "string") : [];
       const taggedUserIds = Array.isArray(req.body?.taggedUserIds) ? req.body.taggedUserIds.filter((id) => typeof id === "string") : [];
+
+      if (playId && !(await verifyPlayOwnership(teamId, playId, res))) return;
       const youtubeUrl = optionalString(req.body?.youtubeUrl, { field: "youtubeUrl", max: 500 }) ?? null;
       const sortOrder = optionalInt(req.body?.sortOrder, { field: "sortOrder", min: 0, max: 9999 }) ?? 0;
 
@@ -965,7 +1007,7 @@ router.post(
       // Fetch play details to return with the new entry
       let playTitle = null, playData = null;
       if (playId) {
-        const { rows: playRows } = await pool.query(`SELECT title, play_data FROM plays WHERE id = $1`, [playId]);
+        const { rows: playRows } = await pool.query(`SELECT title, play_data FROM plays WHERE id = $1 AND team_id = $2`, [playId, teamId]);
         if (playRows.length) { playTitle = playRows[0].title; playData = playRows[0].play_data; }
       }
       res.status(201).json({ play: { ...rows[0], play_title: playTitle, play_data: playData } });
@@ -1002,6 +1044,8 @@ router.patch(
       const youtubeUrl = req.body?.youtubeUrl !== undefined ? optionalString(req.body.youtubeUrl, { field: "youtubeUrl", max: 500 }) : undefined;
       const sortOrder = optionalInt(req.body?.sortOrder, { field: "sortOrder", min: 0, max: 9999 });
 
+      if (playId && !(await verifyPlayOwnership(teamId, playId, res))) return;
+
       const setClauses = ["updated_at = now()"];
       const values = [];
       let idx = 1;
@@ -1020,12 +1064,13 @@ router.patch(
           RETURNING *`,
         values
       );
+      if (!rows.length) return res.status(404).json({ error: "Game plan play not found" });
 
       // Re-fetch play details
       const updated = rows[0];
       let playTitle = null, playData = null;
       if (updated.play_id) {
-        const { rows: playRows } = await pool.query(`SELECT title, play_data FROM plays WHERE id = $1`, [updated.play_id]);
+        const { rows: playRows } = await pool.query(`SELECT title, play_data FROM plays WHERE id = $1 AND team_id = $2`, [updated.play_id, teamId]);
         if (playRows.length) { playTitle = playRows[0].title; playData = playRows[0].play_data; }
       }
       res.json({ play: { ...updated, play_title: playTitle, play_data: playData } });
@@ -1077,7 +1122,7 @@ router.get(
     try {
       const { teamId } = req.params;
       const { rows: assignments } = await pool.query(
-        `SELECT a.*, p.title AS play_title, p.play_data AS play_data
+        `SELECT a.*, p.title AS play_title
            FROM suite_assignments a
            LEFT JOIN plays p ON p.id = a.play_id
           WHERE a.team_id = $1
@@ -1116,6 +1161,8 @@ router.post(
       const assignmentType = optionalEnum(req.body?.assignmentType, ["play", "install", "practice", "general"], { field: "assignmentType" }) ?? "general";
       const playId = optionalUuid(req.body?.playId, { field: "playId" });
 
+      if (playId && !(await verifyPlayOwnership(teamId, playId, res))) return;
+
       const { rows } = await pool.query(
         `INSERT INTO suite_assignments (team_id, title, description, assignment_type, play_id, created_by_user_id)
          VALUES ($1, $2, $3, $4, $5, $6)
@@ -1153,6 +1200,8 @@ router.patch(
       const assignmentType = optionalEnum(req.body?.assignmentType, ["play", "install", "practice", "general"], { field: "assignmentType" });
       const playId = req.body?.playId !== undefined ? optionalUuid(req.body.playId, { field: "playId" }) : undefined;
 
+      if (playId && !(await verifyPlayOwnership(teamId, playId, res))) return;
+
       const setClauses = ["updated_at = now()"];
       const values = [];
       let idx = 1;
@@ -1168,6 +1217,7 @@ router.patch(
           RETURNING *`,
         values
       );
+      if (!rows.length) return res.status(404).json({ error: "Assignment not found" });
       res.json({ assignment: rows[0] });
     } catch (err) {
       next(err);

@@ -67,7 +67,7 @@ import RosterPage from "./pages/app/suite/RosterPage";
 import SchedulePage from "./pages/app/suite/SchedulePage";
 import GamePlansPage from "./pages/app/suite/GamePlansPage";
 import AssignmentsPage from "./pages/app/suite/AssignmentsPage";
-import { useSuiteFeatures } from "./context/SuiteContext";
+import { useSuiteFeatures, useSuiteLoading } from "./context/SuiteContext";
 import MobileViewOnlyGate from "./components/MobileViewOnlyGate";
 import SharedPlay from "./pages/SharedPlay";
 import SharedPlayView from "./pages/SharedPlayView";
@@ -334,7 +334,10 @@ export function RequireFlag({ flag, fallback = "/app/plays", children }) {
  */
 export function RequireSuiteFeature({ feature, fallback = "/app/plays", children }) {
   const features = useSuiteFeatures();
+  const loading = useSuiteLoading();
   const featureList = Array.isArray(feature) ? feature : [feature];
+  // Wait for the initial fetch before deciding — avoids redirect on page refresh
+  if (loading) return null;
   const enabled = featureList.some((f) => features[f] === true);
   if (!enabled) return <Navigate to={fallback} replace />;
   return children;

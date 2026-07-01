@@ -94,6 +94,7 @@ app.use("/teams", folderRoutes);
 app.use("/users", userRoutes);
 app.use("/verification", verificationRoutes);
 app.use("/admin/outreach", outreachRoutes);
+app.use("/admin/team-suite", adminTeamSuiteRoutes);
 app.use("/admin", adminRoutes);
 app.use("/shared", sharedRoutes);
 app.use("/error-reports", errorReportRoutes);
@@ -109,7 +110,6 @@ app.use("/staff", staffRoutes);
 app.use("/notifications", notificationsRoutes);
 app.use("/flags", flagsRoutes);
 app.use("/teams/:teamId/suite", suiteRoutes);
-app.use("/admin/team-suite", adminTeamSuiteRoutes);
 
 // --------------- Static files ---------------
 

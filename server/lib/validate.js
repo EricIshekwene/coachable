@@ -180,6 +180,35 @@ export function requireSlug(value, { field, max = LIMITS.ENUM_KEY }) {
   return v;
 }
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Throws unless value is a YYYY-MM-DD date string. */
+export function requireDate(value, { field }) {
+  if (typeof value !== "string") fail(field, "must be a date string (YYYY-MM-DD)");
+  const v = value.trim();
+  if (!DATE_RE.test(v)) fail(field, "must be a valid date in YYYY-MM-DD format");
+  return v;
+}
+
+/** Returns a YYYY-MM-DD string or undefined for null/undefined/empty. */
+export function optionalDate(value, { field }) {
+  if (value === null || value === undefined || value === "") return undefined;
+  return requireDate(value, { field });
+}
+
+/**
+ * Validates that value is an array where every element is a valid UUID string.
+ * Returns the filtered, validated array.
+ */
+export function requireUuidArray(value, { field, max = 1000 }) {
+  if (!Array.isArray(value)) fail(field, "must be an array");
+  if (value.length > max) fail(field, `must have at most ${max} items`);
+  for (const id of value) {
+    if (typeof id !== "string" || !UUID_RE.test(id)) fail(field, "each element must be a valid UUID");
+  }
+  return value;
+}
+
 /** Returns a digit-only string of fixed length (e.g. for OTP codes). */
 export function requireCode(value, { field = "code", length = 6 } = {}) {
   if (typeof value !== "string") fail(field, "must be a string");
