@@ -9,6 +9,7 @@ import {
   FiPlus, FiEdit2, FiTrash2, FiLogOut, FiFolder, FiFolderPlus,
   FiChevronRight, FiLink, FiCheck, FiX, FiEdit3, FiLayout, FiSearch, FiCopy,
   FiBookOpen, FiEye, FiEyeOff, FiMoreHorizontal, FiMenu, FiClock, FiTag, FiSliders,
+  FiSmartphone,
 } from "react-icons/fi";
 import PlayPreviewCard from "../components/PlayPreviewCard";
 import ConfirmModal from "../components/subcomponents/ConfirmModal";
@@ -677,11 +678,12 @@ function PlayCard({
   const [menuStep, setMenuStep] = useState(null);
   const [tagInput, setTagInput] = useState("");
   const [renameValue, setRenameValue] = useState("");
+  const navigate = useNavigate();
   const menuRef = useRef(null);
   const tagInputRef = useRef(null);
   const renameInputRef = useRef(null);
-  const hasSecondaryActions = canCopyShareLinks || canDuplicate || canRename || canAddToSection || canMove || canEditTags || canDelete || canRemoveFromSection;
-  const hasPrimaryMenuActions = canCopyShareLinks || canDuplicate || canRename;
+  const hasSecondaryActions = true;
+  const hasPrimaryMenuActions = true;
   const hasGroupedMenuActions = canAddToSection || canMove || canEditTags;
 
   useEffect(() => {
@@ -731,6 +733,15 @@ function PlayCard({
           {/* ── Step 1: main popup ── */}
           {menuStep === "main" && (
             <div className="absolute right-0 top-full z-30 mt-1 w-52 overflow-hidden rounded-xl py-1" style={MENU_STYLE}>
+              <button
+                onClick={() => { navigate(`/admin/plays/${play.id}/ad-view`); close(); }}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition hover:opacity-80"
+                style={{ color: "var(--adm-text2)" }}
+              >
+                <FiSmartphone className="shrink-0 text-[10px]" />
+                Ad View
+              </button>
+
               {/* Copy link */}
               {canCopyShareLinks && <CopyLinkButton play={play} onClose={close} />}
 

@@ -29,6 +29,7 @@ import AdminSportPresetsPage from "./pages/AdminSportPresetsPage";
 import AdminSportPrefabPresetsPage from "./pages/AdminSportPrefabPresetsPage";
 import AdminPrefabPresetEditPage from "./pages/AdminPrefabPresetEditPage";
 import AdminPlaysPage from "./pages/AdminPlaysPage";
+import AdminPlayAdView from "./pages/AdminPlayAdView";
 import AdminUserActivity from "./pages/AdminUserActivity";
 import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminUserIssues from "./pages/AdminUserIssues";
@@ -397,6 +398,7 @@ export function AppRoutes() {
         <Route path="/admin/record" element={<RequireAdminSession><SlateRecordRoot /></RequireAdminSession>} />
         <Route path="/admin/drawing" element={<RequireAdminSession><SlateDrawingRoot /></RequireAdminSession>} />
         <Route path="/admin/app" element={<RequireAdminSession><AdminPlaysPage /></RequireAdminSession>} />
+        <Route path="/admin/plays/:playId/ad-view" element={<RequireAdminSession><AdminPlayAdView /></RequireAdminSession>} />
         <Route path="/admin/plays/:playId/edit" element={<RequireAdminSession><AdminPlayEditPage /></RequireAdminSession>} />
         <Route path="/admin/presets/:sport" element={<RequireAdminSession><AdminSportPresetsPage /></RequireAdminSession>} />
         <Route path="/admin/presets/:sport/:presetId/edit" element={<RequireAdminSession><AdminPresetEditPage /></RequireAdminSession>} />
