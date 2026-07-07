@@ -72,9 +72,31 @@ behavior change): `tutorial-new-play`, `tutorial-preset-grid` /
 as `theme`/`player_view_mode`) tracks completion. `PATCH
 /users/me/preferences` accepts `tutorialCompleted: true|false` (`true` sets
 `now()`, `false` clears it for a replay). `GET /auth/me` folds it into
-`user.tutorialCompleted`. `AppLayout.jsx` auto-starts the tour once per app
-mount when a user with `tutorialCompleted === false` lands on `/app/plays`.
-Settings → **Replay Tutorial** clears the flag and restarts the tour.
+`user.tutorialCompleted`. Settings → **Replay Tutorial** clears the flag and
+restarts the tour.
+
+## Rollout status — not live for real coaches yet
+
+`AppLayout.jsx` has an auto-start effect that would launch the tour the first
+time a coach with `tutorialCompleted === false` lands on `/app/plays`, but
+it's currently **disabled** via the `TUTORIAL_AUTO_LAUNCH_FOR_NEW_USERS`
+constant at the top of that file. Flip it to `true` once the tour is
+reviewed and approved to go live for real coaches.
+
+Until then, the tour is reachable two ways:
+- **Admin preview** — the "Preview Onboarding Tutorial" button on the
+  `/admin` dashboard (`src/pages/Admin.jsx`) calls
+  `POST /admin/tutorial-preview/login` (`server/routes/admin.js`), which
+  creates-or-reuses a disposable demo coach account
+  (`tutorial-preview@coachable-admin.invalid`), resets its tutorial-completed
+  flag, wipes any plays from a prior preview run, and mints a login token.
+  The admin's browser is logged into that account and hard-navigated to
+  `/app/plays?startTutorial=1`.
+- **`?startTutorial=1`** — `AppLayoutInner` reads this query param on any
+  `/app/*` route and force-starts the tour regardless of
+  `tutorialCompleted`, then strips the param from the URL. This is the same
+  mechanism the admin preview button uses, and can also be used manually
+  against any real logged-in account for testing.
 
 ## Known limitation
 

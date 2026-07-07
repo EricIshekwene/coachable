@@ -181,7 +181,8 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 | "tutorial state", "tour context", "useTutorial" | [src/context/TutorialContext.jsx](src/context/TutorialContext.jsx) | `TutorialProvider`/`useTutorial()`; click-to-advance logic; mounted in App.jsx above the router |
 | "tutorial steps", "tour script" | [src/context/tutorialSteps.js](src/context/tutorialSteps.js) | Pure step data + reducer; `getTutorialSteps(user)` skips the invite flow for solo/personal-team accounts |
 | "replay tutorial" (Settings) | [src/pages/app/Settings.jsx](src/pages/app/Settings.jsx) | "Help & Tutorial" section |
-| "auto-launch tutorial" | [src/layouts/AppLayout.jsx](src/layouts/AppLayout.jsx) | Fires once per mount for `tutorialCompleted === false` users landing on `/app/plays` |
+| "auto-launch tutorial" | [src/layouts/AppLayout.jsx](src/layouts/AppLayout.jsx) | **Currently disabled** for real coaches via `TUTORIAL_AUTO_LAUNCH_FOR_NEW_USERS` (not live yet); also handles `?startTutorial=1` forced-start |
+| "preview onboarding tutorial" (admin) | [src/pages/Admin.jsx](src/pages/Admin.jsx) — "Preview Onboarding Tutorial" button on the dashboard header | Calls `POST /admin/tutorial-preview/login` ([server/routes/admin.js](server/routes/admin.js)) to log into a disposable demo coach account, then opens `/app/plays?startTutorial=1`; see rollout-status section of [TUTORIAL_OVERLAY.md](src/components/tutorial/TUTORIAL_OVERLAY.md) |
 
 ### Auth / context / routing
 | User says... | Primary file(s) |

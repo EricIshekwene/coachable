@@ -4,6 +4,7 @@ import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import pool from "../db/pool.js";
 import { generateCode, sendDangerModeEmail, sendAccountDeletedEmail, sendBroadcastEmails } from "../lib/email.js";
+import { signToken } from "../middleware/auth.js";
 import { storeGifAsset, getGifAsset } from "../lib/gifAssetStore.js";
 import { uploadToR2 } from "../lib/r2Upload.js";
 import { authLimiter } from "../middleware/rateLimit.js";
@@ -897,6 +898,94 @@ router.post("/create-account", requireOwnerOrLegacyAdmin, async (req, res, next)
     if (err.code === "23505") {
       return res.status(409).json({ error: "Email already registered" });
     }
+    next(err);
+  }
+});
+
+const TUTORIAL_PREVIEW_EMAIL = "tutorial-preview@coachable-admin.invalid";
+
+/**
+ * POST /admin/tutorial-preview/login — mints a login token for a disposable
+ * demo coach account (creating it on first use) so admins can preview the
+ * onboarding product tour end-to-end without it being exposed to real coaches.
+ * Each call resets the account's tutorial-completed flag and wipes any plays
+ * from a previous preview run, so the tour always starts from a clean slate.
+ */
+router.post("/tutorial-preview/login", requireOwnerOrLegacyAdmin, async (req, res, next) => {
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const { rows: existing } = await client.query(
+        "SELECT id FROM users WHERE email = $1",
+        [TUTORIAL_PREVIEW_EMAIL]
+      );
+
+      let userId;
+      let teamId;
+      if (existing.length) {
+        userId = existing[0].id;
+        const { rows: teamRows } = await client.query(
+          `SELECT team_id FROM team_memberships WHERE user_id = $1 AND role = 'owner' LIMIT 1`,
+          [userId]
+        );
+        teamId = teamRows[0]?.team_id;
+      } else {
+        const hash = await bcrypt.hash(crypto.randomBytes(24).toString("hex"), 10);
+        const { rows: userRows } = await client.query(
+          `INSERT INTO users (name, email, password_hash, email_verified_at, onboarded_at)
+           VALUES ($1, $2, $3, now(), now())
+           RETURNING id`,
+          ["Tutorial Preview Coach", TUTORIAL_PREVIEW_EMAIL, hash]
+        );
+        userId = userRows[0].id;
+
+        await client.query(
+          "INSERT INTO user_preferences (user_id) VALUES ($1) ON CONFLICT DO NOTHING",
+          [userId]
+        );
+
+        const { rows: teamRows } = await client.query(
+          `INSERT INTO teams (name, sport, owner_user_id) VALUES ($1, $2, $3) RETURNING id`,
+          ["Tutorial Preview Team", "football", userId]
+        );
+        teamId = teamRows[0].id;
+
+        await client.query("INSERT INTO team_settings (team_id) VALUES ($1)", [teamId]);
+        await client.query(
+          `INSERT INTO team_memberships (team_id, user_id, role) VALUES ($1, $2, 'owner')`,
+          [teamId, userId]
+        );
+
+        const playerCode = crypto.randomBytes(4).toString("hex").toUpperCase();
+        const coachCode = crypto.randomBytes(4).toString("hex").toUpperCase();
+        await client.query(
+          `INSERT INTO team_invite_codes (team_id, role, code, created_by_user_id)
+           VALUES ($1, 'player', $2, $3), ($1, 'coach', $4, $3)`,
+          [teamId, playerCode, userId, coachCode]
+        );
+      }
+
+      // Reset for a clean preview run every time.
+      await client.query(
+        "UPDATE user_preferences SET tutorial_completed_at = NULL WHERE user_id = $1",
+        [userId]
+      );
+      if (teamId) {
+        await client.query("DELETE FROM plays WHERE team_id = $1", [teamId]);
+      }
+
+      await client.query("COMMIT");
+      const token = signToken(userId);
+      res.json({ token });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
     next(err);
   }
 });

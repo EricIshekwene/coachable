@@ -46,6 +46,12 @@ const SUITE_NAV_ITEMS = [
 
 const PLAYBOOKS_ROUTE = "/app/playbooks";
 
+// Auto-launch is intentionally OFF for real coaches until the tour has been
+// reviewed and approved for rollout. Until then it's only reachable via the
+// admin "Preview Onboarding Tutorial" button (?startTutorial=1) or Settings ->
+// Replay Tutorial. Flip this to true to enable it for real first-time coaches.
+const TUTORIAL_AUTO_LAUNCH_FOR_NEW_USERS = false;
+
 /** Inner layout that can consume suite features (must be inside SuiteProvider). */
 function AppLayoutInner() {
   const { user, logout, playerViewMode, setPlayerViewMode } = useAuth();
@@ -71,13 +77,30 @@ function AppLayoutInner() {
   // Auto-launch the onboarding product tour the first time a coach reaches
   // their plays list. Fires once per mount; tutorialCompleted flips true as
   // soon as the tour starts (see AuthContext.markTutorialComplete via exit/finish).
+  // Disabled for real users for now — see TUTORIAL_AUTO_LAUNCH_FOR_NEW_USERS above.
   useEffect(() => {
+    if (!TUTORIAL_AUTO_LAUNCH_FOR_NEW_USERS) return;
     if (autoStartedTutorialRef.current) return;
     if (!user || user.tutorialCompleted || tutorialActive) return;
     if (location.pathname !== "/app/plays") return;
     autoStartedTutorialRef.current = true;
     startTutorial();
   }, [user, tutorialActive, location.pathname, startTutorial]);
+
+  // Forced preview trigger — /app/plays?startTutorial=1 starts the tour
+  // regardless of tutorialCompleted (used by the admin preview button and
+  // available as a manual escape hatch). Strips the param once consumed so
+  // a refresh or back-navigation doesn't relaunch it.
+  useEffect(() => {
+    if (!user) return;
+    const params = new URLSearchParams(location.search);
+    if (params.get("startTutorial") !== "1") return;
+    autoStartedTutorialRef.current = true;
+    startTutorial();
+    params.delete("startTutorial");
+    const nextSearch = params.toString();
+    navigate({ pathname: location.pathname, search: nextSearch ? `?${nextSearch}` : "" }, { replace: true });
+  }, [user, location.pathname, location.search, startTutorial, navigate]);
 
   // Suite feature flags
   const suiteFeatures = useSuiteFeatures();

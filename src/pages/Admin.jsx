@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiFetch } from "../utils/api";
+import { apiFetch, setAuthToken } from "../utils/api";
 import ConfirmModal from "../components/subcomponents/ConfirmModal";
 import { formatFailedTestsReport } from "../testing/formatFailedTestsReport";
 import {
@@ -448,6 +448,28 @@ export default function Admin() {
     setElevatedUntil(0);
     setSession("");
     setUsers([]);
+  };
+
+  // ── Onboarding tutorial preview ──
+  const [previewingTutorial, setPreviewingTutorial] = useState(false);
+  const [previewTutorialError, setPreviewTutorialError] = useState("");
+
+  /**
+   * Logs the browser into a disposable demo coach account and opens the
+   * real /app onboarding tour there. Not exposed to real coaches yet — see
+   * TUTORIAL_AUTO_LAUNCH_FOR_NEW_USERS in src/layouts/AppLayout.jsx.
+   */
+  const handlePreviewTutorial = async () => {
+    setPreviewTutorialError("");
+    setPreviewingTutorial(true);
+    try {
+      const data = await adminFetch("/admin/tutorial-preview/login", { method: "POST" });
+      setAuthToken(data.token);
+      window.location.href = "/app/plays?startTutorial=1";
+    } catch (err) {
+      setPreviewTutorialError(err.message || "Failed to start preview");
+      setPreviewingTutorial(false);
+    }
   };
 
   /**
@@ -1247,6 +1269,10 @@ export default function Admin() {
                 </svg>
               )}
               Refresh
+            </AdminBtn>
+            <AdminBtn variant="secondary" size="sm" onClick={handlePreviewTutorial} disabled={previewingTutorial} title={previewTutorialError || "Preview the onboarding tour on a disposable demo coach account"}>
+              {previewingTutorial ? <AdminSpinner size={12} /> : null}
+              Preview Onboarding Tutorial
             </AdminBtn>
             <AdminBtn variant="ghost" size="sm" onClick={handleLogout}>Logout</AdminBtn>
           </>
