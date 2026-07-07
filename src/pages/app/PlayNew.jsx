@@ -287,7 +287,7 @@ export default function PlayNew() {
             {filteredPresets.length === 0 ? (
               <p className="py-8 text-center text-sm text-BrandGray2">No presets match your search.</p>
             ) : (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3" data-testid="tutorial-preset-grid">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {filteredPresets.map(({ id, label, playData: tileData }) => {
                   const isSelected = selectedPresetId === id;
                   return (
@@ -295,7 +295,6 @@ export default function PlayNew() {
                       key={id}
                       type="button"
                       onClick={() => setSelectedPresetId(id)}
-                      data-testid={id === "blank" ? "tutorial-preset-blank" : undefined}
                       className={`group flex flex-col gap-1.5 rounded-xl border-2 p-1.5 text-left transition-all duration-200 focus:outline-none ${
                         isSelected
                           ? "border-BrandOrange shadow-[0_0_0_4px_rgba(255,122,24,0.12)] bg-BrandOrange/5"
@@ -452,7 +451,6 @@ export default function PlayNew() {
         <button
           type="submit"
           disabled={!title.trim() || submitting}
-          data-testid="tutorial-create-play"
           className="mt-2 flex w-full items-center justify-center rounded-lg bg-BrandOrange py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Create & Open Editor

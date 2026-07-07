@@ -13,8 +13,6 @@ import MessagePopup from "./components/MessagePopup/MessagePopup";
 import { useMessagePopup } from "./components/messaging/useMessagePopup";
 import useThemeColor from "./utils/useThemeColor";
 import { AppMessageProvider } from "./context/AppMessageContext";
-import { TutorialProvider } from "./context/TutorialContext";
-import TutorialOverlay from "./components/tutorial/TutorialOverlay";
 import Landing from "./pages/Landing";
 import Signup from "./pages/Signup";
 import Login from "./pages/Login";
@@ -543,10 +541,7 @@ function App() {
               autoHideDuration={appMessage.messagePopup.autoHideDuration}
               onClose={appMessage.hideMessage}
             />
-            <TutorialProvider>
-              <AppRoutes />
-              <TutorialOverlay />
-            </TutorialProvider>
+            <AppRoutes />
           </AppMessageProvider>
         </FeatureFlagBridge>
       </AuthProvider>

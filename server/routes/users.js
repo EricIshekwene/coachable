@@ -39,7 +39,6 @@ router.patch("/me/preferences", requireAuth, async (req, res, next) => {
     const newPlays = optionalBoolean(req.body?.newPlays, { field: "newPlays" });
     const playUpdates = optionalBoolean(req.body?.playUpdates, { field: "playUpdates" });
     const teamAnnouncements = optionalBoolean(req.body?.teamAnnouncements, { field: "teamAnnouncements" });
-    const tutorialCompleted = optionalBoolean(req.body?.tutorialCompleted, { field: "tutorialCompleted" });
 
     // Upsert preferences
     const { rows } = await pool.query(
@@ -54,11 +53,6 @@ router.patch("/me/preferences", requireAuth, async (req, res, next) => {
          notify_new_plays = COALESCE($7, user_preferences.notify_new_plays),
          notify_play_updates = COALESCE($8, user_preferences.notify_play_updates),
          notify_team_announcements = COALESCE($9, user_preferences.notify_team_announcements),
-         tutorial_completed_at = CASE
-           WHEN $10::boolean IS TRUE THEN now()
-           WHEN $10::boolean IS FALSE THEN NULL
-           ELSE user_preferences.tutorial_completed_at
-         END,
          updated_at = now()
        RETURNING *`,
       [
@@ -71,7 +65,6 @@ router.patch("/me/preferences", requireAuth, async (req, res, next) => {
         newPlays ?? null,
         playUpdates ?? null,
         teamAnnouncements ?? null,
-        tutorialCompleted ?? null,
       ]
     );
 
@@ -80,7 +73,6 @@ router.patch("/me/preferences", requireAuth, async (req, res, next) => {
       preferences: {
         theme: prefs.theme,
         playerViewMode: prefs.player_view_mode,
-        tutorialCompleted: Boolean(prefs.tutorial_completed_at),
         notifications: {
           playersJoinTeam: prefs.notify_players_join_team,
           coachesMakeChanges: prefs.notify_coaches_make_changes,

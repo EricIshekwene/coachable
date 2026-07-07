@@ -37,7 +37,6 @@ export default function ExportActions({
       <button
         type="button"
         onClick={() => onSaveToPlaybook?.()}
-        data-testid="tutorial-save-to-playbook"
         className={fullWidthActionButtonClass}
       >
         <span className={iconWrapClass}>

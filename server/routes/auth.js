@@ -176,7 +176,6 @@ router.get("/me", requireAuth, async (req, res, next) => {
         ownerId: activeTeam?.ownerId || null,
         isPersonalTeam: activeTeam?.isPersonal || false,
         isBetaTester: user.is_beta_tester || false,
-        tutorialCompleted: Boolean(prefs.tutorial_completed_at),
         notifications: {
           playersJoinTeam: prefs.notify_players_join_team ?? true,
           coachesMakeChanges: prefs.notify_coaches_make_changes ?? true,
