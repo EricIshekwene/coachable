@@ -84,6 +84,10 @@ DO $$ BEGIN
   ALTER TABLE user_preferences ADD COLUMN notify_team_announcements BOOLEAN NOT NULL DEFAULT true;
 EXCEPTION WHEN duplicate_column THEN NULL;
 END $$;
+DO $$ BEGIN
+  ALTER TABLE user_preferences ADD COLUMN tutorial_completed_at TIMESTAMPTZ;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
 
 -- Remove logo_url column from teams (safe to re-run)
 DO $$ BEGIN

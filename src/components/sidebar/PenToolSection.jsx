@@ -29,6 +29,7 @@ export default function PenToolSection({
         >
             <ButtonComponent
                 ref={anchorRef}
+                data-testid="tutorial-draw-tool"
                 Icon={IconNode}
                 {...(wide && { label: "Draw" })}
                 onHover={() => {}}

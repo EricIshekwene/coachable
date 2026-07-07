@@ -239,6 +239,7 @@ export default function SaveToPlaybookModal({
               type="button"
               onClick={handleSave}
               disabled={!canSave}
+              data-testid="tutorial-confirm-save"
               className={`${POPUP_PRIMARY_BUTTON_CLASS} disabled:opacity-40 disabled:cursor-not-allowed`}
             >
               {saving ? "Saving..." : "Save Play"}

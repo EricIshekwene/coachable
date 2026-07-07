@@ -43,6 +43,7 @@ function mapApiUserToLocal(u) {
     isPersonalTeam: u.isPersonalTeam || false,
     isBetaTester: u.isBetaTester || false,
     onboarded: u.onboarded || false,
+    tutorialCompleted: u.tutorialCompleted || false,
     notifications: {
       ...DEFAULT_NOTIFICATION_PREFERENCES,
       ...notifs,
@@ -375,6 +376,24 @@ export function AuthProvider({ children }) {
     [user?.teamId]
   );
 
+  /** Marks the onboarding product tour complete so it won't auto-launch again. */
+  const markTutorialComplete = useCallback(async () => {
+    setUser((prev) => (prev ? { ...prev, tutorialCompleted: true } : prev));
+    await apiFetch("/users/me/preferences", {
+      method: "PATCH",
+      body: { tutorialCompleted: true },
+    }).catch(() => {});
+  }, []);
+
+  /** Clears the tutorial-completed flag so it can be replayed (Settings → Replay Tutorial). */
+  const resetTutorial = useCallback(async () => {
+    setUser((prev) => (prev ? { ...prev, tutorialCompleted: false } : prev));
+    await apiFetch("/users/me/preferences", {
+      method: "PATCH",
+      body: { tutorialCompleted: false },
+    }).catch(() => {});
+  }, []);
+
   const updateAssistantPermissions = useCallback(
     async (permissions) => {
       if (!user?.teamId) return;
@@ -484,6 +503,8 @@ export function AuthProvider({ children }) {
         confirmEmailChange,
         cancelEmailChange,
         updateNotificationPreferences,
+        markTutorialComplete,
+        resetTutorial,
         updateAssistantPermissions,
         updateTeamDefaults,
         removeMember,
