@@ -45,6 +45,7 @@ export default function AddPlayerSection({
         >
             <ButtonComponent
                 ref={anchorRef}
+                data-testid="tutorial-add-player"
                 Icon={<BsPersonAdd className={isSelected ? selectedIconClass : iconClass} />}
                 label="Add Player"
                 onHover={() => {}}

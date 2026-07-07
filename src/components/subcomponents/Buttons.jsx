@@ -12,6 +12,7 @@ export const SidebarChevronButton = forwardRef(({
     onChevronClick,
     isSelected,
     chevronActive = false,
+    ...rest
 }, ref) => {
     const handleChevronClick = (e) => {
         e.stopPropagation();
@@ -55,6 +56,7 @@ export const SidebarChevronButton = forwardRef(({
                 ref={ref}
                 className="w-full flex flex-col items-center gap-1 relative"
                 onClick={() => onRowClick?.()}
+                {...rest}
             >
                 {buttonContent}
                 <span className="text-[10px] sm:text-xs text-BrandGray text-center mt-1 leading-none font-DmSans">
@@ -65,7 +67,7 @@ export const SidebarChevronButton = forwardRef(({
     }
 
     return (
-        <div ref={ref} className="w-full relative" onClick={() => onRowClick?.()}>
+        <div ref={ref} className="w-full relative" onClick={() => onRowClick?.()} {...rest}>
             {buttonContent}
         </div>
     );
@@ -83,6 +85,7 @@ export const WideSidebarRowButton = forwardRef(({
     onChevronClick,
     isSelected,
     chevronActive = false,
+    ...rest
 }, ref) => {
     const handleChevronClick = (e) => {
         e.stopPropagation();
@@ -98,6 +101,7 @@ export const WideSidebarRowButton = forwardRef(({
                 ${isSelected ? "bg-BrandBlack2" : "hover:bg-BrandBlack2/70"}
             `}
             onClick={() => onRowClick?.()}
+            {...rest}
         >
             <button
                 className={`

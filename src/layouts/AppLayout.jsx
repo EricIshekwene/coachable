@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import darkLogo from "../assets/logos/White_Coachable_Logo.png";
@@ -10,6 +10,7 @@ import NotificationBell from "../components/NotificationBell";
 import { NotificationsProvider } from "../context/NotificationsContext";
 import { useFlag } from "../context/FeatureFlagContext";
 import { SuiteProvider, useSuiteFeatures } from "../context/SuiteContext";
+import { useTutorial } from "../context/TutorialContext";
 import {
   fetchPublishedPlaybookSections,
   filterPublishedPlaybookSectionsForSport,
@@ -55,6 +56,28 @@ function AppLayoutInner() {
   const [isLight, setIsLight] = useState(document.documentElement.getAttribute("data-theme") === "light");
   const [hasPlaybookSections, setHasPlaybookSections] = useState(true);
   const notificationsEnabled = useFlag("in_app_notifications");
+  const { active: tutorialActive, startTutorial } = useTutorial();
+  const autoStartedTutorialRef = useRef(false);
+
+  // Once the tour has been active at all in this mount (auto-launched or
+  // manually via Settings -> Replay Tutorial), never auto-launch it again —
+  // otherwise exiting right after a replay would race this effect and
+  // immediately restart it (tutorialCompleted flips false -> true across two
+  // async updates, and this latch must not depend on that ordering).
+  useEffect(() => {
+    if (tutorialActive) autoStartedTutorialRef.current = true;
+  }, [tutorialActive]);
+
+  // Auto-launch the onboarding product tour the first time a coach reaches
+  // their plays list. Fires once per mount; tutorialCompleted flips true as
+  // soon as the tour starts (see AuthContext.markTutorialComplete via exit/finish).
+  useEffect(() => {
+    if (autoStartedTutorialRef.current) return;
+    if (!user || user.tutorialCompleted || tutorialActive) return;
+    if (location.pathname !== "/app/plays") return;
+    autoStartedTutorialRef.current = true;
+    startTutorial();
+  }, [user, tutorialActive, location.pathname, startTutorial]);
 
   // Suite feature flags
   const suiteFeatures = useSuiteFeatures();

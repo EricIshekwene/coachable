@@ -12,8 +12,10 @@ import {
   FiAlertTriangle,
   FiLogOut,
   FiTrash2,
+  FiPlayCircle,
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
+import { useTutorial } from "../../context/TutorialContext";
 import { INPUT_LIMITS } from "../../utils/inputValidation";
 
 const THEME_OPTIONS = [
@@ -87,6 +89,13 @@ export default function Settings() {
     leaveTeam,
   } = useAuth();
   const navigate = useNavigate();
+  const { resetTutorial, startTutorial } = useTutorial();
+
+  const handleReplayTutorial = async () => {
+    await resetTutorial();
+    navigate("/app/plays");
+    startTutorial();
+  };
 
   // Leave / delete team state
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -368,6 +377,21 @@ export default function Settings() {
             );
           })}
         </div>
+      </div>
+
+      <div className="mt-6">
+        <p className="text-xs font-semibold uppercase tracking-widest text-BrandGray2">Help &amp; Tutorial</p>
+        <p className="mt-2 text-xs text-BrandGray2">
+          Replay the guided tour that walks through creating a play and inviting your team.
+        </p>
+        <button
+          type="button"
+          onClick={handleReplayTutorial}
+          className="mt-4 flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-5 py-2.5 text-sm font-semibold text-BrandText transition hover:border-BrandOrange hover:text-BrandOrange"
+        >
+          <FiPlayCircle className="text-sm" />
+          Replay Tutorial
+        </button>
       </div>
 
       <div className="mt-8 flex items-center gap-3">
