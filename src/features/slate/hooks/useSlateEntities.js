@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SPORT_DEFAULTS } from "./useAdvancedSettings";
+import { emitTutorialEvent } from "../../../context/tutorialBus";
 
 /** Default red color used for new players. */
 export const DEFAULT_PLAYER_COLOR = "#ef4444";
@@ -342,6 +343,10 @@ export function useSlateEntities({ historyApiRef, logEvent, fieldType = "Rugby" 
       setSelectedItemIds([newId]);
     }
     logEvent?.("slate", "addPlayer", { id: newId, player: newPlayer });
+    // Onboarding-tour outcome: a player was actually created (covers both the
+    // sidebar quick-add and the click-the-field placement paths). No-op when
+    // the tour isn't running.
+    emitTutorialEvent("player-added", { id: newId });
     return newId;
   };
 

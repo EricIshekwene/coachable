@@ -57,6 +57,19 @@ function patchUsersViewState(patch) {
 
 const UNIT_MS = { minutes: 60_000, hours: 3_600_000, days: 86_400_000, months: 2_592_000_000 };
 
+/** The nine sports the tutorial preview can run under (mirrors onboarding's sport picker). */
+const TUTORIAL_PREVIEW_SPORTS = [
+  { key: "football", label: "Football" },
+  { key: "rugby", label: "Rugby" },
+  { key: "soccer", label: "Soccer" },
+  { key: "lacrosse", label: "Lacrosse" },
+  { key: "womens lacrosse", label: "Women's Lacrosse" },
+  { key: "basketball", label: "Basketball" },
+  { key: "field hockey", label: "Field Hockey" },
+  { key: "ice hockey", label: "Ice Hockey" },
+  { key: "blank", label: "Blank Canvas" },
+];
+
 // ── Test suite registry (names/descriptions only — suites loaded lazily) ──
 const SUITE_NAMES = ["Drawing Geometry", "Interpolation", "Import / Export", "Animation Schema", "Routes"];
 const SUITE_DESCRIPTIONS = {
@@ -183,6 +196,62 @@ function getSortedMemberships(memberships = []) {
  * Recent Activity section — displayed at the bottom of the admin dashboard.
  * @param {{ session: string }} props
  */
+/**
+ * "Preview Onboarding Tutorial" header button with a sport picker: choosing a
+ * sport launches the fully mocked tutorial preview under that sport (the fake
+ * team's sport drives which steps the tour includes). Closes on outside click.
+ * @param {{ onPick: (sportKey: string) => void }} props
+ */
+function TutorialPreviewMenu({ onPick }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const handlePointerDown = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [open]);
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <AdminBtn
+        variant="secondary"
+        size="sm"
+        onClick={() => setOpen((v) => !v)}
+        title="Preview the onboarding tour on a fully mocked in-memory session — pick the sport it runs under; nothing is saved and no account is created"
+      >
+        Preview Onboarding Tutorial
+        <svg className="ml-1 h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </AdminBtn>
+      {open && (
+        <div
+          className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-lg border py-1 shadow-xl"
+          style={{ backgroundColor: "var(--adm-surface-elevated)", borderColor: "var(--adm-border2)" }}
+        >
+          {TUTORIAL_PREVIEW_SPORTS.map((s) => (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => { setOpen(false); onPick(s.key); }}
+              className="block w-full px-3 py-1.5 text-left text-xs transition-colors hover:opacity-100"
+              style={{ color: "var(--adm-text)" }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--adm-surface3)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RecentActivitySection({ session }) {
   const { data, loading, error } = useDashboardAnalytics({ session, period: "30d" });
 
@@ -453,13 +522,15 @@ export default function Admin() {
 
   /**
    * Launches the onboarding tour on a fully mocked in-memory session (see
-   * src/utils/tutorialPreview.js). The real /app pages render against a fake
-   * coach and team; every API call is intercepted client-side, so nothing is
-   * written to the database and no account is created. Exiting the tour
-   * returns here automatically.
+   * src/utils/tutorialPreview.js) under the chosen sport — the fake coach's
+   * team is created with that sport, so the step list and editor adapt to it.
+   * The real /app pages render against a fake coach and team; every API call
+   * is intercepted client-side, so nothing is written to the database and no
+   * account is created. Exiting the tour returns here automatically.
+   * @param {string} sport - onboarding sport key ("football", "blank", ...)
    */
-  const handlePreviewTutorial = () => {
-    activateTutorialPreview();
+  const handlePreviewTutorial = (sport) => {
+    activateTutorialPreview(sport);
     window.location.href = "/app/plays?startTutorial=1";
   };
 
@@ -1261,9 +1332,7 @@ export default function Admin() {
               )}
               Refresh
             </AdminBtn>
-            <AdminBtn variant="secondary" size="sm" onClick={handlePreviewTutorial} title="Preview the onboarding tour on a fully mocked in-memory session — nothing is saved and no account is created">
-              Preview Onboarding Tutorial
-            </AdminBtn>
+            <TutorialPreviewMenu onPick={handlePreviewTutorial} />
             <AdminBtn variant="ghost" size="sm" onClick={handleLogout}>Logout</AdminBtn>
           </>
         }

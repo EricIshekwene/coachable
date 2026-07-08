@@ -68,6 +68,7 @@ import SaveToPlaybookModal from "../../components/SaveToPlaybookModal";
 import AuthPromptModal from "../../components/AuthPromptModal";
 import ViewOnlyControls from "../../components/ViewOnlyControls";
 import { useAuth } from "../../context/AuthContext";
+import { emitTutorialEvent, registerTutorialActions } from "../../context/tutorialBus";
 
 /**
  * Top-level feature component for the play editor. Wires together entities, history,
@@ -806,7 +807,10 @@ function Slate({
     };
 
     const withGroup = historyApiRef.current?.withGroup;
-    return typeof withGroup === "function" ? withGroup(run) : run();
+    const newDrawingId = typeof withGroup === "function" ? withGroup(run) : run();
+    // Onboarding-tour outcome: a drawing (either scope) was actually created.
+    if (newDrawingId) emitTutorialEvent("drawing-added", { id: newDrawingId, scope: isMotionPath ? "motion" : "annotation" });
+    return newDrawingId;
   }, [annotationDrawingsState.addDrawing, motionDrawingsState.addDrawing, motionDrawingsState.removeDrawing, motionDrawingsState.removeMultipleDrawings, motionDrawingsState.updateDrawing, motionDrawingsState.drawings, drawingMode, canvasTool, entities.handleSelectItem, entities.playersById, entities.ballsById, onShowMessage]);
 
   // Selected drawings are sourced from the active scope only. Cross-scope
@@ -2637,6 +2641,10 @@ function Slate({
       }
       setSelectedDrawingIds([]);
       setTextEditing(null);
+      // Onboarding-tour outcome: report the tool that actually ended up active
+      // (mirrors the toggle-off rule above — re-clicking pen/animDraw lands on select).
+      const finalTool = canvasTool === tool && (tool === "pen" || tool === "animDraw") ? "select" : tool;
+      emitTutorialEvent("tool-selected", { tool: finalTool });
       return;
     }
     logDrawDebug(`toolChange ignored invalidTool=${tool}`);
@@ -3070,6 +3078,8 @@ function Slate({
     // One-shot: return to select tool after placing
     pendingPrefabRef.current = null;
     setCanvasTool("select");
+    // Onboarding-tour outcome: the prefab's entities actually landed on the field.
+    emitTutorialEvent("prefab-placed", { prefabId: prefab.id ?? null, entityCount: newIds.length });
   }, [entities, currentFieldType]);
 
   const handleSavePrefab = useCallback(async (name) => {
@@ -3204,6 +3214,18 @@ function Slate({
     const targetTrackIds = getKeyframeActionTrackIds();
     if (!targetTrackIds.length) return;
 
+    // Onboarding-tour outcome, precomputed OUTSIDE the state updater (updaters
+    // can be re-invoked under StrictMode): a keyframe genuinely gets created
+    // only when the write time is neither blocked by min-gap spacing nor an
+    // update of an already-existing keyframe.
+    const baseTracks = animationDataRef.current?.tracks || {};
+    const willAddNewKeyframe = targetTrackIds.some(
+      (itemId) =>
+        !isTooCloseToExistingKeyframe(baseTracks[itemId], timeMs) &&
+        !hasKeyframeAtTime(baseTracks[itemId], timeMs) &&
+        Boolean(resolveTrackPose(itemId))
+    );
+
     historyApiRef.current?.pushHistory?.();
     setAnimationDataWithMeta((base) => {
       const nextTracks = { ...base.tracks };
@@ -3233,6 +3255,7 @@ function Slate({
     });
 
     setSelectedKeyframeMs(timeMs);
+    if (willAddNewKeyframe) emitTutorialEvent("keyframe-added", { t: timeMs });
   }, [ensureKeyframeCoverageAtTime, getKeyframeActionTrackIds, resolveTrackPose, setAnimationDataWithMeta, logAction]);
 
   const handleDeleteKeyframe = useCallback(
@@ -3567,6 +3590,10 @@ function Slate({
       if (isPlayingNow) return;
       skipNextRenderPoseRef.current = true;
       upsertKeyframesAtCurrentTime(targetTrackIds, { source: "dragEnd" });
+      // Onboarding-tour outcome: a paused drag of a tracked entity writes its
+      // pose into the highlighted keyframe — i.e. the user moved a player
+      // within a keyframe.
+      if (targetTrackIds.length) emitTutorialEvent("keyframe-pose-updated", { itemIds: targetTrackIds });
     },
     [
       entities,
@@ -3974,6 +4001,94 @@ function Slate({
     },
     [entities.handleDeleteSelected, entities.selectedItemIds, logAction]
   );
+
+  // Onboarding-tour outcome: playback actually started (covers the play
+  // button, spacebar, and any other path that starts the engine).
+  useEffect(() => {
+    if (isPlaying) emitTutorialEvent("playback-started", {});
+  }, [isPlaying]);
+
+  // ── Onboarding-tour auto-perform actions ──
+  // The tour's "Next" button runs these to perform canvas steps on the user's
+  // behalf. They call the exact same handlers the real interactions use, so
+  // the resulting outcome events advance the tour through the normal
+  // verification path. Registration is scoped to this editor's lifetime.
+  useEffect(() => {
+    return registerTutorialActions({
+      /** Drop a player onto the field (same handler as clicking the field with the Add Player tool). */
+      "place-player": () => {
+        entities.handleCanvasAddPlayer({ x: -80, y: 40 });
+      },
+      /** Pick the first available prefab and place it near the field center. */
+      "place-prefab": () => {
+        const prefab = (publishedPrefabs && publishedPrefabs[0]) || (customPrefabs && customPrefabs[0]);
+        if (!prefab) return;
+        handlePrefabSelect(prefab);
+        handleCanvasPlacePrefab({ x: 0, y: 90 });
+      },
+      /** Draw a short sample route starting at the most recently added player. */
+      "draw-route": () => {
+        const ids = entities.representedPlayerIds || [];
+        const lastId = ids[ids.length - 1];
+        const pose = (lastId && resolveTrackPose(lastId)) || { x: 0, y: 0 };
+        const sx = pose.x ?? 0;
+        const sy = pose.y ?? 0;
+        addDrawingTagged({
+          type: "stroke",
+          points: [sx, sy, sx + 25, sy - 15, sx + 55, sy - 20, sx + 85, sy - 45],
+          color: "#FF7A18",
+          opacity: 1,
+          strokeWidth: 3,
+          tension: 0.5,
+          ...(lastId ? { attachedPlayerId: lastId } : {}),
+        });
+      },
+      /** Jump the playhead forward and capture a keyframe there. */
+      "add-keyframe": () => {
+        const durationMs = animationDataRef.current?.durationMs ?? 30000;
+        const t = Math.min(Math.round(currentTimeRef.current) + 4000, durationMs);
+        seekTimeline(t, { source: "engine" });
+        handleAddKeyframe();
+      },
+      /** Move the most recent player's pose within the highlighted keyframe. */
+      "move-player": () => {
+        const ids = entities.representedPlayerIds || [];
+        const id = ids[ids.length - 1];
+        if (!id) return;
+        const pose = resolveTrackPose(id) || { x: 0, y: 0 };
+        const nx = (pose.x ?? 0) + 70;
+        const ny = (pose.y ?? 0) - 45;
+        const timeMs = resolveKeyframeWriteTimeMs();
+        historyApiRef.current?.pushHistory?.();
+        setAnimationDataWithMeta((base) => ({
+          ...base,
+          tracks: {
+            ...base.tracks,
+            [id]: upsertKeyframe(base.tracks?.[id], { t: timeMs, x: nx, y: ny }),
+          },
+        }));
+        entities.handleItemChange(id, { x: nx, y: ny });
+        emitTutorialEvent("keyframe-pose-updated", { itemIds: [id], auto: true });
+      },
+      /** Start playback (no-op if already playing). */
+      "play-animation": () => {
+        if (!engineRef.current?.isPlaying?.()) togglePlayback();
+      },
+    });
+  }, [
+    entities,
+    publishedPrefabs,
+    customPrefabs,
+    handlePrefabSelect,
+    handleCanvasPlacePrefab,
+    addDrawingTagged,
+    seekTimeline,
+    handleAddKeyframe,
+    resolveTrackPose,
+    resolveKeyframeWriteTimeMs,
+    setAnimationDataWithMeta,
+    togglePlayback,
+  ]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {

@@ -13,7 +13,11 @@
  * window.location.href, and exiting navigates back to /admin the same way).
  */
 
+import { resolveFieldTypeFromSport } from "../features/slate/hooks/useAdvancedSettings";
+
 const PREVIEW_FLAG_KEY = "coachable_tutorial_preview";
+const PREVIEW_SPORT_KEY = "coachable_tutorial_preview_sport";
+const DEFAULT_PREVIEW_SPORT = "football";
 
 const TEAM_ID = "preview-team";
 const USER_ID = "preview-user";
@@ -27,9 +31,27 @@ export function isTutorialPreviewActive() {
   }
 }
 
-/** Arm preview mode for this tab. The caller then navigates into /app. */
-export function activateTutorialPreview() {
+/**
+ * The sport the current preview run was launched under (chosen in the admin
+ * sport picker). Defaults to football when unset or unreadable.
+ */
+export function getTutorialPreviewSport() {
+  try {
+    return sessionStorage.getItem(PREVIEW_SPORT_KEY) || DEFAULT_PREVIEW_SPORT;
+  } catch {
+    return DEFAULT_PREVIEW_SPORT;
+  }
+}
+
+/**
+ * Arm preview mode for this tab under the given sport. The caller then
+ * navigates into /app with a full page load, so the module-level store below
+ * is rebuilt from these sessionStorage values.
+ * @param {string} [sport] - onboarding sport key ("football", "womens lacrosse", "blank", ...)
+ */
+export function activateTutorialPreview(sport = DEFAULT_PREVIEW_SPORT) {
   sessionStorage.setItem(PREVIEW_FLAG_KEY, "1");
+  sessionStorage.setItem(PREVIEW_SPORT_KEY, sport || DEFAULT_PREVIEW_SPORT);
 }
 
 /**
@@ -41,6 +63,7 @@ export function activateTutorialPreview() {
 export function endTutorialPreviewAndReturn() {
   try {
     sessionStorage.removeItem(PREVIEW_FLAG_KEY);
+    sessionStorage.removeItem(PREVIEW_SPORT_KEY);
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const key = localStorage.key(i);
       if (key && key.startsWith("coachable_play_preview-play-")) localStorage.removeItem(key);
@@ -50,7 +73,7 @@ export function endTutorialPreviewAndReturn() {
 }
 
 /** Builds a fresh in-memory dataset for one preview run. */
-export function createPreviewStore() {
+export function createPreviewStore(sport = getTutorialPreviewSport()) {
   const year = String(new Date().getFullYear());
   return {
     user: {
@@ -61,7 +84,7 @@ export function createPreviewStore() {
       role: "owner",
       teamId: TEAM_ID,
       teamName: "Tutorial Preview Team",
-      sport: "football",
+      sport,
       seasonYear: year,
       ownerId: USER_ID,
       isPersonalTeam: false,
@@ -74,7 +97,7 @@ export function createPreviewStore() {
       {
         teamId: TEAM_ID,
         teamName: "Tutorial Preview Team",
-        sport: "football",
+        sport,
         seasonYear: year,
         ownerId: USER_ID,
         isPersonal: false,
@@ -96,6 +119,44 @@ const store = createPreviewStore();
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+/**
+ * Sample published prefab presets served by the mock for every real sport
+ * (the Blank canvas has none — mirroring production, where prefab presets are
+ * admin-authored per sport). Powers the tour's "Place a prefab" step without
+ * touching the real sport_prefab_presets table.
+ * @param {string} sportOrFieldType - onboarding sport key OR a Slate field type ("Football")
+ * @returns {Array<{ id: string, name: string, prefabData: Object }>}
+ */
+export function buildPreviewPrefabPresets(sportOrFieldType) {
+  if (resolveFieldTypeFromSport(sportOrFieldType) === "Blank") return [];
+  return [
+    {
+      id: "preview-prefab-preset-1",
+      name: "3-Player Line",
+      prefabData: {
+        players: [
+          { dx: -60, dy: 0, number: "1", color: "#3b82f6" },
+          { dx: 0, dy: 0, number: "2", color: "#3b82f6" },
+          { dx: 60, dy: 0, number: "3", color: "#3b82f6" },
+        ],
+        objects: [],
+      },
+    },
+    {
+      id: "preview-prefab-preset-2",
+      name: "Triangle",
+      prefabData: {
+        players: [
+          { dx: -50, dy: 30, number: "4", color: "#22c55e" },
+          { dx: 50, dy: 30, number: "5", color: "#22c55e" },
+          { dx: 0, dy: -40, number: "6", color: "#22c55e" },
+        ],
+        objects: [{ dx: 0, dy: 0, objectType: "ball" }],
+      },
+    },
+  ];
 }
 
 /**
@@ -213,7 +274,10 @@ export async function mockApiFetch(path, options = {}, db = store) {
   // ── Tags / presets / prefabs ──
   if (key === `GET /teams/${TEAM_ID}/tags`) return { tags: [] };
   if (method === "GET" && cleanPath.startsWith("/sport-presets/")) return { presets: [] };
-  if (method === "GET" && cleanPath.startsWith("/sport-prefab-presets/")) return { presets: [] };
+  if (method === "GET" && cleanPath.startsWith("/sport-prefab-presets/")) {
+    const sportSegment = decodeURIComponent(cleanPath.split("/")[2] || "");
+    return { presets: buildPreviewPrefabPresets(sportSegment) };
+  }
   if (key === "GET /prefabs") return { prefabs: db.prefabs };
   if (key === "POST /prefabs") {
     const prefab = { id: `preview-prefab-${db.nextId++}`, label: body.label || "Prefab", ...(body.prefab_data || {}) };

@@ -290,7 +290,7 @@ export default function WideSidebarRoot({
             {/* Logo + collapse button */}
             <div className="flex items-center justify-between px-1 mb-1">
                 {onNavigateHome ? (
-                    <button type="button" onClick={onNavigateHome} className="inline-flex">
+                    <button type="button" onClick={onNavigateHome} data-testid="tutorial-back-home" className="inline-flex">
                         <img src={coachableLogo} alt="Coachable" className="h-5 sm:h-6 w-auto " />
                     </button>
                 ) : (

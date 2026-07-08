@@ -5,7 +5,12 @@
  * Each test injects a fresh store so nothing leaks between cases.
  */
 import { describe, it, expect } from "vitest";
-import { mockApiFetch, createPreviewStore, isTutorialPreviewActive } from "../../src/utils/tutorialPreview.js";
+import {
+  mockApiFetch,
+  createPreviewStore,
+  isTutorialPreviewActive,
+  buildPreviewPrefabPresets,
+} from "../../src/utils/tutorialPreview.js";
 
 describe("isTutorialPreviewActive", () => {
   it("is false outside a browser session (no sessionStorage flag)", () => {
@@ -37,6 +42,29 @@ describe("mockApiFetch — fake session", () => {
     const db = createPreviewStore();
     expect((await mockApiFetch("/flags/me", {}, db)).flags).toEqual({});
     expect((await mockApiFetch("/teams/preview-team/suite/features", {}, db)).features).toEqual({});
+  });
+
+  it("builds the fake team under the sport chosen in the admin picker (default football)", () => {
+    expect(createPreviewStore().user.sport).toBe("football");
+    const rugby = createPreviewStore("rugby");
+    expect(rugby.user.sport).toBe("rugby");
+    expect(rugby.allTeams[0].sport).toBe("rugby");
+  });
+});
+
+describe("mockApiFetch — sport prefab presets (the tour's prefab step)", () => {
+  it("serves sample prefab presets for every real sport", async () => {
+    for (const sport of ["Football", "Rugby", "Soccer", "Womens Lacrosse", "Ice Hockey"]) {
+      const data = await mockApiFetch(`/sport-prefab-presets/${encodeURIComponent(sport)}`, {}, createPreviewStore());
+      expect(data.presets.length, sport).toBeGreaterThan(0);
+      expect(data.presets[0].prefabData.players.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("serves no prefab presets for the blank canvas (so the tour skips the prefab step consistently)", async () => {
+    const data = await mockApiFetch("/sport-prefab-presets/Blank", {}, createPreviewStore());
+    expect(data.presets).toEqual([]);
+    expect(buildPreviewPrefabPresets("blank")).toEqual([]);
   });
 });
 
