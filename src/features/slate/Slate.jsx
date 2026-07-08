@@ -703,11 +703,14 @@ function Slate({
       // Default to full-duration visibility unless the caller already supplied one.
       const visibleStartMs = annData.visibleStartMs ?? 0;
       const visibleEndMs = annData.visibleEndMs ?? durationMs;
-      return annotationDrawingsState.addDrawing({
+      const annotationId = annotationDrawingsState.addDrawing({
         ...annData,
         visibleStartMs,
         visibleEndMs,
       });
+      // Onboarding-tour outcome: an annotation drawing was actually created.
+      if (annotationId) emitTutorialEvent("drawing-added", { id: annotationId, scope: "annotation" });
+      return annotationId;
     }
 
     // Drawing-mode: motion drawing. Caller may use legacy `attachedPlayerId`
@@ -808,8 +811,8 @@ function Slate({
 
     const withGroup = historyApiRef.current?.withGroup;
     const newDrawingId = typeof withGroup === "function" ? withGroup(run) : run();
-    // Onboarding-tour outcome: a drawing (either scope) was actually created.
-    if (newDrawingId) emitTutorialEvent("drawing-added", { id: newDrawingId, scope: isMotionPath ? "motion" : "annotation" });
+    // Onboarding-tour outcome: a motion drawing was actually created.
+    if (newDrawingId) emitTutorialEvent("drawing-added", { id: newDrawingId, scope: "motion" });
     return newDrawingId;
   }, [annotationDrawingsState.addDrawing, motionDrawingsState.addDrawing, motionDrawingsState.removeDrawing, motionDrawingsState.removeMultipleDrawings, motionDrawingsState.updateDrawing, motionDrawingsState.drawings, drawingMode, canvasTool, entities.handleSelectItem, entities.playersById, entities.ballsById, onShowMessage]);
 
