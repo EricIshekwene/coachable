@@ -14,5 +14,6 @@ coverage/
 .git/
 .github/
 docs/
+v2/
 *.md
 !server/**/*.md
