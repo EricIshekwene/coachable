@@ -34,6 +34,7 @@ export default function PrefabsSection({
         >
             <ButtonComponent
                 ref={anchorRef}
+                data-testid="tutorial-prefabs"
                 Icon={<TbCopyPlusFilled className={iconClass} />}
                 label="Prefabs"
                 onHover={() => {}}

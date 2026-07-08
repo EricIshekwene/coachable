@@ -4,6 +4,7 @@ import { useAppMessage } from "../../context/AppMessageContext";
 import { FiCopy, FiCheck, FiShield, FiUser, FiMail, FiSearch, FiRefreshCw, FiSend, FiUserMinus } from "react-icons/fi";
 import { isValidEmail } from "../../utils/inputValidation";
 import { apiFetch } from "../../utils/api";
+import { emitTutorialEvent } from "../../context/tutorialBus";
 
 function InviteCodeSection({ role, code, copiedRole, onCopy, onRotate, onSendInvite, sending }) {
   const [email, setEmail] = useState("");
@@ -185,6 +186,7 @@ export default function Team() {
         method: "POST",
         body: { email, role },
       });
+      emitTutorialEvent("invite-sent", { role });
       showMessage(
         "Invite sent",
         `Invitation emailed to ${email}.`,

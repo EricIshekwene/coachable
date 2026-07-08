@@ -81,7 +81,7 @@ function cardPosition(rect, placement) {
  * shows an instruction card with an always-present top-left exit button.
  */
 export default function TutorialOverlay() {
-  const { active, currentStep, routeReady, stepNumber, totalSteps, advance, exitTutorial } = useTutorial();
+  const { active, currentStep, routeReady, stepNumber, totalSteps, advance, exitTutorial, performStepAction } = useTutorial();
   const navigate = useNavigate();
   const rect = useTargetRect(currentStep?.selector, active && routeReady && Boolean(currentStep?.selector));
   const hasTarget = Boolean(currentStep?.selector);
@@ -146,7 +146,7 @@ export default function TutorialOverlay() {
         <p className="font-DmSans text-xs text-BrandGray">
           {waitingForTarget ? "Loading…" : currentStep.body}
         </p>
-        {currentStep.advanceOn === "manual" && (
+        {currentStep.advanceOn === "manual" ? (
           <button
             type="button"
             onClick={handleCta}
@@ -154,6 +154,22 @@ export default function TutorialOverlay() {
           >
             {currentStep.ctaLabel || "Continue"}
           </button>
+        ) : (
+          // "Next" performs the step's default action for the user (fill the
+          // input, click the highlighted control, place the player...). The
+          // resulting real outcome advances the tour — Next never skips the
+          // verification the manual interaction goes through.
+          currentStep.autoAction && (
+            <button
+              type="button"
+              onClick={performStepAction}
+              disabled={waitingForTarget}
+              className="mt-1 self-end rounded-lg border border-BrandOrange/50 px-3.5 py-1.5 text-xs font-semibold text-BrandOrange transition hover:bg-BrandOrange/10 active:scale-[0.98] disabled:opacity-40"
+              title="Performs this step for you"
+            >
+              Next — do it for me
+            </button>
+          )
         )}
       </div>
     </div>,

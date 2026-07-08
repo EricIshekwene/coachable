@@ -13,6 +13,7 @@ export default function KeyframeManager({
   return (
     <div
       onClick={selectedKeyframe !== null ? onDeleteKeyframe : onAddKeyframe}
+      data-testid="tutorial-add-keyframe"
       className={`w-200/641 bg-BrandOrange flex flex-row items-center justify-center rounded-xl cursor-pointer ${
         isTest
           ? "h-5 sm:h-6 md:h-7 lg:h-8 px-2 sm:px-3"

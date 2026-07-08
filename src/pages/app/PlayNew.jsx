@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiX, FiClock, FiSearch } from "react-icons/fi";
 import { useAppMessage } from "../../context/AppMessageContext";
 import { useAuth } from "../../context/AuthContext";
+import { emitTutorialEvent } from "../../context/tutorialBus";
 import { createPlay, fetchTeamTags, fetchSportPresets } from "../../utils/apiPlays";
 import PlayPreviewCard from "../../components/PlayPreviewCard";
 import {
@@ -252,10 +253,14 @@ export default function PlayNew() {
           <input
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              emitTutorialEvent("title-changed", { hasText: e.target.value.trim().length > 0 });
+            }}
             placeholder="e.g. Inside Pass Loop"
             className={inputClass}
             maxLength={MAX_TITLE_LENGTH}
+            data-testid="tutorial-title-input"
             autoFocus
           />
         </div>
@@ -294,7 +299,10 @@ export default function PlayNew() {
                     <button
                       key={id}
                       type="button"
-                      onClick={() => setSelectedPresetId(id)}
+                      onClick={() => {
+                        setSelectedPresetId(id);
+                        emitTutorialEvent("preset-selected", { presetId: id });
+                      }}
                       data-testid={id === "blank" ? "tutorial-preset-blank" : undefined}
                       className={`group flex flex-col gap-1.5 rounded-xl border-2 p-1.5 text-left transition-all duration-200 focus:outline-none ${
                         isSelected
@@ -336,12 +344,16 @@ export default function PlayNew() {
 
         {/* Editor mode picker — Football only */}
         {fieldType === "Football" && (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2" data-testid="tutorial-mode-picker">
             <label className="text-xs font-semibold">Editor Mode</label>
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => setEditorMode("drawing")}
+                data-testid="tutorial-mode-drawing"
+                onClick={() => {
+                  setEditorMode("drawing");
+                  emitTutorialEvent("mode-selected", { mode: "drawing" });
+                }}
                 className={`flex flex-1 flex-col items-center gap-1 rounded-xl border-2 px-3 py-3 text-sm font-medium transition-all duration-200 focus:outline-none ${
                   editorMode === "drawing"
                     ? "border-BrandOrange bg-BrandOrange/5 text-BrandOrange shadow-[0_0_0_4px_rgba(255,122,24,0.12)]"
@@ -356,7 +368,11 @@ export default function PlayNew() {
               </button>
               <button
                 type="button"
-                onClick={() => setEditorMode("keyframe")}
+                data-testid="tutorial-mode-keyframe"
+                onClick={() => {
+                  setEditorMode("keyframe");
+                  emitTutorialEvent("mode-selected", { mode: "keyframe" });
+                }}
                 className={`flex flex-1 flex-col items-center gap-1 rounded-xl border-2 px-3 py-3 text-sm font-medium transition-all duration-200 focus:outline-none ${
                   editorMode === "keyframe"
                     ? "border-BrandOrange bg-BrandOrange/5 text-BrandOrange shadow-[0_0_0_4px_rgba(255,122,24,0.12)]"

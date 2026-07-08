@@ -21,6 +21,7 @@ export default function PlaybackControls({
       </div>
       <div
         onClick={onPlayToggle}
+        data-testid="tutorial-play-animation"
         className="h-[37.5px] w-[37.5px] sm:h-[43.75px] sm:w-[43.75px] md:h-[50px] md:w-[50px] bg-BrandOrange flex items-center justify-center rounded-lg cursor-pointer"
       >
         {isPlaying ? (
