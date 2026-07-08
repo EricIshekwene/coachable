@@ -530,6 +530,15 @@ export default function Plays() {
         </div>
       </div>
 
+      {isMobile && (
+        <div
+          role="status"
+          className="mt-5 rounded-lg border border-BrandOrange/35 bg-BrandOrange/10 px-4 py-3 text-sm font-medium text-BrandOrange"
+        >
+          Please use a wide screen device like a laptop or iPad to create plays.
+        </div>
+      )}
+
       {/* Search bar */}
       <div className="relative mt-5">
         <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-BrandGray2" />
