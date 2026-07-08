@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../utils/api";
+import { activateTutorialPreview } from "../utils/tutorialPreview";
 import ConfirmModal from "../components/subcomponents/ConfirmModal";
 import { formatFailedTestsReport } from "../testing/formatFailedTestsReport";
 import {
@@ -448,6 +449,18 @@ export default function Admin() {
     setElevatedUntil(0);
     setSession("");
     setUsers([]);
+  };
+
+  /**
+   * Launches the onboarding tour on a fully mocked in-memory session (see
+   * src/utils/tutorialPreview.js). The real /app pages render against a fake
+   * coach and team; every API call is intercepted client-side, so nothing is
+   * written to the database and no account is created. Exiting the tour
+   * returns here automatically.
+   */
+  const handlePreviewTutorial = () => {
+    activateTutorialPreview();
+    window.location.href = "/app/plays?startTutorial=1";
   };
 
   /**
@@ -1247,6 +1260,9 @@ export default function Admin() {
                 </svg>
               )}
               Refresh
+            </AdminBtn>
+            <AdminBtn variant="secondary" size="sm" onClick={handlePreviewTutorial} title="Preview the onboarding tour on a fully mocked in-memory session — nothing is saved and no account is created">
+              Preview Onboarding Tutorial
             </AdminBtn>
             <AdminBtn variant="ghost" size="sm" onClick={handleLogout}>Logout</AdminBtn>
           </>

@@ -1,4 +1,5 @@
 import { reportApiError } from "./errorReporter";
+import { isTutorialPreviewActive, mockApiFetch } from "./tutorialPreview";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 const TOKEN_KEY = "coachable_token";
@@ -29,6 +30,10 @@ function createApiError(message, status = 0, data = null, code = "api_error", ca
  * Throws on non-2xx responses with { status, error } shape.
  */
 export async function apiFetch(path, options = {}) {
+  // Admin tutorial preview: the whole API is served from an in-memory mock —
+  // no request ever reaches the server (see src/utils/tutorialPreview.js).
+  if (isTutorialPreviewActive()) return mockApiFetch(path, options);
+
   const token = getAuthToken();
   const method = String(options.method || "GET").toUpperCase();
   const headers = {

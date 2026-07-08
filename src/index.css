@@ -306,3 +306,19 @@ input[type="number"] {
     height: 0;
     display: none; /* Chrome/Safari/Edge */
 }
+
+/* Onboarding tour spotlight ring — see src/components/tutorial/TutorialOverlay.jsx */
+@keyframes tutorial-pulse {
+    0%, 100% {
+        outline-color: rgba(255, 122, 24, 0.9);
+        outline-offset: 2px;
+    }
+    50% {
+        outline-color: rgba(255, 122, 24, 0.35);
+        outline-offset: 6px;
+    }
+}
+
+.tutorial-spotlight-ring {
+    animation: tutorial-pulse 1.6s ease-in-out infinite;
+}

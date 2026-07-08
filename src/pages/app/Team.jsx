@@ -26,7 +26,10 @@ function InviteCodeSection({ role, code, copiedRole, onCopy, onRotate, onSendInv
   };
 
   return (
-    <div className="rounded-lg border border-BrandGray2/20 bg-BrandBlack2/20 p-4">
+    <div
+      className="rounded-lg border border-BrandGray2/20 bg-BrandBlack2/20 p-4"
+      data-testid={`tutorial-invite-card-${role}`}
+    >
       <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-BrandGray">
         <Icon className="text-[10px]" /> {label}
       </p>
@@ -70,12 +73,14 @@ function InviteCodeSection({ role, code, copiedRole, onCopy, onRotate, onSendInv
             placeholder={isCoachCode ? "coach@example.com" : "player@example.com"}
             maxLength={254}
             autoComplete="email"
+            data-testid={`tutorial-invite-email-${role}`}
             className="w-full rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 py-2 pl-8 pr-3 text-xs text-BrandText outline-none transition placeholder:text-BrandGray2 hover:border-BrandGray2 focus:border-BrandOrange focus:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
           />
         </div>
         <button
           onClick={handleSend}
           disabled={!email.trim() || sending || sent}
+          data-testid={`tutorial-invite-send-${role}`}
           className="flex items-center gap-1.5 rounded-lg bg-BrandOrange px-3.5 py-2 text-xs font-semibold text-white transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {sent ? (

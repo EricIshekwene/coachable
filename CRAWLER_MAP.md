@@ -174,6 +174,16 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 | "notification audience helpers", "notifAudienceSql" | [server/lib/notificationAudience.js](server/lib/notificationAudience.js) | Pure: `buildNotifAudienceSql`, `buildNotifAudienceLabel`, `aggregateNotifResponses` |
 | "admin notifications composer" | [src/pages/AdminNotificationsPage.jsx](src/pages/AdminNotificationsPage.jsx) | Owner-only authoring page at `/admin/notifications`; see [NOTIFICATIONS_PAGE.md](src/pages/NOTIFICATIONS_PAGE.md) |
 
+### Onboarding tour (product tutorial — admin preview only)
+| User says... | Primary file(s) | Notes |
+|---|---|---|
+| "tutorial", "product tour", "spotlight overlay", "onboarding walkthrough" | [src/components/tutorial/TutorialOverlay.jsx](src/components/tutorial/TutorialOverlay.jsx) | Full-screen animated spotlight overlay; portals to `document.body`; top-left "Exit tutorial" button; see [TUTORIAL_OVERLAY.md](src/components/tutorial/TUTORIAL_OVERLAY.md) |
+| "tutorial state", "tour context", "useTutorial" | [src/context/TutorialContext.jsx](src/context/TutorialContext.jsx) | `TutorialProvider`/`useTutorial()`; click-to-advance logic; mounted in App.jsx above the router; in preview mode, exit/finish returns to `/admin` |
+| "tutorial steps", "tour script" | [src/context/tutorialSteps.js](src/context/tutorialSteps.js) | Pure step data + reducer; `getTutorialSteps(user)` skips the invite flow for solo/personal-team accounts |
+| "tutorial preview mock", "fake session", "mock API" | [src/utils/tutorialPreview.js](src/utils/tutorialPreview.js) | In-memory mock backend for the admin preview; `apiFetch` routes every request here when the sessionStorage flag is set — nothing touches the server/DB |
+| "auto-launch tutorial" | [src/layouts/AppLayout.jsx](src/layouts/AppLayout.jsx) | **Disabled** for real coaches via `TUTORIAL_AUTO_LAUNCH_FOR_NEW_USERS` (persistence must be rebuilt before enabling); also handles `?startTutorial=1` forced-start |
+| "preview onboarding tutorial" (admin) | [src/pages/Admin.jsx](src/pages/Admin.jsx) — "Preview Onboarding Tutorial" button on the dashboard header | Arms the mock preview flag, then opens `/app/plays?startTutorial=1`; no server endpoint, no demo account; see [TUTORIAL_OVERLAY.md](src/components/tutorial/TUTORIAL_OVERLAY.md) |
+
 ### Auth / context / routing
 | User says... | Primary file(s) |
 |---|---|
@@ -371,7 +381,7 @@ All run via Vitest. One file per feature; create new ones here when adding tests
 - Plays/folders/playbooks: `localStorageAutosave.test.js`, `platformPlays.test.js`, `playbookFolderBrowse.test.js`, `playbookSections.test.js`, `landingPlaybooksNav.test.js`, `playPreviewCardCones.test.js`, `playPreviewPlayer.test.js`, `playCopyAnalytics.test.js`, `sportPresets.test.js`, `presetBallCycle.test.js`, `presetEditorMode.test.js`, `hideFromPlayers.test.js`, `sportNavContext.test.js`, `syncSports.test.js`, `adminPlayCardConsistency.test.js` (PlayCard `canRemoveFromSection` logic + section play enrichment + picker exclusion)
 - Drawing/keyframe: `keyframeStyling.test.js`, `drawingModePreviewAnimation.test.js`, `drawingFlipReflect.test.js`, `drawingModeUndoRedo.test.js`, `drawingScopeSeparation.test.js`, `annotationDrawingVisibility.test.js`, `drawingExportV3Migration.test.js`, `trackSnap.test.js`
 - Team Suite: `teamSuite.test.js` (buildFeaturesMap, SUITE_FEATURES, RequireSuiteFeature guard logic, SuiteContext fail-closed behavior)
-- Misc: `videoEncoder.test.js`, `errorReporter.test.js`, `demoVideos.test.js`, `adminNotifications.test.js` (notification audience SQL + response aggregation), `notificationsRetry.test.js` (NotificationsContext retry-on-failure logic — jsdom env), `outreachScraper.test.js` (sidearm parsers + sport/role normalization + CSV escaping; fixtures in `admin/test/fixtures/`), `mobileTouchGestures.test.js` (two-finger pan/pinch math for the mobile editor canvas — `src/canvas/touchGestures.js`)
+- Misc: `videoEncoder.test.js`, `errorReporter.test.js`, `demoVideos.test.js`, `adminNotifications.test.js` (notification audience SQL + response aggregation), `notificationsRetry.test.js` (NotificationsContext retry-on-failure logic — jsdom env), `outreachScraper.test.js` (sidearm parsers + sport/role normalization + CSV escaping; fixtures in `admin/test/fixtures/`), `mobileTouchGestures.test.js` (two-finger pan/pinch math for the mobile editor canvas — `src/canvas/touchGestures.js`), `tutorialSteps.test.js` (onboarding product tour: `getTutorialSteps` solo-vs-team step lists, `stepMatchesRoute`, `tutorialReducer` transitions), `tutorialPreviewApi.test.js` (admin tutorial-preview mock API: fake session shape, plays lifecycle, invites, fail-soft fallback — see [TUTORIAL_OVERLAY.md](src/components/tutorial/TUTORIAL_OVERLAY.md))
 
 In-source unit suite for canvas geometry: [src/canvas/__tests__/drawingGeometry.test.js](src/canvas/__tests__/drawingGeometry.test.js).
 Suites used by the admin test runner: [src/testing/suites/](src/testing/suites/) (animationSchema, drawingGeometry, importExport, interpolate) and [src/testing/testRunner.js](src/testing/testRunner.js).

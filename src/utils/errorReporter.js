@@ -138,6 +138,9 @@ export function setErrorReporterUserId(userId) {
  */
 export function reportError({ errorMessage, errorStack, component, action, extra }) {
   try {
+    // Admin tutorial preview runs on a fake in-memory session — anything it
+    // trips over must not be written to the real error_reports table.
+    if (typeof sessionStorage !== "undefined" && sessionStorage.getItem("coachable_tutorial_preview") === "1") return;
     const normalizedMessage = normalizeErrorMessage(errorMessage);
     const now = Date.now();
 
