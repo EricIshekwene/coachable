@@ -116,7 +116,7 @@ function PlayGrid({ plays, isCoach, copiedIds, onCopyPlay, onPreview }) {
               {play.playData ? (
                 <PlayPreviewCard
                   playData={play.playData}
-                  autoplay="hover"
+                  autoplay="always"
                   shape="landscape"
                   cameraMode="fit-distribution"
                   background="field"
