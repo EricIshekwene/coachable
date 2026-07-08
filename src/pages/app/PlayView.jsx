@@ -170,13 +170,15 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
         </div>
         {!effectiveViewOnly && play.teamId && (
           <div className="flex items-center gap-2">
-            <Link
-              to={`/app/plays/${playId}/view`}
-              className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-4 py-2 text-sm font-semibold text-BrandGray transition hover:border-BrandOrange/50 hover:text-BrandOrange"
-            >
-              <FiExternalLink className="text-sm" />
-              View in Slate
-            </Link>
+            {isMobile && (
+              <Link
+                to={`/app/plays/${playId}/view`}
+                className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-4 py-2 text-sm font-semibold text-BrandGray transition hover:border-BrandOrange/50 hover:text-BrandOrange"
+              >
+                <FiExternalLink className="text-sm" />
+                View in Slate
+              </Link>
+            )}
             {canCoachEdit && (
               <Link
                 to={`/app/plays/${playId}/edit`}
