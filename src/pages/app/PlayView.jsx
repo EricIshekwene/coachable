@@ -3,7 +3,7 @@ import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { FiArrowLeft, FiEdit2, FiClock, FiTag, FiExternalLink, FiLoader } from "react-icons/fi";
 import { fetchPlay, updatePlay } from "../../utils/apiPlays";
-import PlayPreviewCard from "../../components/PlayPreviewCard";
+import PlayPreviewPlayer from "../../components/PlayPreviewPlayer";
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -192,9 +192,8 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
 
       {/* Play preview */}
       <div className="mt-8 mb-4">
-        <PlayPreviewCard
+        <PlayPreviewPlayer
           playData={play.playData}
-          autoplay="always"
           shape="wide"
           cameraMode="fit-distribution"
           background="field"
