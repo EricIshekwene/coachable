@@ -198,7 +198,8 @@ export default function Onboarding() {
       style={{ minHeight: "var(--app-viewport-height)", height: "var(--app-viewport-height)" }}
     >
       {/* Left panel */}
-      <div className="relative flex w-full flex-col bg-white md:w-3/5 md:h-full md:overflow-hidden">
+      {/* h-full is required: both step panels are absolute inset-0, so this panel has no intrinsic height */}
+      <div className="relative flex h-full w-full flex-col bg-white md:w-3/5 overflow-hidden">
         {/* Steps 1 & 2 — white, slide out left when sport step is active */}
         <div
           className="absolute inset-0 overflow-y-auto hide-scroll px-8 sm:px-16 lg:px-24 xl:px-32"

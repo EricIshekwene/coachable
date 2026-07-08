@@ -36,6 +36,8 @@ The previous implementation gave solo users a plain text-button grid. Solo users
 ### Scrollview only on left panel
 The outer container uses `md:overflow-hidden` + `height: var(--app-viewport-height)` (locked on desktop, natural on mobile). Each step panel is `position: absolute; inset: 0; overflow-y: auto` — only the individual step content scrolls, not the whole page.
 
+**Important:** because every step panel is absolutely positioned, the left panel has no in-flow children and therefore no intrinsic height. It must carry an unconditional `h-full` (not just `md:h-full`) so the panels have a box to fill on mobile — otherwise the panel collapses to 0px and the whole flow renders blank (this was a live incident on mobile in July 2026).
+
 ### Step transitions
 Steps slide in/out using `opacity` + `translateX` with `pointerEvents: none` on hidden steps — matching `SportPickerPage`'s step transition pattern.
 
