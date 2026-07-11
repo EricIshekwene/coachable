@@ -80,15 +80,42 @@ export function AuthProvider({ children }) {
   const [playerViewMode, setPlayerViewMode] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // On mount, restore session from cookie
+  // On mount, restore session from cookie.
+  //
+  // Network failures are retried (with backoff) while `loading` stays true, so
+  // route guards keep showing the spinner instead of bouncing a logged-in user
+  // with a valid token to /login just because the first fetch hit a dead spot.
+  // Only a definitive HTTP response (e.g. 401) — or exhausting the retries —
+  // settles the session as logged out.
   useEffect(() => {
-    apiFetch("/auth/me")
-      .then((data) => {
-        setUser(mapApiUserToLocal(data.user));
-        setAllTeams(data.allTeams || []);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    let cancelled = false;
+    const MAX_ATTEMPTS = 3;
+    const RETRY_DELAYS_MS = [1000, 2000];
+
+    (async () => {
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+          const data = await apiFetch("/auth/me", {
+            skipNetworkErrorReport: attempt < MAX_ATTEMPTS,
+          });
+          if (cancelled) return;
+          setUser(mapApiUserToLocal(data.user));
+          setAllTeams(data.allTeams || []);
+          break;
+        } catch (err) {
+          if (cancelled) return;
+          // HTTP responses (401 etc.) are definitive — only retry network errors.
+          if (err?.code !== "network_error" || attempt === MAX_ATTEMPTS) break;
+          await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt - 1]));
+          if (cancelled) return;
+        }
+      }
+      if (!cancelled) setLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Sync user ID to error reporter so reports include who triggered them

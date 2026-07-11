@@ -39,7 +39,27 @@ const GLOBAL_IGNORED_MESSAGES = [
   // and the transaction is stale or the entry no longer exists. FFmpeg falls back
   // gracefully — this error is not actionable from application code.
   "Object Not Found Matching Id",
+  // Thrown by scripts that iOS in-app browsers (Gmail, Google app, etc.) inject
+  // into the page (sendDataToNative / processLargestContentfulPaintEvent) when
+  // their native bridge is missing. Not our code — the stack points at the page
+  // URL itself, not our bundle. Standard inbound filter in error trackers.
+  "window.webkit.messageHandlers",
 ];
+
+/**
+ * Crawlers execute the SPA but block or fail its cross-origin API fetches,
+ * producing fake "Backend Connection Failure" reports (e.g. Google-Safety on
+ * every Safe Browsing crawl). Their errors are never user-impacting.
+ */
+const BOT_UA_PATTERN = /bot|crawler|spider|headless|google-safety|lighthouse|slurp|bingpreview/i;
+
+function isBotUserAgent() {
+  try {
+    return BOT_UA_PATTERN.test(navigator?.userAgent || "");
+  } catch {
+    return false;
+  }
+}
 
 function normalizeErrorMessage(value) {
   const normalized = String(value ?? "")
@@ -85,7 +105,13 @@ function shouldThrottleGlobalReport(now = Date.now()) {
   return false;
 }
 
-function shouldIgnoreGlobalError(message) {
+/**
+ * Whether a global (window-level) error message is known third-party noise
+ * that should never be reported. Exported for tests.
+ * @param {string} message
+ * @returns {boolean}
+ */
+export function shouldIgnoreGlobalError(message) {
   const normalizedMessage = normalizeErrorMessage(message).toLowerCase();
   if (!normalizedMessage) return true;
   return GLOBAL_IGNORED_MESSAGES.some((entry) => normalizedMessage.includes(entry.toLowerCase()));
@@ -141,6 +167,12 @@ export function reportError({ errorMessage, errorStack, component, action, extra
     // Admin tutorial preview runs on a fake in-memory session — anything it
     // trips over must not be written to the real error_reports table.
     if (typeof sessionStorage !== "undefined" && sessionStorage.getItem("coachable_tutorial_preview") === "1") return;
+    if (isBotUserAgent()) return;
+    const onLine = typeof navigator !== "undefined" && "onLine" in navigator ? navigator.onLine : null;
+    const visibility = typeof document !== "undefined" ? document.visibilityState : null;
+    // A network failure while the browser knows it is offline says nothing
+    // about the backend — the device just has no connection.
+    if (extra?.kind === "network" && onLine === false) return;
     const normalizedMessage = normalizeErrorMessage(errorMessage);
     const now = Date.now();
 
@@ -174,6 +206,10 @@ export function reportError({ errorMessage, errorStack, component, action, extra
       deviceInfo: getDeviceInfo(),
       extra: {
         ...(extra || {}),
+        // Connection + tab state at report time, for triaging network-kind
+        // reports (onLine true with a network error = genuinely flaky path).
+        ...(onLine !== null ? { onLine } : {}),
+        ...(visibility !== null ? { visibility } : {}),
         ...(occurrences > 1 ? { previousWindowOccurrences: occurrences } : {}),
       },
       userId: _userId,

@@ -28,14 +28,19 @@ export function NotificationsProvider({ children, enabled = true }) {
 
   const refresh = useCallback(async () => {
     if (!enabled) return;
+    const MAX_ATTEMPTS = 3;
     let lastErr = null;
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       if (attempt > 0) {
         await new Promise((r) => setTimeout(r, 1500));
         if (!mountedRef.current) return;
       }
       try {
-        const data = await fetchNotifications();
+        // Only the last attempt reports network failures — a blip that
+        // recovers on retry never reaches the error log.
+        const data = await fetchNotifications({
+          skipNetworkErrorReport: attempt < MAX_ATTEMPTS - 1,
+        });
         if (!mountedRef.current) return;
         setNotifications(data.notifications || []);
         setError("");
@@ -58,10 +63,22 @@ export function NotificationsProvider({ children, enabled = true }) {
     }
     mountedRef.current = true;
     refresh();
-    const id = setInterval(refresh, POLL_INTERVAL_MS);
+    // Skip ticks while the tab is hidden or the device is offline — a laptop
+    // waking from sleep otherwise fires the poll before Wi-Fi reconnects and
+    // logs spurious backend-connection failures.
+    const id = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+      refresh();
+    }, POLL_INTERVAL_MS);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       mountedRef.current = false;
       clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [refresh, enabled]);
 

@@ -5,9 +5,12 @@ import { apiFetch } from "./api";
  * All calls authenticate via the shared apiFetch (Bearer token + cookie).
  */
 
-/** Fetch the current user's notifications, newest first. */
-export function fetchNotifications() {
-  return apiFetch("/notifications");
+/**
+ * Fetch the current user's notifications, newest first.
+ * @param {Object} [options] - passed through to apiFetch (e.g. skipNetworkErrorReport)
+ */
+export function fetchNotifications(options) {
+  return apiFetch("/notifications", options);
 }
 
 /** Fetch the unread notification count for the bell badge. */

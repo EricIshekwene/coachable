@@ -28,8 +28,15 @@ function createApiError(message, status = 0, data = null, code = "api_error", ca
  * Wrapper around fetch that authenticates via Bearer token (localStorage)
  * with HttpOnly cookie as fallback for same-origin environments.
  * Throws on non-2xx responses with { status, error } shape.
+ *
+ * @param {string} path
+ * @param {Object} [options] - fetch options, plus:
+ * @param {boolean} [options.skipNetworkErrorReport] - suppress the error report
+ *   for network-level failures. Callers that retry should set this on every
+ *   attempt except the last, so a blip that recovers on retry never reaches
+ *   the error log.
  */
-export async function apiFetch(path, options = {}) {
+export async function apiFetch(path, { skipNetworkErrorReport, ...options } = {}) {
   // Admin tutorial preview: the whole API is served from an in-memory mock —
   // no request ever reaches the server (see src/utils/tutorialPreview.js).
   if (isTutorialPreviewActive()) return mockApiFetch(path, options);
@@ -51,15 +58,17 @@ export async function apiFetch(path, options = {}) {
       body: options.body ? JSON.stringify(options.body) : undefined,
     });
   } catch (cause) {
-    reportApiError({
-      path,
-      method,
-      errorMessage: cause?.message || "Network request failed",
-      errorStack: cause?.stack || null,
-      extra: {
-        kind: "network",
-      },
-    });
+    if (!skipNetworkErrorReport) {
+      reportApiError({
+        path,
+        method,
+        errorMessage: cause?.message || "Network request failed",
+        errorStack: cause?.stack || null,
+        extra: {
+          kind: "network",
+        },
+      });
+    }
     throw createApiError(
       "Could not reach the server. Check your connection and try again.",
       0,

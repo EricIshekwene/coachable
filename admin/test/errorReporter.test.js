@@ -4,6 +4,7 @@ import {
   reportApiError,
   reportError,
   setErrorReporterUserId,
+  shouldIgnoreGlobalError,
 } from "../../src/utils/errorReporter.js";
 
 describe("reportError", () => {
@@ -104,5 +105,61 @@ describe("reportError", () => {
     expect(body.action).toBe("PATCH /teams/:id/plays/:id");
     expect(body.extra.status).toBe(503);
     expect(body.extra.kind).toBe("server");
+  });
+
+  it("skips reports from bot user agents", () => {
+    vi.stubGlobal("navigator", { userAgent: "Google-Safety", onLine: true });
+    try {
+      reportError({ errorMessage: "Failed to fetch", extra: { kind: "network" } });
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("skips network-kind reports while the browser is offline", () => {
+    vi.stubGlobal("navigator", { userAgent: "Mozilla/5.0 (iPhone)", onLine: false });
+    try {
+      reportError({ errorMessage: "Load failed", extra: { kind: "network" } });
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("still reports non-network errors while offline", () => {
+    vi.stubGlobal("navigator", { userAgent: "Mozilla/5.0 (iPhone)", onLine: false });
+    try {
+      reportError({ errorMessage: "Cannot read properties of undefined" });
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("tags reports with connection and visibility state", () => {
+    vi.stubGlobal("navigator", { userAgent: "Mozilla/5.0 (iPhone)", onLine: true });
+    try {
+      reportError({ errorMessage: "Failed to fetch", extra: { kind: "network" } });
+
+      const body = JSON.parse(fetchSpy.mock.calls[0][1].body);
+      expect(body.extra.onLine).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe("shouldIgnoreGlobalError", () => {
+  it("ignores in-app browser injected script errors (webkit.messageHandlers)", () => {
+    expect(
+      shouldIgnoreGlobalError(
+        "TypeError: undefined is not an object (evaluating 'window.webkit.messageHandlers')"
+      )
+    ).toBe(true);
+  });
+
+  it("does not ignore ordinary application errors", () => {
+    expect(shouldIgnoreGlobalError("Cannot read properties of null (reading 'id')")).toBe(false);
   });
 });

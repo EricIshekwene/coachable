@@ -112,4 +112,60 @@ describe("NotificationsProvider retry logic", () => {
     expect(capturedState.loading).toBe(false);
     expect(capturedState.notifications).toHaveLength(0);
   });
+
+  it("suppresses network error reports on every attempt except the last", async () => {
+    fetchNotifications.mockRejectedValue(new Error("Failed to fetch"));
+
+    await act(async () => {
+      root.render(createElement(NotificationsProvider, null, createElement(Consumer)));
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4000);
+    });
+
+    const flags = fetchNotifications.mock.calls.map(([options]) => options.skipNetworkErrorReport);
+    expect(flags).toEqual([true, true, false]);
+  });
+
+  it("skips poll ticks while the tab is hidden and refreshes when it becomes visible", async () => {
+    fetchNotifications.mockResolvedValue({ notifications: [] });
+
+    await act(async () => {
+      root.render(createElement(NotificationsProvider, null, createElement(Consumer)));
+    });
+    expect(fetchNotifications).toHaveBeenCalledTimes(1);
+
+    // Hide the tab: the 60 s interval tick must not fetch.
+    Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(61_000);
+    });
+    expect(fetchNotifications).toHaveBeenCalledTimes(1);
+
+    // Tab becomes visible again: refresh immediately.
+    Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(fetchNotifications).toHaveBeenCalledTimes(2);
+  });
+
+  it("skips poll ticks while the device is offline", async () => {
+    fetchNotifications.mockResolvedValue({ notifications: [] });
+
+    await act(async () => {
+      root.render(createElement(NotificationsProvider, null, createElement(Consumer)));
+    });
+    expect(fetchNotifications).toHaveBeenCalledTimes(1);
+
+    const onLineSpy = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    try {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(61_000);
+      });
+      expect(fetchNotifications).toHaveBeenCalledTimes(1);
+    } finally {
+      onLineSpy.mockRestore();
+    }
+  });
 });
