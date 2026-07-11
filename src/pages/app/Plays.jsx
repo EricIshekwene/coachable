@@ -5,11 +5,14 @@ import {
   FiPlus, FiPlay, FiEdit2, FiClock, FiTag, FiFolder, FiMoreHorizontal,
   FiStar, FiCopy, FiExternalLink, FiTrash2, FiEdit3, FiChevronRight,
   FiLoader, FiSearch, FiRotateCcw, FiX, FiCheckSquare, FiSquare,
-  FiEyeOff, FiEye, FiSend,
+  FiEyeOff, FiEye, FiSend, FiPrinter,
 } from "react-icons/fi";
 import { fetchPlays, deletePlay as apiDeletePlay, updatePlay, toggleFavorite as apiToggleFavorite, movePlayToFolder as apiMovePlayToFolder, sharePlay, fetchTrashedPlays, restorePlay as apiRestorePlay, permanentDeletePlay as apiPermanentDelete, duplicatePlay as apiDuplicatePlay, bulkDeletePlays, bulkMovePlays, bulkTagPlays, postToCommunity as apiPostToCommunity } from "../../utils/apiPlays";
 import { fetchFolders, createFolder as apiCreateFolder, updateFolder, deleteFolder as apiFolderDelete, shareFolder } from "../../utils/apiFolders";
 import PlayPreviewCard from "../../components/PlayPreviewCard";
+import PrintPlaysOverlay from "../../components/printing/PrintPlaysOverlay";
+import { canShowPrintAction } from "../../components/printing/printLayout";
+import { useSuiteFeature } from "../../context/SuiteContext";
 
 function formatRelativeTime(isoString) {
   if (!isoString) return "";
@@ -70,6 +73,8 @@ export default function Plays() {
   const [bulkSelected, setBulkSelected] = useState(new Set());
   const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
   const [bulkTagOpen, setBulkTagOpen] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
+  const printingEnabled = useSuiteFeature("printing");
   const [bulkTagInput, setBulkTagInput] = useState("");
   const [copyFallbackUrl, setCopyFallbackUrl] = useState(null);
   const [playSort, setPlaySort] = useState("updated");
@@ -591,6 +596,11 @@ export default function Plays() {
         <div className="mt-3 flex items-center gap-2 rounded-lg border border-BrandOrange/30 bg-BrandOrange/5 px-4 py-2.5">
           <span className="text-sm font-semibold text-BrandOrange">{bulkSelected.size} selected</span>
           <div className="ml-auto flex items-center gap-2">
+            {canShowPrintAction(isCoach, printingEnabled) && (
+              <button onClick={() => setPrintOpen(true)} className="flex items-center gap-1.5 rounded-md border border-BrandGray2/30 px-3 py-1.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText">
+                <FiPrinter className="text-xs" />Print
+              </button>
+            )}
             {folders.length > 0 && (
               <button onClick={() => setBulkMoveOpen(true)} className="flex items-center gap-1.5 rounded-md border border-BrandGray2/30 px-3 py-1.5 text-xs text-BrandGray transition hover:border-BrandGray hover:text-BrandText">
                 <FiFolder className="text-xs" />Move
@@ -873,6 +883,13 @@ export default function Plays() {
           <p className="mt-4 text-sm font-semibold">{isSearching ? "No results found" : currentFolderId ? "No plays in this folder" : "No plays yet"}</p>
           <p className="mt-1 text-xs text-BrandGray2">{isSearching ? `No plays match "${search.trim()}"` : currentFolderId ? "Drag plays here or use the menu to move them." : canCreatePlay ? "Create your first play to get started." : "Your coach hasn't added any plays yet."}</p>
         </div>
+      )}
+
+      {printOpen && (
+        <PrintPlaysOverlay
+          plays={sortedVisiblePlays.filter((p) => bulkSelected.has(p.id))}
+          onClose={() => setPrintOpen(false)}
+        />
       )}
 
       {moveTarget && (

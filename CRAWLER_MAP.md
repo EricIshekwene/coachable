@@ -203,6 +203,7 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 |---|---|
 | "play preview card" | [src/components/PlayPreviewCard.jsx](src/components/PlayPreviewCard.jsx) |
 | "play preview player" (auto-play thumbnail) | [src/components/PlayPreviewPlayer.jsx](src/components/PlayPreviewPlayer.jsx) |
+| "print plays", "print preview", "2/4/6-up printing" | [src/components/printing/PrintPlaysOverlay.jsx](src/components/printing/PrintPlaysOverlay.jsx) — full-screen print preview opened from the bulk bar on `/app/plays`; pure pagination/layout helpers in [printLayout.js](src/components/printing/printLayout.js); gated by the `printing` suite feature (coach-only, fail closed) — see [PRINTING_PLAN.md](PRINTING_PLAN.md) |
 | "admin play card", "PlayCard", "plays tab card" | [src/pages/AdminPlaysPage.jsx](src/pages/AdminPlaysPage.jsx) — `PlayCard` component (~line 653); used in Plays tab grid AND Playbook Sections panel; supports `canRemoveFromSection`/`onRemoveFromSection` for section context — see [ADMIN_PLAY_CARD_CONSISTENCY.md](src/pages/ADMIN_PLAY_CARD_CONSISTENCY.md) |
 | "team switcher" | [src/components/TeamSwitcher.jsx](src/components/TeamSwitcher.jsx) |
 | "sport-aware public nav" | [src/components/SportAwarePublicNav.jsx](src/components/SportAwarePublicNav.jsx) |

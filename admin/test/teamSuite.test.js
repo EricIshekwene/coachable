@@ -3,7 +3,7 @@
  *
  * Tests cover:
  *   - buildFeaturesMap helper produces the correct default/populated shape
- *   - Feature list includes exactly the 5 expected features
+ *   - Feature list includes exactly the 6 expected features
  *   - Default state has all features disabled
  *   - Partial DB rows only override specified features
  *   - Unknown features in DB rows are ignored
@@ -13,7 +13,7 @@ import { describe, it, expect } from "vitest";
 
 // ── Replicate the buildFeaturesMap logic (mirrors server/routes/adminTeamSuite.js) ──
 
-const SUITE_FEATURES = ["roster", "practice_plans", "install_calendar", "game_plans", "assignments"];
+const SUITE_FEATURES = ["roster", "practice_plans", "install_calendar", "game_plans", "assignments", "printing"];
 
 /**
  * Build a features map from a list of DB rows.
@@ -32,8 +32,8 @@ function buildFeaturesMap(rows) {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("SUITE_FEATURES", () => {
-  it("contains exactly 5 features", () => {
-    expect(SUITE_FEATURES).toHaveLength(5);
+  it("contains exactly 6 features", () => {
+    expect(SUITE_FEATURES).toHaveLength(6);
   });
 
   it("includes the expected feature keys", () => {
@@ -42,6 +42,7 @@ describe("SUITE_FEATURES", () => {
     expect(SUITE_FEATURES).toContain("install_calendar");
     expect(SUITE_FEATURES).toContain("game_plans");
     expect(SUITE_FEATURES).toContain("assignments");
+    expect(SUITE_FEATURES).toContain("printing");
   });
 });
 
@@ -54,6 +55,7 @@ describe("buildFeaturesMap", () => {
       install_calendar: false,
       game_plans: false,
       assignments: false,
+      printing: false,
     });
   });
 
@@ -64,6 +66,7 @@ describe("buildFeaturesMap", () => {
     expect(map.install_calendar).toBe(false);
     expect(map.game_plans).toBe(false);
     expect(map.assignments).toBe(false);
+    expect(map.printing).toBe(false);
   });
 
   it("handles multiple enabled features", () => {
@@ -78,6 +81,7 @@ describe("buildFeaturesMap", () => {
     expect(map.install_calendar).toBe(false);
     expect(map.game_plans).toBe(true);
     expect(map.assignments).toBe(true);
+    expect(map.printing).toBe(false);
   });
 
   it("enables all features when all rows are provided", () => {
@@ -99,12 +103,12 @@ describe("buildFeaturesMap", () => {
     expect(map).not.toHaveProperty("unknown_feature");
   });
 
-  it("produces a map with exactly 5 keys regardless of input", () => {
+  it("produces a map with exactly 6 keys regardless of input", () => {
     const map = buildFeaturesMap([
       { feature: "roster", enabled: true },
       { feature: "fake_feature", enabled: true },
     ]);
-    expect(Object.keys(map)).toHaveLength(5);
+    expect(Object.keys(map)).toHaveLength(6);
   });
 });
 
