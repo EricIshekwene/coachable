@@ -18,7 +18,7 @@ import { requireEnum, requireBoolean } from "../lib/validate.js";
 
 const router = Router();
 
-const SUITE_FEATURES = ["roster", "practice_plans", "install_calendar", "game_plans", "assignments"];
+const SUITE_FEATURES = ["roster", "practice_plans", "install_calendar", "game_plans", "assignments", "printing"];
 
 /**
  * Build a features map from a list of DB rows.

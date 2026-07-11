@@ -37,7 +37,7 @@ import {
 
 const router = Router({ mergeParams: true });
 
-const SUITE_FEATURES = ["roster", "practice_plans", "install_calendar", "game_plans", "assignments"];
+const SUITE_FEATURES = ["roster", "practice_plans", "install_calendar", "game_plans", "assignments", "printing"];
 const COACH_ROLES = ["owner", "coach", "assistant_coach"];
 
 // ── Feature check middleware factory ─────────────────────────────────────────

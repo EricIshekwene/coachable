@@ -14,7 +14,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { apiFetch } from "../utils/api";
 
-const SUITE_FEATURES = ["roster", "practice_plans", "install_calendar", "game_plans", "assignments"];
+const SUITE_FEATURES = ["roster", "practice_plans", "install_calendar", "game_plans", "assignments", "printing"];
 
 /** @type {React.Context<{ features: Record<string, boolean>, loading: boolean }>} */
 const SuiteContext = createContext({ features: {}, loading: true });
@@ -64,7 +64,7 @@ export function SuiteProvider({ children, teamId }) {
  * Returns whether the named Team Suite feature is enabled for the current team.
  * Defaults to false if unknown or not yet loaded.
  *
- * @param {string} name - one of: roster, practice_plans, install_calendar, game_plans, assignments
+ * @param {string} name - one of: roster, practice_plans, install_calendar, game_plans, assignments, printing
  * @returns {boolean}
  */
 export function useSuiteFeature(name) {

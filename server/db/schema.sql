@@ -946,18 +946,25 @@ ON CONFLICT (athletic_domain) DO NOTHING;
 -- See server/routes/suite.js and src/pages/app/suite/ for the
 -- full feature implementation.
 -- Features: roster, practice_plans, install_calendar,
---           game_plans, assignments
+--           game_plans, assignments, printing
 -- ============================================================
 
 -- Per-team entitlement flags (admin toggles these)
 CREATE TABLE IF NOT EXISTS team_suite_features (
   team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-  feature TEXT NOT NULL CHECK (feature IN ('roster', 'practice_plans', 'install_calendar', 'game_plans', 'assignments')),
+  feature TEXT NOT NULL CHECK (feature IN ('roster', 'practice_plans', 'install_calendar', 'game_plans', 'assignments', 'printing')),
   enabled BOOLEAN NOT NULL DEFAULT false,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (team_id, feature)
 );
 CREATE INDEX IF NOT EXISTS team_suite_features_team_idx ON team_suite_features(team_id);
+
+-- Migration: widen the feature CHECK constraint to allow 'printing' (safe to re-run)
+DO $$ BEGIN
+  ALTER TABLE team_suite_features DROP CONSTRAINT IF EXISTS team_suite_features_feature_check;
+  ALTER TABLE team_suite_features ADD CONSTRAINT team_suite_features_feature_check
+    CHECK (feature IN ('roster', 'practice_plans', 'install_calendar', 'game_plans', 'assignments', 'printing'));
+END $$;
 
 -- Roster players
 CREATE TABLE IF NOT EXISTS suite_players (

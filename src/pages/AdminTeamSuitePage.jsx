@@ -20,6 +20,7 @@ const FEATURES = [
   { key: "install_calendar", label: "Install Calendar", desc: "Calendar of what concepts/plays are being installed" },
   { key: "game_plans",       label: "Game Plans",       desc: "Structured scouting and game preparation docs" },
   { key: "assignments",      label: "Assignments",      desc: "Assign plays/concepts to players with progress tracking" },
+  { key: "printing",         label: "Printing",         desc: "Print multiple plays per page (2/4/6-up) from the plays list" },
 ];
 
 /**
