@@ -888,6 +888,7 @@ export default function Plays() {
       {printOpen && (
         <PrintPlaysOverlay
           plays={sortedVisiblePlays.filter((p) => bulkSelected.has(p.id))}
+          teamName={user?.teamName || ""}
           onClose={() => setPrintOpen(false)}
         />
       )}

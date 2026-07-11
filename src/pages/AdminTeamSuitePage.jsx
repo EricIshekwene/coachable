@@ -2,7 +2,7 @@
  * AdminTeamSuitePage
  *
  * Admin control panel for enabling / disabling Team Suite features per team.
- * Each of the 5 features can be toggled independently using a toggle switch.
+ * Each of the 6 features can be toggled independently using a toggle switch.
  *
  * Uses /admin/team-suite routes (requireOwnerOrLegacyAdmin).
  */

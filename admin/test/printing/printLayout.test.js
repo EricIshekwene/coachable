@@ -4,6 +4,8 @@
  * Tests cover:
  *   - PRINT_LAYOUTS / DEFAULT_PER_PAGE layout config (2/4/6-up, 4 default)
  *   - getPrintLayout exact match + fallback-to-default behavior
+ *   - PRINT_STYLES / DEFAULT_STYLE_ID sheet-style config, getPrintStyle
+ *     fallback, and getPlayNumber cross-page numbering
  *   - paginatePlays chunking: order, page counts, remainders, bad input
  *   - canShowPrintAction gating (coach-only + 'printing' entitlement,
  *     fails closed on missing/undefined input)
@@ -18,8 +20,12 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import {
   PRINT_LAYOUTS,
+  PRINT_STYLES,
   DEFAULT_PER_PAGE,
+  DEFAULT_STYLE_ID,
   getPrintLayout,
+  getPrintStyle,
+  getPlayNumber,
   paginatePlays,
   canShowPrintAction,
 } from "../../../src/components/printing/printLayout.js";
@@ -71,6 +77,65 @@ describe("getPrintLayout", () => {
       expect(getPrintLayout(bad).perPage).toBe(DEFAULT_PER_PAGE);
     }
   );
+});
+
+// ── Sheet styles ──────────────────────────────────────────────────────────────
+
+describe("PRINT_STYLES", () => {
+  it("offers the minimal style plus the three branded styles", () => {
+    expect(PRINT_STYLES.map((s) => s.id)).toEqual(["minimal", "sideline", "playcall", "gameday"]);
+  });
+
+  it("gives every style a unique id and a non-empty picker label and description", () => {
+    const ids = PRINT_STYLES.map((s) => s.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const style of PRINT_STYLES) {
+      expect(style.label.length).toBeGreaterThan(0);
+      expect(style.description.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("defaults to the original minimal style, and the default exists in PRINT_STYLES", () => {
+    expect(DEFAULT_STYLE_ID).toBe("minimal");
+    expect(PRINT_STYLES.some((s) => s.id === DEFAULT_STYLE_ID)).toBe(true);
+  });
+});
+
+describe("getPrintStyle", () => {
+  it("returns the matching style for each valid id", () => {
+    for (const style of PRINT_STYLES) {
+      expect(getPrintStyle(style.id)).toBe(style);
+    }
+  });
+
+  it.each(["", "bold", null, undefined, 4, "MINIMAL"])(
+    "falls back to the minimal default for invalid style id %j",
+    (bad) => {
+      expect(getPrintStyle(bad).id).toBe(DEFAULT_STYLE_ID);
+    }
+  );
+});
+
+describe("getPlayNumber", () => {
+  it("numbers cells 1-based within the first page", () => {
+    expect(getPlayNumber(0, 4, 0)).toBe(1);
+    expect(getPlayNumber(0, 4, 3)).toBe(4);
+  });
+
+  it("continues numbering across pages for every layout", () => {
+    expect(getPlayNumber(1, 4, 0)).toBe(5);
+    expect(getPlayNumber(2, 6, 5)).toBe(18);
+    expect(getPlayNumber(3, 2, 1)).toBe(8);
+  });
+
+  it("matches the flattened pagination order end to end", () => {
+    const plays = makePlays(10);
+    const perPage = 4;
+    const numbers = paginatePlays(plays, perPage).flatMap((page, pageIndex) =>
+      page.map((_, cellIndex) => getPlayNumber(pageIndex, perPage, cellIndex))
+    );
+    expect(numbers).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  });
 });
 
 // ── Pagination ────────────────────────────────────────────────────────────────

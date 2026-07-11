@@ -20,6 +20,47 @@ export const PRINT_LAYOUTS = [
 export const DEFAULT_PER_PAGE = 4;
 
 /**
+ * Available sheet styles. Pure config (id + picker label + description) so
+ * the picker and style resolution can be unit tested; the actual visual
+ * differences are CSS/JSX per sheet in PrintPlaysOverlay.
+ * - minimal:  the original sheet — lockup header, plain diagram + title grid.
+ * - sideline: orange accent rule and corner ticks, title ticks, branded footer.
+ * - playcall: numbered orange play chips with title blocks above each diagram.
+ * - gameday:  bolder — black header band (white lockup) and black title bands.
+ */
+export const PRINT_STYLES = [
+  { id: "minimal", label: "Style 1", description: "Plain grid — lockup header, diagram and title" },
+  { id: "sideline", label: "Style 2", description: "Orange accent rule and corner ticks with a branded footer" },
+  { id: "playcall", label: "Style 3", description: "Numbered play chips with title blocks above each diagram" },
+  { id: "gameday", label: "Style 4", description: "Bold black header and title bands (uses more ink)" },
+];
+
+/** Default sheet style: the original minimal look. */
+export const DEFAULT_STYLE_ID = "minimal";
+
+/**
+ * Returns the style config for a style id, falling back to the default.
+ * @param {string} styleId
+ * @returns {{id: string, label: string, description: string}}
+ */
+export function getPrintStyle(styleId) {
+  return PRINT_STYLES.find((s) => s.id === styleId)
+    || PRINT_STYLES.find((s) => s.id === DEFAULT_STYLE_ID);
+}
+
+/**
+ * 1-based play number across the whole print job (used by styles that show
+ * numbered play chips), from a cell's page/position.
+ * @param {number} pageIndex - 0-based page index
+ * @param {number} perPage - plays per page for the active layout
+ * @param {number} cellIndex - 0-based cell index within the page
+ * @returns {number}
+ */
+export function getPlayNumber(pageIndex, perPage, cellIndex) {
+  return pageIndex * perPage + cellIndex + 1;
+}
+
+/**
  * Returns the layout config for a per-page count, falling back to the default.
  * @param {number} perPage
  * @returns {{perPage: number, columns: number, label: string}}
