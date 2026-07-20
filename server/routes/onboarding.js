@@ -7,6 +7,34 @@ import { requireString, optionalString, LIMITS } from "../lib/validate.js";
 
 const router = Router();
 
+const SUPPORTED_SPORTS = new Set([
+  "rugby",
+  "soccer",
+  "football",
+  "lacrosse",
+  "womens lacrosse",
+  "women's lacrosse",
+  "basketball",
+  "field hockey",
+  "ice hockey",
+  "blank",
+]);
+
+/**
+ * Converts URL/form sport variants into the canonical keys stored on teams.
+ * Returns null for blank or unsupported values so onboarding stays tolerant.
+ */
+function normalizeSportKey(value) {
+  const sport = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ");
+  if (!sport) return null;
+  if (sport === "women's lacrosse") return "womens lacrosse";
+  return SUPPORTED_SPORTS.has(sport) ? sport : null;
+}
+
 /**
  * POST /onboarding/create-team
  * Creates a new team, generates invite codes, and seeds the sport's demo play
@@ -15,7 +43,8 @@ const router = Router();
 router.post("/create-team", requireAuth, async (req, res, next) => {
   try {
     const teamName = requireString(req.body?.teamName, { field: "teamName", max: LIMITS.NAME });
-    const sport = optionalString(req.body?.sport, { field: "sport", max: LIMITS.ENUM_KEY });
+    const rawSport = optionalString(req.body?.sport, { field: "sport", max: LIMITS.ENUM_KEY });
+    const sport = normalizeSportKey(rawSport);
 
     const client = await pool.connect();
     try {
@@ -163,6 +192,9 @@ router.post("/join-team", requireAuth, async (req, res, next) => {
 // POST /onboarding/solo — skip team, create personal workspace
 router.post("/solo", requireAuth, async (req, res, next) => {
   try {
+    const rawSport = optionalString(req.body?.sport, { field: "sport", max: LIMITS.ENUM_KEY });
+    const sport = normalizeSportKey(rawSport);
+
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -177,9 +209,9 @@ router.post("/solo", requireAuth, async (req, res, next) => {
       // Create a personal team (hidden workspace)
       const teamRes = await client.query(
         `INSERT INTO teams (name, sport, owner_user_id, is_personal)
-         VALUES ($1, NULL, $2, true)
+         VALUES ($1, $2, $3, true)
          RETURNING id, name, sport, season_year, owner_user_id, created_at`,
-        [`${userName}'s Plays`, req.userId]
+        [`${userName}'s Plays`, sport ?? null, req.userId]
       );
       const team = teamRes.rows[0];
 
@@ -196,6 +228,9 @@ router.post("/solo", requireAuth, async (req, res, next) => {
         [team.id, req.userId]
       );
 
+      // Seed the selected sport's demo play into the personal workspace.
+      await seedDemoPlay(client, team.id, team.sport, req.userId);
+
       // Mark user onboarded
       await client.query(
         "UPDATE users SET onboarded_at = now(), updated_at = now() WHERE id = $1",
@@ -208,7 +243,7 @@ router.post("/solo", requireAuth, async (req, res, next) => {
         team: {
           id: team.id,
           name: team.name,
-          sport: null,
+          sport: team.sport,
           seasonYear: team.season_year,
           ownerId: team.owner_user_id,
           isPersonal: true,
