@@ -32,8 +32,15 @@ const SPORTS = [
   { key: "basketball",      label: "Basketball",       image: BasketballField,      color: "#D8C3A5" },
   { key: "field hockey",    label: "Field Hockey",     image: FieldHockeyField,     color: "#3E8E5B" },
   { key: "ice hockey",      label: "Ice Hockey",       image: IceHockeyField,       color: "#ECF8FE", imageRotation: 90 },
-  { key: "",                label: "Blank Canvas",     image: null,                 color: "#4FA85D" },
+  { key: "blank",           label: "Blank Canvas",     image: null,                 color: "#4FA85D" },
 ];
+
+const SPORT_KEYS = new Set(SPORTS.map((s) => s.key));
+
+function normalizeSportFromParam(value) {
+  const normalized = String(value || "").trim().toLowerCase().replace(/-/g, " ");
+  return SPORT_KEYS.has(normalized) ? normalized : "";
+}
 
 /**
  * Main onboarding page.
@@ -49,6 +56,7 @@ export default function Onboarding() {
   const [searchParams] = useSearchParams();
   const inviteFromUrl = searchParams.get("invite") || "";
   const returnTo = searchParams.get("returnTo") || "";
+  const initialSport = normalizeSportFromParam(searchParams.get("sport"));
   const hasInvite = inviteFromUrl.length > 0;
 
   // "choose" → "details" → "sport" (create)
@@ -58,8 +66,8 @@ export default function Onboarding() {
   const [teamAction, setTeamAction] = useState(hasInvite ? "join" : "create");
   const [teamName, setTeamName] = useState("");
   const [inviteCode, setInviteCode] = useState(inviteFromUrl);
-  const [sport, setSport] = useState("");
-  const [sportChosen, setSportChosen] = useState(false);
+  const [sport, setSport] = useState(initialSport);
+  const [sportChosen, setSportChosen] = useState(Boolean(initialSport));
   const [submitting, setSubmitting] = useState(false);
 
   const { completeOnboarding, logout } = useAuth();
@@ -227,7 +235,7 @@ export default function Onboarding() {
                 <div className="mt-8 grid grid-cols-3 gap-3">
                   <button
                     type="button"
-                    onClick={() => { setTeamAction("create"); setSport(""); setSportChosen(false); setStep("details"); }}
+                    onClick={() => { setTeamAction("create"); setSport(initialSport); setSportChosen(Boolean(initialSport)); setStep("details"); }}
                     className={optionCard}
                   >
                     <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-BrandGray/10 transition group-hover:bg-BrandGray/20">
@@ -251,7 +259,7 @@ export default function Onboarding() {
 
                   <button
                     type="button"
-                    onClick={() => { setTeamAction("solo"); setSport(""); setSportChosen(false); setStep("sport"); }}
+                    onClick={() => { setTeamAction("solo"); setSport(initialSport); setSportChosen(Boolean(initialSport)); setStep("sport"); }}
                     className={optionCard}
                   >
                     <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-BrandGray/10 transition group-hover:bg-BrandGray/20">
@@ -387,7 +395,7 @@ export default function Onboarding() {
                 const isSelected = sportChosen && sport === s.key;
                 return (
                   <button
-                    key={s.key === "" ? "blank" : s.key}
+                    key={s.key}
                     type="button"
                     disabled={submitting}
                     onClick={() => {

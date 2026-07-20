@@ -181,6 +181,7 @@ export function AuthProvider({ children }) {
       if (teamAction === "solo") {
         const data = await apiFetch("/onboarding/solo", {
           method: "POST",
+          body: { sport },
         });
         const team = data.team || {};
         setUser((prev) => ({
@@ -188,7 +189,7 @@ export function AuthProvider({ children }) {
           role: "owner",
           teamId: team.id,
           teamName: team.name,
-          sport: "",
+          sport: team.sport || "",
           ownerId: prev.id,
           isPersonalTeam: true,
           onboarded: true,
@@ -196,7 +197,7 @@ export function AuthProvider({ children }) {
         setAllTeams([{
           teamId: team.id,
           teamName: team.name,
-          sport: "",
+          sport: team.sport || "",
           seasonYear: String(new Date().getFullYear()),
           ownerId: team.ownerId,
           isPersonal: true,

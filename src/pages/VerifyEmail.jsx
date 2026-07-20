@@ -18,6 +18,8 @@ export default function VerifyEmail() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const inviteCode = searchParams.get("invite") || "";
+  const returnTo = searchParams.get("returnTo") || "";
+  const sportSlug = searchParams.get("sport") || "";
 
   // Start cooldown on mount (code was just sent during signup)
   useEffect(() => {
@@ -83,7 +85,12 @@ export default function VerifyEmail() {
         });
         showMessage("Email verified", "Your email has been verified successfully.", "success");
         if (refreshUser) await refreshUser();
-        navigate(inviteCode ? `/onboarding?invite=${encodeURIComponent(inviteCode)}` : "/onboarding");
+        const params = new URLSearchParams();
+        if (inviteCode) params.set("invite", inviteCode);
+        if (returnTo) params.set("returnTo", returnTo);
+        if (sportSlug) params.set("sport", sportSlug);
+        const qs = params.toString() ? `?${params.toString()}` : "";
+        navigate(`/onboarding${qs}`);
       } catch (err) {
         showMessage("Verification failed", err.message || "Invalid or expired code.", "error");
         setDigits(Array(CODE_LENGTH).fill(""));
@@ -92,7 +99,7 @@ export default function VerifyEmail() {
         setSubmitting(false);
       }
     },
-    [submitting, showMessage, navigate, refreshUser, inviteCode]
+    [submitting, showMessage, navigate, refreshUser, inviteCode, returnTo, sportSlug]
   );
 
   const handleResend = async () => {

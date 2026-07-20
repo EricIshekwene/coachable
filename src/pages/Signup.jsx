@@ -73,6 +73,7 @@ export default function Signup() {
       const params = new URLSearchParams();
       if (inviteCode) params.set("invite", inviteCode);
       if (returnTo) params.set("returnTo", returnTo);
+      if (sportSlug) params.set("sport", sportSlug);
       const qs = params.toString() ? `?${params.toString()}` : "";
       if (result.requiresVerification) {
         navigate(`/verify-email${qs}`);
