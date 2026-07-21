@@ -31,6 +31,24 @@ export async function seedDemoPlay(client, teamId, sport, userId) {
 }
 
 /**
+ * Whether setting a team's sport should retroactively seed the demo play.
+ *
+ * Teams created without a sport (e.g. solo workspaces from the onboarding
+ * bug fixed in 650f422) skipped seedDemoPlay at creation. When the sport is
+ * set for the first time and the team still has no plays at all, the sport's
+ * demo play is seeded as if the team had been created with it.
+ *
+ * @param {Object} state
+ * @param {string|null} state.previousSport - Team sport before this change
+ * @param {string|null} state.newSport - Sport being set (falsy = not changing)
+ * @param {boolean} state.hasPlays - Whether the team has any plays (incl. archived)
+ * @returns {boolean}
+ */
+export function shouldSeedDemoPlayOnSportSet({ previousSport, newSport, hasPlays }) {
+  return Boolean(newSport) && !previousSport && !hasPlays;
+}
+
+/**
  * Returns all team memberships for a user, ordered by join date.
  * @param {string} userId
  * @returns {Promise<Array<{teamId, teamName, sport, seasonYear, ownerId, isPersonal, role}>>}

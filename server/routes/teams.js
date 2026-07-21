@@ -3,7 +3,7 @@ import crypto from "crypto";
 import pool from "../db/pool.js";
 import { requireAuth, requireTeamRole } from "../middleware/auth.js";
 import { sendTeamInviteEmail, sendMemberRemovedEmail } from "../lib/email.js";
-import { resolveActiveTeam, ensurePersonalWorkspace, getUserTeams, seedDemoPlay } from "../lib/userTeams.js";
+import { resolveActiveTeam, ensurePersonalWorkspace, getUserTeams, seedDemoPlay, shouldSeedDemoPlayOnSportSet } from "../lib/userTeams.js";
 import { emailLimiter } from "../middleware/rateLimit.js";
 import { requireString, optionalString, requireEmail, requireEnum, requireUuid, LIMITS } from "../lib/validate.js";
 
@@ -384,6 +384,17 @@ router.patch(
       const seasonYear = req.body?.seasonYear === undefined ? undefined
         : (optionalString(req.body?.seasonYear, { field: "seasonYear", max: 16 }) ?? null);
 
+      // Read the sport before updating — setting it for the first time on a
+      // team with no plays retroactively seeds the sport's demo play below.
+      let previousSport = null;
+      if (sport) {
+        const { rows } = await pool.query(
+          `SELECT sport FROM teams WHERE id = $1`,
+          [req.params.teamId]
+        );
+        previousSport = rows[0]?.sport ?? null;
+      }
+
       // Update team table fields
       const setClauses = [];
       const values = [];
@@ -411,6 +422,20 @@ router.patch(
         );
       }
 
+      // First sport on a play-less team: seed the sport's demo play, matching
+      // what team creation would have done had the sport been set from the start.
+      let seededDemoPlay = false;
+      if (sport && !previousSport) {
+        const { rows: existingPlays } = await pool.query(
+          `SELECT 1 FROM plays WHERE team_id = $1 LIMIT 1`,
+          [req.params.teamId]
+        );
+        if (shouldSeedDemoPlayOnSportSet({ previousSport, newSport: sport, hasPlays: existingPlays.length > 0 })) {
+          await seedDemoPlay(pool, req.params.teamId, sport, req.userId);
+          seededDemoPlay = true;
+        }
+      }
+
       // Update team_settings if assistant permissions provided
       const { assistantPermissions } = req.body;
       if (assistantPermissions) {
@@ -431,7 +456,7 @@ router.patch(
         );
       }
 
-      res.json({ ok: true });
+      res.json({ ok: true, seededDemoPlay });
     } catch (err) {
       next(err);
     }

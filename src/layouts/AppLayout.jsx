@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-do
 import { useAuth } from "../context/AuthContext";
 import darkLogo from "../assets/logos/White_Coachable_Logo.png";
 import lightLogo from "../assets/logos/coachable_Logo.png";
-import { FiBookOpen, FiUsers, FiUser, FiLogOut, FiSettings, FiEye, FiX, FiFlag, FiPlay, FiGrid, FiBell, FiList, FiCalendar, FiTarget, FiCheckSquare } from "react-icons/fi";
+import { FiBookOpen, FiUsers, FiUser, FiLogOut, FiSettings, FiEye, FiX, FiFlag, FiPlay, FiGrid, FiBell, FiList, FiCalendar, FiTarget, FiCheckSquare, FiAlertCircle } from "react-icons/fi";
 import useThemeColor from "../utils/useThemeColor";
 import TeamSwitcher from "../components/TeamSwitcher";
 import NotificationBell from "../components/NotificationBell";
@@ -15,6 +15,11 @@ import {
   fetchPublishedPlaybookSections,
   filterPublishedPlaybookSectionsForSport,
 } from "../utils/playbookSectionsApi";
+import {
+  dismissSportBanner,
+  isSportBannerDismissed,
+  shouldShowSportBanner,
+} from "../utils/sportBanner";
 
 const BASE_TEAM_NAV = [
   { to: "/app/plays", icon: FiBookOpen, label: "Plays" },
@@ -103,6 +108,26 @@ function AppLayoutInner() {
     const nextSearch = params.toString();
     navigate({ pathname: location.pathname, search: nextSearch ? `?${nextSearch}` : "" }, { replace: true });
   }, [user, location.pathname, location.search, startTutorial, navigate]);
+
+  // Missing-sport banner — dismissal lives in sessionStorage (per team, so
+  // switching to another sportless team shows it again); the counter only
+  // forces a re-render after dismissing.
+  const [, bumpSportBannerDismissals] = useState(0);
+
+  // Hidden in player view: players can't change the team sport.
+  const showSportBanner =
+    !playerViewMode &&
+    shouldShowSportBanner({
+      sport: user?.sport,
+      role: user?.role,
+      dismissed: isSportBannerDismissed(user?.teamId),
+    });
+
+  /** Hide the missing-sport banner for the rest of this session. */
+  const handleDismissSportBanner = () => {
+    dismissSportBanner(user?.teamId);
+    bumpSportBannerDismissals((n) => n + 1);
+  };
 
   // Suite feature flags
   const suiteFeatures = useSuiteFeatures();
@@ -199,6 +224,34 @@ function AppLayoutInner() {
             <FiX className="text-xs" />
             Exit Player View
           </button>
+        </div>
+      )}
+
+      {/* Missing Sport Banner — owners/coaches on a team with no sport set */}
+      {showSportBanner && (
+        <div className="flex items-center justify-between gap-3 border-b border-BrandOrange/30 bg-BrandOrange/10 px-4 py-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <FiAlertCircle className="shrink-0 text-sm text-BrandOrange" />
+            <span className="shrink-0 text-xs font-semibold text-BrandOrange">No sport selected</span>
+            <span className="truncate text-xs text-BrandGray2">
+              — pick your {isPersonal ? "workspace's" : "team's"} sport to get the right field and defaults
+            </span>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              onClick={() => navigate("/app/select-sport", { state: { from: location.pathname } })}
+              className="rounded-md bg-BrandOrange px-3 py-1.5 text-xs font-semibold text-white transition hover:brightness-110"
+            >
+              Select Sport
+            </button>
+            <button
+              onClick={handleDismissSportBanner}
+              aria-label="Dismiss sport reminder"
+              className="rounded-md p-1.5 text-BrandGray transition hover:bg-BrandBlack2 hover:text-BrandText"
+            >
+              <FiX className="text-sm" />
+            </button>
+          </div>
         </div>
       )}
 

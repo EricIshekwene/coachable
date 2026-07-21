@@ -62,6 +62,7 @@ import Team from "./pages/app/Team";
 import Profile from "./pages/app/Profile";
 import ProfileEmailVerification from "./pages/app/ProfileEmailVerification";
 import Settings from "./pages/app/Settings";
+import SelectSport from "./pages/app/SelectSport";
 import ReportIssue from "./pages/app/ReportIssue";
 import Notifications from "./pages/app/Notifications";
 import Playbooks from "./pages/app/Playbooks";
@@ -462,6 +463,7 @@ export function AppRoutes() {
       {/* Full-screen play editor (outside AppLayout — no nav chrome) */}
       <Route path="/app/plays/:playId/edit" element={<RequireAuth><RequireOnboarded><PlayEditPage /></RequireOnboarded></RequireAuth>} />
       <Route path="/app/plays/:playId/view" element={<RequireAuth><RequireOnboarded><PlayViewOnlyPage /></RequireOnboarded></RequireAuth>} />
+      <Route path="/app/select-sport" element={<RequireAuth><RequireOnboarded><SelectSport /></RequireOnboarded></RequireAuth>} />
 
       {/* App shell */}
       <Route path="/app" element={<RequireAuth><RequireOnboarded><AppLayout /></RequireOnboarded></RequireAuth>}>

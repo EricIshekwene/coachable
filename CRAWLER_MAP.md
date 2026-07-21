@@ -193,6 +193,7 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 | "app-wide messages" | [src/context/AppMessageContext.jsx](src/context/AppMessageContext.jsx) |
 | "routes", "router", "all pages" | [src/App.jsx](src/App.jsx) |
 | "app shell layout" (nav chrome) | [src/layouts/AppLayout.jsx](src/layouts/AppLayout.jsx) |
+| "no sport selected banner", "missing sport" | [src/layouts/AppLayout.jsx](src/layouts/AppLayout.jsx) (banner) + [src/utils/sportBanner.js](src/utils/sportBanner.js) (visibility/dismissal logic) + [src/pages/app/SelectSport.jsx](src/pages/app/SelectSport.jsx) (selector at `/app/select-sport`) |
 | "admin elevation / session" | [src/utils/adminElevation.js](src/utils/adminElevation.js) |
 | "error reporter" | [src/utils/errorReporter.js](src/utils/errorReporter.js) |
 | "mobile viewport fixes" | [src/utils/mobileViewport.js](src/utils/mobileViewport.js) |
@@ -260,6 +261,7 @@ All under [src/animation/](src/animation/), [src/canvas/](src/canvas/), [src/fea
 | `/app/playbooks` (+`/:sectionId`) | [pages/app/Playbooks.jsx](src/pages/app/Playbooks.jsx) |
 | `/app/videos` | [pages/app/DemoVideos.jsx](src/pages/app/DemoVideos.jsx) |
 | `/app/notifications` (in-app inbox) | [pages/app/Notifications.jsx](src/pages/app/Notifications.jsx) |
+| `/app/select-sport` (full-screen, no chrome) | [pages/app/SelectSport.jsx](src/pages/app/SelectSport.jsx) — fixes teams with no sport set, reached from the missing-sport banner; see [SELECT_SPORT.md](src/pages/app/SELECT_SPORT.md) |
 
 ### Admin (`/admin/*`)
 | Path | File |
@@ -358,7 +360,7 @@ Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PL
 - [middleware/staffAuth.js](server/middleware/staffAuth.js) — scoped staff-admin auth: `requireAdminOrStaff`, `requireOwnerOrLegacyAdmin`, `requirePerm`, `requireAnyPerm`, `requireSportScope`, `redactByPerm`, `writeAudit`, `isOwner`, `resolveActor` (see [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PLAN.md))
 - [routes/staff.js](server/routes/staff.js) — public-or-JWT staff endpoints: `GET /staff/session`, `POST /staff/accept-invite`
 - [lib/email.js](server/lib/email.js) — Resend email helpers
-- [lib/userTeams.js](server/lib/userTeams.js) — user↔team queries
+- [lib/userTeams.js](server/lib/userTeams.js) — user↔team queries, `seedDemoPlay`, `shouldSeedDemoPlayOnSportSet` (first-sport retroactive seeding; see [SELECT_SPORT.md](src/pages/app/SELECT_SPORT.md))
 - [lib/notificationAudience.js](server/lib/notificationAudience.js) — pure notification helpers: `buildNotifAudienceSql`, `buildNotifAudienceLabel`, `aggregateNotifResponses` (used by `/admin/notifications/*`)
 - [utils/syncSports.js](server/utils/syncSports.js) — startup sport seed
 - [utils/syncPlaybookDefaults.js](server/utils/syncPlaybookDefaults.js) — startup playbook seed
