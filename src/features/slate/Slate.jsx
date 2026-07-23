@@ -203,6 +203,12 @@ function Slate({
   flushRef: externalFlushRef,
   onReady,
   viewOnly: viewOnlyProp = false,
+  /**
+   * When true (and viewOnly), playback starts automatically once the play
+   * has loaded instead of requiring the viewer to press play. Used by the
+   * shared-play routes to remove friction for link recipients.
+   */
+  autoplayOnLoad = false,
   adminMode = false,
   sport: sportProp = null,
   mobileLayout = false,
@@ -261,6 +267,10 @@ function Slate({
   const showViewOverlay = viewTransition === "view" || viewTransition === "collapsing";
   // Whether view-only controls should be fully visible
   const viewOverlayVisible = viewTransition === "view";
+  // Measured height (px) of the ViewOnlyControls bottom bar, reserved as a
+  // safe zone at the bottom of the canvas so field content (e.g. players near
+  // the sideline) never renders underneath the floating playback controls.
+  const [viewOnlyBottomBarHeight, setViewOnlyBottomBarHeight] = useState(0);
   const containerRef = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -3956,6 +3966,23 @@ function Slate({
     onReady?.();
   });
 
+  // Auto-start playback once for view-only pages that opt in (e.g. shared
+  // play links), so recipients see the play move immediately instead of
+  // having to find and press the play button. Looping is left to the
+  // existing autoplayEnabled/engine-loop default (on), so the play repeats.
+  const autoplayStartedRef = useRef(false);
+  useEffect(() => {
+    if (!autoplayOnLoad || !viewOnly) return;
+    if (autoplayStartedRef.current) return;
+    if (initialPlayData && !initialPlayDataLoadedRef.current) return;
+    const hasMotion = Object.values(animationData?.tracks || {}).some(
+      (track) => (track?.keyframes?.length || 0) > 1
+    );
+    if (!hasMotion) return;
+    autoplayStartedRef.current = true;
+    togglePlayback();
+  }, [autoplayOnLoad, viewOnly, initialPlayData, animationData, togglePlayback]);
+
   // Autosave: debounced persist to localStorage on playData or playName change.
   useEffect(() => {
     if (!playId || !editorReadyRef.current) return;
@@ -4355,6 +4382,7 @@ function Slate({
         <KonvaCanvasRoot
           tool={viewOnly ? "hand" : canvasTool}
           viewOnly={viewOnly}
+          viewOnlyBottomInset={showViewOverlay ? viewOnlyBottomBarHeight : 0}
           mobileLayout={mobileLayout}
           camera={fieldViewport.camera}
           setCamera={fieldViewport.setCamera}
@@ -4632,6 +4660,7 @@ function Slate({
             isFullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
             playName={playName}
+            onBottomBarHeightChange={setViewOnlyBottomBarHeight}
           />
           </div>
         ) : recording.recordingModeEnabled ? (

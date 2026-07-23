@@ -62,6 +62,7 @@ export default function SharedPlayView() {
 
       <Slate
         viewOnly
+        autoplayOnLoad
         initialPlayName={play.title}
         initialPlayData={play.playData || null}
         onNavigateHome={() => navigate(location.state?.backTo || `/shared/${token}`)}

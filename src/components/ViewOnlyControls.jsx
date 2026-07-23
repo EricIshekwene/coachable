@@ -28,7 +28,9 @@ export default function ViewOnlyControls({
   isFullscreen = false,
   onToggleFullscreen,
   playName,
+  onBottomBarHeightChange,
 }) {
+  const bottomBarRef = useRef(null);
   const trackRef = useRef(null);
   const fillRef = useRef(null);
   const thumbRef = useRef(null);
@@ -152,6 +154,22 @@ export default function ViewOnlyControls({
     if (rafSeekRef.current != null) cancelAnimationFrame(rafSeekRef.current);
   }, []);
 
+  // Report the bottom bar's real rendered height so the canvas can reserve
+  // matching space and avoid rendering field content underneath it.
+  useEffect(() => {
+    const node = bottomBarRef.current;
+    if (!node || !onBottomBarHeightChange) return undefined;
+    const report = () => onBottomBarHeightChange(Math.ceil(node.getBoundingClientRect().height));
+    report();
+    if (typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver(report);
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+      onBottomBarHeightChange(0);
+    };
+  }, [onBottomBarHeightChange]);
+
   const speedLabel = (() => {
     const rate = (0.25 + (speedMultiplier / 100) * 3.75) * 3;
     const secs = Math.max(1, durationMs) / 1000 / rate;
@@ -197,7 +215,7 @@ export default function ViewOnlyControls({
       </div>
 
       {/* Bottom controls */}
-      <div className="pointer-events-auto bg-gradient-to-t from-black/60 to-transparent pt-10 pb-4 px-4">
+      <div ref={bottomBarRef} className="pointer-events-auto bg-gradient-to-t from-black/60 to-transparent pt-10 pb-4 px-4">
         {/* Progress bar */}
         <div
           ref={trackRef}

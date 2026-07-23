@@ -189,6 +189,12 @@ function KonvaCanvasRoot({
   onFieldBoundsChange,
   viewOnly = false,
   mobileLayout = false,
+  /**
+   * Extra space (px) to reserve at the bottom of the canvas so the field
+   * doesn't render underneath the floating view-only playback bar
+   * (ViewOnlyControls). 0 leaves the canvas filling its full container.
+   */
+  viewOnlyBottomInset = 0,
   onEditPlayer,
   onTogglePlayerHidden,
   onToggleBallHidden,
@@ -2096,7 +2102,14 @@ function KonvaCanvasRoot({
       className="bg-BrandGreen"
       style={pitchColor ? { backgroundColor: pitchColor } : undefined}
     >
-      <div ref={containerRef} className="absolute inset-0" style={{ cursor: derivedCursor }}>
+      <div
+        ref={containerRef}
+        className="absolute inset-0"
+        style={{
+          cursor: derivedCursor,
+          bottom: viewOnlyBottomInset > 0 ? viewOnlyBottomInset : undefined,
+        }}
+      >
         <Stage
           ref={stageRef}
           width={size.width}

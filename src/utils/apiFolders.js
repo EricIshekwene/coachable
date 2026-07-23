@@ -40,9 +40,17 @@ export async function fetchSharedFolder(token) {
   return data.folder;
 }
 
-/** Copy all plays from a shared folder to the current user's team playbook. */
-export async function copySharedFolder(token) {
-  const data = await apiFetch(`/shared/folders/${token}/copy`, { method: "POST" });
+/**
+ * Copy all plays from a shared folder into a team's playbook.
+ * @param {string} token - Share link token.
+ * @param {string} [teamId] - Target team id, from the team picker. Falls back
+ *   server-side to the user's active team if omitted.
+ */
+export async function copySharedFolder(token, teamId) {
+  const data = await apiFetch(`/shared/folders/${token}/copy`, {
+    method: "POST",
+    body: teamId ? { teamId } : undefined,
+  });
   return data;
 }
 
