@@ -102,8 +102,17 @@ export async function copySharedPlay(token, teamId) {
 }
 
 /** Copy a platform play to the current user's team playbook. */
-export async function copyPlatformPlay(playId) {
-  const data = await apiFetch(`/platform-plays/${playId}/copy`, { method: "POST" });
+/**
+ * Copy a platform play into a team's playbook.
+ * @param {string} playId
+ * @param {string} [teamId] - Target team id from the team picker. Falls back
+ *   server-side to the user's active team if omitted.
+ */
+export async function copyPlatformPlay(playId, teamId) {
+  const data = await apiFetch(`/platform-plays/${playId}/copy`, {
+    method: "POST",
+    body: teamId ? { teamId } : undefined,
+  });
   return data.play;
 }
 

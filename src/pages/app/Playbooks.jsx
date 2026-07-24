@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { apiFetch } from "../../utils/api";
+import TeamPickerModal from "../../components/TeamPickerModal";
 import {
   fetchPublishedPlaybookSections,
   filterPublishedPlaybookSectionsForSport,
@@ -21,6 +22,9 @@ import {
   FiX,
 } from "react-icons/fi";
 
+/** Roles that can add plays to a team playbook. */
+const COACH_ROLES = ["owner", "coach", "assistant_coach"];
+
 // ── API helpers ───────────────────────────────────────────────────────────────
 
 /**
@@ -35,17 +39,25 @@ async function fetchSectionDetail(id) {
 /**
  * Copy a single platform play to the authenticated coach's team playbook.
  * @param {string} playId
+ * @param {string} [teamId] - Target team id from the team picker.
  */
-async function copySinglePlay(playId) {
-  return await apiFetch(`/platform-plays/${playId}/copy`, { method: "POST" });
+async function copySinglePlay(playId, teamId) {
+  return await apiFetch(`/platform-plays/${playId}/copy`, {
+    method: "POST",
+    body: teamId ? { teamId } : undefined,
+  });
 }
 
 /**
  * Copy all plays in a playbook section to the authenticated coach's team playbook.
  * @param {string} sectionId
+ * @param {string} [teamId] - Target team id from the team picker.
  */
-async function copySectionToTeam(sectionId) {
-  return await apiFetch(`/playbook-sections/${sectionId}/copy`, { method: "POST" });
+async function copySectionToTeam(sectionId, teamId) {
+  return await apiFetch(`/playbook-sections/${sectionId}/copy`, {
+    method: "POST",
+    body: teamId ? { teamId } : undefined,
+  });
 }
 
 function normalizeFilterValue(value) {
@@ -203,6 +215,7 @@ function PlayGrid({ plays, isCoach, copiedIds, onCopyPlay, onPreview }) {
  */
 function SectionDetail({ sectionId, onBack, isCoach }) {
   const navigate = useNavigate();
+  const { user, allTeams } = useAuth();
   const [section, setSection] = useState(null);
   const [plays, setPlays] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -210,6 +223,13 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
   const [copiedIds, setCopiedIds] = useState(new Set());
   const [copyingAll, setCopyingAll] = useState(false);
   const [allCopied, setAllCopied] = useState(false);
+  // Team picker state: null | { type: 'play', id: string } | { type: 'section' }
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
+
+  const coachEligibleTeams = (allTeams || [])
+    .filter((t) => COACH_ROLES.includes(t.role))
+    .map((t) => ({ ...t, isActive: t.teamId === user?.teamId }));
 
   const [search, setSearch] = useState("");
   const [activeTags, setActiveTags] = useState([]);
@@ -264,25 +284,54 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
     });
   }, [sectionTags]);
 
-  const handleCopyPlay = async (play) => {
+  const doCopyPlay = async (playId, teamId) => {
     try {
-      await copySinglePlay(play.id);
-      setCopiedIds((prev) => new Set([...prev, play.id]));
+      await copySinglePlay(playId, teamId);
+      setCopiedIds((prev) => new Set([...prev, playId]));
     } catch (err) {
       setError(err.message);
     }
   };
 
-  const handleCopyAll = async () => {
+  const doCopyAll = async (teamId) => {
     setCopyingAll(true);
     try {
-      await copySectionToTeam(sectionId);
+      await copySectionToTeam(sectionId, teamId);
       setCopiedIds(new Set(plays.map((p) => p.id)));
       setAllCopied(true);
     } catch (err) {
       setError(err.message);
     } finally {
       setCopyingAll(false);
+    }
+  };
+
+  const handlePickerSelect = async (teamId) => {
+    setPickerOpen(false);
+    if (!pendingAction) return;
+    if (pendingAction.type === "play") {
+      await doCopyPlay(pendingAction.id, teamId);
+    } else {
+      await doCopyAll(teamId);
+    }
+    setPendingAction(null);
+  };
+
+  const handleCopyPlay = (play) => {
+    if (coachEligibleTeams.length > 1) {
+      setPendingAction({ type: "play", id: play.id });
+      setPickerOpen(true);
+    } else {
+      doCopyPlay(play.id, coachEligibleTeams[0]?.teamId || user?.teamId);
+    }
+  };
+
+  const handleCopyAll = () => {
+    if (coachEligibleTeams.length > 1) {
+      setPendingAction({ type: "section" });
+      setPickerOpen(true);
+    } else {
+      doCopyAll(coachEligibleTeams[0]?.teamId || user?.teamId);
     }
   };
 
@@ -465,7 +514,13 @@ function SectionDetail({ sectionId, onBack, isCoach }) {
         )}
       </div>
 
-
+      <TeamPickerModal
+        open={pickerOpen}
+        teams={coachEligibleTeams}
+        title={pendingAction?.type === "section" ? "Add all plays to which team?" : "Add this play to which team?"}
+        onSelect={handlePickerSelect}
+        onCancel={() => { setPickerOpen(false); setPendingAction(null); }}
+      />
     </div>
   );
 }

@@ -3,8 +3,12 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { copyPlatformPlay } from "../utils/apiPlays";
 import PlayPreviewCard from "../components/PlayPreviewCard";
+import TeamPickerModal from "../components/TeamPickerModal";
 import useThemeColor from "../utils/useThemeColor";
 import { FiLoader, FiTag, FiPlus, FiExternalLink, FiCheck, FiUser } from "react-icons/fi";
+
+/** Roles allowed to add platform plays to a team's playbook. */
+const COACH_ROLES = ["owner", "coach", "assistant_coach"];
 import darkLogo from "../assets/logos/White_Full_Coachable.png";
 import lightLogo from "../assets/logos/full_Coachable_logo.png";
 
@@ -19,7 +23,7 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
  */
 export default function PlatformPlayView() {
   const { playId } = useParams();
-  const { user, loading: authLoading } = useAuth();
+  const { user, allTeams, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [play, setPlay] = useState(null);
@@ -28,6 +32,11 @@ export default function PlatformPlayView() {
   const [copying, setCopying] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const coachEligibleTeams = (allTeams || [])
+    .filter((t) => COACH_ROLES.includes(t.role))
+    .map((t) => ({ ...t, isActive: t.teamId === user?.teamId }));
 
   // Theme: use user's saved preference, default to light for visitors
   const [isLight] = useState(() => {
@@ -65,24 +74,37 @@ export default function PlatformPlayView() {
   }, [playId]);
 
   /**
-   * Copies the platform play into the logged-in coach's playbook.
-   * Redirects to login if not authenticated.
+   * Copies the platform play into the chosen team's playbook.
+   * @param {string} teamId
    */
-  const handleAddToPlaybook = async () => {
-    if (!user) {
-      navigate(`/login?returnTo=${encodeURIComponent(`/platform-play/${playId}`)}`);
-      return;
-    }
+  const copyToTeam = async (teamId) => {
+    setPickerOpen(false);
     setCopying(true);
     setCopyError(null);
     try {
-      await copyPlatformPlay(playId);
+      await copyPlatformPlay(playId, teamId);
       setCopied(true);
     } catch (err) {
       setCopyError(err?.message || "Failed to add play");
     } finally {
       setCopying(false);
     }
+  };
+
+  /**
+   * "Add to Playbook" entry point. Redirects to login if not authenticated.
+   * Opens team picker when the user coaches multiple teams.
+   */
+  const handleAddToPlaybook = () => {
+    if (!user) {
+      navigate(`/login?returnTo=${encodeURIComponent(`/platform-play/${playId}`)}`);
+      return;
+    }
+    if (coachEligibleTeams.length > 1) {
+      setPickerOpen(true);
+      return;
+    }
+    copyToTeam(coachEligibleTeams[0]?.teamId || user.teamId);
   };
 
   if (loading || authLoading) {
@@ -265,6 +287,14 @@ export default function PlatformPlayView() {
           </div>
         )}
       </div>
+
+      <TeamPickerModal
+        open={pickerOpen}
+        teams={coachEligibleTeams}
+        title="Add this play to which team?"
+        onSelect={copyToTeam}
+        onCancel={() => setPickerOpen(false)}
+      />
     </div>
   );
 }

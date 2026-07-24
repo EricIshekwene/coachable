@@ -244,7 +244,7 @@ All under [src/animation/](src/animation/), [src/canvas/](src/canvas/), [src/fea
 | `/shared/:token` | [SharedPlay.jsx](src/pages/SharedPlay.jsx) — "Add to Playbook" opens a team picker when the user has more than one coach-eligible team; see [SHARED_PLAY_TEAM_PICKER.md](src/pages/SHARED_PLAY_TEAM_PICKER.md) |
 | `/shared/:token/view` | [SharedPlayView.jsx](src/pages/SharedPlayView.jsx) — auto-plays + loops on load; see [VIEW_ONLY_PLAYBACK_FIX.md](src/components/VIEW_ONLY_PLAYBACK_FIX.md) |
 | `/shared/folder/:token` | [SharedFolder.jsx](src/pages/SharedFolder.jsx) — same team-picker fix as SharedPlay |
-| `/platform-play/:playId` | [PlatformPlayView.jsx](src/pages/PlatformPlayView.jsx) |
+| `/platform-play/:playId` | [PlatformPlayView.jsx](src/pages/PlatformPlayView.jsx) — "Add to Playbook" opens team picker for multi-team coaches; same `TeamPickerModal` as SharedPlay |
 
 ### App shell (`/app/*`, behind auth+onboarded)
 | Path | File |
@@ -259,7 +259,7 @@ All under [src/animation/](src/animation/), [src/canvas/](src/canvas/), [src/fea
 | `/app/profile/verify-email` | [pages/app/ProfileEmailVerification.jsx](src/pages/app/ProfileEmailVerification.jsx) |
 | `/app/settings` | [pages/app/Settings.jsx](src/pages/app/Settings.jsx) |
 | `/app/report-issue` | [pages/app/ReportIssue.jsx](src/pages/app/ReportIssue.jsx) |
-| `/app/playbooks` (+`/:sectionId`) | [pages/app/Playbooks.jsx](src/pages/app/Playbooks.jsx) |
+| `/app/playbooks` (+`/:sectionId`) | [pages/app/Playbooks.jsx](src/pages/app/Playbooks.jsx) — "Add to Playbook" / "Add All" open team picker for multi-team coaches |
 | `/app/videos` | [pages/app/DemoVideos.jsx](src/pages/app/DemoVideos.jsx) |
 | `/app/notifications` (in-app inbox) | [pages/app/Notifications.jsx](src/pages/app/Notifications.jsx) |
 | `/app/select-sport` (full-screen, no chrome) | [pages/app/SelectSport.jsx](src/pages/app/SelectSport.jsx) — fixes teams with no sport set, reached from the missing-sport banner; see [SELECT_SPORT.md](src/pages/app/SELECT_SPORT.md) |

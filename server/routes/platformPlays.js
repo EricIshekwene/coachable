@@ -1,6 +1,7 @@
 import { Router } from "express";
 import pool from "../db/pool.js";
 import { requireAuth } from "../middleware/auth.js";
+import { resolveTargetMembership } from "../lib/resolveTeamCopy.js";
 
 const router = Router();
 
@@ -152,32 +153,14 @@ router.post("/:id/copy", requireAuth, async (req, res, next) => {
 
     const platformPlay = playRows[0];
 
-    // Resolve the user's currently active team (the one they're viewing in the app),
-    // falling back to their earliest membership if active_team_id is unset.
-    const { rows: userRows } = await pool.query(
-      "SELECT active_team_id FROM users WHERE id = $1",
-      [req.userId]
-    );
-    const activeTeamId = userRows[0]?.active_team_id || null;
-
-    const { rows: memberRows } = activeTeamId
-      ? await pool.query(
-          "SELECT tm.team_id, tm.role FROM team_memberships tm WHERE tm.user_id = $1 AND tm.team_id = $2",
-          [req.userId, activeTeamId]
-        )
-      : await pool.query(
-          "SELECT tm.team_id, tm.role FROM team_memberships tm WHERE tm.user_id = $1 ORDER BY tm.joined_at ASC LIMIT 1",
-          [req.userId]
-        );
-
-    if (!memberRows.length) {
-      return res.status(400).json({ error: "You are not a member of any team" });
+    // Resolve which of the user's teams to copy into. An explicit teamId from
+    // the client team picker is honored (and verified server-side); omitting it
+    // falls back to their currently active team.
+    const resolved = await resolveTargetMembership(req.userId, req.body?.teamId || null);
+    if (!resolved.ok) {
+      return res.status(resolved.status).json({ error: resolved.error });
     }
-
-    const membership = memberRows[0];
-    if (!["owner", "coach", "assistant_coach"].includes(membership.role)) {
-      return res.status(403).json({ error: "Only coaches can add plays to the playbook" });
-    }
+    const membership = resolved.membership;
 
     // Create a copy in the user's team; track the source play so analytics can exclude it
     const { rows: newPlay } = await pool.query(
