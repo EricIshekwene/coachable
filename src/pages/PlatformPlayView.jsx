@@ -113,11 +113,7 @@ export default function PlatformPlayView() {
       navigate(`/login?returnTo=${encodeURIComponent(`/platform-play/${playId}`)}`);
       return;
     }
-    if (coachEligibleTeams.length > 1) {
-      setDropdownOpen((v) => !v);
-      return;
-    }
-    copyToTeam(coachEligibleTeams[0]?.teamId || user.teamId);
+    copyToTeam(user.teamId);
   };
 
   if (loading || authLoading) {
@@ -162,17 +158,72 @@ export default function PlatformPlayView() {
             >
               Go to App
             </Link>
-            <Link to="/app/profile" className="flex items-center gap-2.5 rounded-lg border border-BrandGray2/20 px-3 py-1.5 transition hover:border-BrandGray2/40">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-BrandOrange/20">
-                <FiUser className="text-xs text-BrandOrange" />
-              </div>
-              <div className="text-left">
-                <p className="text-xs font-semibold text-BrandText leading-tight">{user.name}</p>
-                {user.teamName && (
-                  <p className="text-[10px] text-BrandGray2 leading-tight">{user.teamName}</p>
+            {isCoach && !copied ? (
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setDropdownOpen((v) => !v)}
+                  className="flex items-center gap-2.5 rounded-lg border border-BrandGray2/20 px-3 py-1.5 transition hover:border-BrandGray2/40"
+                >
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-BrandOrange/20">
+                    <FiUser className="text-xs text-BrandOrange" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-xs font-semibold text-BrandText leading-tight">{user.name}</p>
+                    {user.teamName && (
+                      <p className="text-[10px] text-BrandGray2 leading-tight">{user.teamName}</p>
+                    )}
+                  </div>
+                  <FiChevronDown className={`text-xs text-BrandGray2 transition-transform duration-150 ${dropdownOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                {dropdownOpen && (
+                  <div className="absolute right-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-BrandGray2/20 bg-BrandBlack shadow-[0_12px_32px_-8px_rgba(0,0,0,0.9)]">
+                    <div className="flex items-center justify-between border-b border-BrandGray2/10 px-3 py-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-widest text-BrandGray2">Add to Team</span>
+                      <button type="button" onClick={() => setDropdownOpen(false)} className="rounded p-0.5 text-BrandGray2 hover:text-BrandText">
+                        <FiX className="text-xs" />
+                      </button>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto py-1">
+                      {coachEligibleTeams.map((t) => (
+                        <button
+                          key={t.teamId}
+                          type="button"
+                          onClick={() => copyToTeam(t.teamId)}
+                          className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition hover:bg-BrandBlack2/60"
+                        >
+                          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-BrandOrange/15 text-[10px] font-bold text-BrandOrange">
+                            {t.isPersonal ? <FiUser className="text-xs" /> : (t.teamName?.[0] || "?")}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-semibold text-BrandText">
+                              {t.isPersonal ? (t.teamName || "Personal Workspace") : t.teamName}
+                            </p>
+                            <p className="text-[10px] text-BrandGray2">
+                              {t.isPersonal ? "solo" : ROLE_LABELS[t.role] || t.role}
+                            </p>
+                          </div>
+                          {t.isActive && <FiCheck className="shrink-0 text-xs text-BrandOrange" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
-            </Link>
+            ) : (
+              <Link to="/app/profile" className="flex items-center gap-2.5 rounded-lg border border-BrandGray2/20 px-3 py-1.5 transition hover:border-BrandGray2/40">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-BrandOrange/20">
+                  <FiUser className="text-xs text-BrandOrange" />
+                </div>
+                <div className="text-left">
+                  <p className="text-xs font-semibold text-BrandText leading-tight">{user.name}</p>
+                  {user.teamName && (
+                    <p className="text-[10px] text-BrandGray2 leading-tight">{user.teamName}</p>
+                  )}
+                </div>
+              </Link>
+            )}
           </div>
         ) : (
           <div className="flex items-center gap-3">
@@ -212,61 +263,14 @@ export default function PlatformPlayView() {
           {/* Action buttons */}
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             {isCoach && !copied && (
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  onClick={handleAddToPlaybook}
-                  disabled={copying}
-                  className="flex items-center gap-2 rounded-lg bg-BrandOrange px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
-                >
-                  {copying ? (
-                    <FiLoader className="animate-spin text-sm" />
-                  ) : (
-                    <FiPlus className="text-sm" />
-                  )}
-                  {copying ? "Adding..." : "Add to Playbook"}
-                  {coachEligibleTeams.length > 1 && (
-                    <FiChevronDown className={`text-sm transition-transform duration-150 ${dropdownOpen ? "rotate-180" : ""}`} />
-                  )}
-                </button>
-
-                {dropdownOpen && (
-                  <div className="absolute right-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-BrandGray2/20 bg-BrandBlack shadow-[0_12px_32px_-8px_rgba(0,0,0,0.9)]">
-                    <div className="flex items-center justify-between border-b border-BrandGray2/10 px-3 py-2">
-                      <span className="text-[11px] font-semibold uppercase tracking-widest text-BrandGray2">Add to Team</span>
-                      <button
-                        type="button"
-                        onClick={() => setDropdownOpen(false)}
-                        className="rounded p-0.5 text-BrandGray2 hover:text-BrandText"
-                      >
-                        <FiX className="text-xs" />
-                      </button>
-                    </div>
-                    <div className="max-h-64 overflow-y-auto py-1">
-                      {coachEligibleTeams.map((t) => (
-                        <button
-                          key={t.teamId}
-                          type="button"
-                          onClick={() => copyToTeam(t.teamId)}
-                          className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition hover:bg-BrandBlack2/60"
-                        >
-                          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-BrandOrange/15 text-[10px] font-bold text-BrandOrange">
-                            {t.isPersonal ? <FiUser className="text-xs" /> : (t.teamName?.[0] || "?")}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-xs font-semibold text-BrandText">
-                              {t.isPersonal ? (t.teamName || "Personal Workspace") : t.teamName}
-                            </p>
-                            <p className="text-[10px] text-BrandGray2">
-                              {t.isPersonal ? "solo" : ROLE_LABELS[t.role] || t.role}
-                            </p>
-                          </div>
-                          {t.isActive && <FiCheck className="shrink-0 text-xs text-BrandOrange" />}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <button
+                onClick={handleAddToPlaybook}
+                disabled={copying}
+                className="flex items-center gap-2 rounded-lg bg-BrandOrange px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
+              >
+                {copying ? <FiLoader className="animate-spin text-sm" /> : <FiPlus className="text-sm" />}
+                {copying ? "Adding..." : "Add to Playbook"}
+              </button>
             )}
             {copied && (
               <button
