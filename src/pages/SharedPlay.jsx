@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { fetchSharedPlay, copySharedPlay } from "../utils/apiPlays";
-import PlayPreviewPlayer from "../components/PlayPreviewPlayer";
+import PlayPreviewCard from "../components/PlayPreviewCard";
 import TeamPickerModal from "../components/TeamPickerModal";
 import useThemeColor from "../utils/useThemeColor";
 import { FiLoader, FiClock, FiTag, FiPlus, FiExternalLink, FiCheck, FiUser } from "react-icons/fi";
@@ -94,6 +94,7 @@ export default function SharedPlay() {
       navigate(`/login?returnTo=${encodeURIComponent(`/shared/${token}`)}`);
       return;
     }
+    console.log("[picker:shared] eligibleTeams=", coachEligibleTeams.length, "allTeams=", allTeams.length);
     // Multiple eligible teams: let the user pick instead of guessing one.
     if (coachEligibleTeams.length > 1) {
       setPickerOpen(true);
@@ -262,8 +263,9 @@ export default function SharedPlay() {
 
         {/* Play preview */}
         <div className="mt-8 mb-4">
-          <PlayPreviewPlayer
+          <PlayPreviewCard
             playData={play.playData}
+            autoplay="always"
             shape="wide"
             cameraMode="fit-distribution"
             background="field"

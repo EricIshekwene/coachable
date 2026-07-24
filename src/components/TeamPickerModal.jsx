@@ -33,7 +33,7 @@ export default function TeamPickerModal({
   return createPortal(
     <div
       className="fixed inset-0 z-[90] flex items-center justify-center bg-black/65 backdrop-blur-[1px]"
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}
+      onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
     >
       <div className="bg-BrandBlack border border-BrandGray2/80 rounded-xl shadow-[0_18px_38px_-18px_rgba(0,0,0,0.95)] w-full max-w-sm mx-4">
         <div className="flex items-center justify-between border-b border-BrandGray2/20 px-5 py-3.5">

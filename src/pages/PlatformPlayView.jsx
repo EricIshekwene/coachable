@@ -100,6 +100,7 @@ export default function PlatformPlayView() {
       navigate(`/login?returnTo=${encodeURIComponent(`/platform-play/${playId}`)}`);
       return;
     }
+    console.log("[picker:platform] eligibleTeams=", coachEligibleTeams.length, "allTeams=", allTeams.length);
     if (coachEligibleTeams.length > 1) {
       setPickerOpen(true);
       return;
