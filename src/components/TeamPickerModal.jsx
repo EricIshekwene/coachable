@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { FiCheck, FiUser, FiX } from "react-icons/fi";
 
 const ROLE_LABELS = {
@@ -29,7 +30,7 @@ export default function TeamPickerModal({
 }) {
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[90] flex items-center justify-center bg-black/65 backdrop-blur-[1px]"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}
@@ -69,6 +70,7 @@ export default function TeamPickerModal({
           ))}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
