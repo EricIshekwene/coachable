@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { fetchSharedPlay, copySharedPlay } from "../utils/apiPlays";
 import PlayPreviewPlayer from "../components/PlayPreviewPlayer";
+import TeamPickerModal from "../components/TeamPickerModal";
 import useThemeColor from "../utils/useThemeColor";
 import { FiLoader, FiClock, FiTag, FiPlus, FiExternalLink, FiCheck, FiUser } from "react-icons/fi";
 import darkLogo from "../assets/logos/White_Full_Coachable.png";
@@ -22,9 +23,12 @@ function formatRelativeTime(isoString) {
   return `${weeks}w ago`;
 }
 
+/** Roles allowed to add shared plays to a team's playbook. */
+const COACH_ROLES = ["owner", "coach", "assistant_coach"];
+
 export default function SharedPlay() {
   const { token } = useParams();
-  const { user, loading: authLoading } = useAuth();
+  const { user, allTeams, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [play, setPlay] = useState(null);
@@ -33,6 +37,7 @@ export default function SharedPlay() {
   const [copying, setCopying] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   // Theme: use user's saved preference, default to light for visitors
   const [isLight, setIsLight] = useState(() => {
@@ -64,21 +69,37 @@ export default function SharedPlay() {
       .finally(() => setLoading(false));
   }, [token]);
 
-  const handleAddToPlaybook = async () => {
-    if (!user) {
-      navigate(`/login?returnTo=${encodeURIComponent(`/shared/${token}`)}`);
-      return;
-    }
+  // Teams this user can actually add plays to (coach/owner/assistant_coach),
+  // marked with which one is their currently active team.
+  const coachEligibleTeams = (allTeams || [])
+    .filter((t) => COACH_ROLES.includes(t.role))
+    .map((t) => ({ ...t, isActive: t.teamId === user?.teamId }));
+
+  const copyToTeam = async (teamId) => {
+    setPickerOpen(false);
     setCopying(true);
     setCopyError(null);
     try {
-      await copySharedPlay(token);
+      await copySharedPlay(token, teamId);
       setCopied(true);
     } catch (err) {
       setCopyError(err?.message || "Failed to add play");
     } finally {
       setCopying(false);
     }
+  };
+
+  const handleAddToPlaybook = () => {
+    if (!user) {
+      navigate(`/login?returnTo=${encodeURIComponent(`/shared/${token}`)}`);
+      return;
+    }
+    // Multiple eligible teams: let the user pick instead of guessing one.
+    if (coachEligibleTeams.length > 1) {
+      setPickerOpen(true);
+      return;
+    }
+    copyToTeam(coachEligibleTeams[0]?.teamId || user.teamId);
   };
 
   if (loading || authLoading) {
@@ -280,6 +301,14 @@ export default function SharedPlay() {
           </section>
         )}
       </div>
+
+      <TeamPickerModal
+        open={pickerOpen}
+        teams={coachEligibleTeams}
+        title="Add this play to which team?"
+        onSelect={copyToTeam}
+        onCancel={() => setPickerOpen(false)}
+      />
     </div>
   );
 }

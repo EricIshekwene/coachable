@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { fetchSharedFolder, copySharedFolder } from "../utils/apiFolders";
 import PlayPreviewCard from "../components/PlayPreviewCard";
+import TeamPickerModal from "../components/TeamPickerModal";
 import useThemeColor from "../utils/useThemeColor";
 import { FiLoader, FiClock, FiTag, FiPlus, FiExternalLink, FiCheck, FiUser, FiFolder } from "react-icons/fi";
 import darkLogo from "../assets/logos/White_Full_Coachable.png";
@@ -22,9 +23,12 @@ function formatRelativeTime(isoString) {
   return `${weeks}w ago`;
 }
 
+/** Roles allowed to add shared folders to a team's playbook. */
+const COACH_ROLES = ["owner", "coach", "assistant_coach"];
+
 export default function SharedFolder() {
   const { token } = useParams();
-  const { user, loading: authLoading } = useAuth();
+  const { user, allTeams, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [folder, setFolder] = useState(null);
@@ -33,6 +37,7 @@ export default function SharedFolder() {
   const [copying, setCopying] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   // Theme: use user's saved preference, default to light for visitors
   const [isLight, setIsLight] = useState(() => {
@@ -64,21 +69,37 @@ export default function SharedFolder() {
       .finally(() => setLoading(false));
   }, [token]);
 
-  const handleAddToPlaybook = async () => {
-    if (!user) {
-      navigate(`/login?returnTo=${encodeURIComponent(`/shared/folder/${token}`)}`);
-      return;
-    }
+  // Teams this user can actually add folders to (coach/owner/assistant_coach),
+  // marked with which one is their currently active team.
+  const coachEligibleTeams = (allTeams || [])
+    .filter((t) => COACH_ROLES.includes(t.role))
+    .map((t) => ({ ...t, isActive: t.teamId === user?.teamId }));
+
+  const copyToTeam = async (teamId) => {
+    setPickerOpen(false);
     setCopying(true);
     setCopyError(null);
     try {
-      await copySharedFolder(token);
+      await copySharedFolder(token, teamId);
       setCopied(true);
     } catch (err) {
       setCopyError(err?.message || "Failed to add folder");
     } finally {
       setCopying(false);
     }
+  };
+
+  const handleAddToPlaybook = () => {
+    if (!user) {
+      navigate(`/login?returnTo=${encodeURIComponent(`/shared/folder/${token}`)}`);
+      return;
+    }
+    // Multiple eligible teams: let the user pick instead of guessing one.
+    if (coachEligibleTeams.length > 1) {
+      setPickerOpen(true);
+      return;
+    }
+    copyToTeam(coachEligibleTeams[0]?.teamId || user.teamId);
   };
 
   if (loading || authLoading) {
@@ -284,6 +305,14 @@ export default function SharedFolder() {
           </div>
         )}
       </div>
+
+      <TeamPickerModal
+        open={pickerOpen}
+        teams={coachEligibleTeams}
+        title="Add this folder to which team?"
+        onSelect={copyToTeam}
+        onCancel={() => setPickerOpen(false)}
+      />
     </div>
   );
 }

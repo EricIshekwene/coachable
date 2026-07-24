@@ -87,9 +87,17 @@ export async function fetchSharedPlay(token) {
   return data.play;
 }
 
-/** Copy a shared play to the current user's team playbook. */
-export async function copySharedPlay(token) {
-  const data = await apiFetch(`/shared/plays/${token}/copy`, { method: "POST" });
+/**
+ * Copy a shared play to a team's playbook.
+ * @param {string} token - Share link token.
+ * @param {string} [teamId] - Target team id, from the team picker. Falls back
+ *   server-side to the user's active team if omitted.
+ */
+export async function copySharedPlay(token, teamId) {
+  const data = await apiFetch(`/shared/plays/${token}/copy`, {
+    method: "POST",
+    body: teamId ? { teamId } : undefined,
+  });
   return data.play;
 }
 

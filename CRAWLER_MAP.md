@@ -101,7 +101,7 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 | "debug panel" (right panel) | [src/components/rightPanel/DebugPanel.jsx](src/components/rightPanel/DebugPanel.jsx) |
 | "notification bell" (app shell nav) | [src/components/NotificationBell.jsx](src/components/NotificationBell.jsx) |
 | "mobile editor bar" | [src/components/MobileEditorBar.jsx](src/components/MobileEditorBar.jsx) |
-| "view-only controls" | [src/components/ViewOnlyControls.jsx](src/components/ViewOnlyControls.jsx) |
+| "view-only controls" | [src/components/ViewOnlyControls.jsx](src/components/ViewOnlyControls.jsx) — reports its bottom-bar height so the canvas can reserve safe space beneath it; see [VIEW_ONLY_PLAYBACK_FIX.md](src/components/VIEW_ONLY_PLAYBACK_FIX.md) |
 
 ### Modals / popovers
 | User says... | Primary file(s) |
@@ -124,6 +124,7 @@ Drawings are split into two scopes: **annotation** (overlays) and **motion** (en
 | "prefabs popover" | [src/components/subcomponents/PrefabsPopover.jsx](src/components/subcomponents/PrefabsPopover.jsx) |
 | "generic popovers" | [src/components/subcomponents/Popovers.jsx](src/components/subcomponents/Popovers.jsx) |
 | "screenshot confirm bar" | [src/components/ScreenshotConfirmBar.jsx](src/components/ScreenshotConfirmBar.jsx) |
+| "team picker modal" (choose which team to add a shared play/folder to) | [src/components/TeamPickerModal.jsx](src/components/TeamPickerModal.jsx) — used by `SharedPlay.jsx`/`SharedFolder.jsx`; see [SHARED_PLAY_TEAM_PICKER.md](src/pages/SHARED_PLAY_TEAM_PICKER.md) |
 | "message popup", "toast / notifications" | [src/components/MessagePopup/MessagePopup.jsx](src/components/MessagePopup/MessagePopup.jsx) + [src/components/messaging/useMessagePopup.js](src/components/messaging/useMessagePopup.js) |
 | "mobile view-only gate" | [src/components/MobileViewOnlyGate.jsx](src/components/MobileViewOnlyGate.jsx) |
 
@@ -240,9 +241,9 @@ All under [src/animation/](src/animation/), [src/canvas/](src/canvas/), [src/fea
 ### Sharing
 | Path | File |
 |---|---|
-| `/shared/:token` | [SharedPlay.jsx](src/pages/SharedPlay.jsx) |
-| `/shared/:token/view` | [SharedPlayView.jsx](src/pages/SharedPlayView.jsx) |
-| `/shared/folder/:token` | [SharedFolder.jsx](src/pages/SharedFolder.jsx) |
+| `/shared/:token` | [SharedPlay.jsx](src/pages/SharedPlay.jsx) — "Add to Playbook" opens a team picker when the user has more than one coach-eligible team; see [SHARED_PLAY_TEAM_PICKER.md](src/pages/SHARED_PLAY_TEAM_PICKER.md) |
+| `/shared/:token/view` | [SharedPlayView.jsx](src/pages/SharedPlayView.jsx) — auto-plays + loops on load; see [VIEW_ONLY_PLAYBACK_FIX.md](src/components/VIEW_ONLY_PLAYBACK_FIX.md) |
+| `/shared/folder/:token` | [SharedFolder.jsx](src/pages/SharedFolder.jsx) — same team-picker fix as SharedPlay |
 | `/platform-play/:playId` | [PlatformPlayView.jsx](src/pages/PlatformPlayView.jsx) |
 
 ### App shell (`/app/*`, behind auth+onboarded)
@@ -382,7 +383,7 @@ All run via Vitest. One file per feature; create new ones here when adding tests
 
 - Auth/account: `forgotPassword.test.js`, `accountDeletedEmail.test.js`, `onboarding.test.js`, `sportOnboarding.test.js` (canAdvance logic, sport payload, SPORTS shape, solo flow, Blank Canvas), `inputValidation.test.js` (validateEmail/Name/Password/ConfirmPassword, isValidEmail, isValidPhone, INPUT_LIMITS — 43 tests), `authBootstrapRetry.test.js` (AuthProvider /auth/me session-restore: network errors retried with backoff while loading, 401 definitive, error-report suppression on non-final attempts — jsdom env)
 - Admin shell: `adminBtn.test.js`, `adminModal.test.js`, `adminNav.test.js`, `adminShell.test.js`, `adminDangerMode.test.js`, `analyticsDashboard.test.js`, `usersHideFilters.test.js`, `designSystem.test.js` (design system nav registry: slug integrity, default section, prev/next adjacency), `designSystemSearch.test.js` (design system search ranking: keyword/label/summary matching, case-insensitivity, result limit), `designTokenUnification.test.js` (single-source-of-truth guard: admin `--adm-*` tokens must derive from the brand `--color-Brand*` palette; fails if admin drifts back to a parallel hex palette), `adminPagination.test.js` (getPaginationRange: short ranges, ellipsis collapsing, clamping)
-- Plays/folders/playbooks: `localStorageAutosave.test.js`, `platformPlays.test.js`, `playbookFolderBrowse.test.js`, `playbookSections.test.js`, `landingPlaybooksNav.test.js`, `playPreviewCardCones.test.js`, `playPreviewPlayer.test.js`, `playCopyAnalytics.test.js`, `sportPresets.test.js`, `presetBallCycle.test.js`, `presetEditorMode.test.js`, `hideFromPlayers.test.js`, `sportNavContext.test.js`, `syncSports.test.js`, `adminPlayCardConsistency.test.js` (PlayCard `canRemoveFromSection` logic + section play enrichment + picker exclusion)
+- Plays/folders/playbooks: `localStorageAutosave.test.js`, `platformPlays.test.js`, `playbookFolderBrowse.test.js`, `playbookSections.test.js`, `landingPlaybooksNav.test.js`, `playPreviewCardCones.test.js`, `playPreviewPlayer.test.js`, `playCopyAnalytics.test.js`, `sportPresets.test.js`, `presetBallCycle.test.js`, `presetEditorMode.test.js`, `hideFromPlayers.test.js`, `sportNavContext.test.js`, `syncSports.test.js`, `adminPlayCardConsistency.test.js` (PlayCard `canRemoveFromSection` logic + section play enrichment + picker exclusion), `sharedPlayTeamPicker.test.js` (coach-eligible team filtering, `resolveTargetMembership` server-logic mirror, `TeamPickerModal` rendering/selection — see [SHARED_PLAY_TEAM_PICKER.md](src/pages/SHARED_PLAY_TEAM_PICKER.md)), `sharedPlayViewport.test.js` (autoplay-on-load motion gating, view-only canvas bottom-inset logic — see [VIEW_ONLY_PLAYBACK_FIX.md](src/components/VIEW_ONLY_PLAYBACK_FIX.md))
 - Drawing/keyframe: `keyframeStyling.test.js`, `drawingModePreviewAnimation.test.js`, `drawingFlipReflect.test.js`, `drawingModeUndoRedo.test.js`, `drawingScopeSeparation.test.js`, `annotationDrawingVisibility.test.js`, `drawingExportV3Migration.test.js`, `trackSnap.test.js`
 - Team Suite: `teamSuite.test.js` (buildFeaturesMap, SUITE_FEATURES incl. `printing`, RequireSuiteFeature guard logic, SuiteContext fail-closed behavior)
 - Printing: `printing/printLayout.test.js` (multi-play printing — PRINT_LAYOUTS/getPrintLayout config, paginatePlays chunking, canShowPrintAction gating, `'printing'` entitlement wiring guard across schema/server/admin/Plays — see [docs/printing.md](docs/printing.md))
@@ -417,6 +418,8 @@ Suites used by the admin test runner: [src/testing/suites/](src/testing/suites/)
 - [src/canvas/canvas.md](src/canvas/canvas.md), [src/canvas/object-snapping.md](src/canvas/object-snapping.md)
 - [src/components/controlPill/TRACK_SNAPPING.md](src/components/controlPill/TRACK_SNAPPING.md) — CapCut/VN-style timeline snapping for motion + annotation track bars
 - [src/components/PLAY_PREVIEW_DRAWING_MODE.md](src/components/PLAY_PREVIEW_DRAWING_MODE.md), [src/components/PLAY_PREVIEW_PLAYER.md](src/components/PLAY_PREVIEW_PLAYER.md)
+- [src/components/VIEW_ONLY_PLAYBACK_FIX.md](src/components/VIEW_ONLY_PLAYBACK_FIX.md) — view-only bottom playback bar no longer occludes field content, plus autoplay-on-load for shared play links
+- [src/pages/SHARED_PLAY_TEAM_PICKER.md](src/pages/SHARED_PLAY_TEAM_PICKER.md) — team picker for adding a shared play/folder to one of the user's teams, instead of guessing
 - [server/routes/DEMO_VIDEOS.md](server/routes/DEMO_VIDEOS.md), [server/routes/FORGOT_PASSWORD.md](server/routes/FORGOT_PASSWORD.md), [server/routes/PLAY_COPY_ANALYTICS_FIX.md](server/routes/PLAY_COPY_ANALYTICS_FIX.md)
 - [server/PLAYBOOK_SECTIONS.md](server/PLAYBOOK_SECTIONS.md), [server/ONBOARDING_SEED_PLAY.md](server/ONBOARDING_SEED_PLAY.md), [server/lib/ACCOUNT_DELETED_EMAIL.md](server/lib/ACCOUNT_DELETED_EMAIL.md)
 - [server/lib/outreachScraper/OUTREACH_SCRAPER.md](server/lib/outreachScraper/OUTREACH_SCRAPER.md) — outreach staff-directory scraper (Sidearm legacy/nextgen parsers, sport/role normalization, CSV export); design rationale in [OUTREACH_SCRAPER_PLAN.md](OUTREACH_SCRAPER_PLAN.md)
