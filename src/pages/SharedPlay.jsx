@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { fetchSharedPlay, copySharedPlay } from "../utils/apiPlays";
 import PlayPreviewCard from "../components/PlayPreviewCard";
-import TeamPickerModal from "../components/TeamPickerModal";
 import useThemeColor from "../utils/useThemeColor";
-import { FiLoader, FiClock, FiTag, FiPlus, FiExternalLink, FiCheck, FiUser } from "react-icons/fi";
+import { FiLoader, FiClock, FiTag, FiPlus, FiExternalLink, FiCheck, FiUser, FiChevronDown, FiX } from "react-icons/fi";
 import darkLogo from "../assets/logos/White_Full_Coachable.png";
 import lightLogo from "../assets/logos/full_Coachable_logo.png";
 
@@ -26,6 +25,8 @@ function formatRelativeTime(isoString) {
 /** Roles allowed to add shared plays to a team's playbook. */
 const COACH_ROLES = ["owner", "coach", "assistant_coach"];
 
+const ROLE_LABELS = { owner: "Owner", coach: "Coach", assistant_coach: "Asst. Coach", player: "Player" };
+
 export default function SharedPlay() {
   const { token } = useParams();
   const { user, allTeams, loading: authLoading } = useAuth();
@@ -37,7 +38,8 @@ export default function SharedPlay() {
   const [copying, setCopying] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
   // Theme: use user's saved preference, default to light for visitors
   const [isLight, setIsLight] = useState(() => {
@@ -69,6 +71,17 @@ export default function SharedPlay() {
       .finally(() => setLoading(false));
   }, [token]);
 
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [dropdownOpen]);
+
   // Teams this user can actually add plays to (coach/owner/assistant_coach),
   // marked with which one is their currently active team.
   const coachEligibleTeams = (allTeams || [])
@@ -76,7 +89,7 @@ export default function SharedPlay() {
     .map((t) => ({ ...t, isActive: t.teamId === user?.teamId }));
 
   const copyToTeam = async (teamId) => {
-    setPickerOpen(false);
+    setDropdownOpen(false);
     setCopying(true);
     setCopyError(null);
     try {
@@ -94,10 +107,8 @@ export default function SharedPlay() {
       navigate(`/login?returnTo=${encodeURIComponent(`/shared/${token}`)}`);
       return;
     }
-    console.log("[picker:shared] eligibleTeams=", coachEligibleTeams.length, "allTeams=", allTeams.length);
-    // Multiple eligible teams: let the user pick instead of guessing one.
     if (coachEligibleTeams.length > 1) {
-      setPickerOpen(true);
+      setDropdownOpen((v) => !v);
       return;
     }
     copyToTeam(coachEligibleTeams[0]?.teamId || user.teamId);
@@ -201,18 +212,61 @@ export default function SharedPlay() {
               View in Slate
             </Link>
             {isCoach && !copied && (
-              <button
-                onClick={handleAddToPlaybook}
-                disabled={copying}
-                className="flex items-center gap-2 rounded-lg bg-BrandOrange px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
-              >
-                {copying ? (
-                  <FiLoader className="animate-spin text-sm" />
-                ) : (
-                  <FiPlus className="text-sm" />
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={handleAddToPlaybook}
+                  disabled={copying}
+                  className="flex items-center gap-2 rounded-lg bg-BrandOrange px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
+                >
+                  {copying ? (
+                    <FiLoader className="animate-spin text-sm" />
+                  ) : (
+                    <FiPlus className="text-sm" />
+                  )}
+                  {copying ? "Adding..." : "Add to Playbook"}
+                  {coachEligibleTeams.length > 1 && (
+                    <FiChevronDown className={`text-sm transition-transform duration-150 ${dropdownOpen ? "rotate-180" : ""}`} />
+                  )}
+                </button>
+
+                {dropdownOpen && (
+                  <div className="absolute right-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-BrandGray2/20 bg-BrandBlack shadow-[0_12px_32px_-8px_rgba(0,0,0,0.9)]">
+                    <div className="flex items-center justify-between border-b border-BrandGray2/10 px-3 py-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-widest text-BrandGray2">Add to Team</span>
+                      <button
+                        type="button"
+                        onClick={() => setDropdownOpen(false)}
+                        className="rounded p-0.5 text-BrandGray2 hover:text-BrandText"
+                      >
+                        <FiX className="text-xs" />
+                      </button>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto py-1">
+                      {coachEligibleTeams.map((t) => (
+                        <button
+                          key={t.teamId}
+                          type="button"
+                          onClick={() => copyToTeam(t.teamId)}
+                          className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition hover:bg-BrandBlack2/60"
+                        >
+                          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-BrandOrange/15 text-[10px] font-bold text-BrandOrange">
+                            {t.isPersonal ? <FiUser className="text-xs" /> : (t.teamName?.[0] || "?")}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-semibold text-BrandText">
+                              {t.isPersonal ? (t.teamName || "Personal Workspace") : t.teamName}
+                            </p>
+                            <p className="text-[10px] text-BrandGray2">
+                              {t.isPersonal ? "solo" : ROLE_LABELS[t.role] || t.role}
+                            </p>
+                          </div>
+                          {t.isActive && <FiCheck className="shrink-0 text-xs text-BrandOrange" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 )}
-                {copying ? "Adding..." : "Add to Playbook"}
-              </button>
+              </div>
             )}
             {copied && (
               <button
@@ -304,13 +358,6 @@ export default function SharedPlay() {
         )}
       </div>
 
-      <TeamPickerModal
-        open={pickerOpen}
-        teams={coachEligibleTeams}
-        title="Add this play to which team?"
-        onSelect={copyToTeam}
-        onCancel={() => setPickerOpen(false)}
-      />
     </div>
   );
 }
