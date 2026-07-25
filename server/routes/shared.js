@@ -11,7 +11,7 @@ router.get("/plays/:token", async (req, res, next) => {
     const { rows } = await pool.query(
       `SELECT p.id, p.title, p.play_data, p.notes, p.notes_author_name,
               p.notes_updated_at, p.created_at, p.updated_at, p.thumbnail_url,
-              t.name AS team_name,
+              t.name AS team_name, t.sport AS team_sport,
               sl.expires_at, sl.revoked_at
        FROM play_share_links sl
        JOIN plays p ON p.id = sl.play_id
@@ -47,6 +47,7 @@ router.get("/plays/:token", async (req, res, next) => {
         notesUpdatedAt: link.notes_updated_at || null,
         tags: tagRes.rows.map((r) => r.label),
         teamName: link.team_name,
+        sport: link.team_sport || null,
         createdAt: link.created_at,
         updatedAt: link.updated_at,
       },
