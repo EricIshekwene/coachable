@@ -15,6 +15,7 @@ import useThemeColor from "./utils/useThemeColor";
 import { AppMessageProvider } from "./context/AppMessageContext";
 import { TutorialProvider } from "./context/TutorialContext";
 import TutorialOverlay from "./components/tutorial/TutorialOverlay";
+import TutorialCursor from "./components/tutorial/TutorialCursor";
 import Landing from "./pages/Landing";
 import Signup from "./pages/Signup";
 import Login from "./pages/Login";
@@ -548,6 +549,7 @@ function App() {
             <TutorialProvider>
               <AppRoutes />
               <TutorialOverlay />
+              <TutorialCursor />
             </TutorialProvider>
           </AppMessageProvider>
         </FeatureFlagBridge>
