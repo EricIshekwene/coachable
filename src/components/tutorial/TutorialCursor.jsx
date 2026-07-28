@@ -60,13 +60,18 @@ export function useTargetRect(selector, enabled) {
     const tick = () => {
       const el = document.querySelector(selector);
       if (el) {
-        const r = el.getBoundingClientRect();
-        setRect((prev) => {
-          if (prev && prev.top === r.top && prev.left === r.left && prev.width === r.width && prev.height === r.height) {
-            return prev;
-          }
-          return { top: r.top, left: r.left, width: r.width, height: r.height };
-        });
+        const r = el.getBoundingClientRect?.() ?? null;
+        // getBoundingClientRect can transiently return null during concurrent
+        // React renders when the element is in the DOM but its layout has not
+        // been committed yet.  Skip the update rather than crash.
+        if (r) {
+          setRect((prev) => {
+            if (prev && prev.top === r.top && prev.left === r.left && prev.width === r.width && prev.height === r.height) {
+              return prev;
+            }
+            return { top: r.top, left: r.left, width: r.width, height: r.height };
+          });
+        }
       } else {
         setRect(null);
       }

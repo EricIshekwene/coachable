@@ -110,6 +110,25 @@ describe("useTargetRect", () => {
     expect(onRect).toHaveBeenLastCalledWith({ left: 12, top: 24, width: 48, height: 96 });
   });
 
+  it("does not crash when getBoundingClientRect transiently returns null", async () => {
+    const target = document.createElement("div");
+    target.className = "tracked";
+    // First call returns null (simulates the concurrent-render edge case), second returns a real rect.
+    target.getBoundingClientRect = vi.fn().mockReturnValueOnce(null).mockReturnValue(rect(10, 20, 30, 40));
+    document.body.appendChild(target);
+    const onRect = vi.fn();
+
+    await act(async () => {
+      root.render(React.createElement(RectProbe, { selector: ".tracked", enabled: true, onRect }));
+    });
+    // First frame: getBoundingClientRect returns null — hook should skip the update (rect stays null).
+    await flushAnimationFrame();
+    // Second frame: getBoundingClientRect returns the real rect.
+    await flushAnimationFrame();
+
+    expect(onRect).toHaveBeenLastCalledWith({ left: 10, top: 20, width: 30, height: 40 });
+  });
+
   it("clears the rect when disabled", async () => {
     const target = document.createElement("div");
     target.className = "tracked";
