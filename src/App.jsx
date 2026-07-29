@@ -5,7 +5,7 @@ import "./index.css";
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { AdminProvider } from "./admin/AdminContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { FeatureFlagProvider, useAllFlags } from "./context/FeatureFlagContext";
+import { FeatureFlagProvider, useAllFlags, useFlag } from "./context/FeatureFlagContext";
 import Slate from "./features/slate/Slate";
 import SlateRecord from "./features/slate/SlateRecord";
 import SlateDrawing from "./features/slate/SlateDrawing";
@@ -15,6 +15,8 @@ import useThemeColor from "./utils/useThemeColor";
 import { AppMessageProvider } from "./context/AppMessageContext";
 import { TutorialProvider } from "./context/TutorialContext";
 import TutorialOverlay from "./components/tutorial/TutorialOverlay";
+import TutorialCursor from "./components/tutorial/TutorialCursor";
+import { isTutorialPreviewActive } from "./utils/tutorialPreview";
 import Landing from "./pages/Landing";
 import Signup from "./pages/Signup";
 import Login from "./pages/Login";
@@ -523,6 +525,24 @@ function FeatureFlagBridge({ children }) {
   );
 }
 
+/**
+ * Renders the tutorial overlay and animated cursor only when the admin
+ * onboarding preview is active. Gated on the "tutorial_preview" feature flag
+ * (assigned to admin accounts) and/or the sessionStorage preview flag set by
+ * the admin "Preview Onboarding Tutorial" button (isTutorialPreviewActive).
+ * Regular users never see these components.
+ */
+function TutorialGatedComponents() {
+  const previewFlagEnabled = useFlag("tutorial_preview");
+  if (!previewFlagEnabled && !isTutorialPreviewActive()) return null;
+  return (
+    <>
+      <TutorialOverlay />
+      <TutorialCursor />
+    </>
+  );
+}
+
 function App() {
   const appMessage = useMessagePopup();
 
@@ -547,7 +567,7 @@ function App() {
             />
             <TutorialProvider>
               <AppRoutes />
-              <TutorialOverlay />
+              <TutorialGatedComponents />
             </TutorialProvider>
           </AppMessageProvider>
         </FeatureFlagBridge>
