@@ -253,7 +253,7 @@ All under [src/animation/](src/animation/), [src/canvas/](src/canvas/), [src/fea
 | `/app/plays/new` | [pages/app/PlayNew.jsx](src/pages/app/PlayNew.jsx) |
 | `/app/plays/:playId` | [pages/app/PlayView.jsx](src/pages/app/PlayView.jsx) |
 | `/app/plays/:playId/edit` (full-screen, no chrome) | [PlayEditPage.jsx](src/pages/PlayEditPage.jsx) |
-| `/app/plays/:playId/view` (full-screen) | [PlayViewOnlyPage.jsx](src/pages/PlayViewOnlyPage.jsx) |
+| `/app/plays/:playId/view` (full-screen) | [PlayViewOnlyPage.jsx](src/pages/PlayViewOnlyPage.jsx) — auto-plays + loops on load; reached via the "View" button in the [PlayView.jsx](src/pages/app/PlayView.jsx) detail header (left of Edit) |
 | `/app/team` | [pages/app/Team.jsx](src/pages/app/Team.jsx) |
 | `/app/profile` | [pages/app/Profile.jsx](src/pages/app/Profile.jsx) |
 | `/app/profile/verify-email` | [pages/app/ProfileEmailVerification.jsx](src/pages/app/ProfileEmailVerification.jsx) |

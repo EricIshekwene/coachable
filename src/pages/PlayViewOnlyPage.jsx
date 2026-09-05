@@ -64,6 +64,7 @@ export default function PlayViewOnlyPage() {
       <Slate
         playId={playId}
         viewOnly
+        autoplayOnLoad
         initialPlayName={existingPlay?.title}
         initialPlayData={existingPlay?.playData || null}
         onNavigateHome={() => navigate("/app/plays")}

@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { fetchSharedPlay, copySharedPlay } from "../utils/apiPlays";
 import PlayPreviewCard from "../components/PlayPreviewCard";
 import useThemeColor from "../utils/useThemeColor";
-import { FiLoader, FiClock, FiTag, FiPlus, FiExternalLink, FiCheck, FiUser, FiChevronDown, FiX } from "react-icons/fi";
+import { FiLoader, FiClock, FiTag, FiPlus, FiEye, FiCheck, FiUser, FiChevronDown, FiX } from "react-icons/fi";
 import darkLogo from "../assets/logos/White_Full_Coachable.png";
 import lightLogo from "../assets/logos/full_Coachable_logo.png";
 
@@ -283,8 +283,8 @@ export default function SharedPlay() {
               to={`/shared/${token}/view`}
               className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-4 py-2 text-sm font-semibold text-BrandGray transition hover:border-BrandOrange/50 hover:text-BrandOrange"
             >
-              <FiExternalLink className="text-sm" />
-              View in Slate
+              <FiEye className="text-sm" />
+              View
             </Link>
             {isCoach && !copied && (
               <button
