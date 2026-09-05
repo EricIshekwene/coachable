@@ -102,7 +102,7 @@ export const PrefabsPopover = ({ prefabs = [], onPrefabSelect, onDeleteCustomPre
     const hasAny = publishedFiltered.length + customFiltered.length > 0;
 
     return (
-        <div className="ml-2 p-3 sm:p-4 w-[240px] flex flex-col gap-2 bg-BrandBlack rounded-lg shadow-[0_16px_30px_-20px_rgba(0,0,0,0.95)]">
+        <div data-testid="tutorial-prefabs-popover" className="ml-2 p-3 sm:p-4 w-[240px] flex flex-col gap-2 bg-BrandBlack rounded-lg shadow-[0_16px_30px_-20px_rgba(0,0,0,0.95)]">
             {/* Header */}
             <p className="text-BrandWhite text-xs sm:text-sm font-semibold font-DmSans px-1">
                 Prefabs

@@ -3002,6 +3002,8 @@ function Slate({
   const handlePrefabSelect = useCallback((prefab) => {
     pendingPrefabRef.current = prefab;
     setCanvasTool("prefab");
+    // Onboarding-tour outcome: a specific prefab was chosen from the panel.
+    emitTutorialEvent("prefab-selected", { prefabId: prefab?.id ?? null });
   }, []);
 
   const handleCanvasPlacePrefab = useCallback(({ x, y }) => {
@@ -4049,11 +4051,14 @@ function Slate({
       "place-player": () => {
         entities.handleCanvasAddPlayer({ x: -80, y: 40 });
       },
-      /** Pick the first available prefab and place it near the field center. */
-      "place-prefab": () => {
+      /** Select the first available prefab from the library (mirrors clicking a prefab item in the panel). */
+      "select-first-prefab": () => {
         const prefab = (publishedPrefabs && publishedPrefabs[0]) || (customPrefabs && customPrefabs[0]);
         if (!prefab) return;
         handlePrefabSelect(prefab);
+      },
+      /** Place the currently-pending prefab near the field center (requires select-first-prefab to have run first). */
+      "place-prefab": () => {
         handleCanvasPlacePrefab({ x: 0, y: 90 });
       },
       /** Draw a short sample route starting at the most recently added player. */
@@ -4104,6 +4109,51 @@ function Slate({
       "play-animation": () => {
         if (!engineRef.current?.isPlaying?.()) togglePlayback();
       },
+      /** Undo the most recent canvas change (used by the tutorial back button). */
+      "undo-step": () => {
+        slateHistory.onUndo();
+      },
+      /**
+       * Switch to blue and place a second player so the tour can demonstrate
+       * using multiple player colours on the same field.
+       */
+      "tutorial-add-alt-color-player": () => {
+        entities.handlePlayerColorChange("#3b82f6");
+        entities.handleCanvasAddPlayer({ x: 80, y: 40 });
+        emitTutorialEvent("player-alt-color-added", {});
+      },
+      /**
+       * Add a cone near the field centre (same handler as clicking the field
+       * while the addCone tool is active).
+       */
+      "tutorial-add-cone": () => {
+        historyApiRef.current?.pushHistory?.();
+        handleCanvasAddBall({ x: 0, y: -60, objectType: "cone" });
+        emitTutorialEvent("object-added", {});
+      },
+      /**
+       * Select all represented players so the tour can lead into Save as Prefab.
+       */
+      "tutorial-select-all-players": () => {
+        const allIds = entities.representedPlayerIds || [];
+        entities.setSelectedPlayerIds(allIds);
+        entities.setSelectedItemIds(allIds);
+        emitTutorialEvent("players-selected-for-prefab", {});
+      },
+      /**
+       * Programmatically save the current player layout as a named prefab,
+       * bypassing the modal UI so the tour can advance without user input.
+       */
+      "tutorial-save-prefab-auto": () => {
+        const allIds = entities.representedPlayerIds || [];
+        entities.setSelectedPlayerIds(allIds);
+        entities.setSelectedItemIds(allIds);
+        handleSavePrefab("Tutorial Formation").then(() => {
+          emitTutorialEvent("prefab-saved-by-user", {});
+        }).catch(() => {
+          emitTutorialEvent("prefab-saved-by-user", {});
+        });
+      },
     });
   }, [
     entities,
@@ -4111,6 +4161,8 @@ function Slate({
     customPrefabs,
     handlePrefabSelect,
     handleCanvasPlacePrefab,
+    handleCanvasAddBall,
+    handleSavePrefab,
     addDrawingTagged,
     seekTimeline,
     handleAddKeyframe,
@@ -4118,6 +4170,7 @@ function Slate({
     resolveKeyframeWriteTimeMs,
     setAnimationDataWithMeta,
     togglePlayback,
+    slateHistory.onUndo,
   ]);
 
   useEffect(() => {
@@ -4368,6 +4421,7 @@ function Slate({
             onDeleteSelected={handleDeleteSelectedLogged}
             onPrefabSelect={handlePrefabSelect}
             onDeleteCustomPrefab={handleDeleteCustomPrefab}
+            onSavePrefab={() => setSavePrefabModalOpen(true)}
             customPrefabs={customPrefabs}
             publishedPrefabs={publishedPrefabs}
             playName={playName}

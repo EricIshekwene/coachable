@@ -23,6 +23,7 @@ export default function PlayerColorSection({
 
     return (
         <div
+            data-testid="tutorial-player-color"
             className="relative"
             onMouseEnter={() => onHoverTooltip?.("player")}
             onMouseLeave={() => onHoverTooltip?.(null)}

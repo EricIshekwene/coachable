@@ -17,6 +17,7 @@ export default function HistoryActionsSection({ onUndo, onRedo, onReset, hovered
                 {actions.map(({ key, Icon, label, onClick }) => (
                     <div
                         key={key}
+                        data-testid={key === "undo" ? "tutorial-undo" : undefined}
                         className="relative w-full"
                         onMouseEnter={() => onHoverTooltip?.(key)}
                         onMouseLeave={() => onHoverTooltip?.(null)}
@@ -41,6 +42,7 @@ export default function HistoryActionsSection({ onUndo, onRedo, onReset, hovered
             {actions.map(({ key, Icon, label, onClick }) => (
                 <div
                     key={key}
+                    data-testid={key === "undo" ? "tutorial-undo" : undefined}
                     className="relative w-full"
                     onMouseEnter={() => onHoverTooltip?.(key)}
                     onMouseLeave={() => onHoverTooltip?.(null)}

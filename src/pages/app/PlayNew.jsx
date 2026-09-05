@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiX, FiClock, FiSearch } from "react-icons/fi";
 import { useAppMessage } from "../../context/AppMessageContext";
 import { useAuth } from "../../context/AuthContext";
-import { emitTutorialEvent } from "../../context/tutorialBus";
+import { emitTutorialEvent, registerTutorialActions } from "../../context/tutorialBus";
+import { SPORT_TAG_EXAMPLES } from "../../context/tutorialSteps";
 import { createPlay, fetchTeamTags, fetchSportPresets } from "../../utils/apiPlays";
 import PlayPreviewCard from "../../components/PlayPreviewCard";
 import {
@@ -99,6 +100,76 @@ export default function PlayNew() {
     fetchSportPresets(fieldType).then(setSportPresets);
   }, [fieldType]);
 
+  // Register tutorial auto-actions for the add-tags step and crisis-restore actions.
+  useEffect(() => {
+    const sport = user?.sport ?? "";
+    const [exampleTag] = SPORT_TAG_EXAMPLES[sport] ?? SPORT_TAG_EXAMPLES.blank;
+    return registerTutorialActions({
+      /** Add the first sport-specific example tag (mirrors the user typing one in). */
+      "add-tutorial-tag": () => {
+        setTags((prev) => {
+          if (prev.includes(exampleTag)) return prev;
+          return [...prev, exampleTag];
+        });
+        emitTutorialEvent("tag-added", { tag: exampleTag });
+      },
+      /** Clear all tags so the add-tags step can be re-done after Back navigation. */
+      "clear-tutorial-tags": () => setTags([]),
+
+      /**
+       * Crisis-restore: fill the title if empty so the enter-title step is
+       * visually ready. The user (or the step's autoAction) must re-complete
+       * the step — we do not emit the completion event here.
+       */
+      "restore-play-title": () => {
+        if (!title.trim()) {
+          setTitle("My First Play");
+        }
+      },
+
+      /**
+       * Crisis-restore: ensure at least one tag exists so the add-tags step is
+       * visually ready. The user must re-add a tag to re-advance the step.
+       */
+      "restore-play-tags": () => {
+        if (tags.length === 0) {
+          setTags([exampleTag]);
+        }
+      },
+
+      /**
+       * Crisis-restore: preset state already defaults to "blank"; no visual
+       * restore is needed. The user must click a preset card to re-advance.
+       */
+      "restore-play-preset": () => {
+        // Preset state is already initialized to "blank"; no restore needed.
+        // User must click a preset card to re-advance the step.
+      },
+
+      /**
+       * Crisis-restore: switch to keyframe mode (Football only) so the
+       * choose-mode step is visually ready. The user must click a mode button
+       * to re-advance the step.
+       */
+      "restore-play-mode": () => {
+        if (fieldType === "Football") {
+          setEditorMode("keyframe");
+        }
+      },
+
+      /**
+       * Crisis-restore for the create-play step: ensures a title exists so the
+       * Create button is enabled. Does not emit any tutorial event — the user
+       * must click Create to re-advance the step.
+       */
+      "restore-create-play-form": () => {
+        if (!title.trim()) {
+          setTitle("My First Play");
+        }
+      },
+    });
+  }, [user?.sport, title, tags, selectedPresetId, fieldType, editorMode]);
+
   const suggestions = (() => {
     const query = tagInput.trim().toLowerCase();
     if (!query) {
@@ -151,6 +222,8 @@ export default function PlayNew() {
     setTagInput("");
     setShowSuggestions(false);
     inputRef.current?.focus();
+    // Onboarding-tour outcome: a tag was successfully added.
+    emitTutorialEvent("tag-added", { tag: trimmedTag });
   };
 
   const removeTag = (tag) => {
@@ -263,6 +336,84 @@ export default function PlayNew() {
             data-testid="tutorial-title-input"
             autoFocus
           />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-semibold">
+            Tags <span className="font-normal text-BrandGray2">(optional)</span>
+          </label>
+
+          {/* Tag chips + input */}
+          <div
+            data-testid="tutorial-tags-area"
+            className="flex min-h-10.5 flex-wrap items-center gap-1.5 rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-2.5 py-2 transition focus-within:border-BrandOrange focus-within:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
+            onClick={() => inputRef.current?.focus()}
+          >
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1 rounded-md bg-BrandOrange/10 px-2 py-1 text-xs text-BrandOrange"
+              >
+                {tag}
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); removeTag(tag); }}
+                  className="ml-0.5 rounded-sm text-BrandOrange/60 transition hover:text-BrandOrange"
+                >
+                  <FiX className="text-[10px]" />
+                </button>
+              </span>
+            ))}
+            <input
+              ref={inputRef}
+              data-testid="tutorial-tag-input"
+              type="text"
+              value={tagInput}
+              onChange={(e) => {
+                setTagInput(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+              onKeyDown={handleTagKeyDown}
+              placeholder={tags.length === 0 ? "Type to search tags..." : ""}
+              maxLength={40}
+              className="min-w-30 flex-1 bg-transparent text-sm text-BrandText outline-none placeholder:text-BrandGray2"
+            />
+          </div>
+
+          {/* Suggestions dropdown */}
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="relative">
+              <div className="absolute left-0 right-0 top-0 z-20 max-h-56 overflow-auto rounded-lg border border-BrandGray2/30 bg-BrandBlack shadow-lg">
+                {isRecentSection && (
+                  <div className="flex items-center gap-1.5 border-b border-BrandGray2/15 px-3.5 py-1.5">
+                    <FiClock className="text-[10px] text-BrandGray2" />
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-BrandGray2">Recent</span>
+                  </div>
+                )}
+                {suggestions.map((tag, i) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => addTag(tag)}
+                    onMouseEnter={() => setHighlightedIndex(i)}
+                    className={`flex w-full items-center px-3.5 py-2.5 text-left text-sm transition ${
+                      i === highlightedIndex
+                        ? "bg-BrandOrange/10 text-BrandOrange"
+                        : "text-BrandGray hover:bg-BrandBlack2 hover:text-BrandText"
+                    }`}
+                  >
+                    {tag}
+                    <span className="ml-auto text-[10px] text-BrandGray2">
+                      {i === highlightedIndex ? "Tab / Enter" : ""}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Preset picker */}
@@ -388,82 +539,6 @@ export default function PlayNew() {
             </div>
           </div>
         )}
-
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold">
-            Tags <span className="font-normal text-BrandGray2">(optional)</span>
-          </label>
-
-          {/* Tag chips + input */}
-          <div
-            className="flex min-h-10.5 flex-wrap items-center gap-1.5 rounded-lg border border-BrandGray2/30 bg-BrandBlack2/50 px-2.5 py-2 transition focus-within:border-BrandOrange focus-within:shadow-[0_0_0_3px_rgba(255,122,24,0.1)]"
-            onClick={() => inputRef.current?.focus()}
-          >
-            {tags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center gap-1 rounded-md bg-BrandOrange/10 px-2 py-1 text-xs text-BrandOrange"
-              >
-                {tag}
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); removeTag(tag); }}
-                  className="ml-0.5 rounded-sm text-BrandOrange/60 transition hover:text-BrandOrange"
-                >
-                  <FiX className="text-[10px]" />
-                </button>
-              </span>
-            ))}
-            <input
-              ref={inputRef}
-              type="text"
-              value={tagInput}
-              onChange={(e) => {
-                setTagInput(e.target.value);
-                setShowSuggestions(true);
-              }}
-              onFocus={() => setShowSuggestions(true)}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-              onKeyDown={handleTagKeyDown}
-              placeholder={tags.length === 0 ? "Type to search tags..." : ""}
-              maxLength={40}
-              className="min-w-30 flex-1 bg-transparent text-sm text-BrandText outline-none placeholder:text-BrandGray2"
-            />
-          </div>
-
-          {/* Suggestions dropdown */}
-          {showSuggestions && suggestions.length > 0 && (
-            <div className="relative">
-              <div className="absolute left-0 right-0 top-0 z-20 max-h-56 overflow-auto rounded-lg border border-BrandGray2/30 bg-BrandBlack shadow-lg">
-                {isRecentSection && (
-                  <div className="flex items-center gap-1.5 border-b border-BrandGray2/15 px-3.5 py-1.5">
-                    <FiClock className="text-[10px] text-BrandGray2" />
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-BrandGray2">Recent</span>
-                  </div>
-                )}
-                {suggestions.map((tag, i) => (
-                  <button
-                    key={tag}
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => addTag(tag)}
-                    onMouseEnter={() => setHighlightedIndex(i)}
-                    className={`flex w-full items-center px-3.5 py-2.5 text-left text-sm transition ${
-                      i === highlightedIndex
-                        ? "bg-BrandOrange/10 text-BrandOrange"
-                        : "text-BrandGray hover:bg-BrandBlack2 hover:text-BrandText"
-                    }`}
-                  >
-                    {tag}
-                    <span className="ml-auto text-[10px] text-BrandGray2">
-                      {i === highlightedIndex ? "Tab / Enter" : ""}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
 
         <button
           type="submit"

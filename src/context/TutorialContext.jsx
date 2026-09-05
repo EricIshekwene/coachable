@@ -1,10 +1,11 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useReducer, useEffect, useRef, useCallback } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import { isTutorialPreviewActive, endTutorialPreviewAndReturn } from "../utils/tutorialPreview";
 import { getTutorialSteps, stepMatchesRoute, tutorialReducer, initialTutorialState } from "./tutorialSteps";
 import { onTutorialEvent, runTutorialAction } from "./tutorialBus";
+import { apiFetch } from "../utils/api";
 
 const TutorialContext = createContext(null);
 
@@ -46,6 +47,7 @@ export function TutorialProvider({ children }) {
   const { user, markTutorialComplete, resetTutorial: resetTutorialFlag } = useAuth();
   const [state, dispatch] = useReducer(tutorialReducer, initialTutorialState);
   const location = useLocation();
+  const navigate = useNavigate();
   const wasActiveRef = useRef(false);
   const pathnameRef = useRef(location.pathname);
   pathnameRef.current = location.pathname;
@@ -60,6 +62,55 @@ export function TutorialProvider({ children }) {
   const advance = useCallback(() => {
     dispatch({ type: "ADVANCE" });
   }, []);
+
+  /**
+   * Goes back one step, running the current step's undoAction first (if any),
+   * then dispatching BACK and navigating to the previous step's route.
+   *
+   * delete-play: extracts playId from the editor URL and DELETEs it via API,
+   * then navigates to /app/plays/new so the user can recreate.
+   * slate-undo: fires the "undo-step" tutorialBus action (registered in Slate)
+   * to call slateHistory.onUndo() and revert the most recent canvas change.
+   * run: fires the named tutorialBus action (e.g. "clear-tutorial-tags").
+   */
+  const goBack = useCallback(async () => {
+    if (!state.active || state.stepIndex === 0) return;
+    const fromStep = state.steps[state.stepIndex];
+    const toStep = state.steps[state.stepIndex - 1];
+    if (!fromStep || !toStep) return;
+
+    const undo = fromStep.undoAction;
+    if (undo?.kind === "delete-play") {
+      const match = pathnameRef.current.match(/^\/app\/plays\/([^/]+)\/edit$/);
+      const playId = match?.[1];
+      const teamId = user?.teamId;
+      if (teamId && playId) {
+        try { await apiFetch(`/teams/${teamId}/plays/${playId}`, { method: "DELETE" }); } catch {}
+      }
+      dispatch({ type: "BACK" });
+      navigate("/app/plays/new");
+      // PlayNew mounts async after navigation; give it time to register its actions.
+      if (toStep.crisisRestore) {
+        setTimeout(() => runTutorialAction(toStep.crisisRestore), 400);
+      }
+      return;
+    }
+
+    if (undo?.kind === "slate-undo") {
+      runTutorialAction("undo-step");
+    }
+
+    if (undo?.kind === "run" && undo.action) {
+      runTutorialAction(undo.action);
+    }
+
+    dispatch({ type: "BACK" });
+    if (typeof toStep.route === "string") navigate(toStep.route);
+    // Non-delete-play backs (e.g. pick-preset → add-tags) may need form state restored.
+    if (toStep.crisisRestore) {
+      setTimeout(() => runTutorialAction(toStep.crisisRestore), 80);
+    }
+  }, [state.active, state.stepIndex, state.steps, user, navigate, dispatch]);
 
   const exitTutorial = useCallback(() => {
     dispatch({ type: "EXIT" });
@@ -181,9 +232,12 @@ export function TutorialProvider({ children }) {
         currentStep,
         routeReady,
         stepNumber: state.stepIndex + 1,
+        stepIndex: state.stepIndex,
         totalSteps: state.steps.length,
+        steps: state.steps,
         startTutorial,
         advance,
+        goBack,
         exitTutorial,
         resetTutorial,
         performStepAction,

@@ -48,10 +48,18 @@ export function getTutorialPreviewSport() {
  * navigates into /app with a full page load, so the module-level store below
  * is rebuilt from these sessionStorage values.
  * @param {string} [sport] - onboarding sport key ("football", "womens lacrosse", "blank", ...)
+ * @param {"dark"|"light"|undefined} [theme] - When provided, syncs the app's
+ *   localStorage theme key so the preview renders in the same colour scheme as
+ *   the admin panel. Ignored if not "dark" or "light".
  */
-export function activateTutorialPreview(sport = DEFAULT_PREVIEW_SPORT) {
+export function activateTutorialPreview(sport = DEFAULT_PREVIEW_SPORT, theme) {
   sessionStorage.setItem(PREVIEW_FLAG_KEY, "1");
   sessionStorage.setItem(PREVIEW_SPORT_KEY, sport || DEFAULT_PREVIEW_SPORT);
+  if (theme === "dark" || theme === "light") {
+    try {
+      localStorage.setItem("theme", theme);
+    } catch {}
+  }
 }
 
 /**
@@ -155,6 +163,108 @@ export function buildPreviewPrefabPresets(sportOrFieldType) {
         ],
         objects: [{ dx: 0, dy: 0, objectType: "ball" }],
       },
+    },
+  ];
+}
+
+const NOW_PRESET = "2026-04-28T00:00:00.000Z";
+
+/**
+ * Builds 3 named sport-preset mock objects for the tutorial's pick-preset step.
+ * Returns an empty array when the fieldType resolves to "Blank" (no presets exist
+ * for blank canvases, mirroring production behaviour).
+ *
+ * Each returned preset is shaped like the real `/sport-presets/:fieldType` API:
+ *   `{ id: string, name: string, playData: Object }`
+ * where `playData` is a minimal valid play-export-v2 document that `PlayPreviewCard`
+ * can render without crashing.
+ *
+ * @param {string} fieldType - Slate field type string, e.g. "Football", "Soccer".
+ *   Comes directly from the URL segment in `/sport-presets/:fieldType`.
+ * @returns {Array<{ id: string, name: string, playData: Object }>}
+ */
+export function buildPreviewSportPresets(fieldType) {
+  if (!fieldType || fieldType === "Blank" || resolveFieldTypeFromSport(fieldType) === "Blank") {
+    return [];
+  }
+
+  /**
+   * Builds a minimal play-export-v2 playData object for a given set of player
+   * positions. Mirrors the structure used by `buildBlankPreviewData` in PlayNew.jsx.
+   *
+   * @param {string} name - Display name baked into the play's `play.name` field.
+   * @param {Array<{ x: number, y: number, number: number, color: string }>} players
+   * @returns {Object} play-export-v2 document
+   */
+  function makePlayData(name, players) {
+    const playersById = {};
+    const representedPlayerIds = [];
+    players.forEach((p) => {
+      const id = `player-${p.number}`;
+      playersById[id] = { id, x: p.x, y: p.y, number: p.number, name: "", color: p.color };
+      representedPlayerIds.push(id);
+    });
+
+    return {
+      schemaVersion: "play-export-v2",
+      exportedAt: NOW_PRESET,
+      play: {
+        name,
+        id: null,
+        settings: {
+          advancedSettings: {},
+          allPlayersDisplay: { sizePercent: 100, color: "#ef4444", showNumber: true },
+          currentPlayerColor: "#ef4444",
+        },
+        canvas: { camera: { x: 0, y: 0, zoom: 1 }, fieldRotation: 0 },
+        entities: {
+          playersById,
+          representedPlayerIds,
+          ball: { id: "ball-1", x: 40, y: 0 },
+          ballsById: { "ball-1": { id: "ball-1", x: 40, y: 0 } },
+        },
+        animation: {
+          version: 1,
+          durationMs: 30000,
+          tracks: {},
+          meta: { createdAt: NOW_PRESET, updatedAt: NOW_PRESET },
+        },
+        drawings: [],
+        playback: { speedMultiplier: 50 },
+        meta: { appVersion: "1.0.0" },
+      },
+    };
+  }
+
+  return [
+    {
+      id: "preview-sport-preset-1",
+      name: "Base Formation",
+      playData: makePlayData("Base Formation", [
+        { x: -60, y: 0, number: 1, color: "#3b82f6" },
+        { x: 0,   y: 0, number: 2, color: "#3b82f6" },
+        { x: 60,  y: 0, number: 3, color: "#3b82f6" },
+      ]),
+    },
+    {
+      id: "preview-sport-preset-2",
+      name: "Attack Formation",
+      playData: makePlayData("Attack Formation", [
+        { x: -80,  y: -40, number: 4, color: "#22c55e" },
+        { x: 0,    y: -60, number: 5, color: "#22c55e" },
+        { x: 80,   y: -40, number: 6, color: "#22c55e" },
+        { x: -40,  y:  20, number: 7, color: "#22c55e" },
+        { x: 40,   y:  20, number: 8, color: "#22c55e" },
+      ]),
+    },
+    {
+      id: "preview-sport-preset-3",
+      name: "Defense Stack",
+      playData: makePlayData("Defense Stack", [
+        { x: 0,   y: -50, number: 9,  color: "#ef4444" },
+        { x: -50, y:  20, number: 10, color: "#ef4444" },
+        { x: 50,  y:  20, number: 11, color: "#ef4444" },
+      ]),
     },
   ];
 }
@@ -273,7 +383,10 @@ export async function mockApiFetch(path, options = {}, db = store) {
 
   // ── Tags / presets / prefabs ──
   if (key === `GET /teams/${TEAM_ID}/tags`) return { tags: [] };
-  if (method === "GET" && cleanPath.startsWith("/sport-presets/")) return { presets: [] };
+  if (method === "GET" && cleanPath.startsWith("/sport-presets/")) {
+    const ftSegment = decodeURIComponent(cleanPath.split("/")[2] || "");
+    return { presets: buildPreviewSportPresets(ftSegment) };
+  }
   if (method === "GET" && cleanPath.startsWith("/sport-prefab-presets/")) {
     const sportSegment = decodeURIComponent(cleanPath.split("/")[2] || "");
     return { presets: buildPreviewPrefabPresets(sportSegment) };

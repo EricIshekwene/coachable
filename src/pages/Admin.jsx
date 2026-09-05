@@ -57,17 +57,29 @@ function patchUsersViewState(patch) {
 
 const UNIT_MS = { minutes: 60_000, hours: 3_600_000, days: 86_400_000, months: 2_592_000_000 };
 
-/** The nine sports the tutorial preview can run under (mirrors onboarding's sport picker). */
-const TUTORIAL_PREVIEW_SPORTS = [
-  { key: "football", label: "Football" },
-  { key: "rugby", label: "Rugby" },
-  { key: "soccer", label: "Soccer" },
-  { key: "lacrosse", label: "Lacrosse" },
-  { key: "womens lacrosse", label: "Women's Lacrosse" },
-  { key: "basketball", label: "Basketball" },
-  { key: "field hockey", label: "Field Hockey" },
-  { key: "ice hockey", label: "Ice Hockey" },
-  { key: "blank", label: "Blank Canvas" },
+/** All 9 sports grouped by tutorial flow type: Animation+Keyframe (multi-mode) vs Keyframe Only (single-mode). */
+const TUTORIAL_PREVIEW_SPORT_GROUPS = [
+  {
+    type: "Animation + Keyframe",
+    description: "Includes mode-selection step",
+    sports: [
+      { key: "football", label: "Football" },
+    ],
+  },
+  {
+    type: "Keyframe Only",
+    description: "Single-mode, no mode picker",
+    sports: [
+      { key: "rugby",           label: "Rugby" },
+      { key: "soccer",          label: "Soccer" },
+      { key: "lacrosse",        label: "Lacrosse" },
+      { key: "womens lacrosse", label: "Women's Lacrosse" },
+      { key: "basketball",      label: "Basketball" },
+      { key: "field hockey",    label: "Field Hockey" },
+      { key: "ice hockey",      label: "Ice Hockey" },
+      { key: "blank",           label: "Blank Canvas" },
+    ],
+  },
 ];
 
 // ── Test suite registry (names/descriptions only — suites loaded lazily) ──
@@ -230,21 +242,34 @@ function TutorialPreviewMenu({ onPick }) {
       </AdminBtn>
       {open && (
         <div
-          className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-lg border py-1 shadow-xl"
+          className="absolute right-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-lg border py-1 shadow-xl"
           style={{ backgroundColor: "var(--adm-surface-elevated)", borderColor: "var(--adm-border2)" }}
         >
-          {TUTORIAL_PREVIEW_SPORTS.map((s) => (
-            <button
-              key={s.key}
-              type="button"
-              onClick={() => { setOpen(false); onPick(s.key); }}
-              className="block w-full px-3 py-1.5 text-left text-xs transition-colors hover:opacity-100"
-              style={{ color: "var(--adm-text)" }}
-              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--adm-surface3)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
-            >
-              {s.label}
-            </button>
+          {TUTORIAL_PREVIEW_SPORT_GROUPS.map((group, gi) => (
+            <div key={group.type}>
+              {/* Group header — non-interactive */}
+              <div className="px-3 pb-0.5 pt-2.5">
+                <p className="text-[11px] font-semibold" style={{ color: "var(--adm-text)" }}>{group.type}</p>
+                <p className="text-[10px]" style={{ color: "var(--adm-text-muted, var(--adm-text))", opacity: 0.55 }}>{group.description}</p>
+              </div>
+              {group.sports.map((s) => (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => { setOpen(false); onPick(s.key); }}
+                  className="block w-full px-3 py-1.5 text-left text-xs transition-colors"
+                  style={{ color: "var(--adm-text)" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--adm-surface3)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
+                >
+                  {s.label}
+                </button>
+              ))}
+              {/* Divider between groups, not after the last */}
+              {gi < TUTORIAL_PREVIEW_SPORT_GROUPS.length - 1 && (
+                <div className="mx-3 my-1 border-t" style={{ borderColor: "var(--adm-border2)" }} />
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -299,7 +324,7 @@ function RecentActivitySection({ session }) {
 // ── Main component ─────────────────────────────────────────────────────────
 export default function Admin() {
   const navigate = useNavigate();
-  const { basePath } = useAdmin();
+  const { basePath, theme } = useAdmin();
   // ── Auth ──
   const [session, setSession] = useState(() => sessionStorage.getItem(SESSION_KEY) || "");
   const [password, setPassword] = useState("");
@@ -530,7 +555,7 @@ export default function Admin() {
    * @param {string} sport - onboarding sport key ("football", "blank", ...)
    */
   const handlePreviewTutorial = (sport) => {
-    activateTutorialPreview(sport);
+    activateTutorialPreview(sport, theme);
     window.location.href = "/app/plays?startTutorial=1";
   };
 

@@ -14,6 +14,7 @@ export default function WideSidebar({
     onPrefabSelect,
     onDeleteCustomPrefab,
     onAddPlayer,
+    onSavePrefab,
     players,
     prefabs,
     customPrefabs,
@@ -39,6 +40,7 @@ export default function WideSidebar({
             onPrefabSelect={onPrefabSelect}
             onDeleteCustomPrefab={onDeleteCustomPrefab}
             onAddPlayer={onAddPlayer}
+            onSavePrefab={onSavePrefab}
             players={players}
             prefabs={prefabs}
             customPrefabs={customPrefabs}

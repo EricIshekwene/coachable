@@ -39,7 +39,15 @@ function createApiError(message, status = 0, data = null, code = "api_error", ca
 export async function apiFetch(path, { skipNetworkErrorReport, ...options } = {}) {
   // Admin tutorial preview: the whole API is served from an in-memory mock —
   // no request ever reaches the server (see src/utils/tutorialPreview.js).
-  if (isTutorialPreviewActive()) return mockApiFetch(path, options);
+  // Exception: sport presets and prefab presets are read-only public data —
+  // fetch from the real server so the tutorial preview shows the same content
+  // as the live editor.
+  if (isTutorialPreviewActive()) {
+    const REAL_API_PREFIXES = ["/sport-presets/", "/sport-prefab-presets/"];
+    if (!REAL_API_PREFIXES.some((prefix) => path.startsWith(prefix))) {
+      return mockApiFetch(path, options);
+    }
+  }
 
   const token = getAuthToken();
   const method = String(options.method || "GET").toUpperCase();

@@ -319,6 +319,30 @@ input[type="number"] {
     }
 }
 
+/* Softens the moment a step's target mounts: the ring (and its box-shadow dim)
+   and the full-screen backdrop fade in instead of popping. */
+@keyframes tutorial-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
 .tutorial-spotlight-ring {
-    animation: tutorial-pulse 1.6s ease-in-out infinite;
+    animation: tutorial-pulse 1.6s ease-in-out infinite, tutorial-fade-in 0.2s ease-out;
+}
+
+.tutorial-backdrop {
+    animation: tutorial-fade-in 0.2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tutorial-spotlight-ring,
+    .tutorial-backdrop {
+        animation: none;
+        /* Also overrides the ring's inline top/left/size transition. */
+        transition: none !important;
+    }
 }

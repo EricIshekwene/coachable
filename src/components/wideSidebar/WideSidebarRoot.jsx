@@ -6,6 +6,7 @@ import { TbLayoutSidebarLeftCollapse } from "react-icons/tb";
 import { FiUser, FiX } from "react-icons/fi";
 import { FaArrowUpLong } from "react-icons/fa6";
 import { useAuth } from "../../context/AuthContext";
+import { emitTutorialEvent, registerTutorialActions } from "../../context/tutorialBus";
 import coachableLogo from "../../assets/logos/White_Coachable_Logo.png";
 import coneIcon from "../../assets/objects/cone.png";
 import SelectToolSection from "../sidebar/SelectToolSection";
@@ -132,6 +133,7 @@ export default function WideSidebarRoot({
     onPrefabSelect,
     onDeleteCustomPrefab,
     onAddPlayer,
+    onSavePrefab,
     customPrefabs,
     publishedPrefabs,
     playName,
@@ -177,9 +179,22 @@ export default function WideSidebarRoot({
     }, [customPrefabs, publishedPrefabs]);
 
     const togglePopover = (key) => {
-        setOpenPopover((prev) => (prev === key ? null : key));
+        setOpenPopover((prev) => {
+            const isOpening = prev !== key;
+            if (key === "prefabs" && isOpening) {
+                emitTutorialEvent("prefab-popover-opened");
+            }
+            return isOpening ? key : null;
+        });
     };
     const closePopover = () => setOpenPopover(null);
+
+    useEffect(() => {
+        return registerTutorialActions({
+            /** Close the prefabs popover so the open-prefabs step can be re-triggered on back navigation. */
+            "close-prefabs-popover": () => setOpenPopover(null),
+        });
+    }, []);
     const setTool = useCallback((tool) => {
         setSelectedTool(tool);
         onToolChange?.(tool);
@@ -366,6 +381,7 @@ export default function WideSidebarRoot({
 
             <WideSidebarRowButton
                 ref={objectsButtonRef}
+                data-testid="tutorial-add-object"
                 Icon={objectsRowIcon}
                 label="Add Objects"
                 onHover={() => {}}
@@ -429,6 +445,16 @@ export default function WideSidebarRoot({
                 onDeleteCustomPrefab={onDeleteCustomPrefab}
                 onHoverTooltip={setHoveredTooltip}
             />
+            {onSavePrefab && (
+                <WideSidebarRowButton
+                    data-testid="tutorial-save-prefab"
+                    Icon={<FaArrowUpLong className={iconClass} />}
+                    label="Save as Prefab"
+                    onHover={() => {}}
+                    isSelected={false}
+                    onRowClick={onSavePrefab}
+                />
+            )}
             </div>
 
             {/* Fixed bottom area */}
