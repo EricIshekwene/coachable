@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { FiArrowLeft, FiEdit2, FiClock, FiTag, FiLoader } from "react-icons/fi";
+import { FiArrowLeft, FiEdit2, FiEye, FiClock, FiTag, FiLoader } from "react-icons/fi";
 import { fetchPlay, updatePlay } from "../../utils/apiPlays";
 import PlayPreviewCard from "../../components/PlayPreviewCard";
 
@@ -170,6 +170,13 @@ export default function PlayView({ viewOnly = false, showBackButton = true }) {
         </div>
         {!effectiveViewOnly && play.teamId && (
           <div className="flex items-center gap-2">
+            <Link
+              to={`/app/plays/${playId}/view`}
+              className="flex items-center gap-2 rounded-lg border border-BrandGray2/30 px-4 py-2 text-sm font-semibold text-BrandGray transition hover:border-BrandOrange/50 hover:text-BrandOrange"
+            >
+              <FiEye className="text-sm" />
+              View
+            </Link>
             {canCoachEdit && (
               <Link
                 to={`/app/plays/${playId}/edit`}
