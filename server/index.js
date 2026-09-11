@@ -26,13 +26,16 @@ import sportPrefabPresetsRoutes from "./routes/sportPrefabPresets.js";
 import staffRoutes from "./routes/staff.js";
 import notificationsRoutes from "./routes/notifications.js";
 import flagsRoutes from "./routes/flags.js";
+import migrationRoutes from "./routes/migration.js";
 import outreachRoutes from "./routes/outreach.js";
 import suiteRoutes from "./routes/suite.js";
 import adminTeamSuiteRoutes from "./routes/adminTeamSuite.js";
 import { methodAwareLimiter } from "./middleware/rateLimit.js";
 import { bodyBoundsCheck } from "./middleware/bodyBounds.js";
+import { migrationWriteLock } from "./middleware/migrationWriteLock.js";
 import { syncSports } from "./utils/syncSports.js";
 import { syncPlaybookDefaults } from "./utils/syncPlaybookDefaults.js";
+import { startMigrationStatusPolling } from "./lib/migrationStatus.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -73,6 +76,14 @@ app.use(methodAwareLimiter);
 // Paths that legitimately carry large payloads are exempted in the middleware.
 app.use(bodyBoundsCheck);
 
+// V1 -> V2 cutover: refuse POST/PUT/PATCH/DELETE for teams that have already
+// moved to V2, so a write can never land in V1 after its data was copied out.
+// Registered here — after the body parsers (it reads req.body.teamId and the
+// session cookie) and before every route mount — because V1 has no "/api"
+// prefix, so one global registration is the narrowest layer covering all 24
+// mounts. Reads are never blocked and it fails OPEN on any error.
+app.use(migrationWriteLock);
+
 // --------------- Health check ---------------
 
 app.get("/health", async (_req, res) => {
@@ -109,6 +120,7 @@ app.use("/sport-prefab-presets", sportPrefabPresetsRoutes);
 app.use("/staff", staffRoutes);
 app.use("/notifications", notificationsRoutes);
 app.use("/flags", flagsRoutes);
+app.use("/migration", migrationRoutes);
 app.use("/teams/:teamId/suite", suiteRoutes);
 
 // --------------- Static files ---------------
@@ -194,4 +206,9 @@ autoMigrate()
   };
   setTimeout(runRecurringEmails, 90_000); // first run 90s after startup
   setInterval(runRecurringEmails, RECURRING_EMAIL_INTERVAL_MS);
+
+  // V1 -> V2 migration status: poll V2's internal endpoint and cache it in
+  // memory so no user request ever blocks on a call to V2. Own interval +
+  // failure handling live in server/lib/migrationStatus.js.
+  startMigrationStatusPolling();
 });

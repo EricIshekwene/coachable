@@ -6,6 +6,11 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation, useNavigat
 import { AdminProvider } from "./admin/AdminContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { FeatureFlagProvider, useAllFlags, useFlag } from "./context/FeatureFlagContext";
+import {
+  MigrationStatusProvider,
+  useShowMigrationInterstitial,
+} from "./context/MigrationStatusContext";
+import AccountMovedPage from "./pages/AccountMovedPage";
 import Slate from "./features/slate/Slate";
 import SlateRecord from "./features/slate/SlateRecord";
 import SlateDrawing from "./features/slate/SlateDrawing";
@@ -324,6 +329,23 @@ export function RequireNotOnboarded({ children }) {
 }
 
 /**
+ * Shows the "your account has moved" interstitial instead of the app when the
+ * team the coach is currently working in has moved to V2 (or when every team
+ * they belong to has).
+ *
+ * Fails open in every uncertain case — no status data, a failed or slow
+ * /migration/me, or a status cache that has never loaded all render `children`
+ * exactly as V1 does today. A coach who still has an unmoved team is never
+ * locked out: the interstitial itself switches them to that team.
+ */
+export function RequireNotMoved({ children }) {
+  const { user } = useAuth();
+  const moved = useShowMigrationInterstitial(user?.teamId);
+  if (moved) return <AccountMovedPage />;
+  return children;
+}
+
+/**
  * Redirects to `fallback` when the named feature flag is disabled for the
  * current user. Renders children when the flag is on.
  */
@@ -463,12 +485,12 @@ export function AppRoutes() {
       <Route path="/slate/:sport" element={<SlateWithSportParam />} />
 
       {/* Full-screen play editor (outside AppLayout — no nav chrome) */}
-      <Route path="/app/plays/:playId/edit" element={<RequireAuth><RequireOnboarded><PlayEditPage /></RequireOnboarded></RequireAuth>} />
-      <Route path="/app/plays/:playId/view" element={<RequireAuth><RequireOnboarded><PlayViewOnlyPage /></RequireOnboarded></RequireAuth>} />
-      <Route path="/app/select-sport" element={<RequireAuth><RequireOnboarded><SelectSport /></RequireOnboarded></RequireAuth>} />
+      <Route path="/app/plays/:playId/edit" element={<RequireAuth><RequireOnboarded><RequireNotMoved><PlayEditPage /></RequireNotMoved></RequireOnboarded></RequireAuth>} />
+      <Route path="/app/plays/:playId/view" element={<RequireAuth><RequireOnboarded><RequireNotMoved><PlayViewOnlyPage /></RequireNotMoved></RequireOnboarded></RequireAuth>} />
+      <Route path="/app/select-sport" element={<RequireAuth><RequireOnboarded><RequireNotMoved><SelectSport /></RequireNotMoved></RequireOnboarded></RequireAuth>} />
 
       {/* App shell */}
-      <Route path="/app" element={<RequireAuth><RequireOnboarded><AppLayout /></RequireOnboarded></RequireAuth>}>
+      <Route path="/app" element={<RequireAuth><RequireOnboarded><RequireNotMoved><AppLayout /></RequireNotMoved></RequireOnboarded></RequireAuth>}>
         <Route index element={<Navigate to="plays" replace />} />
         <Route path="plays" element={<Plays />} />
         <Route path="plays/new" element={<PlayNew />} />
@@ -520,7 +542,9 @@ function FeatureFlagBridge({ children }) {
   const { user } = useAuth();
   return (
     <FeatureFlagProvider userId={user?.id ?? null}>
-      {children}
+      <MigrationStatusProvider userId={user?.id ?? null}>
+        {children}
+      </MigrationStatusProvider>
     </FeatureFlagProvider>
   );
 }
