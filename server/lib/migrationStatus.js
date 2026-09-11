@@ -109,6 +109,22 @@ function statusUrl() {
 }
 
 /**
+ * Coerce one `summary.*` value into a safe non-negative integer count.
+ *
+ * The summary only feeds `getSnapshotMeta()` diagnostics — it never decides a
+ * team's status — so a malformed/non-numeric value is normalised to 0 rather
+ * than rejecting the whole payload and throwing away good per-team data.
+ *
+ * @param {unknown} value
+ * @returns {number}
+ */
+function countOf(value) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? Math.floor(value)
+    : 0;
+}
+
+/**
  * Validate a raw V2 payload and convert it into a Snapshot.
  *
  * `contractVersion` is checked FIRST — an unrecognised version is refused
@@ -169,13 +185,13 @@ export function parseMigrationStatusPayload(payload) {
     snapshot: {
       contractVersion: version,
       generatedAt: typeof payload.generatedAt === "string" ? payload.generatedAt : null,
-      // V2 zero-fills every state, so these keys are always present; the `?? 0`
-      // is belt-and-braces only.
+      // V2 zero-fills every state, so these keys are always present; countOf()
+      // is belt-and-braces against a malformed or non-numeric summary.
       summary: {
-        v1_only: s.v1_only ?? 0,
-        migrating: s.migrating ?? 0,
-        v2_live: s.v2_live ?? 0,
-        total: s.total ?? 0,
+        v1_only: countOf(s.v1_only),
+        migrating: countOf(s.migrating),
+        v2_live: countOf(s.v2_live),
+        total: countOf(s.total),
       },
       byTeamId,
       teams,
@@ -218,6 +234,20 @@ function warnIfStale() {
   );
 }
 
+/**
+ * Staleness check for the read path.
+ *
+ * `warnIfStale()` is otherwise only reachable from a poll, so an interval that
+ * silently stopped firing would never raise the alarm — reads are the only
+ * thing still happening in that state. Guarded on an active poll timer: a
+ * deliberately stopped poller, or a process that never started one, is not an
+ * anomaly worth logging.
+ */
+function noteStaleOnRead() {
+  if (pollTimer === null) return;
+  warnIfStale();
+}
+
 // ── Polling ──────────────────────────────────────────────────────────────────
 
 /**
@@ -238,6 +268,8 @@ export async function pollMigrationStatusOnce() {
           `and every team reads as "${DEFAULT_STATUS}". Set V2_MIGRATION_CRON_SECRET to V2's CRON_SECRET.`
       );
     }
+    // A secret rotated away at runtime must not silence the staleness alarm.
+    warnIfStale();
     return { ok: false, reason: "missing V2_MIGRATION_CRON_SECRET" };
   }
 
@@ -314,7 +346,8 @@ export async function pollMigrationStatusOnce() {
 export function startMigrationStatusPolling() {
   if (pollTimer) return stopMigrationStatusPolling;
 
-  if (!process.env.V2_MIGRATION_CRON_SECRET) {
+  const hasSecret = Boolean(process.env.V2_MIGRATION_CRON_SECRET);
+  if (!hasSecret) {
     console.error(
       `${LOG_PREFIX} MISCONFIGURED: environment variable V2_MIGRATION_CRON_SECRET is not set at boot. ` +
         `Migration status CANNOT be fetched from V2. V1 will keep running normally, but the cache stays ` +
@@ -323,6 +356,9 @@ export function startMigrationStatusPolling() {
   }
 
   const run = () => {
+    // Evaluate staleness on the tick itself, not only on a poll failure, so a
+    // snapshot that has quietly stopped refreshing is always reported.
+    warnIfStale();
     pollMigrationStatusOnce().catch((err) => {
       // pollMigrationStatusOnce never throws, but never let a timer kill boot.
       console.error(`${LOG_PREFIX} poll runner error:`, err.message);
@@ -332,9 +368,17 @@ export function startMigrationStatusPolling() {
   run(); // immediate first poll at boot
   pollTimer = setInterval(run, POLL_INTERVAL_MS);
   if (typeof pollTimer.unref === "function") pollTimer.unref();
-  console.log(
-    `${LOG_PREFIX} polling ${statusUrl()} every ${POLL_INTERVAL_MS / 1000}s (timeout ${FETCH_TIMEOUT_MS / 1000}s).`
-  );
+  if (hasSecret) {
+    console.log(
+      `${LOG_PREFIX} polling ${statusUrl()} every ${POLL_INTERVAL_MS / 1000}s (timeout ${FETCH_TIMEOUT_MS / 1000}s).`
+    );
+  } else {
+    // Never print a reassuring "polling ..." line when no poll can be issued.
+    console.error(
+      `${LOG_PREFIX} NOT polling ${statusUrl()}: V2_MIGRATION_CRON_SECRET is unset, so every scheduled ` +
+        `poll will be skipped and the cache stays in its "never loaded" state.`
+    );
+  }
   return stopMigrationStatusPolling;
 }
 
@@ -384,6 +428,7 @@ export function hasEverLoaded() {
  * @returns {'v1_only'|'migrating'|'v2_live'}
  */
 export function getTeamStatus(teamId) {
+  noteStaleOnRead();
   if (!snapshot || !teamId) return DEFAULT_STATUS;
   return snapshot.byTeamId.get(teamId)?.status || DEFAULT_STATUS;
 }
@@ -439,6 +484,7 @@ export async function userHasV2LiveTeam(userId) {
  * }}
  */
 export function getSnapshotMeta() {
+  noteStaleOnRead();
   const ageMs = lastSuccessAt === null ? null : Date.now() - lastSuccessAt;
   return {
     hasEverLoaded: snapshot !== null,

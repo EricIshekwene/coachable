@@ -368,7 +368,11 @@ describe("polling lifecycle", () => {
     const fetchFn = stubFetch({ body: payload([team("t1", "v2_live")]) });
     const stop = mod.startMigrationStatusPolling();
     await vi.waitFor(() => expect(fetchFn).toHaveBeenCalledTimes(1));
-    expect(mod.getTeamStatus("t1")).toBe("v2_live");
+    // Wait on the OBSERVABLE cache state, not the fetch call count: the fetch
+    // spy resolves the moment fetch() is invoked, one microtask before
+    // `await res.json()` -> ingestMigrationStatusPayload() has written the
+    // snapshot. Waiting on the count alone reads the cache too early.
+    await vi.waitFor(() => expect(mod.getTeamStatus("t1")).toBe("v2_live"));
     stop();
   });
 
