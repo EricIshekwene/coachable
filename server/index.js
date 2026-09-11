@@ -31,6 +31,7 @@ import suiteRoutes from "./routes/suite.js";
 import adminTeamSuiteRoutes from "./routes/adminTeamSuite.js";
 import { methodAwareLimiter } from "./middleware/rateLimit.js";
 import { bodyBoundsCheck } from "./middleware/bodyBounds.js";
+import { migrationWriteLock } from "./middleware/migrationWriteLock.js";
 import { syncSports } from "./utils/syncSports.js";
 import { syncPlaybookDefaults } from "./utils/syncPlaybookDefaults.js";
 import { startMigrationStatusPolling } from "./lib/migrationStatus.js";
@@ -73,6 +74,14 @@ app.use(methodAwareLimiter);
 // parsed body so a single huge field can't slip through the json() limit.
 // Paths that legitimately carry large payloads are exempted in the middleware.
 app.use(bodyBoundsCheck);
+
+// V1 -> V2 cutover: refuse POST/PUT/PATCH/DELETE for teams that have already
+// moved to V2, so a write can never land in V1 after its data was copied out.
+// Registered here — after the body parsers (it reads req.body.teamId and the
+// session cookie) and before every route mount — because V1 has no "/api"
+// prefix, so one global registration is the narrowest layer covering all 24
+// mounts. Reads are never blocked and it fails OPEN on any error.
+app.use(migrationWriteLock);
 
 // --------------- Health check ---------------
 
