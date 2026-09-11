@@ -7,6 +7,7 @@ import { FiBookOpen, FiUsers, FiUser, FiLogOut, FiSettings, FiEye, FiX, FiFlag, 
 import useThemeColor from "../utils/useThemeColor";
 import TeamSwitcher from "../components/TeamSwitcher";
 import NotificationBell from "../components/NotificationBell";
+import MovedTeamBanner from "../components/MovedTeamBanner";
 import { NotificationsProvider } from "../context/NotificationsContext";
 import { useFlag } from "../context/FeatureFlagContext";
 import { SuiteProvider, useSuiteFeatures } from "../context/SuiteContext";
@@ -209,6 +210,9 @@ function AppLayoutInner() {
       className="app-themed flex min-h-0 flex-col bg-BrandBlack font-DmSans text-BrandText"
       style={{ height: "100dvh" }}
     >
+      {/* Moved-to-V2 Banner — some teams moved, this one has not */}
+      <MovedTeamBanner activeTeamId={user?.teamId} />
+
       {/* Player View Banner */}
       {playerViewMode && (
         <div className="flex items-center justify-between border-b border-BrandOrange/30 bg-BrandOrange/10 px-4 py-2">
