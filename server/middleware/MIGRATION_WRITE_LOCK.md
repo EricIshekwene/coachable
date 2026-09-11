@@ -47,7 +47,7 @@ detect it without string-matching the message:
 
 ```json
 {
-  "error": "\"Varsity Hoops\" has moved to the new Coachable. Changes can no longer be saved here — please make them at https://beta.coachableplays.com. You can still view everything on this page.",
+  "error": "This team has moved to the new Coachable. Changes can no longer be saved here — please make them at https://beta.coachableplays.com. You can still view everything on this page.",
   "code": "TEAM_MIGRATED_TO_V2",
   "status": "v2_live",
   "v2Url": "https://beta.coachableplays.com",
@@ -55,10 +55,29 @@ detect it without string-matching the message:
 }
 ```
 
+and for a `migrating` team, byte for byte:
+
+```json
+{
+  "error": "This team is being moved to the new Coachable right now, so changes can no longer be saved here. Any change made here would be lost. Please continue at https://beta.coachableplays.com — you can still view everything on this page.",
+  "code": "TEAM_MIGRATED_TO_V2",
+  "status": "migrating",
+  "v2Url": "https://beta.coachableplays.com",
+  "teamId": "…"
+}
+```
+
+**The message never names the team.** It always says "This team", never `"Varsity Hoops"`.
+`buildBlockedMessage` takes an optional `teamName`, but no request path passes one, deliberately:
+this middleware runs ahead of every route and has to stay a cheap, non-throwing in-memory check,
+so it will not spend a database lookup just to put a name in a sentence. Team names do reach the
+client on the unattributed path — see the `teams` array below.
+
 `code` is **the same for both locked statuses** so the client only ever checks one value;
 `status` (`"v2_live"` or `"migrating"`) carries the nuance for wording. When the request could
 not be attributed to one team, `teamId` is absent and a `teams: [{teamId, teamName, status}]`
-array is included instead.
+array is included instead (those names come from V1's own tables, which the membership branch
+has already read).
 
 ## Decision: `migrating` **blocks** writes
 
@@ -123,7 +142,6 @@ are matched on whole path **segments**, so `/admin` matches `/admin/plays` but n
 | `/auth` | Login, logout, signup, forgot/reset password. Blocking these means a migrated coach cannot even log in to be told where to go. |
 | `/verification` | Email verify send/confirm — otherwise an unverified user is stranded at the gate. |
 | `/users` | Account/profile level: name, preferences, change-email. Not team data. |
-| `/onboarding/create-team`, `/onboarding/solo` | Creates a brand-new team, which by definition cannot have been migrated. `/onboarding/join-team` is **not** exempt — joining a team that already moved is exactly the write we want to refuse. |
 | `/error-reports`, `/user-issues` | Telemetry and user-submitted issues. V1 must keep collecting errors through the cutover, and "I can't get in" must be reportable. |
 | `/notifications` | Read-marking only. No team content, and blocking it leaves a permanently un-clearable bell. |
 | `/admin` | The whole staff console, including `/admin/outreach` and `/admin/team-suite`. Staff must keep operating V1 through the cutover — **including the lever that rolls a team back off V2**. Blocking this would remove the rollback path. |
@@ -132,6 +150,47 @@ are matched on whole path **segments**, so `/admin` matches `/admin/plays` but n
 | `/health` | Liveness probe. GET-only today, exempt so it can never be gated. |
 
 V1 has no inbound webhook route today, so none is listed. If one is ever added it belongs here.
+
+### Creating or joining a team is deliberately NOT exempt
+
+`/onboarding/create-team`, `/onboarding/solo`, `/teams/create`, `/teams/create-personal`,
+`/teams/join` and `/onboarding/join-team` are all off the allow-list, so they all get the same
+answer from the membership fallback.
+
+An earlier draft exempted the two `/onboarding` creation routes on the reasoning that a
+brand-new team cannot itself have been migrated. That is true but beside the point, and it left
+`POST /teams/create` returning 409 while `POST /onboarding/create-team` returned 201 for the
+same coach with the same intent — the answer depended only on which route the frontend happened
+to call. **A coach whose every team has already moved should not be creating anything in a
+database nobody will ever read again; that is the same silent data loss this middleware
+exists to prevent.** So all six routes now refuse, and the rule is one sentence instead of a
+per-route exception list.
+
+Nobody who could legitimately still need these routes is affected, because the membership
+fallback only blocks a user whose teams are *all* locked:
+
+- **Brand-new account, zero teams** → allowed. Signup and first-team creation still work.
+- **Partially migrated coach** (at least one unmoved team) → allowed.
+- **Cache has never loaded** → allowed, like everything else (check 2 runs first).
+- **Fully migrated coach** → 409, pointing at V2, where the new team belongs.
+
+### What actually happens on `/onboarding/join-team` (and `/teams/join`)
+
+These routes identify the target team **only** by `inviteCode` in the body — never by `teamId`
+— so this middleware cannot attribute the request to a team at all. It falls to the membership
+fallback, which answers on the *joiner's* teams, not the team they are trying to join. In
+practice:
+
+- An invitee with **zero** teams — which is most invitees — **is allowed through**, even if the
+  invite is for a team that has already moved to V2.
+- A fully migrated coach accepting an invite is blocked, but only because all of *their own*
+  teams are locked, which is incidental.
+
+This is a real, accepted residual gap, not something the middleware can close. Closing it would
+mean resolving `inviteCode` → team, which is a database lookup on the request path, and even
+then the zero-team allowance is the rule that keeps new accounts from being trapped in
+onboarding — it must not change. **A moved team's invite code is V2's problem to refuse**: V2
+owns that team now and is the right place to reject or redirect the join.
 
 ## Tests
 
@@ -142,4 +201,7 @@ stubbed, because it is the one thing that would touch Postgres. Covers: reads ne
 all three safe verbs, 409 + stable code on all four mutating verbs, the `migrating` wording,
 unmigrated teams completely unaffected, `/teams/:teamId/suite` paths, body-`teamId` copy routes,
 the full exemption list, the membership fallback (all-locked blocks / partially migrated allows /
-zero teams allows / unauthenticated passes), and the three fail-open paths.
+zero teams allows / unauthenticated passes), and the three fail-open paths. Two guards added
+after review: the exact 409 message strings are pinned character for character against the
+examples quoted above, and all six create-or-join routes are asserted to give the same four
+answers (fully migrated blocks; zero teams, partially migrated and never-loaded cache all allow).

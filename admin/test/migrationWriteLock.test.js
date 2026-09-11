@@ -102,10 +102,13 @@ describe("migrationWriteLock helpers", () => {
     expect(isExemptPath("/teams/abc/plays")).toBe(false);
   });
 
-  it("exempts /onboarding/create-team and /onboarding/solo but not join-team", () => {
-    expect(isExemptPath("/onboarding/create-team")).toBe(true);
-    expect(isExemptPath("/onboarding/solo")).toBe(true);
+  it("exempts no team-creation or team-joining route", () => {
+    expect(isExemptPath("/onboarding/create-team")).toBe(false);
+    expect(isExemptPath("/onboarding/solo")).toBe(false);
     expect(isExemptPath("/onboarding/join-team")).toBe(false);
+    expect(isExemptPath("/teams/create")).toBe(false);
+    expect(isExemptPath("/teams/create-personal")).toBe(false);
+    expect(isExemptPath("/teams/join")).toBe(false);
   });
 
   it("extracts a team id only when the second segment is a UUID", () => {
@@ -187,6 +190,23 @@ describe("migrationWriteLock blocks writes for locked teams", () => {
     expect(res.body.teamId).toBe(TEAM_LIVE);
   });
 
+  // Pins the exact strings quoted in MIGRATION_WRITE_LOCK.md so the doc and the
+  // code cannot drift apart again. The message says "This team", never the
+  // team's name — resolving a name would cost a DB read on the request path.
+  it("produces exactly the message the doc documents, naming no team", async () => {
+    const live = await run({ url: `/teams/${TEAM_LIVE}/plays` });
+    expect(live.res.body.error).toBe(
+      "This team has moved to the new Coachable. Changes can no longer be saved here — " +
+        `please make them at ${V2_APP_URL}. You can still view everything on this page.`
+    );
+
+    const migrating = await run({ url: `/teams/${TEAM_MIGRATING}/plays` });
+    expect(migrating.res.body.error).toBe(
+      "This team is being moved to the new Coachable right now, so changes can no longer be saved here. " +
+        `Any change made here would be lost. Please continue at ${V2_APP_URL} — you can still view everything on this page.`
+    );
+  });
+
   it("blocks a migrating team too, with the migrating wording", async () => {
     const { res, next } = await run({ url: `/teams/${TEAM_MIGRATING}/folders` });
     expect(next).not.toHaveBeenCalled();
@@ -235,8 +255,6 @@ describe("migrationWriteLock exemptions keep a migrated coach unstuck", () => {
     "/verification/send",
     "/users/me",
     "/users/me/change-email",
-    "/onboarding/create-team",
-    "/onboarding/solo",
     "/error-reports",
     "/user-issues",
     "/notifications/read-all",
@@ -248,6 +266,67 @@ describe("migrationWriteLock exemptions keep a migrated coach unstuck", () => {
     const { res, next } = await run({ url });
     expect(next).toHaveBeenCalledOnce();
     expect(res.statusCode).toBe(200);
+  });
+});
+
+// ── Team creation / joining consistency ──────────────────────────────────────
+
+/**
+ * All six create-or-join routes must give the SAME answer. A fully migrated
+ * coach should not be able to create a team in a database nobody will read
+ * again just by picking a different route, and nobody who legitimately still
+ * needs these routes may be locked out.
+ */
+describe("migrationWriteLock treats every team-creation route alike", () => {
+  const CREATE_OR_JOIN = [
+    "/onboarding/create-team",
+    "/onboarding/solo",
+    "/onboarding/join-team",
+    "/teams/create",
+    "/teams/create-personal",
+    "/teams/join",
+  ];
+
+  beforeEach(() => {
+    loadCache([
+      { teamId: TEAM_LIVE, teamName: "Live Team", status: "v2_live" },
+      { teamId: TEAM_V1, teamName: "Staying Team", status: "v1_only" },
+    ]);
+  });
+
+  it.each(CREATE_OR_JOIN)("blocks POST %s for a fully migrated coach", async (url) => {
+    mockGetUserTeams.mockResolvedValue([{ teamId: TEAM_LIVE, teamName: "Live Team" }]);
+    const { res, next } = await run({ url });
+    expect(next).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(409);
+    expect(res.body.code).toBe(MIGRATED_ERROR_CODE);
+    expect(res.body.v2Url).toBe(V2_APP_URL);
+  });
+
+  it.each(CREATE_OR_JOIN)("allows POST %s for a brand-new account with zero teams", async (url) => {
+    mockGetUserTeams.mockResolvedValue([]);
+    const { res, next } = await run({ url });
+    expect(next).toHaveBeenCalledOnce();
+    expect(res.statusCode).toBe(200);
+  });
+
+  it.each(CREATE_OR_JOIN)("allows POST %s for a partially migrated coach", async (url) => {
+    mockGetUserTeams.mockResolvedValue([
+      { teamId: TEAM_LIVE, teamName: "Live Team" },
+      { teamId: TEAM_V1, teamName: "Staying Team" },
+    ]);
+    const { res, next } = await run({ url });
+    expect(next).toHaveBeenCalledOnce();
+    expect(res.statusCode).toBe(200);
+  });
+
+  it.each(CREATE_OR_JOIN)("allows POST %s when the cache has never loaded", async (url) => {
+    resetMigrationStatusCache();
+    mockGetUserTeams.mockResolvedValue([{ teamId: TEAM_LIVE, teamName: "Live Team" }]);
+    const { res, next } = await run({ url });
+    expect(next).toHaveBeenCalledOnce();
+    expect(res.statusCode).toBe(200);
+    expect(mockGetUserTeams).not.toHaveBeenCalled();
   });
 });
 

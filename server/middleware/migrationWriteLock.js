@@ -87,12 +87,15 @@ export const EXEMPT_PATH_PREFIXES = [
   // A coach must always be able to fix their own account.
   "/users",
 
-  // --- Account provisioning for a BRAND-NEW team. A team created right now
-  // cannot already have been migrated, so there is nothing to lose. Note that
-  // /onboarding/join-team is deliberately NOT exempt: joining a team that has
-  // already moved is exactly the write we want to refuse.
-  "/onboarding/create-team",
-  "/onboarding/solo",
+  // --- NOT EXEMPT, deliberately: /onboarding/create-team, /onboarding/solo,
+  // /teams/create, /teams/create-personal and /teams/join. A coach whose every
+  // team has already moved to V2 must not create new teams in a database
+  // nobody will ever read again — that is the same silent data loss this
+  // middleware exists to prevent, and it must give the same answer on all
+  // three creation routes rather than depending on which one the frontend
+  // happens to call. Anyone who could legitimately still need them is
+  // unaffected: a brand-new account has zero teams and a partially migrated
+  // coach still has an unmoved team, and the membership fallback allows both.
 
   // --- Telemetry. V1 must keep collecting client errors through the cutover,
   // and a migrated coach reporting "I cannot get in" must be able to send it.
@@ -195,8 +198,14 @@ export function extractTeamIdFromBody(body) {
 /**
  * Human-readable refusal message naming V2 as the place to go.
  *
+ * No request path passes `teamName`, so the live message always says "This
+ * team". That is on purpose: the middleware runs before every route and must
+ * stay a cheap, non-throwing in-memory check, so it will not do a database
+ * lookup just to put a name in a sentence. Team names still reach the client
+ * on the unattributed path, in the `teams` array of the body.
+ *
  * @param {'v2_live'|'migrating'} status
- * @param {string} [teamName] - included when we know which team it was
+ * @param {string} [teamName] - optional; unused by the request path (see above)
  * @returns {string}
  */
 export function buildBlockedMessage(status, teamName) {
