@@ -33,6 +33,7 @@ import { methodAwareLimiter } from "./middleware/rateLimit.js";
 import { bodyBoundsCheck } from "./middleware/bodyBounds.js";
 import { syncSports } from "./utils/syncSports.js";
 import { syncPlaybookDefaults } from "./utils/syncPlaybookDefaults.js";
+import { startMigrationStatusPolling } from "./lib/migrationStatus.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -194,4 +195,9 @@ autoMigrate()
   };
   setTimeout(runRecurringEmails, 90_000); // first run 90s after startup
   setInterval(runRecurringEmails, RECURRING_EMAIL_INTERVAL_MS);
+
+  // V1 -> V2 migration status: poll V2's internal endpoint and cache it in
+  // memory so no user request ever blocks on a call to V2. Own interval +
+  // failure handling live in server/lib/migrationStatus.js.
+  startMigrationStatusPolling();
 });

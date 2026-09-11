@@ -217,6 +217,11 @@ All under [src/animation/](src/animation/), [src/canvas/](src/canvas/), [src/fea
 - `placeBallDebugLogger.js`, `recordingDebugLogger.js`, `rotationDebugLogger.js`, `prefabDebugLogger.js` (slate)
 - `videoExportDebugLogger.js`, `playPersistenceDebugLogger.js` (utils)
 
+### V1 → V2 cutover
+| User says... | Primary file(s) | Notes |
+|---|---|---|
+| "has this team moved to V2", "migration status", "the cutover cache" | [server/lib/migrationStatus.js](server/lib/migrationStatus.js) | Polls V2's `/api/internal/migration-status` on a 60s interval and caches it in memory. Read API: `getTeamStatus(teamId)`, `await userHasV2LiveTeam(userId)`, `await getUserTeamStatuses(userId)`, `hasEverLoaded()`, `getSnapshotMeta()`. Fails to last-known-good, never to open. See [MIGRATION_STATUS_CACHE.md](server/lib/MIGRATION_STATUS_CACHE.md) |
+
 ---
 
 ## Pages (`src/pages/`)
@@ -328,7 +333,7 @@ Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PL
 ## Server (`server/`)
 
 ### Entrypoint
-- [index.js](server/index.js) — Express app, CORS, route mounting, static `dist/` serving, auto-migrate, cleanup intervals
+- [index.js](server/index.js) — Express app, CORS, route mounting, static `dist/` serving, auto-migrate, cleanup intervals, migration-status polling (`startMigrationStatusPolling()`)
 - [Procfile](server/Procfile) — Railway start command
 - [reset-password.js](server/reset-password.js) — standalone reset-password script
 
@@ -363,6 +368,7 @@ Scoped sub-admins invited by the owner. See [STAFF_ADMIN_PLAN.md](STAFF_ADMIN_PL
 - [lib/email.js](server/lib/email.js) — Resend email helpers
 - [lib/userTeams.js](server/lib/userTeams.js) — user↔team queries, `seedDemoPlay`, `shouldSeedDemoPlayOnSportSet` (first-sport retroactive seeding; see [SELECT_SPORT.md](src/pages/app/SELECT_SPORT.md))
 - [lib/notificationAudience.js](server/lib/notificationAudience.js) — pure notification helpers: `buildNotifAudienceSql`, `buildNotifAudienceLabel`, `aggregateNotifResponses` (used by `/admin/notifications/*`)
+- [lib/migrationStatus.js](server/lib/migrationStatus.js) — V1→V2 migration-status cache: polls V2's `/api/internal/migration-status` on an interval, holds the snapshot in memory, exposes `getTeamStatus`, `userHasV2LiveTeam`, `getUserTeamStatuses`, `hasEverLoaded`, `getSnapshotMeta`, `startMigrationStatusPolling`/`stopMigrationStatusPolling`. No user request ever calls V2. See [MIGRATION_STATUS_CACHE.md](server/lib/MIGRATION_STATUS_CACHE.md)
 - [utils/syncSports.js](server/utils/syncSports.js) — startup sport seed
 - [utils/syncPlaybookDefaults.js](server/utils/syncPlaybookDefaults.js) — startup playbook seed
 - [config/sports.js](server/config/sports.js) — sport definitions / field configs
@@ -385,6 +391,7 @@ All run via Vitest. One file per feature; create new ones here when adding tests
 - Admin shell: `adminBtn.test.js`, `adminModal.test.js`, `adminNav.test.js`, `adminShell.test.js`, `adminDangerMode.test.js`, `analyticsDashboard.test.js`, `usersHideFilters.test.js`, `designSystem.test.js` (design system nav registry: slug integrity, default section, prev/next adjacency), `designSystemSearch.test.js` (design system search ranking: keyword/label/summary matching, case-insensitivity, result limit), `designTokenUnification.test.js` (single-source-of-truth guard: admin `--adm-*` tokens must derive from the brand `--color-Brand*` palette; fails if admin drifts back to a parallel hex palette), `adminPagination.test.js` (getPaginationRange: short ranges, ellipsis collapsing, clamping)
 - Plays/folders/playbooks: `localStorageAutosave.test.js`, `platformPlays.test.js`, `playbookFolderBrowse.test.js`, `playbookSections.test.js`, `landingPlaybooksNav.test.js`, `playPreviewCardCones.test.js`, `playPreviewPlayer.test.js`, `playCopyAnalytics.test.js`, `sportPresets.test.js`, `presetBallCycle.test.js`, `presetEditorMode.test.js`, `hideFromPlayers.test.js`, `sportNavContext.test.js`, `syncSports.test.js`, `adminPlayCardConsistency.test.js` (PlayCard `canRemoveFromSection` logic + section play enrichment + picker exclusion), `sharedPlayTeamPicker.test.js` (coach-eligible team filtering, `resolveTargetMembership` server-logic mirror, `TeamPickerModal` rendering/selection — see [SHARED_PLAY_TEAM_PICKER.md](src/pages/SHARED_PLAY_TEAM_PICKER.md)), `sharedPlayViewport.test.js` (autoplay-on-load motion gating, view-only canvas bottom-inset logic — see [VIEW_ONLY_PLAYBACK_FIX.md](src/components/VIEW_ONLY_PLAYBACK_FIX.md))
 - Drawing/keyframe: `keyframeStyling.test.js`, `drawingModePreviewAnimation.test.js`, `drawingFlipReflect.test.js`, `drawingModeUndoRedo.test.js`, `drawingScopeSeparation.test.js`, `annotationDrawingVisibility.test.js`, `drawingExportV3Migration.test.js`, `trackSnap.test.js`
+- V1→V2 cutover: `migrationStatusCache.test.js` (migration-status cache — contract-version refusal, payload validation, fail-to-last-known-good on every poll failure, 401/403 wrong-secret path, missing-`V2_MIGRATION_CRON_SECRET` no-crash path, secret never logged, staleness, user→team resolution via V1's own memberships — see [MIGRATION_STATUS_CACHE.md](server/lib/MIGRATION_STATUS_CACHE.md))
 - Team Suite: `teamSuite.test.js` (buildFeaturesMap, SUITE_FEATURES incl. `printing`, RequireSuiteFeature guard logic, SuiteContext fail-closed behavior)
 - Printing: `printing/printLayout.test.js` (multi-play printing — PRINT_LAYOUTS/getPrintLayout config, paginatePlays chunking, canShowPrintAction gating, `'printing'` entitlement wiring guard across schema/server/admin/Plays — see [docs/printing.md](docs/printing.md))
 - Misc: `videoEncoder.test.js`, `errorReporter.test.js`, `demoVideos.test.js`, `adminNotifications.test.js` (notification audience SQL + response aggregation), `notificationsRetry.test.js` (NotificationsContext retry-on-failure logic + hidden-tab/offline poll skipping — jsdom env), `outreachScraper.test.js` (sidearm parsers + sport/role normalization + CSV escaping; fixtures in `admin/test/fixtures/`), `mobileTouchGestures.test.js` (two-finger pan/pinch math for the mobile editor canvas — `src/canvas/touchGestures.js`), `tutorialSteps.test.js` (onboarding product tour: sport-adaptive step lists, outcome predicates, auto-action descriptors, `stepMatchesRoute`, `tutorialReducer` transitions), `tutorialBus.test.js` (tour event/action bus: fan-out, unsubscribe, action registration scoping, fail-soft), `tutorialProgress.test.js` (in-card tour progress bar: `tutorialProgressPercent` fill math, [0,100] clamping, degenerate 0/undefined totals), `tutorialBlocker.test.js` (tour click-trap geometry: `blockerPanels` four-panel tiling around the padded spotlight hole, viewport-edge clamping, null-rect full-screen panel), `tutorialPreviewApi.test.js` (admin tutorial-preview mock API: fake session shape incl. chosen sport, plays lifecycle, sport prefab presets, invites, fail-soft fallback — see [TUTORIAL_OVERLAY.md](src/components/tutorial/TUTORIAL_OVERLAY.md)), `tutorialTransitions.test.js` (tour card step-transition helpers: `contentFadePhase` cross-fade phase on step change, `cardBodyMode` delayed "Loading…" softening)
@@ -422,6 +429,7 @@ Suites used by the admin test runner: [src/testing/suites/](src/testing/suites/)
 - [src/pages/SHARED_PLAY_TEAM_PICKER.md](src/pages/SHARED_PLAY_TEAM_PICKER.md) — team picker for adding a shared play/folder to one of the user's teams, instead of guessing
 - [server/routes/DEMO_VIDEOS.md](server/routes/DEMO_VIDEOS.md), [server/routes/FORGOT_PASSWORD.md](server/routes/FORGOT_PASSWORD.md), [server/routes/PLAY_COPY_ANALYTICS_FIX.md](server/routes/PLAY_COPY_ANALYTICS_FIX.md)
 - [server/PLAYBOOK_SECTIONS.md](server/PLAYBOOK_SECTIONS.md), [server/ONBOARDING_SEED_PLAY.md](server/ONBOARDING_SEED_PLAY.md), [server/lib/ACCOUNT_DELETED_EMAIL.md](server/lib/ACCOUNT_DELETED_EMAIL.md)
+- [server/lib/MIGRATION_STATUS_CACHE.md](server/lib/MIGRATION_STATUS_CACHE.md) — V1→V2 migration-status cache: the V2 contract, the fail-to-last-known-good policy, the staleness alarm, the read API other cutover code must call, and the `V2_MIGRATION_CRON_SECRET` / `V2_BASE_URL` env vars
 - [server/lib/outreachScraper/OUTREACH_SCRAPER.md](server/lib/outreachScraper/OUTREACH_SCRAPER.md) — outreach staff-directory scraper (Sidearm legacy/nextgen parsers, sport/role normalization, CSV export); design rationale in [OUTREACH_SCRAPER_PLAN.md](OUTREACH_SCRAPER_PLAN.md)
 - [docs/team-suite.md](docs/team-suite.md) — Team Suite feature bundle: per-team entitlement system, route/table map, and role-based access rules
 - [docs/printing.md](docs/printing.md) — multi-play printing (2/4/6-up print preview from the plays bulk bar, `printing` entitlement wiring, print CSS gotchas); design rationale in [PRINTING_PLAN.md](PRINTING_PLAN.md)
