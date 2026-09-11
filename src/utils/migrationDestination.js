@@ -48,13 +48,21 @@ export function shouldShowMovedInterstitial(status, activeTeamId) {
  * Whether the non-blocking moved-team banner should show: the coach has a
  * moved team, but the team they are working in is not it.
  *
+ * Mutually exclusive with `shouldShowMovedInterstitial` in every case. The
+ * every-team-moved bail-out below is what makes that true: with no unmoved
+ * team left there is nothing to keep working on, so the interstitial owns the
+ * screen. Without it, an `activeTeamId` of null (no team selected yet) matched
+ * none of the moved teams and the banner fired alongside the interstitial.
+ *
  * @param {{ready: boolean, teams: Array<{teamId: string, status: string}>}} status
  * @param {string|null|undefined} activeTeamId
  * @returns {boolean}
  */
 export function shouldShowMovedBanner(status, activeTeamId) {
   if (!status?.ready) return false;
-  const moved = (Array.isArray(status.teams) ? status.teams : []).filter(isMovedTeam);
+  const teams = Array.isArray(status.teams) ? status.teams : [];
+  const moved = teams.filter(isMovedTeam);
   if (moved.length === 0) return false;
+  if (moved.length === teams.length) return false;
   return !moved.some((t) => t.teamId === activeTeamId);
 }

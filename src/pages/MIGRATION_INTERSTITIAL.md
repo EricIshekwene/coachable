@@ -7,7 +7,7 @@ What a coach whose team has moved to the new Coachable sees when they land on V1
 | Piece | File |
 | --- | --- |
 | Read endpoint | [server/routes/migration.js](../../server/routes/migration.js) — `GET /migration/me` |
-| Client fetch-once context | [src/context/MigrationStatusContext.jsx](../context/MigrationStatusContext.jsx) |
+| Client status context (fetch + 60s background refresh) | [src/context/MigrationStatusContext.jsx](../context/MigrationStatusContext.jsx) |
 | Decision helpers + destination constant | [src/utils/migrationDestination.js](../utils/migrationDestination.js) |
 | Full-screen interstitial | [src/pages/AccountMovedPage.jsx](AccountMovedPage.jsx) |
 | Non-blocking banner | [src/components/MovedTeamBanner.jsx](../components/MovedTeamBanner.jsx) |
@@ -22,9 +22,14 @@ What a coach whose team has moved to the new Coachable sees when they land on V1
    `{ hasEverLoaded: boolean, teams: [{ teamId, teamName, status }] }`.
    It never calls V2 and never writes. It is a GET on purpose, so the cutover
    write-lock middleware can never block it.
-2. `MigrationStatusProvider` fetches it once per logged-in user (the same shape
+2. `MigrationStatusProvider` fetches it for the logged-in user (the same shape
    as `FeatureFlagProvider`) and exposes `ready`, `teams`, `movedTeams`,
-   `stayingTeams`.
+   `stayingTeams`. It then refreshes in the background every 60s — the same
+   cadence, the same tab-hidden / offline skips and the same `visibilitychange`
+   refresh `NotificationsContext` uses — so a coach whose team flips to
+   `v2_live` mid-session finds out without reloading. A background refresh that
+   fails, or that comes back `hasEverLoaded: false`, leaves the last known good
+   answer untouched: a refresh never changes what the coach is already seeing.
 3. `RequireNotMoved` wraps the four authed surfaces in `App.jsx` (the `/app`
    shell plus the three full-screen routes outside it: play edit, play view-only,
    select-sport). When the decision says "moved", it renders
@@ -49,7 +54,17 @@ What a coach whose team has moved to the new Coachable sees when they land on V1
   - Some moved, the active team has NOT moved → no interstitial at all, just
     the slim banner; V1 works exactly as before.
   The interstitial and the banner are mutually exclusive by construction
-  (`shouldShowMovedInterstitial` / `shouldShowMovedBanner`, both pure and tested).
+  (`shouldShowMovedInterstitial` / `shouldShowMovedBanner`, both pure and tested
+  over every combination, including zero teams and a null active team id).
+  `shouldShowMovedBanner` bails out when every team has moved — that is the case
+  the interstitial owns, and without the bail-out a null active team id matched
+  no moved team and fired the banner too.
+- **The interstitial has a way out.** A `Log out` button — V1's own
+  `AuthContext.logout` plus a redirect to `/`, exactly what the app sidebar does
+  — so a fully-moved coach can sign in as somebody else without clearing
+  cookies. A failed "Continue with <team>" switch raises the standard
+  `MessagePopup` error toast through `AppMessageContext` instead of failing
+  silently; no native dialogs anywhere.
 - **Fails open, always.** A failed, slow, or in-flight `/migration/me`, or a
   response with `hasEverLoaded: false`, collapses to "no information": no
   interstitial, no banner, no spinner, no blank screen. There is deliberately no

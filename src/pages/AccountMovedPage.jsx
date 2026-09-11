@@ -1,5 +1,8 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { FiLogOut } from "react-icons/fi";
 import logo from "../assets/logos/White_Full_Coachable.png";
+import { useAppMessage } from "../context/AppMessageContext";
 import { useAuth } from "../context/AuthContext";
 import { useMigrationStatus } from "../context/MigrationStatusContext";
 import { V2_APP_URL } from "../utils/migrationDestination";
@@ -14,10 +17,15 @@ import { V2_APP_URL } from "../utils/migrationDestination";
  *
  * If the coach still has a team that has NOT moved, this page offers a button
  * per unmoved team that switches to it and drops them straight back into V1.
+ *
+ * There is also a Log out link: without one, a coach whose every team has
+ * moved could not sign in as somebody else without clearing their cookies.
  */
 export default function AccountMovedPage() {
-  const { user, switchTeam } = useAuth();
+  const { user, switchTeam, logout } = useAuth();
   const { movedTeams, stayingTeams } = useMigrationStatus();
+  const { showMessage } = useAppMessage();
+  const navigate = useNavigate();
   const [switching, setSwitching] = useState(null);
 
   const activeTeamName =
@@ -32,10 +40,25 @@ export default function AccountMovedPage() {
     setSwitching(teamId);
     try {
       await switchTeam(teamId);
-    } catch {
-      // Leave them here rather than on a broken screen; they can retry.
+    } catch (err) {
+      // Leave them here rather than on a broken screen; they can retry — but
+      // say so, otherwise the button just snaps back with no explanation.
       setSwitching(null);
+      showMessage(
+        "Could not switch teams",
+        err?.message || "Something went wrong. Please try again in a moment.",
+        "error"
+      );
     }
+  };
+
+  /**
+   * Sign out of V1 and return to the public home page. Same two steps as the
+   * app sidebar's Log out button (AppLayout.handleLogout).
+   */
+  const handleLogout = () => {
+    logout();
+    navigate("/");
   };
 
   return (
@@ -106,6 +129,22 @@ export default function AccountMovedPage() {
             </div>
           </div>
         )}
+
+        <div className="mt-8 border-t border-white/10 pt-6">
+          {(user?.email || user?.name) && (
+            <p className="mb-2 truncate text-xs text-BrandGray2">
+              Signed in as {user.email || user.name}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm text-BrandGray transition hover:bg-white/10 hover:text-red-400"
+          >
+            <FiLogOut className="text-base" />
+            Log out
+          </button>
+        </div>
       </div>
     </div>
   );

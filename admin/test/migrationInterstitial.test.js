@@ -107,15 +107,33 @@ describe("shouldShowMovedBanner", () => {
     expect(shouldShowMovedBanner({ ready: false, teams: [team("a", "v2_live")] }, "b")).toBe(false);
   });
 
+  it("never doubles up with the interstitial when every team has moved", () => {
+    // Regression: with no active team selected, no moved team matched the null
+    // id, so the banner fired alongside the all-moved interstitial.
+    const status = loaded([team("a", "v2_live"), team("b", "v2_live")]);
+    expect(shouldShowMovedInterstitial(status, null)).toBe(true);
+    expect(shouldShowMovedBanner(status, null)).toBe(false);
+    expect(shouldShowMovedBanner(status, undefined)).toBe(false);
+    expect(shouldShowMovedBanner(status, "a")).toBe(false);
+    expect(shouldShowMovedBanner(loaded([team("a", "v2_live")]), null)).toBe(false);
+  });
+
   it("interstitial and banner are mutually exclusive in every case", () => {
     const cases = [
       loaded([team("a", "v2_live"), team("b", "v1_only")]),
       loaded([team("a", "v2_live"), team("b", "v2_live")]),
+      loaded([team("a", "v2_live")]),
       loaded([team("a", "v1_only")]),
+      loaded([team("a", "v2_live"), team("b", "migrating")]),
+      loaded([team("a", "v1_only"), team("b", "migrating")]),
+      loaded([]), // zero teams
+      { ready: true, teams: null },
       { ready: false, teams: [team("a", "v2_live")] },
+      { ready: false, teams: [] },
+      undefined,
     ];
     for (const status of cases) {
-      for (const active of ["a", "b", null]) {
+      for (const active of ["a", "b", "unknown", null, undefined]) {
         const both =
           shouldShowMovedInterstitial(status, active) && shouldShowMovedBanner(status, active);
         expect(both).toBe(false);
