@@ -26,6 +26,7 @@ import sportPrefabPresetsRoutes from "./routes/sportPrefabPresets.js";
 import staffRoutes from "./routes/staff.js";
 import notificationsRoutes from "./routes/notifications.js";
 import flagsRoutes from "./routes/flags.js";
+import migrationRoutes from "./routes/migration.js";
 import outreachRoutes from "./routes/outreach.js";
 import suiteRoutes from "./routes/suite.js";
 import adminTeamSuiteRoutes from "./routes/adminTeamSuite.js";
@@ -110,6 +111,7 @@ app.use("/sport-prefab-presets", sportPrefabPresetsRoutes);
 app.use("/staff", staffRoutes);
 app.use("/notifications", notificationsRoutes);
 app.use("/flags", flagsRoutes);
+app.use("/migration", migrationRoutes);
 app.use("/teams/:teamId/suite", suiteRoutes);
 
 // --------------- Static files ---------------
