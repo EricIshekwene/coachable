@@ -6,6 +6,7 @@ import { sendTeamInviteEmail, sendMemberRemovedEmail } from "../lib/email.js";
 import { resolveActiveTeam, ensurePersonalWorkspace, getUserTeams, seedDemoPlay, shouldSeedDemoPlayOnSportSet } from "../lib/userTeams.js";
 import { emailLimiter } from "../middleware/rateLimit.js";
 import { requireString, optionalString, requireEmail, requireEnum, requireUuid, LIMITS } from "../lib/validate.js";
+import { requestV2CodeHandoff, resolveTargetCodeAdmission, sendAdmissionInProgress, hasUsableV1Membership, CROSS_VERSION_REVIEW } from "../lib/migrationAdmission.js";
 
 const router = Router();
 
@@ -22,17 +23,27 @@ router.post("/join", requireAuth, async (req, res, next) => {
     try {
       await client.query("BEGIN");
 
-      // Look up invite code
-      const codeRes = await client.query(
-        "SELECT team_id, role FROM team_invite_codes WHERE code = $1",
-        [inviteCode.toUpperCase()]
-      );
-      if (!codeRes.rows.length) {
+      const admission = await resolveTargetCodeAdmission(client, inviteCode);
+      if (admission.outcome === "invalid") {
         await client.query("ROLLBACK");
         return res.status(404).json({ error: "Invalid invite code" });
       }
+      if (admission.outcome === "v2_live") {
+        const requiresReview = await hasUsableV1Membership(client, req.userId);
+        const userResult = await client.query("SELECT email FROM users WHERE id = $1", [req.userId]);
+        await client.query("ROLLBACK");
+        if (requiresReview) return res.status(409).json({ code: CROSS_VERSION_REVIEW, error: "Review your existing V1 memberships before joining this migrated team." });
+        // Existing V1 users cannot use their V1 session as V2 authority. The
+        // browser receives only V2's opaque intent, never the standing code.
+        const handoff = await requestV2CodeHandoff({ code: inviteCode, email: userResult.rows[0]?.email || "" });
+        return res.status(409).json({ code: "V2_HANDOFF_REQUIRED", handoff });
+      }
+      if (admission.outcome !== "v1_only") {
+        await client.query("ROLLBACK");
+        return sendAdmissionInProgress(res);
+      }
 
-      const { team_id: teamId, role } = codeRes.rows[0];
+      const { teamId, role } = admission;
 
       // Prevent duplicate membership
       const existing = await client.query(
@@ -527,11 +538,40 @@ router.post(
       const email = requireEmail(req.body?.email, { field: "email" });
       const role = requireEnum(req.body?.role, ["player", "coach"], { field: "role" });
 
-      // Get the invite code for this role
-      const { rows: codeRows } = await pool.query(
-        "SELECT code FROM team_invite_codes WHERE team_id = $1 AND role = $2",
-        [req.params.teamId, role]
-      );
+      const client = await pool.connect();
+      let codeRows;
+      try {
+        await client.query("BEGIN");
+        const codeResult = await client.query(
+          "SELECT code FROM team_invite_codes WHERE team_id = $1 AND role = $2",
+          [req.params.teamId, role]
+        );
+        codeRows = codeResult.rows;
+        if (codeRows.length) {
+          const admission = await resolveTargetCodeAdmission(client, codeRows[0].code);
+          if (admission.outcome === "in_progress") {
+            await client.query("ROLLBACK");
+            return sendAdmissionInProgress(res);
+          }
+          if (admission.outcome === "v2_live") {
+            // V2-2 currently exposes only the authenticated code-to-opaque-
+            // intent handoff. It does not expose the required native V2 email
+            // delivery endpoint, so never fall back to mailing a V1 code.
+            await client.query("ROLLBACK");
+            return res.status(503).json({ code: "V2_INVITATION_DELIVERY_UNAVAILABLE", error: "Migrated-team invitations are temporarily unavailable." });
+          }
+          if (admission.outcome !== "v1_only") {
+            await client.query("ROLLBACK");
+            return res.status(404).json({ error: "No invite code found for this role" });
+          }
+        }
+        await client.query("COMMIT");
+      } catch (err) {
+        await client.query("ROLLBACK").catch(() => {});
+        throw err;
+      } finally {
+        client.release();
+      }
       if (!codeRows.length) {
         return res.status(404).json({ error: "No invite code found for this role" });
       }

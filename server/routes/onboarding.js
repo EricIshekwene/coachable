@@ -4,6 +4,7 @@ import pool from "../db/pool.js";
 import { requireAuth } from "../middleware/auth.js";
 import { seedDemoPlay } from "../lib/userTeams.js";
 import { requireString, optionalString, LIMITS } from "../lib/validate.js";
+import { resolveTargetCodeAdmission, sendAdmissionInProgress } from "../lib/migrationAdmission.js";
 
 const router = Router();
 
@@ -123,18 +124,20 @@ router.post("/join-team", requireAuth, async (req, res, next) => {
     try {
       await client.query("BEGIN");
 
-      // Find team and role by invite code
-      const codeRes = await client.query(
-        "SELECT team_id, role FROM team_invite_codes WHERE code = $1",
-        [inviteCode.toUpperCase()]
-      );
-      if (!codeRes.rows.length) {
+      // Resolve code, fence, and fresh V2 state while this membership
+      // transaction owns the same team lock used by fence acknowledgement.
+      const admission = await resolveTargetCodeAdmission(client, inviteCode);
+      if (admission.outcome === "invalid") {
         await client.query("ROLLBACK");
         return res.status(404).json({ error: "Invalid invite code" });
       }
+      if (admission.outcome !== "v1_only") {
+        await client.query("ROLLBACK");
+        return sendAdmissionInProgress(res);
+      }
 
-      const teamId = codeRes.rows[0].team_id;
-      const requestedRole = codeRes.rows[0].role; // role determined by the code
+      const teamId = admission.teamId;
+      const requestedRole = admission.role; // role determined by the code
 
       // Check not already a member
       const existingRes = await client.query(
