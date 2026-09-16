@@ -61,6 +61,17 @@ function toFence(row) {
   };
 }
 
+/** Persist the immutable acknowledgement threshold for later reconciliation. */
+async function recordFenceAcknowledgement(client, fence) {
+  await client.query(
+    `INSERT INTO migration_admission_fence_history
+       (team_id, fence_generation, migration_job_id, acknowledged_at)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (team_id, fence_generation) DO NOTHING`,
+    [fence.teamId, fence.fenceGeneration, fence.jobId, fence.acknowledgedAt]
+  );
+}
+
 /**
  * Persist a fence inside an already-open transaction.
  *
@@ -90,7 +101,9 @@ export async function acknowledgeMigrationAdmissionFence(client, input) {
        RETURNING team_id, fence_generation, migration_job_id, acknowledged_at, reason`,
       [input.teamId, input.fenceGeneration, input.jobId, input.reason ?? null]
     );
-    return { outcome: "acknowledged", fence: toFence(inserted.rows[0]) };
+    const fence = toFence(inserted.rows[0]);
+    await recordFenceAcknowledgement(client, fence);
+    return { outcome: "acknowledged", fence };
   }
 
   if (current.fence_generation !== input.fenceGeneration) {
@@ -108,11 +121,15 @@ export async function acknowledgeMigrationAdmissionFence(client, input) {
         RETURNING team_id, fence_generation, migration_job_id, acknowledged_at, reason`,
       [input.teamId, input.fenceGeneration, input.jobId, input.reason ?? null]
     );
-    return { outcome: "acknowledged", fence: toFence(replaced.rows[0]) };
+    const fence = toFence(replaced.rows[0]);
+    await recordFenceAcknowledgement(client, fence);
+    return { outcome: "acknowledged", fence };
   }
 
   if (current.released_at !== null) return { outcome: "released" };
-  return { outcome: "acknowledged", fence: toFence(current) };
+  const fence = toFence(current);
+  await recordFenceAcknowledgement(client, fence);
+  return { outcome: "acknowledged", fence };
 }
 
 /**
@@ -145,6 +162,12 @@ export async function releaseMigrationAdmissionFence(client, input) {
       WHERE team_id = $1
         AND fence_generation = $3`,
     [input.teamId, input.reason ?? null, input.fenceGeneration]
+  );
+  await client.query(
+    `UPDATE migration_admission_fence_history
+        SET released_at = now(), release_reason = COALESCE($3, release_reason)
+      WHERE team_id = $1 AND fence_generation = $2`,
+    [input.teamId, input.fenceGeneration, input.reason ?? null]
   );
   return "released";
 }

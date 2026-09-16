@@ -159,6 +159,46 @@ CREATE TABLE IF NOT EXISTS migration_admission_fences (
 CREATE UNIQUE INDEX IF NOT EXISTS migration_admission_fences_team_generation_idx
   ON migration_admission_fences(team_id, fence_generation);
 
+-- Append-only evidence for every durable fence acknowledgement/release.  The
+-- mutable current-fence row above remains the admission serialization point;
+-- this ledger exists solely so post-cutover reconciliation retains its exact
+-- historical threshold even after a later generation replaces the row.
+CREATE TABLE IF NOT EXISTS migration_admission_fence_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  fence_generation UUID NOT NULL,
+  migration_job_id UUID NOT NULL,
+  acknowledged_at TIMESTAMPTZ NOT NULL,
+  released_at TIMESTAMPTZ,
+  release_reason TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (team_id, fence_generation)
+);
+
+CREATE INDEX IF NOT EXISTS migration_admission_fence_history_team_ack_idx
+  ON migration_admission_fence_history(team_id, acknowledged_at);
+
+-- Audit data is intentionally evidence-only: no standing code, email,
+-- password, bearer secret, invite token, or V2 intent may be written here.
+CREATE TABLE IF NOT EXISTS migration_admission_audit_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_type TEXT NOT NULL CHECK (event_type IN ('resolver_decision', 'v2_rollback_evidence', 'fence_release')),
+  team_id UUID REFERENCES teams(id) ON DELETE SET NULL,
+  fence_generation UUID,
+  decision TEXT,
+  source TEXT NOT NULL,
+  credential_fingerprint TEXT,
+  v2_rollback_evidence_id TEXT,
+  related_evidence_id UUID REFERENCES migration_admission_audit_events(id) ON DELETE SET NULL,
+  actor_auth_mode TEXT,
+  actor_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  occurred_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS migration_admission_audit_events_team_time_idx
+  ON migration_admission_audit_events(team_id, occurred_at DESC);
+
 -- ============================================================
 -- 3. Invites and join requests
 -- ============================================================

@@ -45,13 +45,14 @@ describe("migration admission fence persistence", () => {
     expect(client.query.mock.calls[1][0]).toContain("INSERT INTO migration_admission_fences");
   });
 
-  it("retries the same active generation idempotently without another write", async () => {
+  it("retries the same active generation idempotently while preserving its acknowledgement evidence", async () => {
     const client = scriptedClient([{ rows: [row()] }]);
     const result = await acknowledgeMigrationAdmissionFence(client, {
       teamId: TEAM_ID, fenceGeneration: JOB_ID, jobId: JOB_ID,
     });
     expect(result.outcome).toBe("acknowledged");
-    expect(client.query).toHaveBeenCalledTimes(1);
+    expect(client.query).toHaveBeenCalledTimes(2);
+    expect(client.query.mock.calls[1][0]).toContain("migration_admission_fence_history");
   });
 
   it("refuses a different generation while a fence is active", async () => {
@@ -105,6 +106,7 @@ describe("migration admission fence persistence", () => {
         }
         if (sql.includes("FROM migration_admission_fences")) return { rows: [] };
         if (sql.includes("INSERT INTO migration_admission_fences")) return { rows: [row()] };
+        if (sql.includes("migration_admission_fence_history")) return { rows: [] };
         if (sql === "COMMIT") { events.push("FENCE_COMMIT"); return { rows: [] }; }
         throw new Error(`unexpected fence query: ${sql}`);
       }),

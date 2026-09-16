@@ -5,6 +5,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { seedDemoPlay } from "../lib/userTeams.js";
 import { requireString, optionalString, LIMITS } from "../lib/validate.js";
 import { CROSS_VERSION_REVIEW, hasUsableV1Membership, requestV2CodeHandoff, resolveTargetCodeAdmission, sendAdmissionInProgress } from "../lib/migrationAdmission.js";
+import { credentialFingerprint, recordResolverDecision } from "../lib/migrationAdmissionAudit.js";
 
 const router = Router();
 
@@ -127,6 +128,10 @@ router.post("/join-team", requireAuth, async (req, res, next) => {
       // Resolve code, fence, and fresh V2 state while this membership
       // transaction owns the same team lock used by fence acknowledgement.
       const admission = await resolveTargetCodeAdmission(client, inviteCode);
+      await recordResolverDecision(pool, {
+        teamId: admission.teamId, decision: admission.outcome, source: "onboarding.join_team",
+        credentialFingerprint: credentialFingerprint(inviteCode),
+      });
       if (admission.outcome === "invalid") {
         await client.query("ROLLBACK");
         return res.status(404).json({ error: "Invalid invite code" });

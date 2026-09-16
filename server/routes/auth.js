@@ -8,6 +8,7 @@ import { isBlockedName, isBlockedEmailDomain } from "../lib/signupBlocklist.js";
 import { authLimiter, emailLimiter } from "../middleware/rateLimit.js";
 import { requireString, requireEmail, requirePassword, requireCode, LIMITS } from "../lib/validate.js";
 import { requestV2CodeHandoff, resolveTargetCodeAdmission, sendAdmissionInProgress, hasUsableV1Membership, CROSS_VERSION_REVIEW } from "../lib/migrationAdmission.js";
+import { credentialFingerprint, recordResolverDecision } from "../lib/migrationAdmissionAudit.js";
 
 const router = Router();
 const SALT_ROUNDS = 10;
@@ -38,6 +39,10 @@ router.post("/signup", authLimiter, emailLimiter, async (req, res, next) => {
     // same transaction keeps the V1-1 team lock through the user write.
     if (inviteCode) {
       const admission = await resolveTargetCodeAdmission(client, inviteCode);
+      await recordResolverDecision(pool, {
+        teamId: admission.teamId, decision: admission.outcome, source: "auth.signup",
+        credentialFingerprint: credentialFingerprint(inviteCode),
+      });
       if (admission.outcome === "invalid") {
         await client.query("ROLLBACK");
         return res.status(404).json({ error: "Invalid invite code" });

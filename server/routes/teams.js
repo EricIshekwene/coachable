@@ -7,6 +7,7 @@ import { resolveActiveTeam, ensurePersonalWorkspace, getUserTeams, seedDemoPlay,
 import { emailLimiter } from "../middleware/rateLimit.js";
 import { requireString, optionalString, requireEmail, requireEnum, requireUuid, LIMITS } from "../lib/validate.js";
 import { requestV2CodeHandoff, requestV2EmailInvitation, resolveTargetCodeAdmission, sendAdmissionInProgress, hasUsableV1Membership, CROSS_VERSION_REVIEW } from "../lib/migrationAdmission.js";
+import { credentialFingerprint, recordResolverDecision } from "../lib/migrationAdmissionAudit.js";
 
 const router = Router();
 
@@ -24,6 +25,10 @@ router.post("/join", requireAuth, async (req, res, next) => {
       await client.query("BEGIN");
 
       const admission = await resolveTargetCodeAdmission(client, inviteCode);
+      await recordResolverDecision(pool, {
+        teamId: admission.teamId, decision: admission.outcome, source: "teams.join",
+        credentialFingerprint: credentialFingerprint(inviteCode),
+      });
       if (admission.outcome === "invalid") {
         await client.query("ROLLBACK");
         return res.status(404).json({ error: "Invalid invite code" });
@@ -549,6 +554,10 @@ router.post(
         codeRows = codeResult.rows;
         if (codeRows.length) {
           const admission = await resolveTargetCodeAdmission(client, codeRows[0].code);
+          await recordResolverDecision(pool, {
+            teamId: admission.teamId, decision: admission.outcome, source: "teams.send_invite",
+            credentialFingerprint: credentialFingerprint(codeRows[0].code),
+          });
           if (admission.outcome === "in_progress") {
             await client.query("ROLLBACK");
             return sendAdmissionInProgress(res);
