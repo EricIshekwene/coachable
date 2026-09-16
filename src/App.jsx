@@ -8,9 +8,14 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { FeatureFlagProvider, useAllFlags, useFlag } from "./context/FeatureFlagContext";
 import {
   MigrationStatusProvider,
-  useShowMigrationInterstitial,
+  useMigrationStatus,
 } from "./context/MigrationStatusContext";
-import AccountMovedPage from "./pages/AccountMovedPage";
+import {
+  getV2LoginDestination,
+  hasMigrationRedirectMarker,
+  isTrustedAllLiveStatus,
+  markMigrationRedirect,
+} from "./utils/migrationDestination";
 import Slate from "./features/slate/Slate";
 import SlateRecord from "./features/slate/SlateRecord";
 import SlateDrawing from "./features/slate/SlateDrawing";
@@ -329,19 +334,14 @@ export function RequireNotOnboarded({ children }) {
 }
 
 /**
- * Shows the "your account has moved" interstitial instead of the app when the
- * team the coach is currently working in has moved to V2 (or when every team
- * they belong to has).
- *
- * Fails open in every uncertain case — no status data, a failed or slow
- * /migration/me, or a status cache that has never loaded all render `children`
- * exactly as V1 does today. A coach who still has an unmoved team is never
- * locked out: the interstitial itself switches them to that team.
+ * Compatibility wrapper for existing protected routes. MigrationRedirect owns
+ * the account-level one-shot redirect, so this guard deliberately never
+ * replaces V1 with the legacy active-team interstitial.
  */
 export function RequireNotMoved({ children }) {
-  const { user } = useAuth();
-  const moved = useShowMigrationInterstitial(user?.teamId);
-  if (moved) return <AccountMovedPage />;
+  // Migration routing is account-wide and handled once by MigrationRedirect.
+  // Keeping this guard transparent preserves V1 recovery for mixed, stale, and
+  // already-redirected sessions instead of reviving the legacy interstitial.
   return children;
 }
 
@@ -543,10 +543,30 @@ function FeatureFlagBridge({ children }) {
   return (
     <FeatureFlagProvider userId={user?.id ?? null}>
       <MigrationStatusProvider userId={user?.id ?? null}>
+        <MigrationRedirect />
         {children}
       </MigrationStatusProvider>
     </FeatureFlagProvider>
   );
+}
+
+/** One-shot convenience redirect; it is never an authentication mechanism. */
+function MigrationRedirect() {
+  const { user } = useAuth();
+  const status = useMigrationStatus();
+
+  useEffect(() => {
+    if (!user?.id || !user.onboarded || !isTrustedAllLiveStatus(status)) return;
+    const scope = {
+      userId: user.id,
+      snapshotGeneration: status.snapshotGeneration,
+    };
+    if (hasMigrationRedirectMarker(scope)) return;
+    markMigrationRedirect(scope);
+    window.location.replace(getV2LoginDestination());
+  }, [status, user?.id, user?.onboarded]);
+
+  return null;
 }
 
 /**

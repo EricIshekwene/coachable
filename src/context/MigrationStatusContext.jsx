@@ -14,8 +14,8 @@
  * empty team list — every consumer then renders exactly what V1 renders today.
  * There is no loading gate here: children render immediately while the fetch
  * is in flight, so a slow or dead endpoint can never trap a coach behind a
- * spinner or a blank screen. A failed BACKGROUND refresh changes nothing at
- * all: the last known good answer stays on screen.
+ * spinner or a blank screen. A failed refresh clears the routing signal: V1
+ * remains usable, but a stale answer can never send a coach to beta.
  */
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
@@ -31,7 +31,14 @@ import { isMovedTeam, shouldShowMovedInterstitial } from "../utils/migrationDest
  */
 
 /** @type {MigrationStatusValue} */
-const EMPTY = { ready: false, teams: [], movedTeams: [], stayingTeams: [] };
+const EMPTY = { ready: false, fresh: false, snapshotGeneration: null, teams: [], movedTeams: [], stayingTeams: [] };
+
+function snapshotGeneration(teams) {
+  return teams
+    .map((team) => `${team?.teamId || ""}:${team?.status || ""}`)
+    .sort()
+    .join("|");
+}
 
 const MigrationStatusContext = createContext(EMPTY);
 
@@ -55,13 +62,10 @@ export function MigrationStatusProvider({ children, userId }) {
   /**
    * Read GET /migration/me and publish the result.
    *
-   * @param {{ isRefresh?: boolean }} [options]
-   *   `isRefresh: true` marks a background poll. A background poll that fails,
-   *   or that comes back saying the cache has never loaded, leaves the current
-   *   value untouched — a refresh must never change what is already on screen.
-   *   The first load has no previous answer, so it falls back to EMPTY.
+   * Any failed or unloaded response clears the routing signal while leaving
+   * the V1 UI usable.
    */
-  const fetchStatus = useCallback(async ({ isRefresh = false } = {}) => {
+  const fetchStatus = useCallback(async () => {
     if (!userId) {
       setValue(EMPTY);
       return;
@@ -73,11 +77,17 @@ export function MigrationStatusProvider({ children, userId }) {
       // hasEverLoaded === false means V1 has never heard from V2, so every
       // status is a default rather than a fact. Treat it as "no information".
       if (!data?.hasEverLoaded) {
-        if (!isRefresh) setValue(EMPTY);
+        setValue(EMPTY);
         return;
       }
       setValue({
         ready: true,
+        // A successful /migration/me response is the only client-visible
+        // routing signal. Failed/unloaded responses must never reuse it.
+        fresh: true,
+        snapshotGeneration: typeof data?.snapshotGeneration === "string" && data.snapshotGeneration
+          ? data.snapshotGeneration
+          : snapshotGeneration(teams),
         teams,
         movedTeams: teams.filter(isMovedTeam),
         stayingTeams: teams.filter((t) => !isMovedTeam(t)),
@@ -85,7 +95,7 @@ export function MigrationStatusProvider({ children, userId }) {
     } catch {
       // Fail open — behave exactly like V1 does today.
       if (!mountedRef.current) return;
-      if (!isRefresh) setValue(EMPTY);
+      setValue(EMPTY);
     }
   }, [userId]);
 
