@@ -140,6 +140,25 @@ CREATE TABLE IF NOT EXISTS team_memberships (
 CREATE INDEX IF NOT EXISTS team_memberships_user_idx ON team_memberships(user_id);
 CREATE INDEX IF NOT EXISTS team_memberships_team_role_idx ON team_memberships(team_id, role);
 
+-- Durable V1-side admission fence used by the V2 migration runner. The row is
+-- intentionally keyed by stable V1 team id: an old generation can never clear
+-- a newer row because releases require an exact generation match.
+CREATE TABLE IF NOT EXISTS migration_admission_fences (
+  team_id UUID PRIMARY KEY REFERENCES teams(id) ON DELETE CASCADE,
+  fence_generation UUID NOT NULL,
+  migration_job_id UUID NOT NULL,
+  fenced BOOLEAN NOT NULL DEFAULT TRUE,
+  acknowledged_at TIMESTAMPTZ NOT NULL,
+  released_at TIMESTAMPTZ,
+  reason TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK ((fenced = TRUE AND released_at IS NULL) OR (fenced = FALSE AND released_at IS NOT NULL))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS migration_admission_fences_team_generation_idx
+  ON migration_admission_fences(team_id, fence_generation);
+
 -- ============================================================
 -- 3. Invites and join requests
 -- ============================================================

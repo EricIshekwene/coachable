@@ -36,6 +36,7 @@ import { migrationWriteLock } from "./middleware/migrationWriteLock.js";
 import { syncSports } from "./utils/syncSports.js";
 import { syncPlaybookDefaults } from "./utils/syncPlaybookDefaults.js";
 import { startMigrationStatusPolling } from "./lib/migrationStatus.js";
+import internalMigrationAdmissionFenceRoutes from "./routes/internalMigrationAdmissionFence.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -94,6 +95,10 @@ app.get("/health", async (_req, res) => {
     res.status(500).json({ status: "error", db: "disconnected" });
   }
 });
+
+// This route is service-to-service only. It is mounted before normal routes so
+// the V2 migration runner has one explicit, version-independent endpoint.
+app.use("/api/internal", internalMigrationAdmissionFenceRoutes);
 
 // --------------- Routes ---------------
 
