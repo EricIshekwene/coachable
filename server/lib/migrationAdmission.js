@@ -86,6 +86,36 @@ export async function requestV2CodeHandoff({ code, email }) {
   return { intent: body.intent, expiresInSeconds: body.expiresInSeconds };
 }
 
+/**
+ * Ask V2 to create and deliver its native, email-bound invitation for a
+ * migrated team.  This deliberately has no V1 fallback: once a team is live,
+ * V1 must neither persist an invite nor mail its reusable standing code.
+ *
+ * @param {{teamId: string, email: string, role: string}} input
+ * @returns {Promise<{kind: string, expiresInSeconds: number}>}
+ */
+export async function requestV2EmailInvitation({ teamId, email, role }) {
+  const secret = process.env.V1_ADMISSION_SECRET;
+  const base = (process.env.V2_ADMISSION_BASE_URL || process.env.V2_BASE_URL || "").replace(/\/+$/, "");
+  if (!secret || !base) throw new Error("V2 admission delivery is not configured");
+
+  const response = await fetch(`${base}/api/admission/v1-email-invitation`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-v1-admission-secret": secret,
+    },
+    body: JSON.stringify({ teamId, email, role }),
+  });
+  if (!response.ok) throw new Error("V2 admission delivery was refused");
+  const body = await response.json();
+  const handoff = body?.handoff;
+  if (!handoff || handoff.kind !== "v2_email_invitation" || !Number.isFinite(handoff.expiresInSeconds)) {
+    throw new Error("V2 admission delivery returned an invalid response");
+  }
+  return { kind: handoff.kind, expiresInSeconds: handoff.expiresInSeconds };
+}
+
 /** @param {import('express').Response} res */
 export function sendAdmissionInProgress(res) {
   return res.status(409).json({ code: ADMISSION_IN_PROGRESS, error: "Team migration is in progress. Please try again shortly." });

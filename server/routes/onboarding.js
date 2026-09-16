@@ -4,7 +4,7 @@ import pool from "../db/pool.js";
 import { requireAuth } from "../middleware/auth.js";
 import { seedDemoPlay } from "../lib/userTeams.js";
 import { requireString, optionalString, LIMITS } from "../lib/validate.js";
-import { resolveTargetCodeAdmission, sendAdmissionInProgress } from "../lib/migrationAdmission.js";
+import { CROSS_VERSION_REVIEW, hasUsableV1Membership, requestV2CodeHandoff, resolveTargetCodeAdmission, sendAdmissionInProgress } from "../lib/migrationAdmission.js";
 
 const router = Router();
 
@@ -130,6 +130,16 @@ router.post("/join-team", requireAuth, async (req, res, next) => {
       if (admission.outcome === "invalid") {
         await client.query("ROLLBACK");
         return res.status(404).json({ error: "Invalid invite code" });
+      }
+      if (admission.outcome === "v2_live") {
+        const requiresReview = await hasUsableV1Membership(client, req.userId);
+        const userResult = await client.query("SELECT email FROM users WHERE id = $1", [req.userId]);
+        await client.query("ROLLBACK");
+        if (requiresReview) {
+          return res.status(409).json({ code: CROSS_VERSION_REVIEW, error: "Review your existing V1 memberships before joining this migrated team." });
+        }
+        const handoff = await requestV2CodeHandoff({ code: inviteCode, email: userResult.rows[0]?.email || "" });
+        return res.status(409).json({ code: "V2_HANDOFF_REQUIRED", handoff });
       }
       if (admission.outcome !== "v1_only") {
         await client.query("ROLLBACK");

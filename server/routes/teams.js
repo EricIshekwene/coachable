@@ -6,7 +6,7 @@ import { sendTeamInviteEmail, sendMemberRemovedEmail } from "../lib/email.js";
 import { resolveActiveTeam, ensurePersonalWorkspace, getUserTeams, seedDemoPlay, shouldSeedDemoPlayOnSportSet } from "../lib/userTeams.js";
 import { emailLimiter } from "../middleware/rateLimit.js";
 import { requireString, optionalString, requireEmail, requireEnum, requireUuid, LIMITS } from "../lib/validate.js";
-import { requestV2CodeHandoff, resolveTargetCodeAdmission, sendAdmissionInProgress, hasUsableV1Membership, CROSS_VERSION_REVIEW } from "../lib/migrationAdmission.js";
+import { requestV2CodeHandoff, requestV2EmailInvitation, resolveTargetCodeAdmission, sendAdmissionInProgress, hasUsableV1Membership, CROSS_VERSION_REVIEW } from "../lib/migrationAdmission.js";
 
 const router = Router();
 
@@ -554,11 +554,11 @@ router.post(
             return sendAdmissionInProgress(res);
           }
           if (admission.outcome === "v2_live") {
-            // V2-2 currently exposes only the authenticated code-to-opaque-
-            // intent handoff. It does not expose the required native V2 email
-            // delivery endpoint, so never fall back to mailing a V1 code.
             await client.query("ROLLBACK");
-            return res.status(503).json({ code: "V2_INVITATION_DELIVERY_UNAVAILABLE", error: "Migrated-team invitations are temporarily unavailable." });
+            // A live team is exclusively V2-owned.  V2 creates and sends the
+            // native invite; V1 makes no invite row and never mails its code.
+            await requestV2EmailInvitation({ teamId: admission.teamId, email, role });
+            return res.json({ ok: true });
           }
           if (admission.outcome !== "v1_only") {
             await client.query("ROLLBACK");
