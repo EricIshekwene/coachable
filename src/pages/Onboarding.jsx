@@ -95,12 +95,13 @@ export default function Onboarding() {
 
     setSubmitting(true);
     try {
-      await completeOnboarding({
+      const result = await completeOnboarding({
         teamName: teamName.trim(),
         teamAction,
         inviteCode: inviteCode.trim(),
         sport: finalSport,
       });
+      if (result?.handoff) return;
       if (teamAction === "solo") {
         navigate(returnTo || `/slate/${finalSport || "blank"}`);
       } else {

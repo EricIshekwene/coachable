@@ -134,6 +134,7 @@ describe("never-loaded state", () => {
 
   it("answers v1_only for every team while never loaded", () => {
     expect(mod.getTeamStatus("anything")).toBe("v1_only");
+    expect(mod.getFreshValidatedTeamStatus("anything")).toBeNull();
   });
 
   it("is distinguishable from a loaded snapshot that says v1_only", () => {
@@ -155,6 +156,21 @@ describe("never-loaded state", () => {
       summary: null,
       contractVersion: null,
     });
+  });
+});
+
+describe("strict admission status reads", () => {
+  it("only returns an explicit fresh row, never the cache default", () => {
+    mod.ingestMigrationStatusPayload(payload([team("t1", "v1_only")]));
+    expect(mod.getFreshValidatedTeamStatus("t1")).toBe("v1_only");
+    expect(mod.getFreshValidatedTeamStatus("missing-team")).toBeNull();
+  });
+
+  it("refuses a once-valid row after it becomes stale", () => {
+    mod.ingestMigrationStatusPayload(payload([team("t1", "v2_live")]));
+    const base = Date.now();
+    vi.spyOn(Date, "now").mockReturnValue(base + mod.STALENESS_THRESHOLD_MS + 1);
+    expect(mod.getFreshValidatedTeamStatus("t1")).toBeNull();
   });
 });
 

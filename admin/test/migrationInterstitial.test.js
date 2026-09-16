@@ -7,7 +7,7 @@
  *  - All-moved -> interstitial; mixed -> interstitial only on the moved team
  *  - Mixed + active team not moved -> non-blocking banner instead
  *  - FAIL OPEN: no data / not ready / empty teams -> no interstitial, no banner
- *  - GET /migration/me returns { hasEverLoaded, teams } from the cache module
+ *  - GET /migration/me returns explicit cache freshness with the team statuses
  *  - GET /migration/me never calls V2 (it only reads the cache module)
  *  - The route is registered as a GET, so the cutover write-lock cannot block it
  */
@@ -16,6 +16,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   V2_APP_URL,
   isMovedTeam,
+  clearMigrationRedirectMarkers,
+  getV2HandoffDestination,
+  getV2LoginDestination,
+  hasMigrationRedirectMarker,
+  isTrustedAllLiveStatus,
+  markMigrationRedirect,
+  migrationRedirectMarkerKey,
   shouldShowMovedInterstitial,
   shouldShowMovedBanner,
 } from "../../src/utils/migrationDestination.js";
@@ -39,6 +46,65 @@ describe("V2 destination", () => {
     expect(V2_APP_URL).not.toBe("https://coachableplays.com");
     expect(V2_APP_URL).not.toBe("https://www.coachableplays.com");
     expect(new URL(V2_APP_URL).hostname).toBe("beta.coachableplays.com");
+  });
+});
+
+describe("automatic migration redirect", () => {
+  const allLive = {
+    ready: true,
+    fresh: true,
+    snapshotGeneration: "a:v2_live|b:v2_live",
+    teams: [team("a", "v2_live"), team("b", "v2_live")],
+  };
+
+  it("requires a fresh trusted all-live, non-empty snapshot", () => {
+    expect(isTrustedAllLiveStatus(allLive)).toBe(true);
+    expect(isTrustedAllLiveStatus({ ...allLive, fresh: false })).toBe(false);
+    expect(isTrustedAllLiveStatus({ ...allLive, ready: false })).toBe(false);
+    expect(isTrustedAllLiveStatus({ ...allLive, teams: [] })).toBe(false);
+    expect(isTrustedAllLiveStatus({ ...allLive, teams: [team("a", "v2_live"), team("b", "v1_only")] })).toBe(false);
+    expect(isTrustedAllLiveStatus({ ...allLive, teams: [team("a", "migrating")] })).toBe(false);
+    expect(isTrustedAllLiveStatus({ ...allLive, teams: [team("a", "unknown")] })).toBe(false);
+  });
+
+  it("uses beta login with a fixed V2-relative return target", () => {
+    const url = new URL(getV2LoginDestination());
+    expect(url.origin).toBe(V2_APP_URL);
+    expect(url.pathname).toBe("/login");
+    expect(url.searchParams.get("returnTo")).toBe("/app/plays");
+  });
+
+  it("scopes the one-shot marker to session, user, snapshot, and beta origin", () => {
+    const values = new Map();
+    const storage = {
+      get length() { return values.size; },
+      getItem: (key) => values.get(key) || null,
+      setItem: (key, value) => values.set(key, String(value)),
+      removeItem: (key) => values.delete(key),
+      key: (index) => [...values.keys()][index] || null,
+    };
+    const scope = { userId: "user-a", snapshotGeneration: allLive.snapshotGeneration };
+    const nextSnapshot = { ...scope, snapshotGeneration: "a:v2_live|b:v2_live|c:v2_live" };
+    const otherUser = { ...scope, userId: "user-b" };
+    expect(migrationRedirectMarkerKey(scope)).toContain("https://beta.coachableplays.com");
+    expect(hasMigrationRedirectMarker(scope, storage)).toBe(false);
+    markMigrationRedirect(scope, storage);
+    expect(hasMigrationRedirectMarker(scope, storage)).toBe(true);
+    expect(hasMigrationRedirectMarker(nextSnapshot, storage)).toBe(false);
+    expect(hasMigrationRedirectMarker(otherUser, storage)).toBe(false);
+    clearMigrationRedirectMarkers(storage);
+    expect(hasMigrationRedirectMarker(scope, storage)).toBe(false);
+  });
+});
+
+describe("opaque V2 handoff", () => {
+  it("passes an issued opaque intent but never accepts a raw V1 invite code", () => {
+    const destination = getV2HandoffDestination({ intent: "opaque-server-issued-intent" });
+    const url = new URL(destination);
+    expect(url.origin).toBe(V2_APP_URL);
+    expect(url.searchParams.get("intent")).toBe("opaque-server-issued-intent");
+    expect(url.searchParams.get("returnTo")).toBe("/app/plays");
+    expect(getV2HandoffDestination({ inviteCode: "RAW-V1-CODE" })).toBeNull();
   });
 });
 
@@ -145,11 +211,11 @@ describe("shouldShowMovedBanner", () => {
 // ── GET /migration/me ────────────────────────────────────────────────────────
 
 const getUserTeamStatuses = vi.fn();
-const hasEverLoaded = vi.fn();
+const getSnapshotMeta = vi.fn();
 
 vi.mock("../../server/lib/migrationStatus.js", () => ({
   getUserTeamStatuses: (...args) => getUserTeamStatuses(...args),
-  hasEverLoaded: (...args) => hasEverLoaded(...args),
+  getSnapshotMeta: (...args) => getSnapshotMeta(...args),
 }));
 
 vi.mock("../../server/middleware/auth.js", () => ({
@@ -182,7 +248,7 @@ function fakeRes() {
 describe("GET /migration/me", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    global.fetch = vi.fn(() => {
+    globalThis.fetch = vi.fn(() => {
       throw new Error("the route must never call V2");
     });
   });
@@ -198,7 +264,7 @@ describe("GET /migration/me", () => {
   it("returns the user's team statuses and the cache-loaded flag", async () => {
     const teams = [team("a", "v2_live"), team("b", "v1_only")];
     getUserTeamStatuses.mockResolvedValue(teams);
-    hasEverLoaded.mockReturnValue(true);
+    getSnapshotMeta.mockReturnValue({ hasEverLoaded: true, isStale: false });
 
     const router = (await import("../../server/routes/migration.js")).default;
     const layer = findLayer(router, "get", "/me");
@@ -211,13 +277,13 @@ describe("GET /migration/me", () => {
 
     expect(next).not.toHaveBeenCalled();
     expect(getUserTeamStatuses).toHaveBeenCalledWith("u1");
-    expect(res.body).toEqual({ hasEverLoaded: true, teams });
-    expect(global.fetch).not.toHaveBeenCalled();
+    expect(res.body).toEqual({ hasEverLoaded: true, fresh: true, teams });
+    expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
-  it("reports hasEverLoaded:false so the client shows nothing different", async () => {
+  it("reports an unloaded cache so the client shows nothing different", async () => {
     getUserTeamStatuses.mockResolvedValue([team("a", "v1_only")]);
-    hasEverLoaded.mockReturnValue(false);
+    getSnapshotMeta.mockReturnValue({ hasEverLoaded: false, isStale: true });
 
     const router = (await import("../../server/routes/migration.js")).default;
     const layer = findLayer(router, "get", "/me");
@@ -230,9 +296,30 @@ describe("GET /migration/me", () => {
     expect(shouldShowMovedInterstitial({ ready: false, teams: res.body.teams }, "a")).toBe(false);
   });
 
+  it("marks a last-known-good all-live snapshot stale so it cannot redirect", async () => {
+    const teams = [team("a", "v2_live"), team("b", "v2_live")];
+    getUserTeamStatuses.mockResolvedValue(teams);
+    // This is the cache's deliberate last-known-good fallback after its
+    // freshness ceiling; V1 must remain usable, never redirecting to V2.
+    getSnapshotMeta.mockReturnValue({ hasEverLoaded: true, isStale: true });
+
+    const router = (await import("../../server/routes/migration.js")).default;
+    const layer = findLayer(router, "get", "/me");
+    const res = fakeRes();
+    const handlers = layer.route.stack.map((s) => s.handle);
+    await handlers[handlers.length - 1]({ userId: "u1" }, res, vi.fn());
+
+    expect(res.body).toEqual({ hasEverLoaded: true, fresh: false, teams });
+    expect(isTrustedAllLiveStatus({
+      ready: res.body.hasEverLoaded,
+      fresh: res.body.fresh,
+      teams: res.body.teams,
+    })).toBe(false);
+  });
+
   it("passes errors to next() instead of throwing at the coach", async () => {
     getUserTeamStatuses.mockRejectedValue(new Error("db down"));
-    hasEverLoaded.mockReturnValue(true);
+    getSnapshotMeta.mockReturnValue({ hasEverLoaded: true, isStale: false });
 
     const router = (await import("../../server/routes/migration.js")).default;
     const layer = findLayer(router, "get", "/me");

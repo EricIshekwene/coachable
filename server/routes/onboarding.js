@@ -4,6 +4,8 @@ import pool from "../db/pool.js";
 import { requireAuth } from "../middleware/auth.js";
 import { seedDemoPlay } from "../lib/userTeams.js";
 import { requireString, optionalString, LIMITS } from "../lib/validate.js";
+import { CROSS_VERSION_REVIEW, hasUsableV1Membership, requestV2CodeHandoff, resolveTargetCodeAdmission, sendAdmissionInProgress } from "../lib/migrationAdmission.js";
+import { credentialFingerprint, recordResolverDecision } from "../lib/migrationAdmissionAudit.js";
 
 const router = Router();
 
@@ -123,18 +125,34 @@ router.post("/join-team", requireAuth, async (req, res, next) => {
     try {
       await client.query("BEGIN");
 
-      // Find team and role by invite code
-      const codeRes = await client.query(
-        "SELECT team_id, role FROM team_invite_codes WHERE code = $1",
-        [inviteCode.toUpperCase()]
-      );
-      if (!codeRes.rows.length) {
+      // Resolve code, fence, and fresh V2 state while this membership
+      // transaction owns the same team lock used by fence acknowledgement.
+      const admission = await resolveTargetCodeAdmission(client, inviteCode);
+      await recordResolverDecision(pool, {
+        teamId: admission.teamId, decision: admission.outcome, source: "onboarding.join_team",
+        credentialFingerprint: credentialFingerprint(inviteCode),
+      });
+      if (admission.outcome === "invalid") {
         await client.query("ROLLBACK");
         return res.status(404).json({ error: "Invalid invite code" });
       }
+      if (admission.outcome === "v2_live") {
+        const requiresReview = await hasUsableV1Membership(client, req.userId);
+        const userResult = await client.query("SELECT email FROM users WHERE id = $1", [req.userId]);
+        await client.query("ROLLBACK");
+        if (requiresReview) {
+          return res.status(409).json({ code: CROSS_VERSION_REVIEW, error: "Review your existing V1 memberships before joining this migrated team." });
+        }
+        const handoff = await requestV2CodeHandoff({ code: inviteCode, email: userResult.rows[0]?.email || "" });
+        return res.status(409).json({ code: "V2_HANDOFF_REQUIRED", handoff });
+      }
+      if (admission.outcome !== "v1_only") {
+        await client.query("ROLLBACK");
+        return sendAdmissionInProgress(res);
+      }
 
-      const teamId = codeRes.rows[0].team_id;
-      const requestedRole = codeRes.rows[0].role; // role determined by the code
+      const teamId = admission.teamId;
+      const requestedRole = admission.role; // role determined by the code
 
       // Check not already a member
       const existingRes = await client.query(

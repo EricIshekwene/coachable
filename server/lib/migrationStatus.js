@@ -434,6 +434,21 @@ export function getTeamStatus(teamId) {
 }
 
 /**
+ * Return a status only when this process holds a current, contract-validated
+ * row for the requested team. This deliberately does not reuse getTeamStatus:
+ * its v1_only default is appropriate for ordinary availability routing but is
+ * unsafe for admission decisions.
+ *
+ * @param {string} teamId
+ * @returns {'v1_only'|'migrating'|'v2_live'|null}
+ */
+export function getFreshValidatedTeamStatus(teamId) {
+  noteStaleOnRead();
+  if (!snapshot || lastSuccessAt === null || Date.now() - lastSuccessAt >= STALENESS_THRESHOLD_MS) return null;
+  return snapshot.byTeamId.get(teamId)?.status ?? null;
+}
+
+/**
  * Every team the user belongs to in V1, with its migration status.
  *
  * Team membership and team names come from V1's OWN `team_memberships` /

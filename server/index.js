@@ -36,6 +36,8 @@ import { migrationWriteLock } from "./middleware/migrationWriteLock.js";
 import { syncSports } from "./utils/syncSports.js";
 import { syncPlaybookDefaults } from "./utils/syncPlaybookDefaults.js";
 import { startMigrationStatusPolling } from "./lib/migrationStatus.js";
+import internalMigrationAdmissionFenceRoutes from "./routes/internalMigrationAdmissionFence.js";
+import migrationAdmissionAuditRoutes from "./routes/migrationAdmissionAudit.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -95,6 +97,10 @@ app.get("/health", async (_req, res) => {
   }
 });
 
+// This route is service-to-service only. It is mounted before normal routes so
+// the V2 migration runner has one explicit, version-independent endpoint.
+app.use("/api/internal", internalMigrationAdmissionFenceRoutes);
+
 // --------------- Routes ---------------
 
 app.use("/auth", authRoutes);
@@ -107,6 +113,7 @@ app.use("/verification", verificationRoutes);
 app.use("/admin/outreach", outreachRoutes);
 app.use("/admin/team-suite", adminTeamSuiteRoutes);
 app.use("/admin", adminRoutes);
+app.use("/admin/migration-admission", migrationAdmissionAuditRoutes);
 app.use("/shared", sharedRoutes);
 app.use("/error-reports", errorReportRoutes);
 app.use("/platform-plays", platformPlaysRoutes);

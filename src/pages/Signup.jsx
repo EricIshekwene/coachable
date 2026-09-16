@@ -69,7 +69,8 @@ export default function Signup() {
 
     setSubmitting(true);
     try {
-      const result = await signup(name.trim(), email.trim(), password);
+      const result = await signup(name.trim(), email.trim(), password, inviteCode);
+      if (result?.handoff) return;
       const params = new URLSearchParams();
       if (inviteCode) params.set("invite", inviteCode);
       if (returnTo) params.set("returnTo", returnTo);

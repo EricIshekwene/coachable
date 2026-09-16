@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { apiFetch, setAuthToken } from "../utils/api";
 import { setErrorReporterUserId } from "../utils/errorReporter";
+import { clearMigrationRedirectMarkers, redirectToV2Handoff } from "../utils/migrationDestination";
 
 const AuthContext = createContext(null);
 
@@ -165,11 +166,19 @@ export function AuthProvider({ children }) {
     return localUser;
   }, []);
 
-  const signup = useCallback(async (name, email, password) => {
-    const data = await apiFetch("/auth/signup", {
-      method: "POST",
-      body: { name, email, password },
-    });
+  const signup = useCallback(async (name, email, password, inviteCode) => {
+    let data;
+    try {
+      data = await apiFetch("/auth/signup", {
+        method: "POST",
+        body: { name, email, password, ...(inviteCode ? { inviteCode } : {}) },
+      });
+    } catch (error) {
+      if (error?.data?.code === "V2_HANDOFF_REQUIRED" && redirectToV2Handoff(error.data.handoff)) {
+        return { handoff: true };
+      }
+      throw error;
+    }
     if (data.token) setAuthToken(data.token);
     const localUser = mapApiUserToLocal(data.user);
     setUser(localUser);
@@ -229,10 +238,18 @@ export function AuthProvider({ children }) {
           role: "owner",
         }]);
       } else {
-        const data = await apiFetch("/onboarding/join-team", {
-          method: "POST",
-          body: { inviteCode },
-        });
+        let data;
+        try {
+          data = await apiFetch("/onboarding/join-team", {
+            method: "POST",
+            body: { inviteCode },
+          });
+        } catch (error) {
+          if (error?.data?.code === "V2_HANDOFF_REQUIRED" && redirectToV2Handoff(error.data.handoff)) {
+            return { handoff: true };
+          }
+          throw error;
+        }
         const team = data.team || {};
         setUser((prev) => ({
           ...prev,
@@ -274,10 +291,18 @@ export function AuthProvider({ children }) {
    * @param {string} inviteCode
    */
   const joinTeam = useCallback(async (inviteCode) => {
-    const data = await apiFetch("/teams/join", {
-      method: "POST",
-      body: { inviteCode },
-    });
+    let data;
+    try {
+      data = await apiFetch("/teams/join", {
+        method: "POST",
+        body: { inviteCode },
+      });
+    } catch (error) {
+      if (error?.data?.code === "V2_HANDOFF_REQUIRED" && redirectToV2Handoff(error.data.handoff)) {
+        return { handoff: true };
+      }
+      throw error;
+    }
     setUser((prev) => applyActiveTeam(prev, data.newActiveTeam));
     setAllTeams(data.allTeams || []);
     setPlayerViewMode(false);
@@ -479,6 +504,7 @@ export function AuthProvider({ children }) {
   const logout = useCallback(() => {
     // Tell server to clear the session cookie and remove local token
     sessionStorage.setItem("coachable_logging_out", "1");
+    clearMigrationRedirectMarkers();
     apiFetch("/auth/logout", { method: "POST" }).catch(() => {});
     setAuthToken(null);
     setUser(null);

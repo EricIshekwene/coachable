@@ -7,6 +7,8 @@ import { resolveActiveTeam } from "../lib/userTeams.js";
 import { isBlockedName, isBlockedEmailDomain } from "../lib/signupBlocklist.js";
 import { authLimiter, emailLimiter } from "../middleware/rateLimit.js";
 import { requireString, requireEmail, requirePassword, requireCode, LIMITS } from "../lib/validate.js";
+import { requestV2CodeHandoff, resolveTargetCodeAdmission, sendAdmissionInProgress, hasUsableV1Membership, CROSS_VERSION_REVIEW } from "../lib/migrationAdmission.js";
+import { credentialFingerprint, recordResolverDecision } from "../lib/migrationAdmissionAudit.js";
 
 const router = Router();
 const SALT_ROUNDS = 10;
@@ -16,19 +18,54 @@ const REQUIRE_VERIFICATION = process.env.REQUIRE_EMAIL_VERIFICATION === "true";
 
 // POST /auth/signup
 router.post("/signup", authLimiter, emailLimiter, async (req, res, next) => {
+  let client;
   try {
     const trimmedName = requireString(req.body?.name, { field: "name", max: LIMITS.NAME });
     const trimmedEmail = requireEmail(req.body?.email, { field: "email" });
     const password = requirePassword(req.body?.password);
+    const inviteCode = typeof req.body?.inviteCode === "string"
+      ? req.body.inviteCode
+      : (typeof req.body?.invite === "string" ? req.body.invite : null);
 
     if (isBlockedName(trimmedName) || isBlockedEmailDomain(trimmedEmail)) {
       console.warn("[signup-blocked]", { name: trimmedName.slice(0, 80), email: trimmedEmail, ip: req.ip });
       return res.status(400).json({ error: "Sign up failed. Please check your details and try again." });
     }
 
+    client = await pool.connect();
+    await client.query("BEGIN");
+
+    // A target code is resolved before any V1 identity/session mutation. The
+    // same transaction keeps the V1-1 team lock through the user write.
+    if (inviteCode) {
+      const admission = await resolveTargetCodeAdmission(client, inviteCode);
+      await recordResolverDecision(pool, {
+        teamId: admission.teamId, decision: admission.outcome, source: "auth.signup",
+        credentialFingerprint: credentialFingerprint(inviteCode),
+      });
+      if (admission.outcome === "invalid") {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "Invalid invite code" });
+      }
+      if (admission.outcome === "in_progress") {
+        await client.query("ROLLBACK");
+        return sendAdmissionInProgress(res);
+      }
+      if (admission.outcome === "v2_live") {
+        const existing = await client.query("SELECT id FROM users WHERE email = $1", [trimmedEmail]);
+        const requiresReview = existing.rows[0]
+          ? await hasUsableV1Membership(client, existing.rows[0].id)
+          : false;
+        await client.query("ROLLBACK");
+        if (requiresReview) return res.status(409).json({ code: CROSS_VERSION_REVIEW, error: "Review your existing V1 memberships before continuing." });
+        const handoff = await requestV2CodeHandoff({ code: inviteCode, email: trimmedEmail });
+        return res.status(409).json({ code: "V2_HANDOFF_REQUIRED", handoff });
+      }
+    }
+
     const hash = await bcrypt.hash(password, SALT_ROUNDS);
 
-    const { rows } = await pool.query(
+    const { rows } = await client.query(
       `INSERT INTO users (name, email, password_hash)
        VALUES ($1, $2, $3)
        RETURNING id, name, email, onboarded_at, created_at`,
@@ -36,7 +73,7 @@ router.post("/signup", authLimiter, emailLimiter, async (req, res, next) => {
     );
 
     // Create default preferences row
-    await pool.query(
+    await client.query(
       "INSERT INTO user_preferences (user_id) VALUES ($1) ON CONFLICT DO NOTHING",
       [rows[0].id]
     );
@@ -50,7 +87,7 @@ router.post("/signup", authLimiter, emailLimiter, async (req, res, next) => {
       requiresVerification = true;
       try {
         const code = generateCode();
-        await pool.query(
+        await client.query(
           `INSERT INTO email_verification_codes (user_id, email, code, expires_at)
            VALUES ($1, $2, $3, now() + interval '10 minutes')`,
           [user.id, user.email, code]
@@ -62,13 +99,17 @@ router.post("/signup", authLimiter, emailLimiter, async (req, res, next) => {
       }
     }
 
+    await client.query("COMMIT");
     setSessionCookie(res, token);
     res.status(201).json({ token, user, requiresVerification });
   } catch (err) {
+    if (client) await client.query("ROLLBACK").catch(() => {});
     if (err.code === "23505") {
       return res.status(409).json({ error: "Email already registered" });
     }
     next(err);
+  } finally {
+    client?.release();
   }
 });
 
