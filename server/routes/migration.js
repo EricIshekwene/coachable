@@ -14,7 +14,7 @@
 
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
-import { getUserTeamStatuses, hasEverLoaded } from "../lib/migrationStatus.js";
+import { getSnapshotMeta, getUserTeamStatuses } from "../lib/migrationStatus.js";
 
 const router = Router();
 
@@ -29,13 +29,22 @@ const router = Router();
  * Clients MUST treat that case as "show nothing different" — see
  * `src/context/MigrationStatusContext.jsx`.
  *
- * Response: { hasEverLoaded: boolean,
+ * Response: { hasEverLoaded: boolean, fresh: boolean,
  *             teams: Array<{ teamId, teamName, status }> }
  */
 router.get("/me", requireAuth, async (req, res, next) => {
   try {
     const teams = await getUserTeamStatuses(req.userId);
-    res.json({ hasEverLoaded: hasEverLoaded(), teams });
+    const snapshot = getSnapshotMeta();
+    // A last-known-good snapshot remains useful to V1's server-side
+    // availability checks, but is never safe for client-side migration UI or
+    // the convenience redirect. Make that distinction explicit at this trust
+    // boundary instead of asking browser code to infer cache age.
+    res.json({
+      hasEverLoaded: snapshot.hasEverLoaded,
+      fresh: snapshot.hasEverLoaded && !snapshot.isStale,
+      teams,
+    });
   } catch (err) {
     next(err);
   }

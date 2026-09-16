@@ -10,7 +10,7 @@
  * team is flipped to v2_live mid-session finds out without reloading.
  *
  * FAILS OPEN, ALWAYS. If the request errors, times out, or the server says the
- * status cache has never loaded, this context reports `ready: false` and an
+ * status cache has never loaded or is stale, this context reports `ready: false` and an
  * empty team list — every consumer then renders exactly what V1 renders today.
  * There is no loading gate here: children render immediately while the fetch
  * is in flight, so a slow or dead endpoint can never trap a coach behind a
@@ -74,16 +74,19 @@ export function MigrationStatusProvider({ children, userId }) {
       const data = await apiFetch("/migration/me");
       if (!mountedRef.current) return;
       const teams = Array.isArray(data?.teams) ? data.teams : [];
-      // hasEverLoaded === false means V1 has never heard from V2, so every
-      // status is a default rather than a fact. Treat it as "no information".
-      if (!data?.hasEverLoaded) {
+      // The server is the cache's trust boundary. Last-known-good data is
+      // intentionally retained for V1's server-side availability behavior,
+      // but it must never drive browser migration UI or a V1 -> V2 redirect.
+      // Strictly require an explicit fresh:true; omitted/malformed responses
+      // fail open exactly like an unloaded cache.
+      if (!data?.hasEverLoaded || data?.fresh !== true) {
         setValue(EMPTY);
         return;
       }
       setValue({
         ready: true,
-        // A successful /migration/me response is the only client-visible
-        // routing signal. Failed/unloaded responses must never reuse it.
+        // The server supplied an explicitly fresh cache signal. Failed,
+        // unloaded, stale, or malformed responses must never reuse it.
         fresh: true,
         snapshotGeneration: typeof data?.snapshotGeneration === "string" && data.snapshotGeneration
           ? data.snapshotGeneration

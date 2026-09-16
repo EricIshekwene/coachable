@@ -7,7 +7,7 @@
  *  - All-moved -> interstitial; mixed -> interstitial only on the moved team
  *  - Mixed + active team not moved -> non-blocking banner instead
  *  - FAIL OPEN: no data / not ready / empty teams -> no interstitial, no banner
- *  - GET /migration/me returns { hasEverLoaded, teams } from the cache module
+ *  - GET /migration/me returns explicit cache freshness with the team statuses
  *  - GET /migration/me never calls V2 (it only reads the cache module)
  *  - The route is registered as a GET, so the cutover write-lock cannot block it
  */
@@ -211,11 +211,11 @@ describe("shouldShowMovedBanner", () => {
 // ── GET /migration/me ────────────────────────────────────────────────────────
 
 const getUserTeamStatuses = vi.fn();
-const hasEverLoaded = vi.fn();
+const getSnapshotMeta = vi.fn();
 
 vi.mock("../../server/lib/migrationStatus.js", () => ({
   getUserTeamStatuses: (...args) => getUserTeamStatuses(...args),
-  hasEverLoaded: (...args) => hasEverLoaded(...args),
+  getSnapshotMeta: (...args) => getSnapshotMeta(...args),
 }));
 
 vi.mock("../../server/middleware/auth.js", () => ({
@@ -264,7 +264,7 @@ describe("GET /migration/me", () => {
   it("returns the user's team statuses and the cache-loaded flag", async () => {
     const teams = [team("a", "v2_live"), team("b", "v1_only")];
     getUserTeamStatuses.mockResolvedValue(teams);
-    hasEverLoaded.mockReturnValue(true);
+    getSnapshotMeta.mockReturnValue({ hasEverLoaded: true, isStale: false });
 
     const router = (await import("../../server/routes/migration.js")).default;
     const layer = findLayer(router, "get", "/me");
@@ -277,13 +277,13 @@ describe("GET /migration/me", () => {
 
     expect(next).not.toHaveBeenCalled();
     expect(getUserTeamStatuses).toHaveBeenCalledWith("u1");
-    expect(res.body).toEqual({ hasEverLoaded: true, teams });
+    expect(res.body).toEqual({ hasEverLoaded: true, fresh: true, teams });
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
-  it("reports hasEverLoaded:false so the client shows nothing different", async () => {
+  it("reports an unloaded cache so the client shows nothing different", async () => {
     getUserTeamStatuses.mockResolvedValue([team("a", "v1_only")]);
-    hasEverLoaded.mockReturnValue(false);
+    getSnapshotMeta.mockReturnValue({ hasEverLoaded: false, isStale: true });
 
     const router = (await import("../../server/routes/migration.js")).default;
     const layer = findLayer(router, "get", "/me");
@@ -296,9 +296,30 @@ describe("GET /migration/me", () => {
     expect(shouldShowMovedInterstitial({ ready: false, teams: res.body.teams }, "a")).toBe(false);
   });
 
+  it("marks a last-known-good all-live snapshot stale so it cannot redirect", async () => {
+    const teams = [team("a", "v2_live"), team("b", "v2_live")];
+    getUserTeamStatuses.mockResolvedValue(teams);
+    // This is the cache's deliberate last-known-good fallback after its
+    // freshness ceiling; V1 must remain usable, never redirecting to V2.
+    getSnapshotMeta.mockReturnValue({ hasEverLoaded: true, isStale: true });
+
+    const router = (await import("../../server/routes/migration.js")).default;
+    const layer = findLayer(router, "get", "/me");
+    const res = fakeRes();
+    const handlers = layer.route.stack.map((s) => s.handle);
+    await handlers[handlers.length - 1]({ userId: "u1" }, res, vi.fn());
+
+    expect(res.body).toEqual({ hasEverLoaded: true, fresh: false, teams });
+    expect(isTrustedAllLiveStatus({
+      ready: res.body.hasEverLoaded,
+      fresh: res.body.fresh,
+      teams: res.body.teams,
+    })).toBe(false);
+  });
+
   it("passes errors to next() instead of throwing at the coach", async () => {
     getUserTeamStatuses.mockRejectedValue(new Error("db down"));
-    hasEverLoaded.mockReturnValue(true);
+    getSnapshotMeta.mockReturnValue({ hasEverLoaded: true, isStale: false });
 
     const router = (await import("../../server/routes/migration.js")).default;
     const layer = findLayer(router, "get", "/me");

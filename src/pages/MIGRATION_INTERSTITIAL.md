@@ -19,7 +19,7 @@ What a coach whose team has moved to the new Coachable sees when they land on V1
 1. `server/lib/migrationStatus.js` already polls V2 and caches which teams are
    `v1_only` / `migrating` / `v2_live`. `GET /migration/me` (auth required) reads
    **only** that in-memory cache and returns
-   `{ hasEverLoaded: boolean, teams: [{ teamId, teamName, status }] }`.
+   `{ hasEverLoaded: boolean, fresh: boolean, teams: [{ teamId, teamName, status }] }`.
    It never calls V2 and never writes. It is a GET on purpose, so the cutover
    write-lock middleware can never block it.
 2. `MigrationStatusProvider` fetches it for the logged-in user (the same shape
@@ -28,8 +28,9 @@ What a coach whose team has moved to the new Coachable sees when they land on V1
    cadence, the same tab-hidden / offline skips and the same `visibilitychange`
    refresh `NotificationsContext` uses — so a coach whose team flips to
    `v2_live` mid-session finds out without reloading. A background refresh that
-   fails, or that comes back `hasEverLoaded: false`, leaves the last known good
-   answer untouched: a refresh never changes what the coach is already seeing.
+   fails, is stale, malformed, or comes back without both `hasEverLoaded: true`
+   and `fresh: true`, clears the migration routing signal: V1 remains usable
+   rather than trusting a last-known-good cache answer.
 3. `RequireNotMoved` wraps the four authed surfaces in `App.jsx` (the `/app`
    shell plus the three full-screen routes outside it: play edit, play view-only,
    select-sport). When the decision says "moved", it renders
@@ -65,8 +66,9 @@ What a coach whose team has moved to the new Coachable sees when they land on V1
   cookies. A failed "Continue with <team>" switch raises the standard
   `MessagePopup` error toast through `AppMessageContext` instead of failing
   silently; no native dialogs anywhere.
-- **Fails open, always.** A failed, slow, or in-flight `/migration/me`, or a
-  response with `hasEverLoaded: false`, collapses to "no information": no
+- **Fails open, always.** A failed, slow, stale, malformed, or in-flight
+  `/migration/me`, or a response without `hasEverLoaded: true` and
+  `fresh: true`, collapses to "no information": no
   interstitial, no banner, no spinner, no blank screen. There is deliberately no
   loading gate in the provider — children render immediately. An unmigrated
   coach sees zero change.
