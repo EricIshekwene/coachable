@@ -72,11 +72,68 @@ describe("migration admission fence persistence", () => {
   });
 
   it("reads the active fence through a caller-owned transaction client", async () => {
-    const client = scriptedClient([{ rows: [row()] }]);
+    const client = scriptedClient([{ rows: [{ id: TEAM_ID }] }, { rows: [row()] }]);
     await expect(getActiveMigrationAdmissionFence(TEAM_ID, client)).resolves.toMatchObject({
       teamId: TEAM_ID, fenceGeneration: JOB_ID,
     });
-    expect(client.query).toHaveBeenCalledOnce();
+    expect(client.query).toHaveBeenCalledTimes(2);
+    expect(client.query.mock.calls[0][0]).toContain("FROM teams WHERE id = $1 FOR SHARE");
+  });
+
+  it("does not acknowledge a first fence while an admission that saw no fence holds the team lock", async () => {
+    let releaseAdmissionLock;
+    let fenceTriedToLock;
+    const admissionLockHeld = new Promise((resolve) => { fenceTriedToLock = resolve; });
+    const admissionLockReleased = new Promise((resolve) => { releaseAdmissionLock = resolve; });
+    const events = [];
+    const admissionClient = {
+      query: vi.fn(async (sql) => {
+        if (sql.includes("FROM teams WHERE id = $1 FOR SHARE")) return { rows: [{ id: TEAM_ID }] };
+        if (sql.includes("FROM migration_admission_fences")) return { rows: [] };
+        throw new Error(`unexpected admission query: ${sql}`);
+      }),
+    };
+    await expect(getActiveMigrationAdmissionFence(TEAM_ID, admissionClient)).resolves.toBeNull();
+
+    const fenceClient = {
+      query: vi.fn(async (sql) => {
+        if (sql === "BEGIN") return { rows: [] };
+        if (sql.includes("FROM teams WHERE id = $1 FOR UPDATE")) {
+          fenceTriedToLock();
+          await admissionLockReleased;
+          return { rows: [{ id: TEAM_ID }] };
+        }
+        if (sql.includes("FROM migration_admission_fences")) return { rows: [] };
+        if (sql.includes("INSERT INTO migration_admission_fences")) return { rows: [row()] };
+        if (sql === "COMMIT") { events.push("FENCE_COMMIT"); return { rows: [] }; }
+        throw new Error(`unexpected fence query: ${sql}`);
+      }),
+      release: vi.fn(),
+    };
+    const router = createInternalMigrationAdmissionFenceRouter({ connect: async () => fenceClient }, () => "test-fence-secret");
+    const handler = router.stack.find((layer) => layer.route?.path === "/migration-admission-fences").route.stack[0].handle;
+    const res = {
+      statusCode: 200,
+      status(code) { this.statusCode = code; return this; },
+      json() { events.push("FENCE_ACK"); return this; },
+    };
+    const fenceRequest = handler({
+      headers: { authorization: "Bearer test-fence-secret" },
+      get: () => "Bearer test-fence-secret",
+      body: { teamId: TEAM_ID, fenceGeneration: JOB_ID },
+    }, res);
+    await admissionLockHeld;
+    expect(events).toEqual([]);
+
+    // In the real admission transaction its membership INSERT and COMMIT occur
+    // before PostgreSQL releases this FOR SHARE lock. The fence may only commit
+    // and acknowledge after that point.
+    events.push("ADMISSION_MEMBERSHIP_COMMIT");
+    releaseAdmissionLock();
+    await fenceRequest;
+    expect(events).toEqual(["ADMISSION_MEMBERSHIP_COMMIT", "FENCE_COMMIT", "FENCE_ACK"]);
+    expect(admissionClient.query.mock.calls[0][0]).toContain("FOR SHARE");
+    expect(fenceClient.query.mock.calls[1][0]).toContain("FOR UPDATE");
   });
 });
 

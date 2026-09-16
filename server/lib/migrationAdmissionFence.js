@@ -2,8 +2,12 @@
  * Durable V1 admission fence for a V2 migration closure.
  *
  * Callers that decide whether a membership may be inserted pass their existing
- * transaction client to `getActiveMigrationAdmissionFence()`. This keeps the
- * fence read and membership write in the same PostgreSQL transaction.
+ * transaction client to `getActiveMigrationAdmissionFence()`. The helper first
+ * takes a transaction-held shared lock on the stable parent `teams` row, then
+ * reads the fence. The fence endpoint takes that same row `FOR UPDATE` before
+ * it acknowledges. This is the shared serialization point for the no-fence-row
+ * case: an admission either commits while the fence waits, or waits, observes
+ * the committed fence, and refuses its membership write.
  */
 
 import pool from "../db/pool.js";
@@ -26,6 +30,14 @@ export function isUuid(value) {
  */
 export async function getActiveMigrationAdmissionFence(teamId, db = pool) {
   if (!isUuid(teamId)) return null;
+  // Keep this lock until the caller's membership transaction commits. Do not
+  // replace it with a lock on migration_admission_fences: the first fence has
+  // no child row to lock yet.
+  const team = await db.query(
+    "SELECT id FROM teams WHERE id = $1 FOR SHARE",
+    [teamId]
+  );
+  if (!team.rows[0]) return null;
   const { rows } = await db.query(
     `SELECT team_id, fence_generation, migration_job_id, acknowledged_at, reason
        FROM migration_admission_fences

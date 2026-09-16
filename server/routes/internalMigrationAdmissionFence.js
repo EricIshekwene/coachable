@@ -69,7 +69,10 @@ export function createInternalMigrationAdmissionFenceRouter(
       client = await database.connect();
       await client.query("BEGIN");
       begun = true;
-      const knownTeam = await client.query("SELECT id FROM teams WHERE id = $1 FOR SHARE", [parsed.value.teamId]);
+      // This conflicts with the shared parent-row lock taken by
+      // getActiveMigrationAdmissionFence() inside an admission transaction.
+      // It closes the first-fence-row race before this endpoint can acknowledge.
+      const knownTeam = await client.query("SELECT id FROM teams WHERE id = $1 FOR UPDATE", [parsed.value.teamId]);
       if (!knownTeam.rows[0]) {
         await client.query("ROLLBACK");
         begun = false;
