@@ -31,12 +31,15 @@ Only an owner-equivalent authenticated operator can request:
 
 `POST /admin/migration-admission/fence-release`
 
-The request must name the exact V1 team/fence generation and contain a V2
-rollback-evidence UUID, a completed timestamp, and terminal outcome `rollback`
-or `failed`. V1 writes an immutable `v2_rollback_evidence` record before it
-releases the matching fence, then writes a linked `fence_release` record in the
-same transaction. An unknown or different generation is refused; a release is
-never automatic and no repair/deletion is performed.
+The request must name the exact V1 team/fence generation, a V2 rollback-evidence
+UUID, and terminal outcome `rollback` or `failed`. V1 authenticates that UUID
+with V2 and obtains both rollback timestamps (`rollbackCompletedAt` and
+`v1FenceReleasePermittedAt`) solely from the authenticated V2 attestation;
+neither timestamp is caller-supplied. V1 writes an immutable
+`v2_rollback_evidence` record before it releases the matching fence, then writes
+a linked `fence_release` record in the same transaction. An unknown or different
+generation is refused; a release is never automatic and no repair/deletion is
+performed.
 
 Before a real rollback, follow the authoritative D4/D9 order: freeze and
 invalidate V2 admissions, complete and audit the V2 rollback, record that
