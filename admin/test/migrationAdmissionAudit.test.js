@@ -53,15 +53,15 @@ describe("migration admission audit evidence", () => {
     expect(database.query.mock.calls[0][0]).toContain("tm.joined_at >= f.acknowledged_at");
   });
 
-  it("requires a terminal outcome and recorded V2 rollback evidence identifier", () => {
+  it("requires a terminal outcome and V2 rollback evidence identifier, not caller completion time", () => {
     expect(parseTerminalReleaseRequest({
       teamId: TEAM_ID, fenceGeneration: JOB_ID, terminalOutcome: "rollback",
-      v2RollbackEvidenceId: EVIDENCE_ID, v2RollbackCompletedAt: "2026-09-15T01:02:00.000Z",
+      v2RollbackEvidenceId: EVIDENCE_ID,
     })).toMatchObject({ ok: true });
     expect(parseTerminalReleaseRequest({ teamId: TEAM_ID, fenceGeneration: JOB_ID, terminalOutcome: "success" }).ok).toBe(false);
   });
 
-  it("records V2 rollback evidence before releasing the exact V1 fence", async () => {
+  it("records a V2-attested rollback only before releasing the exact V1 fence", async () => {
     const calls = [];
     const client = {
       query: vi.fn(async (sql) => {
@@ -73,17 +73,40 @@ describe("migration admission audit evidence", () => {
       }),
       release: vi.fn(),
     };
-    const router = createMigrationAdmissionAuditRouter({ connect: async () => client }, vi.fn());
+    const verifier = vi.fn(async () => ({
+      evidenceId: EVIDENCE_ID, teamId: TEAM_ID, fenceGeneration: JOB_ID,
+      rollbackCompletedAt: "2026-09-15T01:02:00.000Z", v1FenceReleasePermittedAt: "2026-09-15T01:02:01.000Z",
+    }));
+    const router = createMigrationAdmissionAuditRouter({ connect: async () => client }, vi.fn(), verifier);
     const releaseLayer = router.stack.find((layer) => layer.route?.path === "/fence-release");
     const handler = releaseLayer.route.stack.at(-1).handle;
     const res = { statusCode: 200, body: null, status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } };
     await handler({
-      body: { teamId: TEAM_ID, fenceGeneration: JOB_ID, terminalOutcome: "rollback", v2RollbackEvidenceId: EVIDENCE_ID, v2RollbackCompletedAt: "2026-09-15T01:02:00.000Z" },
+      body: { teamId: TEAM_ID, fenceGeneration: JOB_ID, terminalOutcome: "rollback", v2RollbackEvidenceId: EVIDENCE_ID },
       actor: { authMode: "legacy_admin", userId: null },
     }, res, (err) => { throw err; });
     expect(res.statusCode).toBe(200);
     expect(calls.findIndex((sql) => sql.includes("v2_rollback_evidence"))).toBeLessThan(calls.findIndex((sql) => sql.includes("SET fenced = FALSE")));
     expect(calls.indexOf("COMMIT")).toBeGreaterThan(calls.findIndex((sql) => sql.includes("fence_release")));
     expect(client.release).toHaveBeenCalledOnce();
+  });
+
+  it("never releases a fence when V2 refuses or mismatches the asserted rollback evidence", async () => {
+    const query = vi.fn();
+    const client = { query, release: vi.fn() };
+    const router = createMigrationAdmissionAuditRouter(
+      { connect: async () => client },
+      vi.fn(),
+      vi.fn(async () => { throw new Error("V2 rollback evidence verification was refused"); }),
+    );
+    const releaseLayer = router.stack.find((layer) => layer.route?.path === "/fence-release");
+    const handler = releaseLayer.route.stack.at(-1).handle;
+    const next = vi.fn();
+    await handler({
+      body: { teamId: TEAM_ID, fenceGeneration: JOB_ID, terminalOutcome: "rollback", v2RollbackEvidenceId: EVIDENCE_ID },
+      actor: { authMode: "legacy_admin", userId: null },
+    }, { status() { return this; }, json() { return this; } }, next);
+    expect(query).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledOnce();
   });
 });

@@ -116,6 +116,46 @@ export async function requestV2EmailInvitation({ teamId, email, role }) {
   return { kind: handoff.kind, expiresInSeconds: handoff.expiresInSeconds };
 }
 
+/**
+ * Verify, at V2, the completed rollback record that permits reopening a V1
+ * fence.  The operator may name an evidence id, but that id is never proof by
+ * itself: V2 must authenticate this request and attest the exact team and
+ * fence generation from its durable record.
+ *
+ * @param {{evidenceId: string, teamId: string, fenceGeneration: string}} input
+ * @returns {Promise<{evidenceId: string, teamId: string, fenceGeneration: string, rollbackCompletedAt: string, v1FenceReleasePermittedAt: string}>}
+ */
+export async function verifyV2RollbackEvidence({ evidenceId, teamId, fenceGeneration }) {
+  const secret = process.env.V1_ADMISSION_SECRET;
+  const base = (process.env.V2_ADMISSION_BASE_URL || process.env.V2_BASE_URL || "").replace(/\/+$/, "");
+  if (!secret || !base) throw new Error("V2 rollback evidence verification is not configured");
+
+  const response = await fetch(`${base}/api/admission/rollback-evidence-verification`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-v1-admission-secret": secret,
+    },
+    body: JSON.stringify({ evidenceId, teamId, fenceGeneration }),
+  });
+  if (!response.ok) throw new Error("V2 rollback evidence verification was refused");
+  const body = await response.json();
+  const attestation = body?.attestation;
+  if (
+    !attestation ||
+    attestation.evidenceId !== evidenceId ||
+    attestation.teamId !== teamId ||
+    attestation.fenceGeneration !== fenceGeneration ||
+    typeof attestation.rollbackCompletedAt !== "string" ||
+    !Number.isFinite(Date.parse(attestation.rollbackCompletedAt)) ||
+    typeof attestation.v1FenceReleasePermittedAt !== "string" ||
+    !Number.isFinite(Date.parse(attestation.v1FenceReleasePermittedAt))
+  ) {
+    throw new Error("V2 rollback evidence verification returned an invalid response");
+  }
+  return attestation;
+}
+
 /** @param {import('express').Response} res */
 export function sendAdmissionInProgress(res) {
   return res.status(409).json({ code: ADMISSION_IN_PROGRESS, error: "Team migration is in progress. Please try again shortly." });

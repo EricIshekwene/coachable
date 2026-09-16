@@ -4,31 +4,28 @@ import { Router } from "express";
 import pool from "../db/pool.js";
 import { requireOwnerOrLegacyAdmin, writeAudit } from "../middleware/staffAuth.js";
 import { isUuid, releaseMigrationAdmissionFence } from "../lib/migrationAdmissionFence.js";
+import { verifyV2RollbackEvidence } from "../lib/migrationAdmission.js";
 import {
   getPostFenceMembershipEvidence,
   recordFenceRelease,
   recordV2RollbackEvidence,
 } from "../lib/migrationAdmissionAudit.js";
 
-function isIsoTimestamp(value) {
-  return typeof value === "string" && Number.isFinite(Date.parse(value));
-}
-
 /** @param {unknown} body */
 export function parseTerminalReleaseRequest(body) {
   if (!body || typeof body !== "object") return { ok: false };
-  const { teamId, fenceGeneration, terminalOutcome, v2RollbackEvidenceId, v2RollbackCompletedAt, reason } = body;
+  const { teamId, fenceGeneration, terminalOutcome, v2RollbackEvidenceId, reason } = body;
   if (!isUuid(teamId) || !isUuid(fenceGeneration) || !isUuid(v2RollbackEvidenceId)) return { ok: false };
-  if (!['rollback', 'failed'].includes(terminalOutcome) || !isIsoTimestamp(v2RollbackCompletedAt)) return { ok: false };
+  if (!['rollback', 'failed'].includes(terminalOutcome)) return { ok: false };
   if (reason !== undefined && (typeof reason !== "string" || reason.length > 500)) return { ok: false };
-  return { ok: true, value: { teamId, fenceGeneration, terminalOutcome, v2RollbackEvidenceId, v2RollbackCompletedAt, reason: reason ?? null } };
+  return { ok: true, value: { teamId, fenceGeneration, terminalOutcome, v2RollbackEvidenceId, reason: reason ?? null } };
 }
 
 /**
  * Constructed separately for focused tests. This router does not implement
  * repair: it offers a report and an explicit terminal-release recording step.
  */
-export function createMigrationAdmissionAuditRouter(database = pool, auditWriter = writeAudit) {
+export function createMigrationAdmissionAuditRouter(database = pool, auditWriter = writeAudit, verifyRollbackEvidence = verifyV2RollbackEvidence) {
   const router = Router();
 
   router.get("/teams/:teamId/report", requireOwnerOrLegacyAdmin, async (req, res, next) => {
@@ -44,10 +41,21 @@ export function createMigrationAdmissionAuditRouter(database = pool, auditWriter
   router.post("/fence-release", requireOwnerOrLegacyAdmin, async (req, res, next) => {
     const parsed = parseTerminalReleaseRequest(req.body);
     if (!parsed.ok) return res.status(400).json({ code: "INVALID_TERMINAL_RELEASE_REQUEST" });
-    const input = parsed.value;
+    let input = parsed.value;
     let client;
     let begun = false;
     try {
+      // This cross-service attestation is deliberately completed before the V1
+      // transaction. A caller-supplied UUID/timestamp is not rollback proof.
+      const attestation = await verifyRollbackEvidence({
+        evidenceId: input.v2RollbackEvidenceId,
+        teamId: input.teamId,
+        fenceGeneration: input.fenceGeneration,
+      });
+      input = {
+        ...input,
+        v2RollbackCompletedAt: attestation.rollbackCompletedAt,
+      };
       client = await database.connect();
       await client.query("BEGIN");
       begun = true;
